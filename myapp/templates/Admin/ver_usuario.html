@@ -1,0 +1,724 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Usuarios{% endblock %}
+
+{% block page_title %}Usuarios{% endblock %}
+{% block page_subtitle %}Gestión de usuarios y roles{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'crear_usuario' %}" class="btn-primary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nuevo
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Stats compactos -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_usuarios }}</span>
+        <span class="stat-label">Total</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_superusuarios }}</span>
+        <span class="stat-label">Super</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_administradores }}</span>
+        <span class="stat-label">Admin</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_vendedores }}</span>
+        <span class="stat-label">Ventas</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_instaladores }}</span>
+        <span class="stat-label">Instal</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ usuarios_activos }}</span>
+        <span class="stat-label">Activos</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters">
+    <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input type="text" placeholder="Buscar..." id="searchInput">
+    </div>
+    
+    <select id="filterRol" class="filter-select">
+        <option value="">Todos</option>
+        <option value="superuser">Super</option>
+        <option value="administrador">Admin</option>
+        <option value="vendedor">Ventas</option>
+        <option value="instalador">Instal</option>
+    </select>
+    
+    <select id="filterStatus" class="filter-select">
+        <option value="">Todos</option>
+        <option value="activo">Activo</option>
+        <option value="inactivo">Inactivo</option>
+    </select>
+</div>
+
+<!-- Vista Desktop: Tabla compacta -->
+<div class="desktop-view">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in page_obj %}
+            <tr>
+                <td>
+                    <div class="user-cell">
+                        <span class="user-avatar">{{ usuario.username|first|upper }}</span>
+                        <div>
+                            <div class="user-name">{{ usuario.username }}</div>
+                            <div class="user-fullname">{{ usuario.first_name }} {{ usuario.last_name }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="email-cell">{{ usuario.email|truncatechars:20|default:"—" }}</td>
+                <td>
+                    {% if usuario.is_superuser %}
+                    <span class="badge super">Super</span>
+                    {% elif usuario.groups.all %}
+                        {% for group in usuario.groups.all %}
+                            {% if group.name == 'Administrador' %}
+                            <span class="badge admin">Admin</span>
+                            {% elif group.name == 'Vendedor' %}
+                            <span class="badge ventas">Ventas</span>
+                            {% elif group.name == 'Instalador' %}
+                            <span class="badge instal">Instal</span>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                    <span class="badge">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="status {% if usuario.is_active %}active{% endif %}">
+                        {{ usuario.is_active|yesno:"Activo,Inactivo" }}
+                    </span>
+                </td>
+                <td class="date-cell">{{ usuario.date_joined|date:"d/m/y" }}</td>
+                <td>
+                    <div class="actions">
+                        <button class="action-btn" onclick="verUsuario('{{ usuario.id }}')" title="Ver">👁️</button>
+                        <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'">✎</button>
+                        <button class="action-btn" onclick="cambiarRol('{{ usuario.id }}')" title="Rol">👤</button>
+                        {% if usuario != user %}
+                        <button class="action-btn" onclick="cambiarEstado('{{ usuario.id }}', '{{ usuario.is_active }}')" 
+                                title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}">
+                            {% if usuario.is_active %}✕{% else %}✓{% endif %}
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="empty">No hay usuarios</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Vista Mobile: Cards -->
+<div class="mobile-view">
+    {% for usuario in page_obj %}
+    <div class="user-card">
+        <div class="card-header">
+            <div class="card-user">
+                <span class="card-avatar">{{ usuario.username|first|upper }}</span>
+                <div>
+                    <div class="card-name">{{ usuario.username }}</div>
+                    <div class="card-email">{{ usuario.email|truncatechars:25|default:"Sin email" }}</div>
+                </div>
+            </div>
+            <span class="status-dot {% if usuario.is_active %}active{% endif %}"></span>
+        </div>
+        
+        <div class="card-body">
+            <div class="card-row">
+                <span class="card-label">Nombre:</span>
+                <span class="card-value">{{ usuario.first_name }} {{ usuario.last_name }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Rol:</span>
+                <span class="card-value">
+                    {% if usuario.is_superuser %}Superusuario
+                    {% elif usuario.groups.all %}{% for g in usuario.groups.all %}{{ g.name }}{% endfor %}
+                    {% else %}—{% endif %}
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Registro:</span>
+                <span class="card-value">{{ usuario.date_joined|date:"d/m/y" }}</span>
+            </div>
+        </div>
+        
+        <div class="card-actions">
+            <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'">👁️</button>
+            <button class="card-action" onclick="editarUsuario('{{ usuario.id }}')">✎</button>
+            <button class="card-action" onclick="cambiarRol('{{ usuario.id }}')">👤</button>
+            {% if usuario != user %}
+            <button class="card-action" onclick="cambiarEstado('{{ usuario.id }}', '{{ usuario.is_active }}')">
+                {% if usuario.is_active %}✕{% else %}✓{% endif %}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-mobile">No hay usuarios</div>
+    {% endfor %}
+</div>
+
+<!-- Paginación compacta -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1" class="page-link">←←</a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="page-link">←</a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}" class="page-link">→</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}" class="page-link">→→</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+    /* ===== VARIABLES ===== */
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #fafafa;
+        --gray-border: #f0f0f0;
+        --gray-text: #999;
+        --dark-text: #333;
+    }
+
+    /* ===== LAYOUT PRINCIPAL ===== */
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--orange);
+        color: white;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+    }
+
+    /* ===== STATS COMPACTOS ===== */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 16px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 6px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 13px;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange);
+    }
+
+    .stat-label {
+        color: var(--gray-text);
+    }
+
+    /* ===== FILTROS ===== */
+    .filters {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: white;
+        padding: 0 10px;
+        border: 1px solid var(--gray-border);
+        border-radius: 20px;
+    }
+
+    .search-box input {
+        border: none;
+        padding: 8px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 100px;
+        padding: 8px 10px;
+        border: 1px solid var(--gray-border);
+        border-radius: 20px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .filter-select:hover {
+        border-color: var(--orange);
+    }
+
+    /* ===== TABLA DESKTOP COMPACTA ===== */
+    .desktop-view {
+        display: block;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 16px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 10px 12px;
+        font-weight: 500;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+    }
+
+    /* Hacer la tabla más compacta */
+    .table tbody tr {
+        height: 48px;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .user-avatar {
+        width: 28px;
+        height: 28px;
+        background: var(--orange);
+        color: white;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text);
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    .user-fullname {
+        font-size: 11px;
+        color: var(--gray-text);
+        line-height: 1.2;
+    }
+
+    .email-cell {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #666;
+    }
+
+    .date-cell {
+        color: #666;
+        white-space: nowrap;
+    }
+
+    /* Badges pequeños */
+    .badge {
+        display: inline-block;
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 500;
+        background: #f5f5f5;
+        color: #666;
+        white-space: nowrap;
+    }
+
+    .badge.super { background: #f3e5f5; color: #9c27b0; }
+    .badge.admin { background: #fff2e6; color: var(--orange); }
+    .badge.ventas { background: #e3f2fd; color: #2196f3; }
+    .badge.instal { background: #e8f5e9; color: #4caf50; }
+
+    /* Status */
+    .status {
+        font-size: 12px;
+        color: #f44336;
+        white-space: nowrap;
+    }
+    .status.active { color: #4caf50; }
+
+    /* Acciones compactas */
+    .actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .action-btn {
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 4px;
+        color: var(--gray-text);
+        cursor: pointer;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    /* ===== MOBILE CARDS ===== */
+    .mobile-view {
+        display: none;
+    }
+
+    .user-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .card-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .card-avatar {
+        width: 36px;
+        height: 36px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .card-name {
+        font-weight: 500;
+        color: var(--dark-text);
+        font-size: 14px;
+    }
+
+    .card-email {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #f44336;
+    }
+    .status-dot.active { background: #4caf50; }
+
+    .card-body {
+        background: var(--gray-bg);
+        padding: 8px 10px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+
+    .card-row {
+        display: flex;
+        margin-bottom: 4px;
+    }
+
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .card-label {
+        width: 65px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+    }
+
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+    }
+
+    .card-action {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 6px;
+        color: var(--gray-text);
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .card-action:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    /* ===== PAGINACIÓN COMPACTA ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 16px;
+    }
+
+    .page-link {
+        padding: 5px 10px;
+        border: 1px solid var(--gray-border);
+        border-radius: 6px;
+        color: #666;
+        text-decoration: none;
+        font-size: 12px;
+        transition: all 0.2s;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    .page-info {
+        padding: 0 6px;
+        color: var(--gray-text);
+        font-size: 12px;
+    }
+
+    .empty, .empty-mobile {
+        text-align: center;
+        padding: 24px !important;
+        color: var(--gray-text);
+        font-size: 13px;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+        .desktop-view {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+        
+        .filters {
+            flex-direction: column;
+        }
+        
+        .search-box, .filter-select {
+            width: 100%;
+        }
+        
+        .stats-grid {
+            justify-content: space-between;
+        }
+        
+        .stat-card {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            flex: 1 0 calc(33.33% - 4px);
+            justify-content: center;
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+        
+        .user-card {
+            padding: 10px;
+        }
+        
+        .card-avatar {
+            width: 32px;
+            height: 32px;
+            font-size: 13px;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .stat-card {
+            flex: 1 0 calc(50% - 3px);
+        }
+    }
+</style>
+
+<script>
+    // Search function
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        
+        // Desktop
+        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+        
+        // Mobile
+        document.querySelectorAll('.user-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchText) ? 'block' : 'none';
+        });
+    });
+
+    // Filter function
+    function filterTable() {
+        const rolFilter = document.getElementById('filterRol').value.toLowerCase();
+        const statusFilter = document.getElementById('filterStatus').value.toLowerCase();
+        
+        // Desktop
+        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
+            let show = true;
+            const rolText = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+            const statusText = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+            
+            if (rolFilter && !rolText.includes(rolFilter)) show = false;
+            if (statusFilter && show && !statusText.includes(statusFilter)) show = false;
+            
+            row.style.display = show ? '' : 'none';
+        });
+        
+        // Mobile
+        document.querySelectorAll('.user-card').forEach(card => {
+            let show = true;
+            const text = card.textContent.toLowerCase();
+            
+            if (rolFilter && !text.includes(rolFilter)) show = false;
+            if (statusFilter && show && !text.includes(statusFilter)) show = false;
+            
+            card.style.display = show ? 'block' : 'none';
+        });
+    }
+
+    document.getElementById('filterRol')?.addEventListener('change', filterTable);
+    document.getElementById('filterStatus')?.addEventListener('change', filterTable);
+
+    // Action functions
+    function verUsuario(id) { console.log('Ver:', id); }
+    function editarUsuario(id) { console.log('Editar:', id); }
+    function cambiarRol(id) { console.log('Rol:', id); }
+    function cambiarEstado(id, estado) {
+        if (confirm(`¿${estado === 'True' ? 'Desactivar' : 'Activar'} usuario?`)) {
+            console.log('Cambiar estado:', id);
+        }
+    }
+</script>
+{% endblock %}

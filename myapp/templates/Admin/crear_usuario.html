@@ -1,0 +1,682 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - {{ titulo }}{% endblock %}
+
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block page_subtitle %}{{ subtitulo }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lista_usuarios' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <!-- Información del usuario en edición -->
+        {% if not es_creacion and usuario %}
+        <div class="user-info-bar">
+            <div class="user-info-avatar">
+                {{ usuario.username|first|upper }}
+            </div>
+            <div class="user-info-details">
+                <div class="user-info-name">{{ usuario.username }}</div>
+                <div class="user-info-meta">
+                    <span>📧 {{ usuario.email|default:"Sin email" }}</span>
+                    <span>📅 Registro: {{ usuario.date_joined|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+            <div class="user-info-status">
+                {% if usuario.is_active %}
+                <span class="status-badge active">Activo</span>
+                {% else %}
+                <span class="status-badge inactive">Inactivo</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" class="user-form" id="userForm">
+            {% csrf_token %}
+            
+            <!-- Mensajes de error generales -->
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <!-- Sección: Información básica -->
+            <div class="form-section">
+                <h3 class="section-title">Información básica</h3>
+                <div class="form-grid">
+                   
+                    <!-- Cédula - NUEVO CAMPO -->
+                    <div class="form-group">
+                        <label for="{{ form.cedula.id_for_label }}">
+                            Cédula <span class="required">*</span>
+                        </label>
+                        {{ form.cedula }}
+                        {% if form.cedula.errors %}
+                        <div class="field-error">
+                            {% for error in form.cedula.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">Ingrese solo números, sin puntos ni letras</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.username.id_for_label }}">
+                            Usuario <span class="required">*</span>
+                        </label>
+                        {{ form.username }}
+                        {% if form.username.errors %}
+                        <div class="field-error">
+                            {% for error in form.username.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">Mínimo 3 caracteres. Letras, números y @/./+/-/_</small>
+                    </div>
+                    
+                    
+                    <div class="form-group">
+                        <label for="{{ form.first_name.id_for_label }}">Nombres</label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                        <div class="field-error">
+                            {% for error in form.first_name.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.last_name.id_for_label }}">Apellidos</label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                        <div class="field-error">
+                            {% for error in form.last_name.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.email.id_for_label }}">
+                            Email <span class="required">*</span>
+                        </label>
+                        {{ form.email }}
+                        {% if form.email.errors %}
+                        <div class="field-error">
+                            {% for error in form.email.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.telefono.id_for_label }}">
+                            Teléfono <span class="required">*</span>
+                        </label>
+                        {{ form.telefono }}
+                        {% if form.telefono.errors %}
+                        <div class="field-error">
+                            {% for error in form.telefono.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">{{ form.telefono.help_text }}</small>
+                    </div>
+                </div>
+            </div>
+            
+            
+            <!-- Sección: Rol y permisos -->
+            <div class="form-section">
+                <h3 class="section-title">Rol y permisos</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="{{ form.rol.id_for_label }}">
+                            Rol <span class="required">*</span>
+                        </label>
+                        {{ form.rol }}
+                        {% if form.rol.errors %}
+                        <div class="field-error">
+                            {% for error in form.rol.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">El rol determina los permisos del usuario</small>
+                    </div>
+                </div>
+                
+                <!-- Info de roles -->
+                <div class="roles-info">
+                    <div class="role-badge" data-role="admin">
+                        <span class="role-icon">👑</span>
+                        <div class="role-text">
+                            <strong>Administrador</strong>
+                            <small>Gestión completa del sistema</small>
+                        </div>
+                    </div>
+                    <div class="role-badge" data-role="vendedor">
+                        <span class="role-icon">💰</span>
+                        <div class="role-text">
+                            <strong>Vendedor</strong>
+                            <small>Gestión de ventas y clientes</small>
+                        </div>
+                    </div>
+                    <div class="role-badge" data-role="instalador">
+                        <span class="role-icon">🔧</span>
+                        <div class="role-text">
+                            <strong>Instalador</strong>
+                            <small>Gestión de instalaciones</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sección: Contraseña -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    {% if es_creacion %}
+                        Contraseña
+                    {% else %}
+                        Cambiar contraseña <span class="text-muted">(opcional)</span>
+                    {% endif %}
+                </h3>
+                
+                {% if not es_creacion %}
+                <div class="password-info">
+                    <small class="help-text">🔒 Deja estos campos en blanco si no deseas cambiar la contraseña</small>
+                </div>
+                {% endif %}
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="{{ form.password1.id_for_label }}">
+                            Contraseña {% if es_creacion %}<span class="required">*</span>{% endif %}
+                        </label>
+                        {{ form.password1 }}
+                        {% if form.password1.errors %}
+                        <div class="field-error">
+                            {% for error in form.password1.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% if es_creacion %}
+                        <div class="password-requirements">
+                            <small>✓ Mínimo 8 caracteres</small>
+                            <small>✓ No puede ser común</small>
+                            <small>✓ No puede ser solo números</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.password2.id_for_label }}">
+                            Confirmar contraseña {% if es_creacion %}<span class="required">*</span>{% endif %}
+                        </label>
+                        {{ form.password2 }}
+                        {% if form.password2.errors %}
+                        <div class="field-error">
+                            {% for error in form.password2.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botones de acción -->
+            <div class="form-actions">
+                <a href="{% url 'lista_usuarios' %}" class="btn-outline">
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    {{ boton_texto }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .readonly-field {
+        background-color: #f5f5f5 !important;
+        cursor: not-allowed;
+        border-color: #ddd !important;
+        color: #666;
+    }
+    
+    .readonly-field:focus {
+        outline: none;
+        box-shadow: none;
+        border-color: #ddd !important;
+    }
+    .form-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #f0f0f0;
+        overflow: hidden;
+    }
+
+    /* User info bar para edición */
+    .user-info-bar {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .user-info-avatar {
+        width: 48px;
+        height: 48px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .user-info-details {
+        flex: 1;
+    }
+
+    .user-info-name {
+        font-weight: 600;
+        color: #333;
+        font-size: 16px;
+        margin-bottom: 4px;
+    }
+
+    .user-info-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .user-info-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.active {
+        background: #e8f5e9;
+        color: #4caf50;
+    }
+
+    .status-badge.inactive {
+        background: #ffebee;
+        color: #f44336;
+    }
+
+    .user-form {
+        padding: 24px;
+    }
+
+    .form-section {
+        margin-bottom: 32px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .form-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+    }
+
+    .required {
+        color: #f44336;
+        margin-left: 2px;
+    }
+
+    .text-muted {
+        color: #999;
+        font-weight: normal;
+        font-size: 12px;
+    }
+
+    .form-input, .form-select {
+        padding: 10px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: white;
+        width: 100%;
+    }
+
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #ff6b00;
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .form-input::placeholder {
+        color: #aaa;
+        font-size: 13px;
+    }
+
+    .help-text {
+        color: #999;
+        font-size: 11px;
+        margin-top: 4px;
+    }
+
+    .field-error {
+        color: #f44336;
+        font-size: 11px;
+        margin-top: 4px;
+    }
+
+    .alert-error {
+        background: #ffebee;
+        color: #f44336;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        border-left: 4px solid #f44336;
+    }
+
+    .password-info {
+        background: #f8f9fa;
+        padding: 8px 12px;
+        border-radius: 6px;
+        margin-bottom: 16px;
+    }
+
+    .password-requirements {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 8px;
+    }
+
+    .password-requirements small {
+        color: #999;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+    }
+
+    .password-requirements small::before {
+        content: "•";
+        color: #ff6b00;
+        margin-right: 4px;
+        font-size: 14px;
+    }
+
+    /* Roles info */
+    .roles-info {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .role-badge {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #f0f0f0;
+        transition: all 0.2s;
+        opacity: 0.7;
+    }
+
+    .role-badge.selected {
+        opacity: 1;
+        border-width: 2px;
+    }
+
+    .role-badge[data-role="admin"].selected {
+        border-color: #ff6b00;
+        background: #fff2e6;
+    }
+
+    .role-badge[data-role="vendedor"].selected {
+        border-color: #2196f3;
+        background: #e3f2fd;
+    }
+
+    .role-badge[data-role="instalador"].selected {
+        border-color: #4caf50;
+        background: #e8f5e9;
+    }
+
+    .role-icon {
+        font-size: 24px;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    .role-text {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .role-text strong {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .role-text small {
+        font-size: 11px;
+        color: #999;
+    }
+
+    /* Form actions */
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .btn-primary, .btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+
+    .btn-outline {
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+    }
+
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fffaf5;
+    }
+
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .roles-info {
+            grid-template-columns: 1fr;
+        }
+
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+
+        .btn-primary, .btn-outline {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .user-info-bar {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .user-info-meta {
+            flex-direction: column;
+            gap: 4px;
+        }
+    }
+</style>
+
+<script>
+    // Highlight del rol seleccionado
+    const rolSelect = document.getElementById('{{ form.rol.id_for_label }}');
+    if (rolSelect) {
+        // Función para actualizar el highlight
+        function updateRoleHighlight() {
+            const selected = rolSelect.value;
+            document.querySelectorAll('.role-badge').forEach(badge => {
+                badge.classList.remove('selected');
+            });
+            
+            if (selected === 'Administrador') {
+                document.querySelector('.role-badge[data-role="admin"]').classList.add('selected');
+            } else if (selected === 'Vendedor') {
+                document.querySelector('.role-badge[data-role="vendedor"]').classList.add('selected');
+            } else if (selected === 'Instalador') {
+                document.querySelector('.role-badge[data-role="instalador"]').classList.add('selected');
+            }
+        }
+        
+        // Actualizar al cargar la página
+        updateRoleHighlight();
+        
+        // Actualizar al cambiar
+        rolSelect.addEventListener('change', updateRoleHighlight);
+    }
+
+    // Validación de contraseñas
+    document.getElementById('userForm')?.addEventListener('submit', function(e) {
+        const password1 = document.getElementById('{{ form.password1.id_for_label }}');
+        const password2 = document.getElementById('{{ form.password2.id_for_label }}');
+        
+        // Solo validar si ambos campos tienen valor o si es creación
+        if ((password1.value || password2.value) || '{{ es_creacion }}' === 'True') {
+            if (password1.value !== password2.value) {
+                e.preventDefault();
+                alert('Las contraseñas no coinciden');
+            }
+            
+            {% if not es_creacion %}
+            // En edición, si un campo está vacío y el otro no
+            if ((password1.value && !password2.value) || (!password1.value && password2.value)) {
+                e.preventDefault();
+                alert('Debes llenar ambos campos de contraseña o dejarlos vacíos');
+            }
+            {% endif %}
+        }
+    });
+</script>
+{% endblock %}

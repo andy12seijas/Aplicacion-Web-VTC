@@ -1,0 +1,1353 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Clientes Potenciales{% endblock %}
+
+{% block page_title %}Clientes Potenciales{% endblock %}
+{% block page_subtitle %}Gestión de clientes interesados en servicios{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'crear_cliente' %}" class="btn-orange">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nuevo
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estadísticas compactas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_clientes }}</span>
+        <span class="stat-label">Total</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ interesados }}</span>
+        <span class="stat-label">Interesados</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ tal_vez }}</span>
+        <span class="stat-label">Tal vez</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ no_interesados }}</span>
+        <span class="stat-label">No</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ con_internet }}</span>
+        <span class="stat-label">Con Internet</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ clientes_hoy }}</span>
+        <span class="stat-label">Hoy</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <!-- Búsqueda -->
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre, cédula, teléfono..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <!-- Filtro por interés -->
+        <select id="filterInteres" class="filter-select">
+            <option value="">Todos los intereses</option>
+            <option value="SI" {% if interes_seleccionado == 'SI' %}selected{% endif %}>Sí</option>
+            <option value="TAL_VEZ" {% if interes_seleccionado == 'TAL_VEZ' %}selected{% endif %}>Tal vez</option>
+            <option value="NO" {% if interes_seleccionado == 'NO' %}selected{% endif %}>No</option>
+        </select>
+        
+        <!-- Filtro por internet -->
+        <select id="filterInternet" class="filter-select">
+            <option value="">Todos</option>
+            <option value="si" {% if internet_seleccionado == 'si' %}selected{% endif %}>Con internet</option>
+            <option value="no" {% if internet_seleccionado == 'no' %}selected{% endif %}>Sin internet</option>
+        </select>
+        
+        <!-- FILTRO POR VENDEDOR (solo para administradores) -->
+        {% if es_admin %}
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for vendedor in vendedores %}
+            <option value="{{ vendedor.username }}" {% if vendedor_filtro == vendedor.username %}selected{% endif %}>
+                {{ vendedor.get_full_name|default:vendedor.username }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Vista Desktop: Tabla -->
+<div class="desktop-view">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Cédula</th>
+                <th>Nombre</th>
+                <th>Teléfono</th>
+                <th>Interés</th>
+                <th>Internet</th>
+                <th>Fecha</th>
+                {% if es_admin %}
+                <th>Vendedor</th>
+                {% endif %}
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in page_obj %}
+            <tr>
+                <td class="cedula-cell">{{ cliente.cedula }}</td>
+                <td>
+                    <div class="user-cell">
+                        <span class="user-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
+                        <div>
+                            <div class="user-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="telefono-cell">{{ cliente.telefono }}</td>
+                <td>
+                    <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
+                        {{ cliente.get_interesado_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if cliente.posee_internet %}
+                    <span class="badge badge-info">Sí</span>
+                    {% else %}
+                    <span class="badge badge-secondary">No</span>
+                    {% endif %}
+                </td>
+                <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
+                {% if es_admin %}
+                <td>
+                    <span class="vendedor-badge">
+                        {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
+                    </span>
+                </td>
+                {% endif %}     
+                <td>
+                    <div class="actions">
+                        <button class="action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                            </svg>
+                        </button>
+                        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                        <button class="action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Vista Mobile: Cards -->
+<div class="mobile-view">
+    {% for cliente in page_obj %}
+    <div class="card cliente-card">
+        <div class="card-header">
+            <div class="card-user">
+                <span class="card-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
+                <div>
+                    <div class="card-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
+                    <div class="card-meta">
+                        <span class="card-meta-item">C.I: {{ cliente.cedula }}</span>
+                        <span class="card-meta-item">📞 {{ cliente.telefono }}</span>
+                    </div>
+                </div>
+            </div>
+            <span class="status-dot {% if cliente.interesado == 'SI' %}active{% elif cliente.interesado == 'TAL_VEZ' %}warning{% else %}inactive{% endif %}"></span>
+        </div>
+        
+        <div class="card-body">
+            <div class="card-row">
+                <span class="card-label">Interés:</span>
+                <span class="card-value">
+                    <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
+                        {{ cliente.get_interesado_display }}
+                    </span>
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Internet:</span>
+                <span class="card-value">
+                    {% if cliente.posee_internet %}
+                    <span class="badge badge-info">Sí</span>
+                    {% else %}
+                    <span class="badge badge-secondary">No</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Registro:</span>
+                <span class="card-value">{{ cliente.fecha_registro|date:"d/m/Y" }}</span>
+            </div>
+            {% if es_admin %}
+            <div class="card-row">
+                <span class="card-label">Vendedor:</span>
+                <span class="card-value">
+                    <span class="vendedor-badge">
+                        {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
+                    </span>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="card-actions">
+            <button class="card-action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                </svg>
+            </button>
+            <button class="card-action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-mobile">No hay clientes registrados</div>
+    {% endfor %}
+</div>
+
+<!-- Paginación -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+        </svg>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Modal para detalle de cliente -->
+<div id="clienteModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModal()"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalNombreCompleto"></h2>
+                    <p id="modalCedula"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Información personal -->
+            <div class="modal-section">
+                <h3 class="modal-section-title">Información Personal</h3>
+                <div class="modal-grid">
+                    <div class="modal-item">
+                        <span class="modal-label">Nombre completo:</span>
+                        <span class="modal-value" id="modalNombre"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Cédula:</span>
+                        <span class="modal-value" id="modalCedulaValue"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Teléfono:</span>
+                        <span class="modal-value" id="modalTelefono"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Dirección:</span>
+                        <span class="modal-value" id="modalDireccion"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estado del cliente -->
+            <div class="modal-section">
+                <h3 class="modal-section-title">Estado del Cliente</h3>
+                <div class="modal-grid">
+                    <div class="modal-item">
+                        <span class="modal-label">Nivel de interés:</span>
+                        <span class="modal-value" id="modalInteres"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Internet:</span>
+                        <span class="modal-value" id="modalInternet"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Información de registro -->
+            <div class="modal-section">
+                <h3 class="modal-section-title">Información de Registro</h3>
+                <div class="modal-grid">
+                    <div class="modal-item">
+                        <span class="modal-label">Fecha de registro:</span>
+                        <span class="modal-value" id="modalFechaRegistro"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Registrado por:</span>
+                        <span class="modal-value" id="modalCreadoPor"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Días desde registro:</span>
+                        <span class="modal-value" id="modalDias"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Observación -->
+            <div class="modal-section" id="modalObservacionSection" style="display: none;">
+                <h3 class="modal-section-title">Observación</h3>
+                <div class="modal-observacion" id="modalObservacion"></div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
+            <button class="btn-primary" id="modalEditarBtn">Editar Cliente</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== VARIABLES ===== */
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #fafafa;
+        --gray-border: #f0f0f0;
+        --gray-text: #999;
+        --dark-text: #333;
+    }
+
+    /* ===== STATS ===== */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--orange);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange);
+    }
+
+    .stat-label {
+        color: var(--gray-text);
+    }
+
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+        min-width: 0;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text);
+        outline: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .filter-select:hover,
+    .filter-select:focus {
+        border-color: var(--orange);
+    }
+
+    /* ===== TABLA DESKTOP ===== */
+    .desktop-view {
+        display: block;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: auto;
+        margin-bottom: 20px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+        white-space: nowrap;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    .cedula-cell,
+    .telefono-cell,
+    .fecha-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 12px;
+    }
+
+    /* ===== BADGES ===== */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .badge-warning {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge-danger {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .badge-info {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .badge-secondary {
+        background: #f5f5f5;
+        color: #616161;
+    }
+
+    .vendedor-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border-radius: 20px;
+        font-size: 11px;
+        color: #555;
+    }
+
+    /* ===== USER AVATAR ===== */
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text);
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    /* ===== ACTION BUTTONS ===== */
+    .actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    /* ===== MOBILE CARDS ===== */
+    .mobile-view {
+        display: none;
+    }
+
+    .cliente-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+
+    .cliente-card .card-header {
+        padding: 16px;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .card-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .card-avatar {
+        width: 44px;
+        height: 44px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .card-name {
+        font-weight: 600;
+        color: var(--dark-text);
+        font-size: 15px;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .card-meta-item {
+        font-size: 11px;
+        color: var(--gray-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .status-dot.active { background: #4caf50; }
+    .status-dot.warning { background: #ff9800; }
+    .status-dot.inactive { background: #f44336; }
+
+    .cliente-card .card-body {
+        padding: 16px;
+    }
+
+    .card-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 13px;
+        flex-wrap: wrap;
+    }
+
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .card-label {
+        width: 80px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+    }
+
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+        flex: 1;
+    }
+
+    .cliente-card .card-actions {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        justify-content: flex-end;
+    }
+
+    .card-action-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .card-action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: white;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: var(--gray-text);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .empty, .empty-mobile {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text);
+        font-size: 14px;
+    }
+
+    /* ===== MODAL STYLES ===== */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+    }
+    
+    .modal-container {
+        position: relative;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        animation: slideUp 0.3s ease;
+        z-index: 2001;
+    }
+    
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 24px 24px 0 0;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .modal-avatar {
+        width: 64px;
+        height: 64px;
+        background: var(--orange);
+        color: white;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    
+    .modal-header-info h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 4px;
+    }
+    
+    .modal-header-info p {
+        font-size: 14px;
+        color: var(--gray-text);
+    }
+    
+    .modal-close {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 12px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .modal-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .modal-section:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .modal-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 16px;
+    }
+    
+    .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+    
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .modal-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .modal-value {
+        font-size: 14px;
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+    
+    .modal-observacion {
+        padding: 16px;
+        background: var(--gray-bg);
+        border-radius: 12px;
+        font-size: 14px;
+        color: var(--dark-text);
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+    
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 24px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 0 0 24px 24px;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    
+    /* Tablet (768px - 1024px) */
+    @media screen and (max-width: 1024px) {
+        .table {
+            font-size: 12px;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+        }
+        
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+    }
+    
+    /* Móvil Grande (576px - 768px) */
+    @media screen and (max-width: 768px) {
+        .desktop-view {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+        
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            justify-content: center;
+        }
+        
+        .stat-card {
+            flex: 1 1 auto;
+            min-width: calc(50% - 8px);
+            justify-content: center;
+        }
+        
+        .pagination {
+            gap: 4px;
+        }
+        
+        .page-link {
+            width: 34px;
+            height: 34px;
+        }
+
+        .modal-container {
+            width: 95%;
+            max-height: 95vh;
+        }
+
+        .modal-header {
+            padding: 16px;
+        }
+
+        .modal-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+        }
+
+        .modal-header-info h2 {
+            font-size: 18px;
+        }
+
+        .modal-body {
+            padding: 16px;
+        }
+
+        .modal-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .modal-footer {
+            padding: 16px;
+        }
+    }
+    
+    /* Móvil Pequeño (320px - 576px) */
+    @media screen and (max-width: 576px) {
+        .stats-grid {
+            gap: 6px;
+        }
+        
+        .stat-card {
+            min-width: 100%;
+            padding: 8px 12px;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+        }
+        
+        .card-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+        
+        .card-name {
+            font-size: 14px;
+        }
+        
+        .card-label {
+            width: 70px;
+            font-size: 12px;
+        }
+        
+        .card-value {
+            font-size: 12px;
+        }
+        
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .page-info {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .modal-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .modal-close {
+            align-self: flex-end;
+        }
+    }
+    
+    /* Móvil muy pequeño (menos de 360px) */
+    @media screen and (max-width: 360px) {
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .card-user {
+            width: 100%;
+        }
+        
+        .status-dot {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+        }
+        
+        .card-header {
+            position: relative;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Variable para almacenar los datos de los clientes
+    let clientesData = {};
+
+    // Búsqueda en tiempo real
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        
+        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+        
+        document.querySelectorAll('.cliente-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchText) ? 'block' : 'none';
+        });
+    });
+
+    // Filtros
+    document.getElementById('filterInteres')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('filterInternet')?.addEventListener('change', aplicarFiltros);
+    
+    {% if es_admin %}
+    document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
+    {% endif %}
+
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const interes = document.getElementById('filterInteres').value;
+        const internet = document.getElementById('filterInternet').value;
+        const busqueda = document.getElementById('searchInput').value;
+        
+        if (interes) url.searchParams.set('interes', interes);
+        else url.searchParams.delete('interes');
+        
+        if (internet) url.searchParams.set('internet', internet);
+        else url.searchParams.delete('internet');
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        {% if es_admin %}
+        const vendedor = document.getElementById('filterVendedor').value;
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        {% endif %}
+        
+        window.location.href = url.toString();
+    }
+
+    // Función para ver detalle del cliente
+    function verCliente(id) {
+        console.log('Ver cliente:', id); // Para debug
+        
+        // Verificar si el modal existe
+        const modal = document.getElementById('clienteModal');
+        if (!modal) {
+            console.error('Modal no encontrado');
+            return;
+        }
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Cargando...',
+            text: 'Obteniendo información del cliente',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Hacer la petición fetch
+        fetch(`/cliente/${id}/datos/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                Swal.close();
+                if (data.error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error,
+                        confirmButtonColor: '#ff6b00'
+                    });
+                } else {
+                    clientesData[id] = data;
+                    mostrarModal(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cargar la información del cliente',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
+    }
+
+    function mostrarModal(cliente) {
+        console.log('Mostrando modal con datos:', cliente); // Para debug
+        
+        // Actualizar avatar
+        document.getElementById('modalAvatar').textContent = cliente.nombre.charAt(0).toUpperCase() + cliente.apellido.charAt(0).toUpperCase();
+        document.getElementById('modalNombreCompleto').textContent = `${cliente.nombre} ${cliente.apellido}`;
+        document.getElementById('modalCedula').textContent = `C.I: ${cliente.cedula}`;
+        
+        // Información personal
+        document.getElementById('modalNombre').textContent = `${cliente.nombre} ${cliente.apellido}`;
+        document.getElementById('modalCedulaValue').textContent = cliente.cedula;
+        document.getElementById('modalTelefono').textContent = cliente.telefono || 'No especificado';
+        document.getElementById('modalDireccion').textContent = cliente.direccion || 'No especificada';
+        
+        // Estado del cliente
+        let interesClass = 'badge-secondary';
+        let interesText = cliente.get_interesado_display || cliente.interesado;
+        
+        if (cliente.interesado === 'SI') {
+            interesClass = 'badge-success';
+        } else if (cliente.interesado === 'TAL_VEZ') {
+            interesClass = 'badge-warning';
+        } else if (cliente.interesado === 'NO') {
+            interesClass = 'badge-danger';
+        }
+        
+        document.getElementById('modalInteres').innerHTML = `<span class="badge ${interesClass}">${interesText}</span>`;
+        
+        let internetClass = cliente.posee_internet ? 'badge-info' : 'badge-secondary';
+        let internetText = cliente.posee_internet ? 'Sí' : 'No';
+        document.getElementById('modalInternet').innerHTML = `<span class="badge ${internetClass}">${internetText}</span>`;
+        
+        // Información de registro
+        document.getElementById('modalFechaRegistro').textContent = cliente.fecha_registro;
+        document.getElementById('modalCreadoPor').textContent = cliente.creado_por || 'Sistema';
+        document.getElementById('modalDias').textContent = cliente.dias_desde_registro ? `${cliente.dias_desde_registro} días` : '0 días';
+        
+        // Observación
+        if (cliente.observacion && cliente.observacion.trim() !== '') {
+            document.getElementById('modalObservacion').textContent = cliente.observacion;
+            document.getElementById('modalObservacionSection').style.display = 'block';
+        } else {
+            document.getElementById('modalObservacionSection').style.display = 'none';
+        }
+        
+        // Configurar botón de editar
+        document.getElementById('modalEditarBtn').onclick = function() {
+            window.location.href = `/cliente/${cliente.id}/editar/`;
+        };
+        
+        // Mostrar modal
+        document.getElementById('clienteModal').style.display = 'flex';
+    }
+
+    function cerrarModal() {
+        document.getElementById('clienteModal').style.display = 'none';
+    }
+
+    // Cerrar modal con tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModal();
+        }
+    });
+
+    // Cerrar modal haciendo clic fuera
+    document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
+
+    // Funciones de acción
+    function editarCliente(id) {
+        window.location.href = `/cliente/${id}/editar/`;
+    }
+
+    // Verificar que el modal existe al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('clienteModal');
+        if (!modal) {
+            console.error('Error: No se encontró el modal en el DOM');
+        } else {
+            console.log('Modal encontrado correctamente');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+
+<div class="main-content">
+    <!-- Header con bloques -->
+    <div class="content-header">
+        <div class="page-title">
+            <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+            <p>{% block page_subtitle %}{{ current_date|default:"7 mar 2026" }} · Bienvenido de vuelta{% endblock %}</p>
+        </div>
+        <div class="header-actions">
+            {% block header_actions %}
+            <div class="notification-badge">
+                <span>🔔 3</span>
+            </div>
+            {% endblock %}
+        </div>
+    </div>

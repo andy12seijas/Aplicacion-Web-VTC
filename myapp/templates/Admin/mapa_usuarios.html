@@ -1,0 +1,295 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Mapa de Usuarios{% endblock %}
+
+{% block page_title %}Mapa de Usuarios en Tiempo Real{% endblock %}
+{% block page_subtitle %}Ubicación ACTUAL de vendedores, instaladores y más{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lista_clientes' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver a Clientes
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_usuarios }}</span>
+        <span class="stat-label">Usuarios activos</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ activos_ahora }}</span>
+        <span class="stat-label">Activos última hora</span>
+    </div>
+    {% for stat in stats_por_tipo %}
+    <div class="stat-card">
+        <span class="stat-value">{{ stat.cantidad }}</span>
+        <span class="stat-label">{{ stat.nombre }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Filtros -->
+<div class="filters" style="margin-bottom: 20px;">
+    <div class="search-box" style="flex: 2;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input type="text" placeholder="Buscar usuario..." id="searchInput" value="{{ buscar }}">
+    </div>
+    
+    <select id="filterTipo" class="filter-select" style="flex: 1;">
+        <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos los tipos</option>
+        <option value="Vendedor" {% if filtro_tipo == 'Vendedor' %}selected{% endif %}>Vendedores</option>
+        <option value="Instalador" {% if filtro_tipo == 'Instalador' %}selected{% endif %}>Instaladores</option>
+        <option value="Administrador" {% if filtro_tipo == 'Administrador' %}selected{% endif %}>Administradores</option>
+    </select>
+</div>
+
+<!-- Contenedor del mapa -->
+<div id="map" style="height: 600px; width: 100%; border-radius: 16px; border: 1px solid var(--gray-border); margin-bottom: 20px;"></div>
+
+<!-- Leyenda -->
+<div style="background: white; padding: 16px; border-radius: 12px; border: 1px solid var(--gray-border);">
+    <h4 style="margin-bottom: 12px; color: var(--dark-text);">📍 Usuarios activos ahora</h4>
+    <div id="leyenda-usuarios" style="display: flex; flex-wrap: wrap; gap: 16px;">
+        <!-- Se llenará con JavaScript -->
+    </div>
+</div>
+
+<!-- Datos de ubicaciones para JavaScript -->
+{{ ubicaciones|json_script:"ubicaciones-data" }}
+
+<!-- Leaflet CSS y JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+    }
+    
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange);
+    }
+    
+    .stat-label {
+        color: var(--gray-text);
+    }
+    
+    .filters {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+    }
+    
+    .search-box input {
+        border: none;
+        padding: 8px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+    
+    .filter-select {
+        padding: 8px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        outline: none;
+        cursor: pointer;
+    }
+    
+    .leyenda-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #f8f9fa;
+        border-radius: 30px;
+        font-size: 13px;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+    
+    .leyenda-item:hover {
+        border-color: var(--orange);
+        background: white;
+    }
+    
+    .color-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .timestamp {
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-left: 8px;
+    }
+    
+    .tipo-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 12px;
+        background: #e0e0e0;
+        color: #555;
+        margin-left: 8px;
+    }
+    
+    .tipo-badge.vendedor { background: #e3f2fd; color: #2196f3; }
+    .tipo-badge.instalador { background: #e8f5e9; color: #4caf50; }
+    .tipo-badge.admin { background: #fff2e6; color: #ff6b00; }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtener datos de ubicaciones
+        const ubicaciones = JSON.parse(document.getElementById('ubicaciones-data').textContent);
+        const leyendaDiv = document.getElementById('leyenda-usuarios');
+        
+        if (ubicaciones.length === 0) {
+            document.getElementById('map').innerHTML = '<div style="text-align: center; padding: 50px; background: white; border-radius: 16px;">📍 No hay usuarios activos</div>';
+            leyendaDiv.innerHTML = '<p style="color: var(--gray-text);">No hay usuarios con ubicación registrada.</p>';
+            return;
+        }
+        
+        // Crear mapa centrado en Venezuela
+        const map = L.map('map').setView([7.0, -66.0], 6);
+        
+        // Añadir capa de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        
+        // Array para bounds y colores por tipo
+        const bounds = [];
+        const colores = {
+            'Vendedor': '#2196F3',
+            'Instalador': '#4CAF50',
+            'Administrador': '#FF6B00',
+            'default': '#9C27B0'
+        };
+        
+        // Crear marcadores
+        ubicaciones.forEach((ubicacion) => {
+            if (!ubicacion.latitud || !ubicacion.longitud) return;
+            
+            const pos = [ubicacion.latitud, ubicacion.longitud];
+            bounds.push(pos);
+            
+            const tipo = ubicacion.usuario.tipo;
+            const color = colores[tipo] || colores['default'];
+            
+            // Determinar tamaño según actividad
+            const radius = ubicacion.activo ? 12 : 8;
+            const weight = ubicacion.activo ? 3 : 2;
+            
+            // Crear marcador
+            const marker = L.circleMarker(pos, {
+                radius: radius,
+                fillColor: color,
+                color: '#fff',
+                weight: weight,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(map);
+            
+            // Formatear fecha
+            const fecha = new Date(ubicacion.ultima_actualizacion);
+            const fechaStr = fecha.toLocaleString('es-VE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit'
+            });
+            
+            // Popup con información
+            marker.bindPopup(`
+                <div style="padding: 10px; min-width: 220px;">
+                    <h4 style="margin: 0 0 8px 0; color: #FF6B00;">
+                        ${ubicacion.usuario.first_name || ''} ${ubicacion.usuario.last_name || ''}
+                    </h4>
+                    <p style="margin: 4px 0;">
+                        <strong>👤 Usuario:</strong> ${ubicacion.usuario.username}
+                        <span class="tipo-badge ${tipo.toLowerCase()}">${tipo}</span>
+                    </p>
+                    <p style="margin: 4px 0;"><strong>🕐 Última actividad:</strong> ${fechaStr}</p>
+                    ${ubicacion.contenido_asociado ? `
+                        <p style="margin: 4px 0;"><strong>📋 Última acción:</strong> ${ubicacion.contenido_asociado}</p>
+                    ` : ''}
+                    ${ubicacion.activo ? 
+                        '<p style="color: #4CAF50; margin-top: 8px;">🟢 Activo ahora</p>' : 
+                        '<p style="color: #999; margin-top: 8px;">⚪ Inactivo</p>'}
+                </div>
+            `);
+            
+            // Añadir a leyenda
+            leyendaDiv.innerHTML += `
+                <div class="leyenda-item" style="${ubicacion.activo ? 'background: #fff2e6;' : ''}">
+                    <div class="color-dot" style="background-color: ${color};"></div>
+                    <div>
+                        <strong>${ubicacion.usuario.first_name || ubicacion.usuario.username}</strong>
+                        <span class="tipo-badge ${tipo.toLowerCase()}">${tipo}</span>
+                        <span class="timestamp">${fechaStr}</span>
+                        ${ubicacion.activo ? '<span style="color: #4CAF50; margin-left: 8px;">🟢</span>' : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        // Ajustar zoom
+        if (bounds.length > 0) {
+            map.fitBounds(bounds);
+        }
+        
+        // Filtros
+        document.getElementById('searchInput')?.addEventListener('keyup', function() {
+            const searchText = this.value.toLowerCase();
+            window.location.href = `?buscar=${searchText}&tipo=${document.getElementById('filterTipo').value}`;
+        });
+        
+        document.getElementById('filterTipo')?.addEventListener('change', function() {
+            const tipo = this.value;
+            const buscar = document.getElementById('searchInput').value;
+            window.location.href = `?tipo=${tipo}&buscar=${buscar}`;
+        });
+    });
+</script>
+{% endblock %}
