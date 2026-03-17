@@ -1,3 +1,5 @@
+import json
+from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
@@ -123,10 +125,9 @@ def logout_view(request):
     messages.success(request, 'Sesión cerrada exitosamente.')
     return redirect('login')
 
-
 @login_required
 def mapa_usuarios(request):
-    """Vista para administradores - Mapa con ubicación ACTUAL de usuarios (vendedores, instaladores, etc)"""
+    """Vista para administradores - Mapa con ubicación ACTUAL de usuarios"""
     
     # Verificar permisos
     if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
@@ -141,7 +142,7 @@ def mapa_usuarios(request):
     ubicaciones = UbicacionUsuario.objects.select_related('usuario').all()
     
     # Filtrar por tipo de usuario (grupo)
-    if tipo_usuario != 'todos':
+    if tipo_usuario and tipo_usuario != 'todos':
         ubicaciones = ubicaciones.filter(usuario__groups__name=tipo_usuario)
     
     # Filtrar por búsqueda
@@ -149,16 +150,18 @@ def mapa_usuarios(request):
         ubicaciones = ubicaciones.filter(
             Q(usuario__username__icontains=buscar) |
             Q(usuario__first_name__icontains=buscar) |
-            Q(usuario__last_name__icontains=buscar) |
-            Q(contenido_asociado__icontains=buscar)
+            Q(usuario__last_name__icontains=buscar)
         )
     
     # Preparar datos para el mapa
     datos_mapa = []
     for ubicacion in ubicaciones:
-        # Obtener el grupo del usuario (vendedor, instalador, etc)
+        # Obtener el grupo del usuario
         grupo = ubicacion.usuario.groups.first()
         tipo = grupo.name if grupo else 'Sin grupo'
+        
+        # Calcular total de clientes del usuario
+        total_clientes = ClientePotencial.objects.filter(creado_por=ubicacion.usuario).count()
         
         datos_mapa.append({
             'usuario': {
@@ -171,8 +174,8 @@ def mapa_usuarios(request):
             'latitud': ubicacion.latitud,
             'longitud': ubicacion.longitud,
             'ultima_actualizacion': ubicacion.ultima_actualizacion.isoformat(),
-            
             'activo': ubicacion.esta_activo,
+            'total_clientes': total_clientes,
         })
     
     # Estadísticas
@@ -200,3 +203,146 @@ def mapa_usuarios(request):
     }
     
     return render(request, 'admin/mapa_usuarios.html', context)
+
+
+
+@login_required
+def panel_administrativo(request):
+    """Vista del panel administrativo con botones de acceso rápido"""
+    
+    # Verificar que solo administradores puedan acceder
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
+        messages.error(request, '⛔ Acceso denegado. Solo administradores.')
+        return redirect('dashboard')  # o donde quieras redirigir
+    
+    from django.contrib.auth.models import User, Group
+    
+    # Estadísticas para mostrar
+    total_usuarios = User.objects.filter(is_active=True).count()
+    
+    try:
+        total_vendedores = Group.objects.get(name='Vendedor').user_set.filter(is_active=True).count()
+    except Group.DoesNotExist:
+        total_vendedores = 0
+    
+    try:
+        total_instaladores = Group.objects.get(name='Instalador').user_set.filter(is_active=True).count()
+    except Group.DoesNotExist:
+        total_instaladores = 0
+    
+    try:
+        total_administradores = Group.objects.get(name='Administrador').user_set.filter(is_active=True).count()
+    except Group.DoesNotExist:
+        total_administradores = 0
+    
+    context = {
+        'total_usuarios': total_usuarios,
+        'total_vendedores': total_vendedores,
+        'total_instaladores': total_instaladores,
+        'total_administradores': total_administradores,
+    }
+    
+    return render(request, 'Admin/panel_administrativo.html', context)
+
+
+@login_required
+def gestionar_contratos(request):
+    """Vista para administrar contratos pendientes y completados"""
+    
+    # Verificar que solo administradores puedan acceder
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
+        messages.error(request, '⛔ Acceso denegado. Solo administradores.')
+        return redirect('dashboard')
+    
+    # Obtener parámetros de filtro
+    busqueda = request.GET.get('busqueda', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    estado = request.GET.get('estado', '')
+    
+    # Base querysets
+    contratos_pendientes = ContratoCliente.objects.filter(
+        Q(customer_id__isnull=True) | Q(customer_id='') |
+        Q(ods__isnull=True) | Q(ods='')
+    ).select_related('cliente_potencial', 'creado_por', 'plan_contratado')
+    
+    contratos_completados = ContratoCliente.objects.exclude(
+        Q(customer_id__isnull=True) | Q(customer_id='') |
+        Q(ods__isnull=True) | Q(ods='')
+    ).select_related('cliente_potencial', 'creado_por', 'plan_contratado')
+    
+    # Aplicar filtros a ambos querysets
+    if busqueda:
+        contratos_pendientes = contratos_pendientes.filter(
+            Q(cliente_potencial__nombre__icontains=busqueda) |
+            Q(cliente_potencial__apellido__icontains=busqueda) |
+            Q(cliente_potencial__cedula__icontains=busqueda) |
+            Q(correo_electronico__icontains=busqueda)
+        )
+        contratos_completados = contratos_completados.filter(
+            Q(cliente_potencial__nombre__icontains=busqueda) |
+            Q(cliente_potencial__apellido__icontains=busqueda) |
+            Q(cliente_potencial__cedula__icontains=busqueda) |
+            Q(correo_electronico__icontains=busqueda)
+        )
+    
+    if vendedor_id:
+        contratos_pendientes = contratos_pendientes.filter(creado_por_id=vendedor_id)
+        contratos_completados = contratos_completados.filter(creado_por_id=vendedor_id)
+    
+    if estado:
+        contratos_pendientes = contratos_pendientes.filter(estado=estado)
+        contratos_completados = contratos_completados.filter(estado=estado)
+    
+    # Ordenar por fecha
+    contratos_pendientes = contratos_pendientes.order_by('-fecha_creacion')
+    contratos_completados = contratos_completados.order_by('-fecha_creacion')
+    
+    # Obtener lista de vendedores para el filtro
+    from django.contrib.auth.models import User
+    vendedores = User.objects.filter(is_active=True, groups__name='Vendedor').order_by('username')
+    
+    context = {
+        'contratos_pendientes': contratos_pendientes,
+        'contratos_pendientes_count': contratos_pendientes.count(),
+        'contratos_completados': contratos_completados,
+        'contratos_completados_count': contratos_completados.count(),
+        'vendedores': vendedores,
+        'busqueda': busqueda,
+        'filtro_vendedor': vendedor_id,
+        'filtro_estado': estado,
+    }
+    
+    return render(request, 'Admin/gestionar_contratos.html', context)
+
+
+# ============================================
+# API PARA COMPLETAR CONTRATO
+# ============================================
+@login_required
+def completar_contrato(request, contrato_id):
+    """API para completar un contrato (agregar customer_id y ods)"""
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    # Verificar permisos
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        customer_id = data.get('customer_id')
+        ods = data.get('ods')
+        
+        if not customer_id or not ods:
+            return JsonResponse({'error': 'Customer ID y ODS son requeridos'}, status=400)
+        
+        contrato = get_object_or_404(ContratoCliente, id=contrato_id)
+        contrato.customer_id = customer_id
+        contrato.ods = ods
+        contrato.save()
+        
+        return JsonResponse({'success': True})
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

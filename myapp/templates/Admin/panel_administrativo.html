@@ -1,0 +1,291 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Panel Administrativo{% endblock %}
+
+{% block page_title %}Panel Administrativo{% endblock %}
+{% block page_subtitle %}Gestión y configuración del sistema{% endblock %}
+
+{% block header_actions %}
+<!-- Sin acciones adicionales en el header -->
+{% endblock %}
+
+{% block content %}
+<div class="admin-panel">
+    <h2 class="panel-title">¿Qué deseas hacer hoy?</h2>
+    
+    <div class="admin-buttons-grid">
+        <!-- Botón Ver Usuarios -->
+        <a href="{% url 'lista_usuarios' %}" class="admin-button">
+            <div class="button-icon">👥</div>
+            <div class="button-content">
+                <h3>Ver Usuarios</h3>
+                <p>Gestiona los usuarios del sistema, sus roles y permisos</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <!-- Botón Mapa de Usuarios -->
+        <a href="{% url 'mapa_usuarios' %}" class="admin-button">
+            <div class="button-icon">🗺️</div>
+            <div class="button-content">
+                <h3>Mapa de Usuarios</h3>
+                <p>Visualiza la ubicación en tiempo real de vendedores e instaladores</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <a href="{% url 'gestionar_contratos' %}" class="admin-button">
+            <div class="button-icon">📋</div>
+            <div class="button-content">
+                <h3>Gestión de Contratos</h3>
+                <p>Administra contratos pendientes y completados</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <div class="admin-button placeholder">
+            <div class="button-icon">🔜</div>
+            <div class="button-content">
+                <h3>Próximamente</h3>
+                <p>Nuevas funcionalidades estarán disponibles aquí</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estadísticas rápidas (opcional) -->
+    <div class="quick-stats">
+        <div class="stat-item">
+            <span class="stat-number">{{ total_usuarios|default:"0" }}</span>
+            <span class="stat-label">Usuarios activos</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ total_vendedores|default:"0" }}</span>
+            <span class="stat-label">Vendedores</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ total_instaladores|default:"0" }}</span>
+            <span class="stat-label">Instaladores</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ total_administradores|default:"0" }}</span>
+            <span class="stat-label">Administradores</span>
+        </div>
+    </div>
+</div>
+
+<style>
+    .admin-panel {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
+    
+    .panel-title {
+        font-size: 28px;
+        font-weight: 500;
+        color: var(--dark-text);
+        text-align: center;
+        margin-bottom: 40px;
+        letter-spacing: -0.5px;
+    }
+    
+    /* Grid de botones */
+    .admin-buttons-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        margin-bottom: 50px;
+    }
+    
+    /* Estilo de los botones */
+    .admin-button {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 30px;
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        text-decoration: none;
+        color: var(--dark-text);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .admin-button:hover {
+        transform: translateY(-5px);
+        border-color: var(--orange);
+        box-shadow: 0 15px 30px rgba(255, 107, 0, 0.15);
+    }
+    
+    .admin-button:hover .button-arrow {
+        transform: translateX(5px);
+        color: var(--orange);
+    }
+    
+    /* Icono del botón */
+    .button-icon {
+        font-size: 48px;
+        min-width: 70px;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--orange-light);
+        border-radius: 18px;
+        color: var(--orange);
+        transition: all 0.3s ease;
+    }
+    
+    .admin-button:hover .button-icon {
+        background: var(--orange);
+        color: white;
+    }
+    
+    /* Contenido del botón */
+    .button-content {
+        flex: 1;
+    }
+    
+    .button-content h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 8px;
+    }
+    
+    .button-content p {
+        font-size: 14px;
+        color: var(--gray-text);
+        line-height: 1.5;
+        margin: 0;
+    }
+    
+    /* Flecha de navegación */
+    .button-arrow {
+        font-size: 24px;
+        color: var(--gray-text);
+        transition: all 0.3s ease;
+        opacity: 0.5;
+    }
+    
+    .admin-button:hover .button-arrow {
+        opacity: 1;
+    }
+    
+    /* Botones placeholder (próximamente) */
+    .admin-button.placeholder {
+        opacity: 0.6;
+        cursor: default;
+        background: #fafafa;
+    }
+    
+    .admin-button.placeholder:hover {
+        transform: none;
+        border-color: var(--gray-border);
+        box-shadow: none;
+    }
+    
+    .admin-button.placeholder .button-icon {
+        background: #f0f0f0;
+        color: #aaa;
+    }
+    
+    .admin-button.placeholder:hover .button-icon {
+        background: #f0f0f0;
+        color: #aaa;
+    }
+    
+    /* Estadísticas rápidas */
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-top: 40px;
+        padding-top: 40px;
+        border-top: 1px solid var(--gray-border);
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 20px;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.2s ease;
+    }
+    
+    .stat-item:hover {
+        border-color: var(--orange);
+    }
+    
+    .stat-number {
+        display: block;
+        font-size: 32px;
+        font-weight: 600;
+        color: var(--orange);
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .panel-title {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .admin-buttons-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .admin-button {
+            padding: 20px;
+        }
+        
+        .button-icon {
+            font-size: 40px;
+            min-width: 60px;
+            height: 60px;
+        }
+        
+        .button-content h3 {
+            font-size: 18px;
+        }
+        
+        .quick-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .admin-button {
+            flex-wrap: wrap;
+            text-align: center;
+            justify-content: center;
+        }
+        
+        .button-arrow {
+            display: none;
+        }
+        
+        .quick-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    // No se necesita JavaScript adicional para esta página
+</script>
+{% endblock %}

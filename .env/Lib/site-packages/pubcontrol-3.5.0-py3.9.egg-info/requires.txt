@@ -1,0 +1,7 @@
+requests<3,>=2.4
+
+[:python_version < "3.0"]
+PyJWT<2,>=1
+
+[:python_version >= "3.0"]
+PyJWT<3,>=1

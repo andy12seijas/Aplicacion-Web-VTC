@@ -1,0 +1,1499 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Contratos{% endblock %}
+
+{% block page_title %}Contratos{% endblock %}
+{% block page_subtitle %}Gestión de contratos de clientes{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'crear_contrato' %}" class="btn-orange">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nuevo Contrato
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_contratos }}</span>
+        <span class="stat-label">Total Contratos</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ en_proceso }}</span>
+        <span class="stat-label">En Proceso</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ completados }}</span>
+        <span class="stat-label">Completados</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ no_completados }}</span>
+        <span class="stat-label">No Completados</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <!-- Búsqueda -->
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre, cédula, correo..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <!-- Filtro por estado -->
+        <select id="filterEstado" class="filter-select">
+            <option value="">Todos los estados</option>
+            <option value="EN_PROCESO" {% if filtro_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+            <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+            <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
+        </select>
+        
+        <!-- FILTRO POR VENDEDOR (solo para administradores) -->
+        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for vendedor in vendedores %}
+            <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                {{ vendedor.get_full_name|default:vendedor.username }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Vista Desktop: Tabla -->
+<div class="desktop-view">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Cédula</th>
+                <th>Teléfono</th>
+                <th>Correo</th>
+                <th>Plan</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                <th>Vendedor</th>
+                {% endif %}
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contrato in page_obj %}
+            <tr>
+                <td>
+                    <div class="user-cell">
+                        <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                        <div>
+                            <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                            
+                        </div>
+                    </div>
+                </td>
+                <td class="cedula-cell">{{ contrato.cliente_potencial.cedula }}</td>
+                <td class="telefono-cell">{{ contrato.cliente_potencial.telefono }}</td>
+                <td class="email-cell">{{ contrato.correo_electronico|truncatechars:25 }}</td>
+                <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
+                <td>
+                    {% if contrato.estado == 'EN_PROCESO' %}
+                    <span class="badge proceso">En Proceso</span>
+                    {% elif contrato.estado == 'COMPLETADO' %}
+                    <span class="badge completado">Completado</span>
+                    {% elif contrato.estado == 'NO_COMPLETADO' %}
+                    <span class="badge no-completado">No Completado</span>
+                    {% endif %}
+                </td>
+                <td class="date-cell">{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
+                
+                <!-- Columna Vendedor (solo para admin) -->
+                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                <td>
+                    <span class="vendedor-badge">
+                        {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
+                    </span>
+                </td>
+                {% endif %}
+                
+                <td>
+                    <div class="actions">
+                        <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                            </svg>
+                        </button>
+                        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                        <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="{% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}9{% else %}8{% endif %}" class="empty">No hay contratos registrados</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Vista Mobile: Cards -->
+<div class="mobile-view">
+    {% for contrato in page_obj %}
+    <div class="contrato-card">
+        <div class="card-header">
+            <div class="card-cliente">
+                <span class="card-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                <div>
+                    <div class="card-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                    <div class="card-detail">C.I: {{ contrato.cliente_potencial.cedula }}</div>
+                </div>
+            </div>
+            <span class="status-dot {% if contrato.estado == 'EN_PROCESO' %}proceso{% elif contrato.estado == 'COMPLETADO' %}completado{% else %}no-completado{% endif %}"></span>
+        </div>
+        
+        <div class="card-body">
+            <div class="card-row">
+                <span class="card-label">📞 Teléfono:</span>
+                <span class="card-value">{{ contrato.cliente_potencial.telefono }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">✉️ Correo:</span>
+                <span class="card-value">{{ contrato.correo_electronico|truncatechars:25 }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">📋 Plan:</span>
+                <span class="card-value">{{ contrato.plan_contratado.nombre }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">📅 Fecha:</span>
+                <span class="card-value">{{ contrato.fecha_creacion|date:"d/m/y" }}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">📌 Estado:</span>
+                <span class="card-value">
+                    {% if contrato.estado == 'EN_PROCESO' %}
+                    <span class="badge proceso">En Proceso</span>
+                    {% elif contrato.estado == 'COMPLETADO' %}
+                    <span class="badge completado">Completado</span>
+                    {% elif contrato.estado == 'NO_COMPLETADO' %}
+                    <span class="badge no-completado">No Completado</span>
+                    {% endif %}
+                </span>
+            </div>
+            
+            <!-- Información del vendedor (solo para admin) -->
+            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+            <div class="card-row">
+                <span class="card-label">👤 Vendedor:</span>
+                <span class="card-value">
+                    <span class="vendedor-badge">
+                        {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
+                    </span>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="card-actions">
+            <button class="card-action" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                </svg>
+            </button>
+            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+            <button class="card-action" onclick="editarContrato({{ contrato.id }})" title="Editar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-mobile">No hay contratos registrados</div>
+    {% endfor %}
+</div>
+
+<!-- Modal para detalle de contrato -->
+<div id="contratoModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModal()"></div>
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalNombreCompleto"></h2>
+                    <p id="modalCedula"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Pestañas -->
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="cambiarTab('info')" id="tab-info-btn">Información General</button>
+                <button class="tab-btn" onclick="cambiarTab('pago')" id="tab-pago-btn">Información de Pago</button>
+                <button class="tab-btn" onclick="cambiarTab('adicional')" id="tab-adicional-btn">Datos Adicionales</button>
+            </div>
+            
+            <!-- Contenido de las pestañas -->
+            <div id="tab-info" class="tab-content active">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información Personal</h3>
+                    <div class="modal-grid grid-3">
+                        <div class="modal-item">
+                            <span class="modal-label">Nombre completo</span>
+                            <span class="modal-value" id="modalNombre"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Cédula</span>
+                            <span class="modal-value" id="modalCedulaValue"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Fecha Nacimiento</span>
+                            <span class="modal-value" id="modalFechaNacimiento"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Teléfono principal</span>
+                            <span class="modal-value" id="modalTelefonoPrincipal"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Otro teléfono</span>
+                            <span class="modal-value" id="modalOtroTelefono"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Correo electrónico</span>
+                            <span class="modal-value" id="modalCorreo"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Dirección</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item full-width">
+                            <span class="modal-label">Dirección detallada</span>
+                            <span class="modal-value" id="modalDireccion"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Tipo de vivienda</span>
+                            <span class="modal-value" id="modalTipoVivienda"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">N° Casa/Edificio</span>
+                            <span class="modal-value" id="modalNumeroCasa"></span>
+                        </div>
+                        <div class="modal-item full-width">
+                            <span class="modal-label">Punto de referencia</span>
+                            <span class="modal-value" id="modalPuntoReferencia"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Plan y Servicios</h3>
+                    <div class="modal-grid grid-3">
+                        <div class="modal-item">
+                            <span class="modal-label">Plan contratado</span>
+                            <span class="modal-value" id="modalPlan"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Simple Plus</span>
+                            <span class="modal-value" id="modalSimplePlus"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Modalidad equipo</span>
+                            <span class="modal-value" id="modalModalidad"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Red</span>
+                            <span class="modal-value" id="modalRed"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Estado</span>
+                            <span class="modal-value" id="modalEstado"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab-pago" class="tab-content">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información de Pago</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item">
+                            <span class="modal-label">Número de pago móvil</span>
+                            <span class="modal-value" id="modalPagoMovil"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Visor de foto del comprobante -->
+                    <div class="foto-pago-container">
+                        <h4 class="modal-section-title">Comprobante de Pago</h4>
+                        <div id="foto-pago-placeholder" class="foto-placeholder">
+                            <p>Cargando imagen...</p>
+                        </div>
+                        <div id="foto-pago-content" style="display: none;">
+                            <img id="foto-pago-img" src="" alt="Comprobante de pago" class="foto-pago-img">
+                            <div class="foto-pago-actions">
+                                <button class="btn-primary" onclick="abrirFoto()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="10" y1="14" x2="21" y2="3"/>
+                                    </svg>
+                                    Ver imagen completa
+                                </button>
+                                <a id="download-foto" href="#" download class="btn-outline">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                    Descargar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="tab-adicional" class="tab-content">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Datos Adicionales</h3>
+                    <div class="modal-grid grid-3">
+                        <div class="modal-item">
+                            <span class="modal-label">ODS</span>
+                            <span class="modal-value" id="modalODS">—</span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Customer ID</span>
+                            <span class="modal-value" id="modalCustomerID">—</span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">ATR</span>
+                            <span class="modal-value" id="modalATR">—</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información del Contrato</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item">
+                            <span class="modal-label">Creado por</span>
+                            <span class="modal-value" id="modalCreadoPor"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Fecha de creación</span>
+                            <span class="modal-value" id="modalFechaCreacion"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Última actualización</span>
+                            <span class="modal-value" id="modalFechaActualizacion"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
+            <button class="btn-primary" id="modalEditarBtn">Editar Contrato</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver imagen completa -->
+<div id="imagenModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarImagenModal()"></div>
+    <div class="modal-container modal-image">
+        <div class="modal-header">
+            <h3>Comprobante de Pago</h3>
+            <button class="modal-close" onclick="cerrarImagenModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body image-container">
+            <img id="imagen-completa" src="" alt="Comprobante de pago" class="imagen-completa">
+        </div>
+    </div>
+</div>
+
+<!-- Paginación -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+        </svg>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+    /* ===== MODAL STYLES ===== */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+    }
+
+    .modal-container {
+        position: relative;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        animation: slideUp 0.3s ease;
+        z-index: 2001;
+    }
+
+    .modal-container.modal-lg {
+        max-width: 1000px;
+    }
+
+    .modal-container.modal-image {
+        max-width: 90%;
+        width: auto;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 24px 24px 0 0;
+    }
+
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .modal-header-info h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 4px;
+    }
+
+    .modal-header-info p {
+        font-size: 14px;
+        color: var(--gray-text);
+    }
+
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    /* Pestañas */
+    .modal-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+        padding-bottom: 12px;
+    }
+
+    .tab-btn {
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--gray-text);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        background: var(--orange);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Grids del modal */
+    .modal-grid {
+        display: grid;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .modal-grid.grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .modal-grid.grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .modal-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .modal-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .modal-value {
+        font-size: 14px;
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+    .modal-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .modal-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+
+    .modal-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 16px;
+    }
+
+    /* Foto de pago */
+    .foto-pago-container {
+        margin-top: 20px;
+    }
+
+    .foto-placeholder {
+        background: var(--gray-bg);
+        border: 2px dashed var(--gray-border);
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        color: var(--gray-text);
+    }
+
+    .foto-pago-img {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 12px;
+        border: 1px solid var(--gray-border);
+        object-fit: contain;
+        background: #fafafa;
+    }
+
+    .foto-pago-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        justify-content: center;
+    }
+
+    /* Modal de imagen */
+    .image-container {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .imagen-completa {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    /* Variables y estilos existentes */
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #fafafa;
+        --gray-border: #f0f0f0;
+        --gray-text: #999;
+        --dark-text: #333;
+    }
+
+    .vendedor-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border-radius: 20px;
+        font-size: 11px;
+        color: #555;
+    }
+
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--orange);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange);
+    }
+
+    .stat-label {
+        color: var(--gray-text);
+    }
+
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 250px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .filter-select:hover {
+        border-color: var(--orange);
+    }
+
+    .desktop-view {
+        display: block;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: auto;
+        margin-bottom: 20px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        min-width: 1000px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    .cedula-cell,
+    .telefono-cell,
+    .date-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 12px;
+    }
+
+    .email-cell {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #666;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge.proceso {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge.completado {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .badge.no-completado {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text);
+        font-size: 13px;
+        line-height: 1.2;
+    }
+
+    .user-fullname {
+        font-size: 11px;
+        color: var(--gray-text);
+        line-height: 1.2;
+    }
+
+    .actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .mobile-view {
+        display: none;
+    }
+
+    .contrato-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+
+    .contrato-card .card-header {
+        padding: 16px;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .card-cliente {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .card-avatar {
+        width: 44px;
+        height: 44px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .card-name {
+        font-weight: 600;
+        color: var(--dark-text);
+        font-size: 15px;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-detail {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .status-dot.proceso { background: #ef6c00; }
+    .status-dot.completado { background: #2e7d32; }
+    .status-dot.no-completado { background: #c62828; }
+
+    .contrato-card .card-body {
+        padding: 16px;
+    }
+
+    .card-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 13px;
+        flex-wrap: wrap;
+    }
+
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .card-label {
+        width: 80px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+    }
+
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+        flex: 1;
+    }
+
+    .contrato-card .card-actions {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        justify-content: flex-end;
+    }
+
+    .card-action {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .card-action:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: white;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: var(--gray-text);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .empty, .empty-mobile {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text);
+        font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+        .desktop-view {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+        
+        .filters-grid {
+            flex-direction: column;
+        }
+        
+        .search-box,
+        .filter-select {
+            width: 100%;
+        }
+        
+        .stats-grid {
+            justify-content: flex-start;
+        }
+        
+        .stat-card {
+            flex: 0 1 auto;
+        }
+        
+        .modal-grid.grid-2,
+        .modal-grid.grid-3 {
+            grid-template-columns: 1fr;
+        }
+        
+        .modal-tabs {
+            flex-wrap: wrap;
+        }
+        
+        .foto-pago-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            gap: 6px;
+        }
+        
+        .stat-card {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .card-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+        
+        .card-name {
+            font-size: 14px;
+        }
+        
+        .card-label {
+            width: 70px;
+            font-size: 12px;
+        }
+        
+        .card-value {
+            font-size: 12px;
+        }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Variables globales
+    let contratoData = null;
+    
+    // Función para ver detalle del contrato
+    function verContrato(id) {
+        console.log('Ver contrato ID:', id);
+        const modal = document.getElementById('contratoModal');
+        
+        if (!modal) {
+            console.error('Modal no encontrado');
+            return;
+        }
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Cargando...',
+            text: 'Obteniendo información del contrato',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        const url = `/datos-contrato/${id}/`;
+        console.log('Fetching URL:', url);
+        
+        fetch(url)
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+                Swal.close();
+                
+                if (data.error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error,
+                        confirmButtonColor: '#ff6b00'
+                    });
+                    return;
+                }
+                
+                contratoData = data;
+                llenarModal(data);
+                modal.style.display = 'flex';
+            })
+            .catch(error => {
+                console.error('Error completo:', error);
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cargar la información del contrato. Ver consola para detalles.',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
+    }
+    
+    function llenarModal(data) {
+        console.log('Llenando modal con:', data);
+        
+        try {
+            // Avatar y datos básicos
+            document.getElementById('modalAvatar').textContent = 
+                (data.cliente.nombre[0] + data.cliente.apellido[0]).toUpperCase();
+            document.getElementById('modalNombreCompleto').textContent = 
+                `${data.cliente.nombre} ${data.cliente.apellido}`;
+            document.getElementById('modalCedula').textContent = `C.I: ${data.cliente.cedula}`;
+            
+            // Información personal
+            document.getElementById('modalNombre').textContent = 
+                `${data.cliente.nombre} ${data.cliente.apellido}`;
+            document.getElementById('modalCedulaValue').textContent = data.cliente.cedula;
+            document.getElementById('modalFechaNacimiento').textContent = data.fecha_nacimiento || '—';
+            document.getElementById('modalTelefonoPrincipal').textContent = data.cliente.telefono;
+            document.getElementById('modalOtroTelefono').textContent = data.otro_telefono || '—';
+            document.getElementById('modalCorreo').textContent = data.correo_electronico || '—';
+            
+            // Dirección
+            document.getElementById('modalDireccion').textContent = data.direccion_detallada || '—';
+            document.getElementById('modalTipoVivienda').textContent = data.tipo_vivienda || '—';
+            document.getElementById('modalNumeroCasa').textContent = data.numero_casa || '—';
+            document.getElementById('modalPuntoReferencia').textContent = data.punto_referencia || '—';
+            
+            // Plan y servicios
+            document.getElementById('modalPlan').textContent = data.plan?.nombre || '—';
+            document.getElementById('modalSimplePlus').textContent = data.simple_plus || '—';
+            document.getElementById('modalModalidad').textContent = data.modalidad_equipo || '—';
+            document.getElementById('modalRed').textContent = data.red || '—';
+            
+            // Estado
+            let estadoClass = 'badge proceso';
+            let estadoText = data.estado || '—';
+            if (estadoText === 'Completado') estadoClass = 'badge completado';
+            if (estadoText === 'No Completado') estadoClass = 'badge no-completado';
+            document.getElementById('modalEstado').innerHTML = 
+                `<span class="${estadoClass}">${estadoText}</span>`;
+            
+            // Información de pago
+            document.getElementById('modalPagoMovil').textContent = data.numero_pago_movil || '—';
+            
+            // Foto de pago
+            const fotoPlaceholder = document.getElementById('foto-pago-placeholder');
+            const fotoContent = document.getElementById('foto-pago-content');
+            
+            if (data.foto_pago) {
+                console.log('Foto encontrada:', data.foto_pago);
+                fotoPlaceholder.style.display = 'none';
+                fotoContent.style.display = 'block';
+                document.getElementById('foto-pago-img').src = data.foto_pago;
+                document.getElementById('imagen-completa').src = data.foto_pago;
+                document.getElementById('download-foto').href = data.foto_pago;
+            } else {
+                console.log('No hay foto');
+                fotoPlaceholder.style.display = 'block';
+                fotoContent.style.display = 'none';
+                fotoPlaceholder.innerHTML = '<p>No hay comprobante de pago adjunto</p>';
+            }
+            
+            // Datos adicionales
+            document.getElementById('modalODS').textContent = data.ods || '—';
+            document.getElementById('modalCustomerID').textContent = data.customer_id || '—';
+            document.getElementById('modalATR').textContent = data.atr || '—';
+            
+            // Información del contrato
+            document.getElementById('modalCreadoPor').textContent = data.creado_por || '—';
+            document.getElementById('modalFechaCreacion').textContent = data.fecha_creacion || '—';
+            document.getElementById('modalFechaActualizacion').textContent = data.fecha_actualizacion || '—';
+            
+            // Botón de editar
+            document.getElementById('modalEditarBtn').onclick = function() {
+                window.location.href = `/contrato/${data.id}/editar/`;
+            };
+            
+        } catch (error) {
+            console.error('Error llenando modal:', error);
+        }
+    }
+    
+    function cambiarTab(tab) {
+        // Actualizar botones
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`tab-${tab}-btn`)?.classList.add('active');
+        
+        // Actualizar contenido
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-${tab}`)?.classList.add('active');
+    }
+    
+    function cerrarModal() {
+        document.getElementById('contratoModal').style.display = 'none';
+        // Volver a la primera pestaña
+        cambiarTab('info');
+    }
+    
+    function abrirFoto() {
+        document.getElementById('imagenModal').style.display = 'flex';
+    }
+    
+    function cerrarImagenModal() {
+        document.getElementById('imagenModal').style.display = 'none';
+    }
+    
+    // Cerrar modales con tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModal();
+            cerrarImagenModal();
+        }
+    });
+    
+    // Cerrar al hacer clic fuera del modal
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function() {
+            cerrarModal();
+            cerrarImagenModal();
+        });
+    });
+    
+    // Búsqueda en tiempo real
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        
+        // Filtrar tabla desktop
+        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+        
+        // Filtrar cards mobile
+        document.querySelectorAll('.contrato-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchText) ? 'block' : 'none';
+        });
+    });
+    
+    // Filtro por estado
+    document.getElementById('filterEstado')?.addEventListener('change', function() {
+        aplicarFiltros();
+    });
+    
+    // Filtro por vendedor (solo si existe)
+    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+    document.getElementById('filterVendedor')?.addEventListener('change', function() {
+        aplicarFiltros();
+    });
+    {% endif %}
+    
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const estado = document.getElementById('filterEstado').value;
+        const busqueda = document.getElementById('searchInput').value;
+        
+        if (estado) url.searchParams.set('estado', estado);
+        else url.searchParams.delete('estado');
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+        const vendedor = document.getElementById('filterVendedor').value;
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        {% endif %}
+        
+        window.location.href = url.toString();
+    }
+    
+    // Función para editar (redirige)
+    function editarContrato(id) {
+        window.location.href = `/contrato/${id}/editar/`;
+    }
+</script>
+{% endblock %}

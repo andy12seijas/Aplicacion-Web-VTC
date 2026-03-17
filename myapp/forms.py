@@ -323,3 +323,130 @@ class ClientePotencialForm(forms.ModelForm):
         if ClientePotencial.objects.filter(cedula=cedula).exists():
             raise forms.ValidationError('Esta cédula ya está registrada en el sistema.')
         return cedula
+
+
+
+class ContratoClienteForm(forms.ModelForm):
+    """Formulario para crear contratos de clientes"""
+    
+    class Meta:
+        model = ContratoCliente
+        # Excluir campos que son solo para admin
+        exclude = ['ods', 'customer_id', 'atr', 'estado', 'cliente_potencial', 
+                  'cedula', 'nombre', 'apellido', 'telefono_principal', 'creado_por']
+        widgets = {
+            'otro_telefono': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: 0414-1234567'
+            }),
+            'correo_electronico': forms.EmailInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'cliente@ejemplo.com'
+            }),
+            'direccion_detallada': forms.Textarea(attrs={
+                'class': 'form-input',
+                'placeholder': 'Calle, avenida, urbanización, casa/edificio, piso, apartamento',
+                'rows': 3
+            }),
+            'fecha_nacimiento': forms.DateInput(attrs={
+                'class': 'form-input',
+                'type': 'date'
+            }),
+            'plan_contratado': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'simple_plus': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'modalidad_equipo': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'punto_referencia': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: Cerca del abasto, frente a la farmacia'
+            }),
+            'tipo_vivienda': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'numero_casa': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: Casa #123, Edif. San José Piso 3 Apto 4'
+            }),
+            'numero_pago_movil': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: 0412-1234567'
+            }),
+            'foto_pago': forms.FileInput(attrs={
+                'class': 'form-file',
+                'accept': 'image/*'
+            }),
+            'red': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+        }
+        labels = {
+            'otro_telefono': 'Otro Teléfono (opcional)',
+            'correo_electronico': 'Correo Electrónico',
+            'direccion_detallada': 'Dirección Detallada',
+            'fecha_nacimiento': 'Fecha de Nacimiento',
+            'plan_contratado': 'Plan a Contratar',
+            'simple_plus': '¿Tiene Simple Plus?',
+            'modalidad_equipo': 'Modalidad del Equipo',
+            'punto_referencia': 'Punto de Referencia',
+            'tipo_vivienda': 'Tipo de Vivienda',
+            'numero_casa': 'Número de Casa/Edificio',
+            'numero_pago_movil': 'Número de Pago Móvil',
+            'foto_pago': 'Foto del Comprobante de Pago',
+            'red': 'Red',
+        }
+        help_texts = {
+            'foto_pago': 'Suba una foto o captura del comprobante de pago (JPG, PNG)',
+            'simple_plus': 'Indique si el cliente cuenta con Simple Plus',
+        }
+    def clean_correo_electronico(self):
+        """Validar que el correo no exista en OTRO contrato"""
+        correo = self.cleaned_data.get('correo_electronico')
+        
+        # Validar formato básico de email
+        if correo and ('@' not in correo or '.' not in correo):
+            raise forms.ValidationError('Ingrese un correo electrónico válido.')
+        
+        # Si es edición, excluir el contrato actual
+        if self.instance and self.instance.pk:
+            if ContratoCliente.objects.filter(correo_electronico=correo).exclude(pk=self.instance.pk).exists():
+                raise forms.ValidationError(
+                    'Este correo electrónico ya está registrado en otro contrato. '
+                    'Cada contrato debe tener un correo único.'
+                )
+        else:
+            # Si es creación, verificar que no exista en ningún contrato
+            if ContratoCliente.objects.filter(correo_electronico=correo).exists():
+                raise forms.ValidationError(
+                    'Este correo electrónico ya está registrado en otro contrato. '
+                    'Cada contrato debe tener un correo único.'
+                )
+        
+        return correo
+    def __init__(self, *args, **kwargs):
+        self.cliente_potencial = kwargs.pop('cliente_potencial', None)
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar solo elementos activos
+        self.fields['plan_contratado'].queryset = Plan.objects.filter(activo=True)
+        self.fields['modalidad_equipo'].queryset = ModalidadEquipo.objects.filter(activo=True)
+        self.fields['tipo_vivienda'].queryset = TipoVivienda.objects.filter(activo=True)
+        self.fields['red'].queryset = Red.objects.filter(activo=True)
+        
+        # Hacer campos obligatorios
+        self.fields['correo_electronico'].required = True
+        self.fields['direccion_detallada'].required = True
+        self.fields['fecha_nacimiento'].required = True
+        self.fields['plan_contratado'].required = True
+        self.fields['simple_plus'].required = True
+        self.fields['modalidad_equipo'].required = True
+        self.fields['punto_referencia'].required = True
+        self.fields['tipo_vivienda'].required = True
+        self.fields['numero_casa'].required = True
+        self.fields['numero_pago_movil'].required = True
+        self.fields['foto_pago'].required = True
+        self.fields['red'].required = True    

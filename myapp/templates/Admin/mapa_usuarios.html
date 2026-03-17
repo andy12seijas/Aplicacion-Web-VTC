@@ -16,51 +16,81 @@
 {% endblock %}
 
 {% block content %}
-<!-- Estadísticas -->
-<div class="stats-grid">
+<!-- Estadísticas responsive -->
+<div class="stats-grid" id="stats-container">
     <div class="stat-card">
-        <span class="stat-value">{{ total_usuarios }}</span>
+        <span class="stat-value" id="total-usuarios">{{ total_usuarios }}</span>
         <span class="stat-label">Usuarios activos</span>
     </div>
     <div class="stat-card">
-        <span class="stat-value">{{ activos_ahora }}</span>
+        <span class="stat-value" id="activos-ahora">{{ activos_ahora }}</span>
         <span class="stat-label">Activos última hora</span>
     </div>
     {% for stat in stats_por_tipo %}
-    <div class="stat-card">
-        <span class="stat-value">{{ stat.cantidad }}</span>
+    <div class="stat-card" data-tipo="{{ stat.nombre }}">
+        <span class="stat-value" id="stat-{{ stat.nombre|lower }}">{{ stat.cantidad }}</span>
         <span class="stat-label">{{ stat.nombre }}</span>
     </div>
     {% endfor %}
 </div>
 
-<!-- Filtros -->
-<div class="filters" style="margin-bottom: 20px;">
-    <div class="search-box" style="flex: 2;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M21 21l-4.35-4.35"/>
-        </svg>
-        <input type="text" placeholder="Buscar usuario..." id="searchInput" value="{{ buscar }}">
+<!-- Filtros responsive con botón de limpiar -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-wrapper">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" placeholder="Buscar usuario..." id="searchInput" value="{{ buscar }}">
+                {% if buscar %}
+                <button class="clear-input" onclick="limpiarBusqueda()" title="Limpiar búsqueda">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="filter-wrapper">
+            <select id="filterTipo" class="filter-select">
+                <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos los tipos</option>
+                <option value="Vendedor" {% if filtro_tipo == 'Vendedor' %}selected{% endif %}>Vendedores</option>
+                <option value="Instalador" {% if filtro_tipo == 'Instalador' %}selected{% endif %}>Instaladores</option>
+                <option value="Administrador" {% if filtro_tipo == 'Administrador' %}selected{% endif %}>Administradores</option>
+            </select>
+        </div>
+        
+        <div class="actions-wrapper">
+            <button onclick="aplicarFiltros()" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <span class="btn-text">Buscar</span>
+            </button>
+            
+            <button onclick="limpiarFiltros()" class="btn-clear" title="Limpiar filtros">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6m-9 4v6m4-6v6"/>
+                </svg>
+                <span class="btn-text">Limpiar</span>
+            </button>
+        </div>
     </div>
-    
-    <select id="filterTipo" class="filter-select" style="flex: 1;">
-        <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos los tipos</option>
-        <option value="Vendedor" {% if filtro_tipo == 'Vendedor' %}selected{% endif %}>Vendedores</option>
-        <option value="Instalador" {% if filtro_tipo == 'Instalador' %}selected{% endif %}>Instaladores</option>
-        <option value="Administrador" {% if filtro_tipo == 'Administrador' %}selected{% endif %}>Administradores</option>
-    </select>
 </div>
 
-<!-- Contenedor del mapa -->
-<div id="map" style="height: 600px; width: 100%; border-radius: 16px; border: 1px solid var(--gray-border); margin-bottom: 20px;"></div>
+<!-- Contenedor del mapa responsive -->
+<div class="map-container">
+    <div id="map" class="map"></div>
+</div>
 
-<!-- Leyenda -->
-<div style="background: white; padding: 16px; border-radius: 12px; border: 1px solid var(--gray-border);">
-    <h4 style="margin-bottom: 12px; color: var(--dark-text);">📍 Usuarios activos ahora</h4>
-    <div id="leyenda-usuarios" style="display: flex; flex-wrap: wrap; gap: 16px;">
-        <!-- Se llenará con JavaScript -->
-    </div>
+<!-- Leyenda responsive -->
+<div class="leyenda-container">
+    <h4 class="leyenda-titulo">📍 Usuarios activos ahora</h4>
+    <div id="leyenda-usuarios" class="leyenda-grid"></div>
 </div>
 
 <!-- Datos de ubicaciones para JavaScript -->
@@ -71,6 +101,17 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
+    /* ===== VARIABLES ===== */
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f5f5f5;
+        --gray-border: #eaeaea;
+        --gray-text: #999;
+        --dark-text: #333;
+    }
+
+    /* ===== ESTADÍSTICAS RESPONSIVE ===== */
     .stats-grid {
         display: flex;
         flex-wrap: wrap;
@@ -87,21 +128,41 @@
         align-items: center;
         gap: 8px;
         font-size: 13px;
+        transition: all 0.3s ease;
+        flex: 0 1 auto;
+    }
+    
+    .stat-card.actualizado {
+        background: var(--orange-light);
+        border-color: var(--orange);
+        transform: scale(1.02);
     }
     
     .stat-value {
         font-weight: 600;
         color: var(--orange);
+        transition: all 0.3s ease;
     }
     
     .stat-label {
         color: var(--gray-text);
     }
+
+    /* ===== FILTROS RESPONSIVE ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
     
-    .filters {
-        display: flex;
+    .filters-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr auto;
         gap: 8px;
-        flex-wrap: wrap;
+        align-items: center;
+    }
+    
+    .search-wrapper {
+        position: relative;
+        width: 100%;
     }
     
     .search-box {
@@ -112,6 +173,8 @@
         padding: 0 12px;
         border: 1px solid var(--gray-border);
         border-radius: 30px;
+        width: 100%;
+        height: 40px;
     }
     
     .search-box input {
@@ -121,16 +184,117 @@
         outline: none;
         font-size: 13px;
         background: transparent;
+        flex: 1;
+    }
+    
+    .clear-input {
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+    
+    .clear-input:hover {
+        background: #f0f0f0;
+    }
+    
+    .clear-input svg {
+        stroke: #666;
+    }
+    
+    .filter-wrapper {
+        width: 100%;
     }
     
     .filter-select {
-        padding: 8px 12px;
+        padding: 0 12px;
         border: 1px solid var(--gray-border);
         border-radius: 30px;
         background: white;
         font-size: 13px;
         outline: none;
         cursor: pointer;
+        width: 100%;
+        height: 40px;
+    }
+    
+    .actions-wrapper {
+        display: flex;
+        gap: 8px;
+        white-space: nowrap;
+    }
+    
+    .btn-primary, .btn-clear {
+        padding: 0 16px;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        height: 40px;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary {
+        background: var(--orange);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+    }
+    
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    /* ===== MAPA RESPONSIVE ===== */
+    .map-container {
+        width: 100%;
+        margin-bottom: 20px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .map {
+        height: 600px;
+        width: 100%;
+    }
+
+    /* ===== LEYENDA RESPONSIVE ===== */
+    .leyenda-container {
+        background: white;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .leyenda-titulo {
+        margin-bottom: 12px;
+        color: var(--dark-text);
+        font-size: 14px;
+    }
+    
+    .leyenda-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
     }
     
     .leyenda-item {
@@ -143,6 +307,7 @@
         font-size: 13px;
         border: 1px solid transparent;
         transition: all 0.2s;
+        flex: 0 1 auto;
     }
     
     .leyenda-item:hover {
@@ -156,12 +321,19 @@
         border-radius: 50%;
         border: 2px solid white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        flex-shrink: 0;
+    }
+    
+    .leyenda-info {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
     }
     
     .timestamp {
         font-size: 11px;
         color: var(--gray-text);
-        margin-left: 8px;
     }
     
     .tipo-badge {
@@ -170,44 +342,256 @@
         border-radius: 12px;
         background: #e0e0e0;
         color: #555;
-        margin-left: 8px;
+        display: inline-block;
     }
     
     .tipo-badge.vendedor { background: #e3f2fd; color: #2196f3; }
     .tipo-badge.instalador { background: #e8f5e9; color: #4caf50; }
     .tipo-badge.admin { background: #fff2e6; color: #ff6b00; }
+    
+    .activo-indicator {
+        color: #4caf50;
+        margin-left: 4px;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    
+    /* Tablet (768px - 1024px) */
+    @media screen and (max-width: 1024px) {
+        .map {
+            height: 500px;
+        }
+    }
+    
+    /* Móvil Grande (576px - 768px) */
+    @media screen and (max-width: 768px) {
+        .filters-grid {
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+        
+        .actions-wrapper {
+            justify-content: stretch;
+        }
+        
+        .btn-primary, .btn-clear {
+            flex: 1;
+            justify-content: center;
+        }
+        
+        .map {
+            height: 450px;
+        }
+        
+        .stats-grid {
+            gap: 6px;
+        }
+        
+        .stat-card {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+    }
+    
+    /* Móvil Pequeño (320px - 576px) */
+    @media screen and (max-width: 576px) {
+        .stats-grid {
+            justify-content: center;
+        }
+        
+        .stat-card {
+            flex: 1 1 calc(50% - 6px);
+            min-width: 120px;
+        }
+        
+        .map {
+            height: 400px;
+        }
+        
+        .actions-wrapper {
+            flex-direction: column;
+        }
+        
+        .btn-primary, .btn-clear {
+            width: 100%;
+        }
+        
+        .btn-text {
+            display: inline;
+        }
+        
+        .leyenda-item {
+            width: 100%;
+        }
+        
+        .leyenda-info {
+            flex: 1;
+            justify-content: space-between;
+        }
+    }
+    
+    /* Móvil muy pequeño (menos de 380px) */
+    @media screen and (max-width: 380px) {
+        .stat-card {
+            flex: 1 1 100%;
+        }
+        
+        .leyenda-item {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .leyenda-info {
+            flex-direction: column;
+            gap: 4px;
+        }
+    }
 </style>
 
 <script>
+    // Variables globales
+    let map;
+    let markers = [];
+    let intervalAutoActualizacion;
+    let filtrosActuales = {
+        tipo: '{{ filtro_tipo|default:"todos" }}',
+        buscar: '{{ buscar|default:"" }}'
+    };
+    
+    const colores = {
+        'Vendedor': '#2196F3',
+        'Instalador': '#4CAF50',
+        'Administrador': '#FF6B00',
+        'default': '#9C27B0'
+    };
+
+    // Inicialización
     document.addEventListener('DOMContentLoaded', function() {
-        // Obtener datos de ubicaciones
-        const ubicaciones = JSON.parse(document.getElementById('ubicaciones-data').textContent);
-        const leyendaDiv = document.getElementById('leyenda-usuarios');
+        console.log('Inicializando mapa...');
+        inicializarMapa();
+        cargarUbicacionesIniciales();
+        iniciarAutoActualizacion();
         
-        if (ubicaciones.length === 0) {
-            document.getElementById('map').innerHTML = '<div style="text-align: center; padding: 50px; background: white; border-radius: 16px;">📍 No hay usuarios activos</div>';
-            leyendaDiv.innerHTML = '<p style="color: var(--gray-text);">No hay usuarios con ubicación registrada.</p>';
-            return;
-        }
+        // Agregar evento Enter en el campo de búsqueda
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                aplicarFiltros();
+            }
+        });
+    });
+
+    function limpiarBusqueda() {
+        document.getElementById('searchInput').value = '';
+        aplicarFiltros();
+    }
+
+    function limpiarFiltros() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterTipo').value = 'todos';
+        aplicarFiltros();
+    }
+
+    function iniciarAutoActualizacion() {
+        // Actualizar cada 2 minutos (120,000 milisegundos)
+        intervalAutoActualizacion = setInterval(function() {
+            console.log('🔄 Actualizando ubicaciones automáticamente...');
+            obtenerUbicacionesActualizadas();
+        }, 120000); // 2 minutos
         
+        console.log('✅ Auto-actualización cada 2 minutos activada');
+    }
+
+    function obtenerUbicacionesActualizadas() {
+        const tipo = document.getElementById('filterTipo').value;
+        const buscar = document.getElementById('searchInput').value;
+        
+        fetch(`/api/ubicaciones/?tipo=${tipo}&buscar=${buscar}&_=${Date.now()}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(`📊 Actualización automática: ${data.ubicaciones.length} ubicaciones recibidas`);
+                
+                // Actualizar marcadores sin recargar la página
+                actualizarMarcadores(data.ubicaciones);
+                
+                // Actualizar estadísticas
+                actualizarEstadisticas(data);
+                
+                // Pequeña animación para indicar actualización (sutil)
+                document.querySelector('.stats-grid').style.opacity = '0.8';
+                setTimeout(() => {
+                    document.querySelector('.stats-grid').style.opacity = '1';
+                }, 200);
+            })
+            .catch(error => {
+                console.error('Error en actualización automática:', error);
+            });
+    }
+
+    function inicializarMapa() {
         // Crear mapa centrado en Venezuela
-        const map = L.map('map').setView([7.0, -66.0], 6);
+        map = L.map('map').setView([7.0, -66.0], 6);
         
         // Añadir capa de OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            maxZoom: 19
         }).addTo(map);
         
-        // Array para bounds y colores por tipo
-        const bounds = [];
-        const colores = {
-            'Vendedor': '#2196F3',
-            'Instalador': '#4CAF50',
-            'Administrador': '#FF6B00',
-            'default': '#9C27B0'
-        };
+        // Hacer el mapa responsive
+        setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+    }
+
+    function cargarUbicacionesIniciales() {
+        const ubicaciones = JSON.parse(document.getElementById('ubicaciones-data').textContent);
+        actualizarMarcadores(ubicaciones);
+    }
+
+    function cargarUbicaciones() {
+        const tipo = document.getElementById('filterTipo').value;
+        const buscar = document.getElementById('searchInput').value;
         
-        // Crear marcadores
+        console.log('Cargando ubicaciones con filtros:', { tipo, buscar });
+        
+        fetch(`/api/ubicaciones/?tipo=${tipo}&buscar=${buscar}&_=${Date.now()}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                actualizarMarcadores(data.ubicaciones);
+                actualizarEstadisticas(data);
+            })
+            .catch(error => {
+                console.error('Error cargando ubicaciones:', error);
+            });
+    }
+
+    function actualizarMarcadores(ubicaciones) {
+        // Limpiar marcadores existentes
+        if (markers.length > 0) {
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+        }
+        
+        const leyendaDiv = document.getElementById('leyenda-usuarios');
+        leyendaDiv.innerHTML = '';
+        
+        if (ubicaciones.length === 0) {
+            leyendaDiv.innerHTML = '<p style="color: #999; width: 100%; text-align: center;">No hay usuarios con ubicación registrada.</p>';
+            return;
+        }
+        
+        const bounds = [];
+        
         ubicaciones.forEach((ubicacion) => {
             if (!ubicacion.latitud || !ubicacion.longitud) return;
             
@@ -231,6 +615,8 @@
                 fillOpacity: 0.9
             }).addTo(map);
             
+            markers.push(marker);
+            
             // Formatear fecha
             const fecha = new Date(ubicacion.ultima_actualizacion);
             const fechaStr = fecha.toLocaleString('es-VE', {
@@ -251,9 +637,7 @@
                         <span class="tipo-badge ${tipo.toLowerCase()}">${tipo}</span>
                     </p>
                     <p style="margin: 4px 0;"><strong>🕐 Última actividad:</strong> ${fechaStr}</p>
-                    ${ubicacion.contenido_asociado ? `
-                        <p style="margin: 4px 0;"><strong>📋 Última acción:</strong> ${ubicacion.contenido_asociado}</p>
-                    ` : ''}
+                    <p style="margin: 4px 0;"><strong>📊 Total clientes:</strong> ${ubicacion.total_clientes || 0}</p>
                     ${ubicacion.activo ? 
                         '<p style="color: #4CAF50; margin-top: 8px;">🟢 Activo ahora</p>' : 
                         '<p style="color: #999; margin-top: 8px;">⚪ Inactivo</p>'}
@@ -262,34 +646,73 @@
             
             // Añadir a leyenda
             leyendaDiv.innerHTML += `
-                <div class="leyenda-item" style="${ubicacion.activo ? 'background: #fff2e6;' : ''}">
+                <div class="leyenda-item">
                     <div class="color-dot" style="background-color: ${color};"></div>
-                    <div>
+                    <div class="leyenda-info">
                         <strong>${ubicacion.usuario.first_name || ubicacion.usuario.username}</strong>
                         <span class="tipo-badge ${tipo.toLowerCase()}">${tipo}</span>
                         <span class="timestamp">${fechaStr}</span>
-                        ${ubicacion.activo ? '<span style="color: #4CAF50; margin-left: 8px;">🟢</span>' : ''}
+                        ${ubicacion.activo ? '<span class="activo-indicator">🟢</span>' : ''}
                     </div>
                 </div>
             `;
         });
         
-        // Ajustar zoom
+        // Ajustar zoom para mostrar todos los marcadores
         if (bounds.length > 0) {
-            map.fitBounds(bounds);
+            map.fitBounds(bounds, { padding: [50, 50] });
         }
+    }
+
+    function actualizarEstadisticas(data) {
+        // Actualizar total de usuarios
+        document.getElementById('total-usuarios').textContent = data.total_usuarios;
+        document.getElementById('activos-ahora').textContent = data.activos_ahora;
         
-        // Filtros
-        document.getElementById('searchInput')?.addEventListener('keyup', function() {
-            const searchText = this.value.toLowerCase();
-            window.location.href = `?buscar=${searchText}&tipo=${document.getElementById('filterTipo').value}`;
-        });
+        // Actualizar estadísticas por tipo
+        if (data.stats_por_tipo) {
+            data.stats_por_tipo.forEach(stat => {
+                const elemento = document.getElementById(`stat-${stat.nombre.toLowerCase()}`);
+                if (elemento) {
+                    elemento.textContent = stat.cantidad;
+                    
+                    // Animación sutil en la tarjeta actualizada
+                    const card = elemento.closest('.stat-card');
+                    card.classList.add('actualizado');
+                    setTimeout(() => {
+                        card.classList.remove('actualizado');
+                    }, 500);
+                }
+            });
+        }
+    }
+
+    function aplicarFiltros() {
+        const tipo = document.getElementById('filterTipo').value;
+        const buscar = document.getElementById('searchInput').value;
         
-        document.getElementById('filterTipo')?.addEventListener('change', function() {
-            const tipo = this.value;
-            const buscar = document.getElementById('searchInput').value;
-            window.location.href = `?tipo=${tipo}&buscar=${buscar}`;
-        });
+        // Actualizar con los nuevos filtros
+        filtrosActuales = { tipo, buscar };
+        
+        // Cargar ubicaciones con los nuevos filtros
+        cargarUbicaciones();
+    }
+
+    // Limpiar intervalo al salir de la página
+    window.addEventListener('beforeunload', function() {
+        if (intervalAutoActualizacion) {
+            clearInterval(intervalAutoActualizacion);
+            console.log('🛑 Auto-actualización detenida');
+        }
+    });
+
+    // Ajustar el mapa cuando cambie el tamaño de la ventana
+    window.addEventListener('resize', function() {
+        if (map) {
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+        }
     });
 </script>
 {% endblock %}

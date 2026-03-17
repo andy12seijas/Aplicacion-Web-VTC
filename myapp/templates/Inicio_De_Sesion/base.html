@@ -69,6 +69,14 @@
             box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
         }
 
+        /* En móvil, no aplicar hover */
+        @media (max-width: 768px) {
+            .sidebar:hover {
+                width: var(--sidebar-width);
+                align-items: center;
+            }
+        }
+
         .menu {
             display: flex;
             flex-direction: column;
@@ -475,7 +483,7 @@
             }
         }
 
-        /* Móvil Grande (480px - 768px) */
+        /* Móvil (hasta 768px) */
         @media screen and (max-width: 768px) {
             :root {
                 --sidebar-width: 0px;
@@ -483,12 +491,19 @@
 
             /* Sidebar flotante para móvil */
             .sidebar {
-                width: var(--sidebar-width);
-                box-shadow: none;
+                width: 220px;
+                left: -220px;
+                transition: left 0.3s ease-in-out;
+                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
             }
 
             .sidebar:hover {
                 width: 220px;
+                left: -220px;
+            }
+
+            .sidebar.mobile-open {
+                left: 0;
             }
 
             /* Botón de menú hamburguesa para móvil */
@@ -518,9 +533,8 @@
                 padding-top: 70px;
             }
 
-            .sidebar:hover ~ .main-content {
-                margin-left: 220px;
-                width: calc(100% - 220px);
+            .sidebar.mobile-open ~ .main-content {
+                margin-left: 0;
             }
 
             .content-header {
@@ -549,6 +563,39 @@
 
             .card-value {
                 font-size: 24px;
+            }
+
+            /* ===== CORRECCIÓN: OCULTAR BOTÓN DE LOGOUT EN SIDEBAR CERRADO ===== */
+            .sidebar-footer {
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s ease, visibility 0.3s ease;
+            }
+
+            .sidebar.mobile-open .sidebar-footer {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            /* También ocultar otros elementos cuando el sidebar está cerrado */
+            .sidebar .menu-section,
+            .sidebar .menu-title,
+            .sidebar .arrow,
+            .sidebar .user-details,
+            .sidebar .logo-text {
+                display: none;
+            }
+
+            .sidebar.mobile-open .menu-section,
+            .sidebar.mobile-open .menu-title,
+            .sidebar.mobile-open .arrow,
+            .sidebar.mobile-open .user-details,
+            .sidebar.mobile-open .logo-text {
+                display: block;
+            }
+
+            .sidebar.mobile-open .logout-sidebar span {
+                display: block;
             }
         }
 
@@ -588,6 +635,10 @@
             .header-actions {
                 gap: 8px;
             }
+
+            .sidebar {
+                width: 200px;
+            }
         }
 
         /* Ajustes para pantallas muy pequeñas */
@@ -602,22 +653,11 @@
                 justify-content: center;
             }
         }
-
-        /* Clase para cuando el sidebar está abierto en móvil */
-        .sidebar.mobile-open {
-            width: 220px;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .sidebar.mobile-open ~ .main-content {
-            margin-left: 220px;
-            width: calc(100% - 220px);
-        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Botón de menú hamburguesa para móvil (visible solo en móvil) -->
+    <!-- Botón de menú hamburguesa para móvil -->
     <button class="mobile-menu-toggle" id="mobileMenuToggle" style="display: none;" onclick="toggleMobileMenu()">
         <i class="fas fa-bars"></i>
     </button>
@@ -654,7 +694,7 @@
                 
                 <ul class="submenu" id="vendedorSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_clientes' %}'">Captura de Cliente</li>
-                    <li class="submenu-item" onclick="window.location.href='#'">Contrato de Cliente</li>
+                    <li class="submenu-item" onclick="window.location.href='{% url 'lista_contratos' %}'">Contrato de Cliente</li>
                 </ul>
 
                 <!-- Menú OPERACIONES -->
@@ -670,21 +710,15 @@
                     <li class="submenu-item" onclick="window.location.href='#'">Instalaciones</li>
                 </ul>
                  
-                <!-- Menú CONFIGURACION - Solo para Administradores -->
+                
+               <!-- Menú CONFIGURACION - Solo para Administradores -->
                 {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                <div class="menu-section">CONFIGURACION</div>
+                <div class="menu-section">ADMINISTRACIÓN</div>
 
-                <div class="menu-item" onclick="toggleSubmenu(this, 'AdminstracionSub')">
-                    <span class="menu-icon">👑</span>
-                    <span class="menu-title">Administrador</span>
-                    <i class="fas fa-chevron-down arrow"></i>
+                <div class="menu-item" onclick="window.location.href='{% url 'panel_administrativo' %}'">
+                    <span class="menu-icon">📊</span>
+                    <span class="menu-title">Panel Administrativo</span>
                 </div>
-
-                <ul class="submenu" id="AdminstracionSub">
-                    <li class="submenu-item" onclick="window.location.href='{% url 'crear_usuario' %}'">Crear Usuario</li>
-                    <li class="submenu-item" onclick="window.location.href='{% url 'lista_usuarios' %}'">Ver Usuarios</li>
-                    <li class="submenu-item" onclick="window.location.href='{% url 'mapa_usuarios' %}'">Mapa de Usuarios</li>
-                </ul>
                 {% endif %}
             </div>
 
@@ -760,8 +794,12 @@
         function toggleSubmenu(element, submenuId) {
             const sidebar = document.getElementById('sidebar');
             
-            // En móvil, permitir abrir submenús incluso con sidebar colapsado
+            // En móvil, verificar si el sidebar está abierto
             if (window.innerWidth <= 768) {
+                if (!sidebar.classList.contains('mobile-open')) {
+                    return; // No abrir submenús si el sidebar está cerrado
+                }
+                
                 const isOpen = element.classList.contains('open');
                 const submenu = document.getElementById(submenuId);
                 
@@ -824,6 +862,13 @@
             
             if (sidebar.classList.contains('mobile-open')) {
                 toggleBtn.innerHTML = '<i class="fas fa-times"></i>';
+                // Cerrar todos los submenús al abrir
+                document.querySelectorAll('.menu-item.open').forEach(item => {
+                    item.classList.remove('open');
+                });
+                document.querySelectorAll('.submenu.show').forEach(sub => {
+                    sub.classList.remove('show');
+                });
             } else {
                 toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
             }
@@ -837,6 +882,7 @@
             if (window.innerWidth <= 768) {
                 toggleBtn.style.display = 'flex';
                 sidebar.classList.remove('mobile-open');
+                toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
             } else {
                 toggleBtn.style.display = 'none';
                 sidebar.classList.remove('mobile-open');
@@ -849,12 +895,6 @@
         // Ejecutar al cambiar el tamaño de la ventana
         window.addEventListener('resize', function() {
             checkScreenSize();
-            
-            // Cerrar sidebar en móvil si se expande la pantalla
-            if (window.innerWidth > 768) {
-                document.getElementById('sidebar').classList.remove('mobile-open');
-                document.getElementById('mobileMenuToggle').innerHTML = '<i class="fas fa-bars"></i>';
-            }
         });
 
         // Cerrar sidebar al hacer clic fuera en móvil
@@ -863,7 +903,9 @@
             const toggleBtn = document.getElementById('mobileMenuToggle');
             
             if (window.innerWidth <= 768) {
-                if (!sidebar.contains(event.target) && !toggleBtn.contains(event.target) && sidebar.classList.contains('mobile-open')) {
+                if (sidebar.classList.contains('mobile-open') && 
+                    !sidebar.contains(event.target) && 
+                    !toggleBtn.contains(event.target)) {
                     sidebar.classList.remove('mobile-open');
                     toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
                 }

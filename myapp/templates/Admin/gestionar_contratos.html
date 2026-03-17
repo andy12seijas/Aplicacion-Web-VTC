@@ -1,0 +1,1236 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Gestión de Contratos{% endblock %}
+
+{% block page_title %}Gestión de Contratos{% endblock %}
+{% block page_subtitle %}Administra los contratos pendientes y completados{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <!-- Búsqueda -->
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre, cédula, correo..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <!-- Filtro por vendedor -->
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for vendedor in vendedores %}
+            <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                {{ vendedor.get_full_name|default:vendedor.username }}
+            </option>
+            {% endfor %}
+        </select>
+        
+        <!-- Filtro por estado -->
+        <select id="filterEstado" class="filter-select">
+            <option value="">Todos los estados</option>
+            <option value="EN_PROCESO" {% if filtro_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+            <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+            <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
+        </select>
+        
+        
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
+            <span class="tab-icon">⏳</span>
+            Contratos Pendientes
+            <span class="tab-count">{{ contratos_pendientes_count }}</span>
+        </button>
+        <button class="tab-btn" onclick="cambiarTab('completados')" id="tab-completados-btn">
+            <span class="tab-icon">✅</span>
+            Contratos Completados
+            <span class="tab-count">{{ contratos_completados_count }}</span>
+        </button>
+    </div>
+
+    <!-- TAB: Contratos Pendientes -->
+    <div id="tab-pendientes" class="tab-content active">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Teléfono</th>
+                        <th>Correo</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Vendedor</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in contratos_pendientes %}
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ contrato.cliente_potencial.cedula }}</td>
+                        <td>{{ contrato.cliente_potencial.telefono }}</td>
+                        <td class="email-cell">{{ contrato.correo_electronico|truncatechars:20 }}</td>
+                        <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
+                        <td>
+                            {% if contrato.estado == 'EN_PROCESO' %}
+                            <span class="badge proceso">En Proceso</span>
+                            {% elif contrato.estado == 'COMPLETADO' %}
+                            <span class="badge completado">Completado</span>
+                            {% elif contrato.estado == 'NO_COMPLETADO' %}
+                            <span class="badge no-completado">No Completado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
+                        </td>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
+                        <td>
+                            <button class="action-btn" onclick="abrirModalCompletar({{ contrato.id }})" title="Completar contrato">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                </svg>
+                            </button>
+                            <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty">No hay contratos pendientes</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: Contratos Completados -->
+    <div id="tab-completados" class="tab-content">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Customer ID</th>
+                        <th>ODS</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Vendedor</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in contratos_completados %}
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ contrato.cliente_potencial.cedula }}</td>
+                        <td><span class="badge completado">{{ contrato.customer_id|default:"—" }}</span></td>
+                        <td><span class="badge completado">{{ contrato.ods|default:"—" }}</span></td>
+                        <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
+                        <td>
+                            {% if contrato.estado == 'EN_PROCESO' %}
+                            <span class="badge proceso">En Proceso</span>
+                            {% elif contrato.estado == 'COMPLETADO' %}
+                            <span class="badge completado">Completado</span>
+                            {% elif contrato.estado == 'NO_COMPLETADO' %}
+                            <span class="badge no-completado">No Completado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
+                        </td>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
+                        <td>
+                            <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty">No hay contratos completados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODALES ========== -->
+
+<!-- Modal para completar contrato (ingresar Customer ID y ODS) -->
+<div id="completarContratoModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModalCompletar()"></div>
+    <div class="modal-container modal-sm">
+        <div class="modal-header">
+            <h3>Completar Contrato</h3>
+            <button class="modal-close" onclick="cerrarModalCompletar()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <form id="completarContratoForm">
+                {% csrf_token %}
+                <input type="hidden" name="contrato_id" id="modal_contrato_id" value="">
+                
+                <div class="form-group">
+                    <label for="customer_id">Customer ID <span class="required">*</span></label>
+                    <input type="text" 
+                           id="customer_id" 
+                           name="customer_id" 
+                           class="form-input" 
+                           placeholder="Ej: CUS-123456"
+                           required>
+                    <small class="help-text">ID del cliente en el sistema</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ods">ODS <span class="required">*</span></label>
+                    <input type="text" 
+                           id="ods" 
+                           name="ods" 
+                           class="form-input" 
+                           placeholder="Ej: ODS-789012"
+                           required>
+                    <small class="help-text">Orden de Servicio</small>
+                </div>
+                
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="button" class="btn-outline" onclick="cerrarModalCompletar()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar y Completar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver detalle de contrato -->
+<div id="contratoModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModalDetalle()"></div>
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalNombreCompleto"></h2>
+                    <p id="modalCedula"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalDetalle()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Pestañas del modal de detalle -->
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="cambiarTabModal('info')" id="modal-tab-info-btn">Información General</button>
+                <button class="tab-btn" onclick="cambiarTabModal('pago')" id="modal-tab-pago-btn">Información de Pago</button>
+                <button class="tab-btn" onclick="cambiarTabModal('adicional')" id="modal-tab-adicional-btn">Datos Adicionales</button>
+            </div>
+            
+            <!-- Contenido de las pestañas -->
+            <div id="modal-tab-info" class="tab-content active">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información Personal</h3>
+                    <div class="modal-grid grid-3">
+                        <div class="modal-item">
+                            <span class="modal-label">Nombre completo</span>
+                            <span class="modal-value" id="modalNombre"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Cédula</span>
+                            <span class="modal-value" id="modalCedulaValue"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Fecha Nacimiento</span>
+                            <span class="modal-value" id="modalFechaNacimiento"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Teléfono principal</span>
+                            <span class="modal-value" id="modalTelefonoPrincipal"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Otro teléfono</span>
+                            <span class="modal-value" id="modalOtroTelefono"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Correo electrónico</span>
+                            <span class="modal-value" id="modalCorreo"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Dirección</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item full-width">
+                            <span class="modal-label">Dirección detallada</span>
+                            <span class="modal-value" id="modalDireccion"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Tipo de vivienda</span>
+                            <span class="modal-value" id="modalTipoVivienda"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">N° Casa/Edificio</span>
+                            <span class="modal-value" id="modalNumeroCasa"></span>
+                        </div>
+                        <div class="modal-item full-width">
+                            <span class="modal-label">Punto de referencia</span>
+                            <span class="modal-value" id="modalPuntoReferencia"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Plan y Servicios</h3>
+                    <div class="modal-grid grid-3">
+                        <div class="modal-item">
+                            <span class="modal-label">Plan contratado</span>
+                            <span class="modal-value" id="modalPlan"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Simple Plus</span>
+                            <span class="modal-value" id="modalSimplePlus"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Modalidad equipo</span>
+                            <span class="modal-value" id="modalModalidad"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Red</span>
+                            <span class="modal-value" id="modalRed"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Estado</span>
+                            <span class="modal-value" id="modalEstado"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="modal-tab-pago" class="tab-content">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información de Pago</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item">
+                            <span class="modal-label">Número de pago móvil</span>
+                            <span class="modal-value" id="modalPagoMovil"></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Visor de foto del comprobante -->
+                    <div class="foto-pago-container">
+                        <h4 class="modal-section-title">Comprobante de Pago</h4>
+                        <div id="modal-foto-placeholder" class="foto-placeholder">
+                            <p>Cargando imagen...</p>
+                        </div>
+                        <div id="modal-foto-content" style="display: none;">
+                            <img id="modal-foto-img" src="" alt="Comprobante de pago" class="foto-pago-img">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="modal-tab-adicional" class="tab-content">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Datos Adicionales</h3>
+                    <div class="modal-grid grid-3">
+                        <div class="modal-item">
+                            <span class="modal-label">ODS</span>
+                            <span class="modal-value" id="modalODS">—</span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Customer ID</span>
+                            <span class="modal-value" id="modalCustomerID">—</span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">ATR</span>
+                            <span class="modal-value" id="modalATR">—</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información del Contrato</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item">
+                            <span class="modal-label">Creado por</span>
+                            <span class="modal-value" id="modalCreadoPor"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Fecha de creación</span>
+                            <span class="modal-value" id="modalFechaCreacion"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Última actualización</span>
+                            <span class="modal-value" id="modalFechaActualizacion"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModalDetalle()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 250px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .filter-select:hover {
+        border-color: var(--orange);
+    }
+
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+        border: none;
+        border-radius: 30px;
+        padding: 8px 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+    }
+
+    /* ===== PESTAÑAS ===== */
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--gray-text);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        color: var(--orange);
+        border-bottom-color: var(--orange);
+        background: white;
+    }
+
+    .tab-icon {
+        font-size: 18px;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* ===== TABLA ===== */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    /* ===== BADGES ===== */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge.proceso {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge.completado {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .badge.no-completado {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .vendedor-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border-radius: 20px;
+        font-size: 11px;
+        color: #555;
+    }
+
+    /* ===== USER AVATAR ===== */
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text);
+        font-size: 13px;
+    }
+
+    /* ===== ACTION BUTTONS ===== */
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        margin-right: 5px;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .email-cell {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text);
+        font-size: 14px;
+    }
+
+    /* ===== MODAL STYLES ===== */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-container {
+        position: relative;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        z-index: 2001;
+    }
+
+    .modal-container.modal-lg {
+        max-width: 1000px;
+    }
+
+    .modal-container.modal-sm {
+        max-width: 450px;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 24px 24px 0 0;
+    }
+
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 20px;
+    }
+
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .modal-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+        padding-bottom: 12px;
+    }
+
+    .modal-grid.grid-2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .modal-grid.grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .modal-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .modal-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+    }
+
+    .modal-value {
+        font-size: 14px;
+        color: var(--dark-text);
+        font-weight: 500;
+    }
+
+    .modal-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .modal-section:last-child {
+        border-bottom: none;
+    }
+
+    .modal-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 16px;
+    }
+
+    .foto-placeholder {
+        background: var(--gray-bg);
+        border: 2px dashed var(--gray-border);
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        color: var(--gray-text);
+    }
+
+    .foto-pago-img {
+        max-width: 100%;
+        max-height: 300px;
+        border-radius: 12px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 24px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 0 0 24px 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 14px;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .required {
+        color: #f44336;
+    }
+
+    .help-text {
+        display: block;
+        color: #999;
+        font-size: 11px;
+        margin-top: 4px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-box,
+        .filter-select,
+        .btn-primary {
+            width: 100%;
+        }
+
+        .tab-btn {
+            flex-direction: column;
+            font-size: 13px;
+            padding: 12px;
+        }
+
+        .tab-count {
+            margin-left: 0;
+        }
+
+        .table th, .table td {
+            padding: 10px;
+        }
+
+        .modal-grid.grid-2,
+        .modal-grid.grid-3 {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-tabs {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let contratoSeleccionado = null;
+
+    // Función para aplicar filtros
+    // Reemplaza la función aplicarFiltros y agrega esto:
+
+// Búsqueda en tiempo real
+document.getElementById('searchInput')?.addEventListener('keyup', function() {
+    const searchText = this.value.toLowerCase();
+    
+    // Filtrar tabla de pendientes
+    document.querySelectorAll('#tab-pendientes tbody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchText) ? '' : 'none';
+    });
+    
+    // Filtrar tabla de completados
+    document.querySelectorAll('#tab-completados tbody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchText) ? '' : 'none';
+    });
+});
+
+// Filtros por vendedor y estado (estos SÍ recargan la página)
+document.getElementById('filterVendedor')?.addEventListener('change', function() {
+    aplicarFiltrosConRecarga();
+});
+
+document.getElementById('filterEstado')?.addEventListener('change', function() {
+    aplicarFiltrosConRecarga();
+});
+
+function aplicarFiltrosConRecarga() {
+    const url = new URL(window.location.href);
+    const vendedor = document.getElementById('filterVendedor').value;
+    const estado = document.getElementById('filterEstado').value;
+    const busqueda = document.getElementById('searchInput').value;
+    
+    if (vendedor) url.searchParams.set('vendedor', vendedor);
+    else url.searchParams.delete('vendedor');
+    
+    if (estado) url.searchParams.set('estado', estado);
+    else url.searchParams.delete('estado');
+    
+    if (busqueda) url.searchParams.set('busqueda', busqueda);
+    else url.searchParams.delete('busqueda');
+    
+    window.location.href = url.toString();
+}
+    // Función para cambiar entre pestañas principales
+    function cambiarTab(tab) {
+        document.querySelectorAll('.tabs-header .tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`tab-${tab}-btn`).classList.add('active');
+        
+        document.querySelectorAll('.tabs-container > .tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-${tab}`).classList.add('active');
+    }
+
+    // Función para cambiar pestañas dentro del modal de detalle
+    function cambiarTabModal(tab) {
+        document.querySelectorAll('#contratoModal .modal-tabs .tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`modal-tab-${tab}-btn`).classList.add('active');
+        
+        document.querySelectorAll('#contratoModal .tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`modal-tab-${tab}`).classList.add('active');
+    }
+
+    // Función para abrir modal de completar contrato
+    function abrirModalCompletar(contratoId) {
+        contratoSeleccionado = contratoId;
+        document.getElementById('modal_contrato_id').value = contratoId;
+        document.getElementById('completarContratoModal').style.display = 'flex';
+    }
+
+    // Función para cerrar modal de completar
+    function cerrarModalCompletar() {
+        document.getElementById('completarContratoModal').style.display = 'none';
+        document.getElementById('customer_id').value = '';
+        document.getElementById('ods').value = '';
+    }
+
+    // Función para cerrar modal de detalle
+    function cerrarModalDetalle() {
+        document.getElementById('contratoModal').style.display = 'none';
+    }
+
+    // Función para ver detalle del contrato
+    function verContrato(id) {
+        const modal = document.getElementById('contratoModal');
+        
+        Swal.fire({
+            title: 'Cargando...',
+            text: 'Obteniendo información del contrato',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        fetch(`/datos-contrato/${id}/`)
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                
+                if (data.error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error,
+                        confirmButtonColor: '#ff6b00'
+                    });
+                    return;
+                }
+                
+                llenarModalDetalle(data);
+                modal.style.display = 'flex';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cargar la información',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
+    }
+
+    function llenarModalDetalle(data) {
+        // Avatar y datos básicos
+        document.getElementById('modalAvatar').textContent = 
+            (data.cliente.nombre[0] + data.cliente.apellido[0]).toUpperCase();
+        document.getElementById('modalNombreCompleto').textContent = 
+            `${data.cliente.nombre} ${data.cliente.apellido}`;
+        document.getElementById('modalCedula').textContent = `C.I: ${data.cliente.cedula}`;
+        
+        // Información personal
+        document.getElementById('modalNombre').textContent = 
+            `${data.cliente.nombre} ${data.cliente.apellido}`;
+        document.getElementById('modalCedulaValue').textContent = data.cliente.cedula;
+        document.getElementById('modalFechaNacimiento').textContent = data.fecha_nacimiento || '—';
+        document.getElementById('modalTelefonoPrincipal').textContent = data.cliente.telefono;
+        document.getElementById('modalOtroTelefono').textContent = data.otro_telefono || '—';
+        document.getElementById('modalCorreo').textContent = data.correo_electronico || '—';
+        
+        // Dirección
+        document.getElementById('modalDireccion').textContent = data.direccion_detallada || '—';
+        document.getElementById('modalTipoVivienda').textContent = data.tipo_vivienda || '—';
+        document.getElementById('modalNumeroCasa').textContent = data.numero_casa || '—';
+        document.getElementById('modalPuntoReferencia').textContent = data.punto_referencia || '—';
+        
+        // Plan y servicios
+        document.getElementById('modalPlan').textContent = data.plan?.nombre || '—';
+        document.getElementById('modalSimplePlus').textContent = data.simple_plus || '—';
+        document.getElementById('modalModalidad').textContent = data.modalidad_equipo || '—';
+        document.getElementById('modalRed').textContent = data.red || '—';
+        
+        // Estado
+        let estadoClass = 'badge proceso';
+        if (data.estado === 'Completado') estadoClass = 'badge completado';
+        if (data.estado === 'No Completado') estadoClass = 'badge no-completado';
+        document.getElementById('modalEstado').innerHTML = `<span class="${estadoClass}">${data.estado}</span>`;
+        
+        // Información de pago
+        document.getElementById('modalPagoMovil').textContent = data.numero_pago_movil || '—';
+        
+        // Foto de pago
+        const fotoPlaceholder = document.getElementById('modal-foto-placeholder');
+        const fotoContent = document.getElementById('modal-foto-content');
+        
+        if (data.foto_pago) {
+            fotoPlaceholder.style.display = 'none';
+            fotoContent.style.display = 'block';
+            document.getElementById('modal-foto-img').src = data.foto_pago;
+        } else {
+            fotoPlaceholder.style.display = 'block';
+            fotoContent.style.display = 'none';
+            fotoPlaceholder.innerHTML = '<p>No hay comprobante de pago</p>';
+        }
+        
+        // Datos adicionales
+        document.getElementById('modalODS').textContent = data.ods || '—';
+        document.getElementById('modalCustomerID').textContent = data.customer_id || '—';
+        document.getElementById('modalATR').textContent = data.atr || '—';
+        
+        // Información del contrato
+        document.getElementById('modalCreadoPor').textContent = data.creado_por || '—';
+        document.getElementById('modalFechaCreacion').textContent = data.fecha_creacion || '—';
+        document.getElementById('modalFechaActualizacion').textContent = data.fecha_actualizacion || '—';
+    }
+
+    // Manejar el envío del formulario para completar contrato
+    document.getElementById('completarContratoForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const contratoId = document.getElementById('modal_contrato_id').value;
+        
+        fetch(`/contrato/${contratoId}/completar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                customer_id: document.getElementById('customer_id').value,
+                ods: document.getElementById('ods').value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Contrato completado',
+                    text: 'Los datos se han guardado correctamente',
+                    timer: 2000,
+                    showConfirmButton: false
+                }).then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.error || 'No se pudo completar el contrato',
+                    confirmButtonColor: '#ff6b00'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al procesar la solicitud',
+                confirmButtonColor: '#ff6b00'
+            });
+        });
+    });
+
+    // Cerrar modales con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModalCompletar();
+            cerrarModalDetalle();
+        }
+    });
+
+    // Cerrar al hacer clic fuera
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function() {
+            cerrarModalCompletar();
+            cerrarModalDetalle();
+        });
+    });
+
+    // Búsqueda en tiempo real (opcional)
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            aplicarFiltros();
+        }
+    });
+</script>
+{% endblock %}

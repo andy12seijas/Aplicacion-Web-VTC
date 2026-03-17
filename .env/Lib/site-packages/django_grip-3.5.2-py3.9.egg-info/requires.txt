@@ -1,0 +1,5 @@
+Django>=1.9
+pubcontrol<4,>=3.0
+gripcontrol<5,>=4.0
+Werkzeug<4,>=1.0
+six<2,>=1.10

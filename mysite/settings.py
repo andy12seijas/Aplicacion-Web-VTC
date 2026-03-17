@@ -54,6 +54,13 @@ LOGIN_URL = 'login'  # nombre de tu URL de login
 LOGIN_REDIRECT_URL = 'dashboard'  # a dónde ir después del login
 LOGOUT_REDIRECT_URL = 'login'  # a dónde ir después del logout
 
+MEDIA_URL = '/pagos/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'pagos')
+
+# Asegúrate de que la carpeta existe
+print(f"📁 MEDIA_ROOT: {MEDIA_ROOT}")
+
+
 ROOT_URLCONF = 'mysite.urls'
 STATIC_URL = 'static/'
 
