@@ -280,43 +280,7 @@
                     </div>
 
                     <!-- Información de pago -->
-                    <div class="form-section full-width">
-                        <h3 class="section-title">Información de Pago</h3>
-                        
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label for="{{ form.numero_pago_movil.id_for_label }}">
-                                    {{ form.numero_pago_movil.label }} <span class="required">*</span>
-                                </label>
-                                {{ form.numero_pago_movil }}
-                                {% if form.numero_pago_movil.errors %}
-                                <div class="field-error">
-                                    {% for error in form.numero_pago_movil.errors %}
-                                    <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="{{ form.foto_pago.id_for_label }}">
-                                    {{ form.foto_pago.label }} <span class="required">*</span>
-                                </label>
-                                <div class="file-input-wrapper">
-                                    {{ form.foto_pago }}
-                                </div>
-                                {% if form.foto_pago.errors %}
-                                <div class="field-error">
-                                    {% for error in form.foto_pago.errors %}
-                                    <small>{{ error }}</small>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                                <small class="help-text">{{ form.foto_pago.help_text }}</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    
                 
                 <div class="form-actions">
                     <a href="{% url 'lista_contratos' %}" class="btn-outline">

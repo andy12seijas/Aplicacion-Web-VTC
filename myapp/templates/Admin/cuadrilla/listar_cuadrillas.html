@@ -1,0 +1,1604 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Cuadrillas{% endblock %}
+
+{% block page_title %}Cuadrillas de Instalación{% endblock %}
+{% block page_subtitle %}Gestión de cuadrillas y asignación de instaladores{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'crear_cuadrilla' %}" class="btn-orange">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nueva Cuadrilla
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estadísticas compactas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_cuadrillas|default:0 }}</span>
+        <span class="stat-label">Total</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ disponibles|default:0 }}</span>
+        <span class="stat-label">Disponibles</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ ocupadas|default:0 }}</span>
+        <span class="stat-label">Ocupadas</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ descanso|default:0 }}</span>
+        <span class="stat-label">En Descanso</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ activas|default:0 }}</span>
+        <span class="stat-label">Activas</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_instaladores|default:0 }}</span>
+        <span class="stat-label">Instaladores</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <!-- Búsqueda -->
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre, código o instalador..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <!-- Filtro por estado -->
+        <select id="filterEstado" class="filter-select">
+            <option value="">Todos los estados</option>
+            {% for key, value in estados %}
+            <option value="{{ key }}" {% if estado == key %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+        </select>
+        
+        <!-- Filtro por activo/inactivo -->
+        <select id="filterActivo" class="filter-select">
+            <option value="">Todas</option>
+            <option value="activas" {% if activo_filtro == 'activas' %}selected{% endif %}>Activas</option>
+            <option value="inactivas" {% if activo_filtro == 'inactivas' %}selected{% endif %}>Inactivas</option>
+        </select>
+        
+        <!-- FILTRO POR CREADOR (solo para administradores) -->
+        {% if es_admin %}
+        <select id="filterCreador" class="filter-select">
+            <option value="">Todos los creadores</option>
+            {% for creador in creadores %}
+            <option value="{{ creador.username }}" {% if creador_filtro == creador.username %}selected{% endif %}>
+                {{ creador.get_full_name|default:creador.username }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Vista Desktop: Tabla -->
+<div class="desktop-view">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Instaladores</th>
+                <th>Estado</th>
+                <th>Creado por</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cuadrilla in page_obj %}
+            <tr class="{% if not cuadrilla.activo %}inactivo{% endif %}">
+                <td class="codigo-cell">{{ cuadrilla.codigo }}</td>
+                <td>
+                    <div class="user-cell">
+                        <span class="user-avatar">{{ cuadrilla.nombre|first|upper }}</span>
+                        <div>
+                            <div class="user-name">{{ cuadrilla.nombre }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    {% if cuadrilla.instaladores.all %}
+                        <div class="instaladores-tags">
+                            {% for instalador in cuadrilla.instaladores.all %}
+                                <span class="instalador-tag" title="{{ instalador.usuario.get_full_name }} - {{ instalador.telefono }}">
+                                    {{ instalador.usuario.first_name|default:instalador.usuario.username }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <span class="badge badge-secondary">Sin instaladores</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge 
+                        {% if cuadrilla.estado == 'DISPONIBLE' %}badge-success
+                        {% elif cuadrilla.estado == 'OCUPADO' %}badge-danger
+                        {% elif cuadrilla.estado == 'DESCANSO' %}badge-warning
+                        {% else %}badge-secondary{% endif %}">
+                        {{ cuadrilla.get_estado_display }}
+                    </span>
+                </td>
+                <td>
+                    <span class="creador-badge">
+                        {{ cuadrilla.creado_por.get_full_name|default:cuadrilla.creado_por.username|default:"Sistema" }}
+                    </span>
+                </td>
+                <td class="fecha-cell">{{ cuadrilla.fecha_creacion|date:"d/m/Y" }}</td>
+                <td>
+                    <div class="actions">
+                        <button class="action-btn" onclick="verCuadrilla({{ cuadrilla.id }})" title="Ver detalles">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                            </svg>
+                        </button>
+                        <a href="{% url 'editar_cuadrilla' cuadrilla.id %}" class="action-btn" title="Editar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                            </svg>
+                        </a>
+                        {% if cuadrilla.activo %}
+                        <button class="action-btn" onclick="cambiarEstado({{ cuadrilla.id }}, '{{ cuadrilla.estado }}')" title="Cambiar estado">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 6v6l4 2"/>
+                            </svg>
+                        </button>
+                        <button class="action-btn" onclick="confirmarDesactivar({{ cuadrilla.id }}, '{{ cuadrilla.nombre }}')" title="Desactivar">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 6L6 18M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        {% else %}
+                        <form method="post" action="{% url 'activar_cuadrilla' cuadrilla.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="action-btn success" title="Activar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                </svg>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="empty">No hay cuadrillas registradas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- MODAL PARA DETALLE DE CUADRILLA -->
+<div id="cuadrillaModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModal()"></div>
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalNombre"></h2>
+                    <p id="modalCodigo"></p>
+                </div>
+            </div>
+            <div class="modal-estado">
+                <span class="modal-badge" id="modalEstadoBadge"></span>
+                <span class="modal-badge" id="modalActivaBadge"></span>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()" title="Cerrar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <!-- Información General -->
+            <div class="modal-section">
+                <h3 class="modal-section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="3" y1="9" x2="21" y2="9"/>
+                        <line x1="3" y1="15" x2="21" y2="15"/>
+                        <line x1="9" y1="21" x2="9" y2="9"/>
+                    </svg>
+                    Información General
+                </h3>
+                <div class="modal-grid grid-3">
+                    <div class="modal-item">
+                        <span class="modal-label">Código</span>
+                        <span class="modal-value" id="modalCodigoValue"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Nombre</span>
+                        <span class="modal-value" id="modalNombreValue"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Creado por</span>
+                        <span class="modal-value" id="modalCreadoPor"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Fecha creación</span>
+                        <span class="modal-value" id="modalFechaCreacion"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Última actualización</span>
+                        <span class="modal-value" id="modalFechaActualizacion"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Instaladores -->
+            <div class="modal-section">
+                <h3 class="modal-section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                    Instaladores <span class="modal-count" id="modalInstaladoresCount"></span>
+                </h3>
+                
+                <div id="modalInstaladoresContainer" class="instaladores-modal-grid">
+                    <!-- Se llena con JS -->
+                </div>
+                
+                <div id="modalSinInstaladores" style="display: none;" class="empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                    <p>Esta cuadrilla no tiene instaladores asignados</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModal()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Cerrar
+            </button>
+            <a href="#" id="modalEditarBtn" class="btn-primary">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+                Editar Cuadrilla
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Paginación -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+        </svg>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== VARIABLES Y ESTILOS BASE ===== */
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #fafafa;
+        --gray-border: #e0e0e0;
+        --gray-text: #666;
+        --dark-text: #333;
+    }
+
+    /* ===== STATS ===== */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--orange);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange);
+    }
+
+    .stat-label {
+        color: var(--gray-text);
+    }
+
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+    }
+
+    .search-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+        min-width: 0;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text);
+        outline: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .filter-select:hover,
+    .filter-select:focus {
+        border-color: var(--orange);
+    }
+
+    /* ===== TABLA DESKTOP ===== */
+    .desktop-view {
+        display: block;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: auto;
+        margin-bottom: 20px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+        white-space: nowrap;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    .table tr.inactivo {
+        opacity: 0.6;
+        background: #fafafa;
+    }
+
+    .codigo-cell,
+    .fecha-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 12px;
+    }
+
+    /* ===== BADGES ===== */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .badge-warning {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge-danger {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .badge-info {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .badge-secondary {
+        background: #f5f5f5;
+        color: #616161;
+    }
+
+    .creador-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border-radius: 20px;
+        font-size: 11px;
+        color: #555;
+    }
+
+    /* ===== INSTALADORES TAGS ===== */
+    .instaladores-tags {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .instalador-tag {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .instalador-tag.more {
+        background: #f5f5f5;
+        color: #666;
+    }
+
+    /* ===== USER AVATAR ===== */
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text);
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    /* ===== ACTION BUTTONS ===== */
+    .actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+        text-decoration: none;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .action-btn.success:hover {
+        border-color: #4caf50;
+        color: #4caf50;
+        background: #e8f5e9;
+    }
+
+    /* ===== MOBILE CARDS ===== */
+    .mobile-view {
+        display: none;
+    }
+
+    .cuadrilla-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+
+    .cuadrilla-card .card-header {
+        padding: 16px;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .card-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .card-avatar {
+        width: 44px;
+        height: 44px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .card-name {
+        font-weight: 600;
+        color: var(--dark-text);
+        font-size: 15px;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .card-meta-item {
+        font-size: 11px;
+        color: var(--gray-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .status-dot.active { background: #4caf50; }
+    .status-dot.warning { background: #ff9800; }
+    .status-dot.inactive { background: #f44336; }
+
+    .cuadrilla-card .card-body {
+        padding: 16px;
+    }
+
+    .card-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 13px;
+        flex-wrap: wrap;
+    }
+
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .card-label {
+        width: 80px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+    }
+
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+        flex: 1;
+    }
+
+    .cuadrilla-card .card-actions {
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        justify-content: flex-end;
+    }
+
+    .card-action-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .card-action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: white;
+    }
+
+    .card-action-btn.success:hover {
+        border-color: #4caf50;
+        color: #4caf50;
+        background: #e8f5e9;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: var(--gray-text);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .empty, .empty-mobile {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text);
+        font-size: 14px;
+    }
+
+    /* ===== MODAL STYLES ===== */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease;
+    }
+    
+    .modal-container {
+        position: relative;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        animation: slideUp 0.3s ease;
+        z-index: 2001;
+    }
+
+    .modal-container.modal-lg {
+        max-width: 900px;
+    }
+    
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 24px 24px 0 0;
+        flex-wrap: wrap;
+        gap: 15px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .modal-avatar {
+        width: 56px;
+        height: 56px;
+        background: var(--orange);
+        color: white;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+    
+    .modal-header-info h2 {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 4px;
+    }
+    
+    .modal-header-info p {
+        font-size: 14px;
+        color: var(--gray-text);
+    }
+
+    .modal-estado {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .modal-badge {
+        padding: 6px 16px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 600;
+        background: white;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .modal-close {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 12px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+        transform: rotate(90deg);
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .modal-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .modal-section:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .modal-section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 20px;
+    }
+
+    .modal-count {
+        background: var(--orange-light);
+        color: var(--orange);
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 13px;
+        margin-left: 10px;
+    }
+    
+    .modal-grid.grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+    
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .modal-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    
+    .modal-value {
+        font-size: 15px;
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+    
+    .instaladores-modal-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+    }
+
+    .instalador-modal-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px;
+        background: var(--gray-bg);
+        border-radius: 12px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.2s;
+    }
+
+    .instalador-modal-card:hover {
+        border-color: var(--orange);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .instalador-modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .instalador-modal-info {
+        flex: 1;
+    }
+
+    .instalador-modal-info h4 {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 6px;
+    }
+
+    .instalador-modal-info p {
+        font-size: 12px;
+        color: var(--gray-text);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .instalador-modal-info p svg {
+        width: 14px;
+        height: 14px;
+        stroke: #999;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-radius: 16px;
+        border: 2px dashed var(--gray-border);
+    }
+
+    .empty-state svg {
+        margin-bottom: 15px;
+        stroke: #ccc;
+    }
+    
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 24px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 0 0 24px 24px;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+    }
+
+    .btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: 2px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        color: var(--gray-text);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-outline:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        transform: translateY(-2px);
+    }
+
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: var(--orange);
+        color: white;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive para el modal */
+    @media (max-width: 768px) {
+        .modal-container {
+            width: 95%;
+            max-height: 95vh;
+        }
+
+        .modal-header {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .modal-header-info {
+            width: 100%;
+        }
+
+        .modal-estado {
+            width: 100%;
+        }
+
+        .modal-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+        }
+
+        .modal-header-info h2 {
+            font-size: 20px;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-grid.grid-3 {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .instaladores-modal-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-footer {
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .btn-outline, .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .modal-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+        }
+
+        .modal-header-info h2 {
+            font-size: 18px;
+        }
+
+        .instalador-modal-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .instalador-modal-info p {
+            justify-content: center;
+        }
+    }
+
+    /* ===== RESPONSIVE GENERAL ===== */
+    @media screen and (max-width: 1024px) {
+        .table {
+            font-size: 12px;
+        }
+        
+        .table th,
+        .table td {
+            padding: 12px;
+        }
+        
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+    }
+    
+    @media screen and (max-width: 768px) {
+        .desktop-view {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+        
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            justify-content: center;
+        }
+        
+        .stat-card {
+            flex: 1 1 auto;
+            min-width: calc(50% - 8px);
+            justify-content: center;
+        }
+        
+        .pagination {
+            gap: 4px;
+        }
+        
+        .page-link {
+            width: 34px;
+            height: 34px;
+        }
+    }
+    
+    @media screen and (max-width: 576px) {
+        .stats-grid {
+            gap: 6px;
+        }
+        
+        .stat-card {
+            min-width: 100%;
+            padding: 8px 12px;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+        }
+        
+        .card-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+        
+        .card-name {
+            font-size: 14px;
+        }
+        
+        .card-label {
+            width: 70px;
+            font-size: 12px;
+        }
+        
+        .card-value {
+            font-size: 12px;
+        }
+        
+        .pagination {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .page-info {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Variable para almacenar los datos de las cuadrillas
+    let cuadrillasData = {};
+
+    // Búsqueda en tiempo real
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        
+        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+        
+        document.querySelectorAll('.cuadrilla-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchText) ? 'block' : 'none';
+        });
+    });
+
+    // Filtros
+    document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('filterActivo')?.addEventListener('change', aplicarFiltros);
+    
+    {% if es_admin %}
+    document.getElementById('filterCreador')?.addEventListener('change', aplicarFiltros);
+    {% endif %}
+
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const estado = document.getElementById('filterEstado').value;
+        const activo = document.getElementById('filterActivo').value;
+        const busqueda = document.getElementById('searchInput').value;
+        
+        if (estado) url.searchParams.set('estado', estado);
+        else url.searchParams.delete('estado');
+        
+        if (activo) url.searchParams.set('activo', activo);
+        else url.searchParams.delete('activo');
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        {% if es_admin %}
+        const creador = document.getElementById('filterCreador').value;
+        if (creador) url.searchParams.set('creador', creador);
+        else url.searchParams.delete('creador');
+        {% endif %}
+        
+        window.location.href = url.toString();
+    }
+
+    // Función para ver detalle de la cuadrilla en modal
+    function verCuadrilla(id) {
+        console.log('Ver cuadrilla:', id);
+        
+        const modal = document.getElementById('cuadrillaModal');
+        if (!modal) {
+            console.error('Modal no encontrado');
+            return;
+        }
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Cargando...',
+            text: 'Obteniendo información de la cuadrilla',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Hacer petición a la API
+        fetch(`/cuadrillas/api/${id}/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                return response.json();
+            })
+            .then(data => {
+                Swal.close();
+                if (data.error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error,
+                        confirmButtonColor: '#ff6b00'
+                    });
+                } else {
+                    cuadrillasData[id] = data;
+                    mostrarModal(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cargar la información de la cuadrilla',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
+    }
+
+    function mostrarModal(cuadrilla) {
+        console.log('Mostrando modal con datos:', cuadrilla);
+        
+        // Actualizar avatar con la primera letra del nombre
+        document.getElementById('modalAvatar').textContent = cuadrilla.nombre.charAt(0).toUpperCase();
+        document.getElementById('modalNombre').textContent = cuadrilla.nombre;
+        document.getElementById('modalCodigo').textContent = `Código: ${cuadrilla.codigo}`;
+        
+        // Badges de estado
+        let estadoClass = '';
+        let estadoTexto = cuadrilla.estado_display;
+        
+        if (cuadrilla.estado === 'DISPONIBLE') {
+            estadoClass = 'badge-success';
+        } else if (cuadrilla.estado === 'OCUPADO') {
+            estadoClass = 'badge-danger';
+        } else if (cuadrilla.estado === 'DESCANSO') {
+            estadoClass = 'badge-warning';
+        } else {
+            estadoClass = 'badge-secondary';
+        }
+        
+        document.getElementById('modalEstadoBadge').innerHTML = `<span class="badge ${estadoClass}" style="font-size: 13px; padding: 6px 16px;">${estadoTexto}</span>`;
+        
+        let activaClass = cuadrilla.activo ? 'badge-success' : 'badge-secondary';
+        let activaText = cuadrilla.activo ? 'Activa' : 'Inactiva';
+        document.getElementById('modalActivaBadge').innerHTML = `<span class="badge ${activaClass}" style="font-size: 13px; padding: 6px 16px;">${activaText}</span>`;
+        
+        // Información general
+        document.getElementById('modalCodigoValue').textContent = cuadrilla.codigo;
+        document.getElementById('modalNombreValue').textContent = cuadrilla.nombre;
+        document.getElementById('modalCreadoPor').textContent = cuadrilla.creado_por || 'Sistema';
+        document.getElementById('modalFechaCreacion').textContent = cuadrilla.fecha_creacion;
+        document.getElementById('modalFechaActualizacion').textContent = cuadrilla.fecha_actualizacion || '—';
+        
+        // Instaladores
+        const instaladoresContainer = document.getElementById('modalInstaladoresContainer');
+        const sinInstaladoresDiv = document.getElementById('modalSinInstaladores');
+        const instaladoresCount = document.getElementById('modalInstaladoresCount');
+        
+        if (cuadrilla.instaladores && cuadrilla.instaladores.length > 0) {
+            instaladoresCount.textContent = `(${cuadrilla.instaladores.length})`;
+            instaladoresContainer.innerHTML = '';
+            
+            cuadrilla.instaladores.forEach(inst => {
+                const card = document.createElement('div');
+                card.className = 'instalador-modal-card';
+                
+                const iniciales = inst.nombre ? inst.nombre.charAt(0).toUpperCase() : 'I';
+                
+                card.innerHTML = `
+                    <div class="instalador-modal-avatar">${iniciales}</div>
+                    <div class="instalador-modal-info">
+                        <h4>${inst.nombre || 'Instalador'}</h4>
+                        ${inst.cedula ? `<p><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> ${inst.cedula}</p>` : ''}
+                        ${inst.telefono ? `<p><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18" stroke-width="3"/></svg> ${inst.telefono}</p>` : ''}
+                        ${inst.email ? `<p><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg> ${inst.email}</p>` : ''}
+                    </div>
+                `;
+                
+                instaladoresContainer.appendChild(card);
+            });
+            
+            instaladoresContainer.style.display = 'grid';
+            sinInstaladoresDiv.style.display = 'none';
+        } else {
+            instaladoresCount.textContent = '';
+            instaladoresContainer.style.display = 'none';
+            sinInstaladoresDiv.style.display = 'block';
+        }
+        
+        // Configurar botón de editar
+        document.getElementById('modalEditarBtn').href = `/cuadrillas/${cuadrilla.id}/editar/`;
+        
+        // Mostrar modal
+        document.getElementById('cuadrillaModal').style.display = 'flex';
+        
+        // Prevenir scroll del body
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModal() {
+        document.getElementById('cuadrillaModal').style.display = 'none';
+        
+        // Restaurar scroll del body
+        document.body.style.overflow = 'auto';
+    }
+
+    // Cerrar modal con tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModal();
+        }
+    });
+
+    // Cerrar modal haciendo clic fuera
+    document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
+
+    // Función para cambiar estado
+    function cambiarEstado(id, estadoActual) {
+        Swal.fire({
+            title: 'Cambiar estado',
+            input: 'select',
+            inputOptions: {
+                'DISPONIBLE': 'Disponible',
+                'OCUPADO': 'Ocupado',
+                'DESCANSO': 'En Descanso',
+                'INACTIVO': 'Inactivo'
+            },
+            inputValue: estadoActual,
+            showCancelButton: true,
+            confirmButtonText: 'Cambiar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#ff6b00'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/cuadrillas/${id}/cambiar-estado/`;
+                
+                const csrf = document.createElement('input');
+                csrf.name = 'csrfmiddlewaretoken';
+                csrf.value = '{{ csrf_token }}';
+                
+                const estado = document.createElement('input');
+                estado.name = 'estado';
+                estado.value = result.value;
+                
+                form.appendChild(csrf);
+                form.appendChild(estado);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    // Función para cambiar estado en móvil
+    function cambiarEstadoMobile(id, estadoActual) {
+        cambiarEstado(id, estadoActual);
+    }
+
+    // Función para confirmar desactivación
+    function confirmarDesactivar(id, nombre) {
+        Swal.fire({
+            title: '¿Desactivar cuadrilla?',
+            text: `¿Estás seguro de desactivar la cuadrilla "${nombre}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Sí, desactivar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `/cuadrillas/${id}/eliminar/`;
+            }
+        });
+    }
+
+    // Verificar que el modal existe al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('cuadrillaModal');
+        if (!modal) {
+            console.error('Error: No se encontró el modal en el DOM');
+        } else {
+            console.log('Modal encontrado correctamente');
+        }
+    });
+</script>
+{% endblock %}

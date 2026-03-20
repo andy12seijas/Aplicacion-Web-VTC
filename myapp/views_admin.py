@@ -320,7 +320,7 @@ def gestionar_contratos(request):
 # ============================================
 @login_required
 def completar_contrato(request, contrato_id):
-    """API para completar un contrato (agregar customer_id y ods)"""
+    """API para completar un contrato (agregar customer_id, ods, numero_pago_movil y foto_pago)"""
     
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
@@ -330,19 +330,353 @@ def completar_contrato(request, contrato_id):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     
     try:
-        data = json.loads(request.body)
-        customer_id = data.get('customer_id')
-        ods = data.get('ods')
+        contrato = get_object_or_404(ContratoCliente, id=contrato_id)
+        
+        # Obtener datos del formulario
+        customer_id = request.POST.get('customer_id')
+        ods = request.POST.get('ods')
+        numero_pago_movil = request.POST.get('numero_pago_movil')
+        foto_pago = request.FILES.get('foto_pago')
         
         if not customer_id or not ods:
             return JsonResponse({'error': 'Customer ID y ODS son requeridos'}, status=400)
         
-        contrato = get_object_or_404(ContratoCliente, id=contrato_id)
+        if not numero_pago_movil:
+            return JsonResponse({'error': 'Número de pago móvil es requerido'}, status=400)
+        
+        if not foto_pago:
+            return JsonResponse({'error': 'Comprobante de pago es requerido'}, status=400)
+        
+        # Validar que sea una imagen
+        if not foto_pago.content_type.startswith('image/'):
+            return JsonResponse({'error': 'El archivo debe ser una imagen'}, status=400)
+        
+        # Actualizar el contrato
         contrato.customer_id = customer_id
         contrato.ods = ods
+        contrato.numero_pago_movil = numero_pago_movil
+        contrato.foto_pago = foto_pago
         contrato.save()
         
         return JsonResponse({'success': True})
         
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+    
+    
+@login_required
+def editar_contrato(request, contrato_id):
+    """Vista para editar un contrato existente (solo administradores)"""
+    
+    # Verificar permisos (solo admin)
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
+        messages.error(request, '⛔ Acceso denegado. Solo administradores.')
+        return redirect('gestionar_contratos')
+    
+    contrato = get_object_or_404(
+        ContratoCliente.objects.select_related('cliente_potencial'),
+        id=contrato_id
+    )
+    
+    if request.method == 'POST':
+        form = ContratoClienteForm(request.POST, request.FILES, instance=contrato)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '✅ Contrato actualizado exitosamente.')
+            return redirect('gestionar_contratos')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'Error en {field}: {error}')
+    else:
+        form = ContratoClienteForm(instance=contrato)
+    
+    # Verificar que el campo exista antes de modificarlo
+    if 'correo_electronico' in form.fields:
+        form.fields['correo_electronico'].disabled = True
+        form.fields['correo_electronico'].help_text = "El correo no se puede modificar"
+    
+    # El campo foto_pago ya está incluido en el formulario
+    if 'foto_pago' in form.fields:
+        form.fields['foto_pago'].required = False
+        form.fields['foto_pago'].help_text = "Selecciona una nueva imagen para reemplazar la actual (opcional)"
+    
+    # Obtener datos para los selects
+    planes = Plan.objects.filter(activo=True)
+    modalidades = ModalidadEquipo.objects.filter(activo=True)
+    viviendas = TipoVivienda.objects.filter(activo=True)
+    redes = Red.objects.filter(activo=True)
+    
+    context = {
+        'form': form,
+        'contrato': contrato,
+        'planes': planes,
+        'modalidades': modalidades,
+        'viviendas': viviendas,
+        'redes': redes,
+        'titulo': 'Editar Contrato',
+        'subtitulo': f'Modificando contrato de {contrato.cliente_potencial.nombre_completo}',
+    }
+    
+    return render(request, 'Admin/editar_contrato.html', context)
+
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.paginator import Paginator
+from django.db.models import Q, Count
+from django.utils import timezone
+from .models import Cuadrilla, PerfilUsuario
+
+# ============================================
+# VISTA PARA LISTAR CUADRILLAS
+# ============================================
+@login_required
+def lista_cuadrillas(request):
+    """Vista para listar todas las cuadrillas"""
+    
+    # Obtener parámetros de filtro
+    busqueda = request.GET.get('busqueda', '')
+    estado = request.GET.get('estado', '')
+    activo_filtro = request.GET.get('activo', '')
+    creador_filtro = request.GET.get('creador', '')
+    
+    # Query base con prefetch_related para cargar instaladores y sus usuarios
+    cuadrillas = Cuadrilla.objects.all().select_related(
+        'creado_por'
+    ).prefetch_related(
+        'instaladores__usuario'  # Esto carga los instaladores y sus usuarios
+    )
+    
+    print(f"DEBUG - Total cuadrillas: {cuadrillas.count()}")
+    
+    # Mostrar instaladores de cada cuadrilla para debug
+    for c in cuadrillas:
+        print(f"Cuadrilla {c.nombre}: {c.instaladores.count()} instaladores")
+        for i in c.instaladores.all():
+            print(f"  - {i.usuario.get_full_name()}")
+    
+    # Aplicar filtros si existen
+    if busqueda:
+        cuadrillas = cuadrillas.filter(
+            Q(nombre__icontains=busqueda) |
+            Q(codigo__icontains=busqueda) |
+            Q(instaladores__usuario__first_name__icontains=busqueda) |
+            Q(instaladores__usuario__last_name__icontains=busqueda)
+        ).distinct()
+    
+    if estado:
+        cuadrillas = cuadrillas.filter(estado=estado)
+    
+    if activo_filtro == 'activas':
+        cuadrillas = cuadrillas.filter(activo=True)
+    elif activo_filtro == 'inactivas':
+        cuadrillas = cuadrillas.filter(activo=False)
+    
+    if creador_filtro:
+        cuadrillas = cuadrillas.filter(creado_por__username=creador_filtro)
+    
+    # Calcular estadísticas
+    total_cuadrillas = Cuadrilla.objects.all().count()
+    disponibles = Cuadrilla.objects.filter(estado='DISPONIBLE', activo=True).count()
+    ocupadas = Cuadrilla.objects.filter(estado='OCUPADO', activo=True).count()
+    descanso = Cuadrilla.objects.filter(estado='DESCANSO', activo=True).count()
+    activas = Cuadrilla.objects.filter(activo=True).count()
+    total_instaladores = PerfilUsuario.objects.filter().count()
+    
+    # Obtener lista de creadores para el filtro
+    creadores = User.objects.filter(cuadrillas_creadas__isnull=False).distinct()
+    
+    # Paginación
+    paginator = Paginator(cuadrillas, 10)
+    page = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page)
+    
+    # Verificar si es admin
+    es_admin = request.user.is_superuser or (hasattr(request.user, 'perfil') and request.user.perfil.rol == 'ADMIN')
+    
+    context = {
+        'page_obj': page_obj,
+        'total_cuadrillas': total_cuadrillas,
+        'disponibles': disponibles,
+        'ocupadas': ocupadas,
+        'descanso': descanso,
+        'activas': activas,
+        'total_instaladores': total_instaladores,
+        'estados': Cuadrilla.EstadoCuadrilla.choices,
+        'es_admin': es_admin,
+        'creadores': creadores,
+        'busqueda': busqueda,
+        'estado': estado,
+        'activo_filtro': activo_filtro,
+        'creador_filtro': creador_filtro,
+    }
+    return render(request, 'Admin/cuadrilla/listar_cuadrillas.html', context)
+
+def es_admin(user):
+    """Función helper para verificar si es administrador"""
+    return user.is_superuser or (hasattr(user, 'perfil') and user.perfil.rol == 'ADMIN')
+
+@login_required
+def crear_cuadrilla(request):
+    """Vista para crear una nueva cuadrilla"""
+    # Verificar permisos
+    if not es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta página.')
+        return redirect('lista_cuadrillas')
+    
+    # Verificar que el grupo Instalador existe
+    try:
+        grupo_instalador = Group.objects.get(name='Instalador')
+    except Group.DoesNotExist:
+        # Crear el grupo si no existe
+        grupo_instalador = Group.objects.create(name='Instalador')
+        messages.info(request, 'Se creó automáticamente el grupo "Instalador".')
+    
+    if request.method == 'POST':
+        form = CuadrillaForm(request.POST)
+        if form.is_valid():
+            cuadrilla = form.save(commit=False)
+            cuadrilla.creado_por = request.user
+            cuadrilla.save()
+            form.save_m2m()  # Guardar relaciones ManyToMany
+            
+            messages.success(request, f'✅ Cuadrilla "{cuadrilla.nombre}" creada exitosamente.')
+            return redirect('lista_cuadrillas')
+        else:
+            messages.error(request, '❌ Por favor corrige los errores en el formulario.')
+    else:
+        form = CuadrillaForm()
+    
+    # Obtener instaladores disponibles (los que están en el grupo Instalador)
+    instaladores_disponibles = PerfilUsuario.objects.filter(
+        usuario__groups=grupo_instalador,
+        usuario__is_active=True
+    ).select_related('usuario').order_by('usuario__first_name')
+    
+    context = {
+        'form': form,
+        'instaladores': instaladores_disponibles,
+        'accion': 'Crear',
+        'total_instaladores': instaladores_disponibles.count()
+    }
+    return render(request, 'Admin/cuadrilla/crear_cuadrilla.html', context)
+
+
+
+def es_admin(user):
+    """Función helper para verificar si es administrador"""
+    return user.is_superuser or (hasattr(user, 'perfil') and user.perfil.rol == 'ADMIN')
+
+@login_required
+def editar_cuadrilla(request, pk):
+    """Vista para editar una cuadrilla existente"""
+    # Verificar permisos
+    if not es_admin(request.user):
+        messages.error(request, 'No tienes permisos para acceder a esta página.')
+        return redirect('lista_cuadrillas')
+    
+    # Obtener la cuadrilla a editar
+    cuadrilla = get_object_or_404(Cuadrilla, pk=pk)
+    
+    # Procesar el formulario
+    if request.method == 'POST':
+        form = CuadrillaForm(request.POST, instance=cuadrilla)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'✅ Cuadrilla "{cuadrilla.nombre}" actualizada exitosamente.')
+            return redirect('lista_cuadrillas')
+        else:
+            messages.error(request, '❌ Por favor corrige los errores en el formulario.')
+    else:
+        form = CuadrillaForm(instance=cuadrilla)
+    
+    context = {
+        'form': form,
+        'cuadrilla': cuadrilla,
+        'accion': 'Editar',
+    }
+    return render(request, 'Admin/cuadrilla/editar_cuadrilla.html', context)
+
+@login_required
+def api_detalle_cuadrilla(request, pk):
+    """API para obtener detalles de una cuadrilla en formato JSON"""
+    try:
+        cuadrilla = Cuadrilla.objects.prefetch_related(
+            'instaladores__usuario'
+        ).get(pk=pk)
+        
+        data = {
+            'id': cuadrilla.id,
+            'nombre': cuadrilla.nombre,
+            'codigo': cuadrilla.codigo,
+            'estado': cuadrilla.estado,
+            'estado_display': cuadrilla.get_estado_display(),
+            'activo': cuadrilla.activo,
+            'fecha_creacion': cuadrilla.fecha_creacion.strftime('%d/%m/%Y'),
+            'fecha_actualizacion': cuadrilla.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') if cuadrilla.fecha_actualizacion else None,
+            'creado_por': cuadrilla.creado_por.get_full_name() if cuadrilla.creado_por else 'Sistema',
+            'instaladores': [
+                {
+                    'id': inst.id,
+                    'nombre': inst.usuario.get_full_name() or inst.usuario.username,
+                    'cedula': inst.cedula,
+                    'telefono': inst.telefono,
+                    'email': inst.usuario.email
+                }
+                for inst in cuadrilla.instaladores.all()
+            ]
+        }
+        return JsonResponse(data)
+    except Cuadrilla.DoesNotExist:
+        return JsonResponse({'error': 'Cuadrilla no encontrada'}, status=404)
+    
+    
+@login_required
+def cambiar_estado_cuadrilla(request, pk):
+    """Vista para cambiar el estado de una cuadrilla"""
+    if request.method == 'POST':
+        cuadrilla = get_object_or_404(Cuadrilla, pk=pk)
+        nuevo_estado = request.POST.get('estado')
+        
+        # Verificar que el estado sea válido
+        estados_validos = [estado[0] for estado in Cuadrilla.EstadoCuadrilla.choices]
+        
+        if nuevo_estado in estados_validos:
+            cuadrilla.estado = nuevo_estado
+            cuadrilla.save()
+            messages.success(request, f'✅ Estado de "{cuadrilla.nombre}" actualizado a {cuadrilla.get_estado_display()}')
+        else:
+            messages.error(request, '❌ Estado no válido')
+    
+    return redirect('lista_cuadrillas')
+
+
+@login_required
+def eliminar_cuadrilla(request, pk):
+    """Vista para desactivar (soft delete) una cuadrilla"""
+    if request.method == 'POST':
+        cuadrilla = get_object_or_404(Cuadrilla, pk=pk)
+        
+        # Verificar si tiene asignaciones pendientes (opcional)
+        # from .models import AsignacionInstalacion
+        # asignaciones_pendientes = AsignacionInstalacion.objects.filter(
+        #     cuadrilla=cuadrilla,
+        #     estado__in=['PENDIENTE', 'ASIGNADO', 'EN_CAMINO', 'EN_PROGRESO']
+        # ).exists()
+        
+        # if asignaciones_pendientes:
+        #     messages.error(request, f'❌ No se puede desactivar "{cuadrilla.nombre}" porque tiene asignaciones pendientes.')
+        # else:
+        # Soft delete - desactivar en lugar de eliminar
+        cuadrilla.activo = False
+        cuadrilla.estado = Cuadrilla.EstadoCuadrilla.INACTIVO
+        cuadrilla.save()
+        messages.success(request, f'✅ Cuadrilla "{cuadrilla.nombre}" desactivada exitosamente.')
+        
+        return redirect('lista_cuadrillas')
+    
+    # Si alguien intenta acceder por GET, redirigir
+    return redirect('lista_cuadrillas')    

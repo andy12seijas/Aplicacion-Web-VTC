@@ -1,0 +1,567 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Realizar Instalación{% endblock %}
+
+{% block page_title %}Realizar Instalación{% endblock %}
+{% block page_subtitle %}Complete los datos de la instalación{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'instalaciones_pendientes' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver a Mis Instalaciones
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-header">
+            <div class="form-header-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <div class="form-header-text">
+                <h2>Orden de Instalación #{{ instalacion.orden_servicio }}</h2>
+                <p>Complete todos los campos para finalizar la instalación</p>
+            </div>
+        </div>
+
+        <!-- Datos del contrato (solo lectura) -->
+        <div class="cliente-info-card">
+            <div class="cliente-info-header">
+                <h4>Datos del Contrato</h4>
+                <span class="badge-verificado">✓ No editable</span>
+            </div>
+            <div class="cliente-info-grid">
+                <div class="info-item">
+                    <span class="info-label">ATR VTC #</span>
+                    <span class="info-value">{{ instalacion.asignacion.contrato.atr|default:"03" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">NOMBRE DEL CLIENTE</span>
+                    <span class="info-value">{{ instalacion.nombre_cliente }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CÉDULA</span>
+                    <span class="info-value">{{ instalacion.cedula_cliente }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ORDEN DE SERVICIO</span>
+                    <span class="info-value">{{ instalacion.orden_servicio }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CUSTOMER</span>
+                    <span class="info-value">{{ instalacion.customer_id }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">PLAN</span>
+                    <span class="info-value">{{ instalacion.plan }}</span>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" class="edit-form" id="realizarInstalacionForm">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {% for error in form.non_field_errors %}
+                <p>❌ {{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Datos de Ubicación -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Ubicación
+                </h3>
+                
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.feeder.id_for_label }}">{{ form.feeder.label }}</label>
+                        {{ form.feeder }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.caja.id_for_label }}">{{ form.caja.label }}</label>
+                        {{ form.caja }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.puerto_utilizado.id_for_label }}">{{ form.puerto_utilizado.label }}</label>
+                        {{ form.puerto_utilizado }}
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.ubicacion_lat.id_for_label }}">{{ form.ubicacion_lat.label }}</label>
+                        {{ form.ubicacion_lat }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.ubicacion_lng.id_for_label }}">{{ form.ubicacion_lng.label }}</label>
+                        {{ form.ubicacion_lng }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos del Equipo -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    EQUIPOS
+                </h3>
+                
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.modelo_modem.id_for_label }}">{{ form.modelo_modem.label }}</label>
+                        {{ form.modelo_modem }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.sn_modem.id_for_label }}">{{ form.sn_modem.label }}</label>
+                        {{ form.sn_modem }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.mac_modem.id_for_label }}">{{ form.mac_modem.label }}</label>
+                        {{ form.mac_modem }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materiales -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="14" r="3"/>
+                    </svg>
+                    MATERIALES
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.inicio_fibra.id_for_label }}">{{ form.inicio_fibra.label }}</label>
+                        {{ form.inicio_fibra }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.final_fibra.id_for_label }}">{{ form.final_fibra.label }}</label>
+                        {{ form.final_fibra }}
+                    </div>
+                </div>
+                
+                <div class="grid-4">
+                    <div class="form-group">
+                        <label for="{{ form.conectores.id_for_label }}">{{ form.conectores.label }}</label>
+                        {{ form.conectores }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.rosetas.id_for_label }}">{{ form.rosetas.label }}</label>
+                        {{ form.rosetas }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.patch_cord.id_for_label }}">{{ form.patch_cord.label }}</label>
+                        {{ form.patch_cord }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.tensores.id_for_label }}">{{ form.tensores.label }}</label>
+                        {{ form.tensores }}
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.conectores_malos.id_for_label }}">{{ form.conectores_malos.label }}</label>
+                        {{ form.conectores_malos }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                    OBSERVACIÓN
+                </h3>
+                
+                <div class="form-group">
+                    {{ form.observacion }}
+                </div>
+            </div>
+
+            <!-- Resumen de materiales -->
+            <div class="form-section resumen-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Resumen de Materiales
+                </h3>
+                
+                <div class="resumen-card" id="resumen-materiales">
+                    <div class="resumen-item">
+                        <span class="resumen-label">METROS</span>
+                        <span class="resumen-value" id="resumen-metros">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">CONECTORES</span>
+                        <span class="resumen-value" id="resumen-conectores">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">ROSETAS</span>
+                        <span class="resumen-value" id="resumen-rosetas">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">PACH CORD</span>
+                        <span class="resumen-value" id="resumen-patch">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">TENSORES</span>
+                        <span class="resumen-value" id="resumen-tensores">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'instalaciones_pendientes' %}" class="btn-outline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary" id="btn-submit">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    Completar Instalación
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Estilos del formulario */
+    .form-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 24px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        overflow: hidden;
+        padding: 30px;
+    }
+    
+    .form-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .form-header-icon {
+        width: 64px;
+        height: 64px;
+        background: #fff2e6;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .form-header-text h2 {
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .form-header-text p {
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .cliente-info-card {
+        background: #fff2e6;
+        border: 1px solid #ff6b00;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .cliente-info-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .cliente-info-header h4 {
+        color: #333;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    
+    .badge-verificado {
+        background: #4caf50;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .cliente-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    
+    .info-item {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ffe0cc;
+    }
+    
+    .info-label {
+        display: block;
+        font-size: 11px;
+        color: #999;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+    
+    .info-value {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+    
+    .form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 16px;
+        border: 1px solid #f0f0f0;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+    }
+    
+    .grid-2, .grid-3, .grid-4 {
+        display: grid;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+    }
+    
+    .form-input, .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: #ff6b00;
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+    }
+    
+    .resumen-section {
+        background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
+        border: 1px solid #ff6b00;
+    }
+    
+    .resumen-card {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+        padding: 15px;
+        background: white;
+        border-radius: 12px;
+    }
+    
+    .resumen-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }
+    
+    .resumen-label {
+        font-size: 11px;
+        color: #999;
+        text-transform: uppercase;
+    }
+    
+    .resumen-value {
+        font-size: 20px;
+        font-weight: 600;
+        color: #ff6b00;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .btn-primary, .btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 30px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+        min-width: 180px;
+        justify-content: center;
+    }
+    
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+    }
+    
+    .btn-outline {
+        background: white;
+        color: #666;
+        border: 2px solid #e0e0e0;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .cliente-info-grid,
+        .grid-2, .grid-3, .grid-4 {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+        
+        .btn-primary, .btn-outline {
+            width: 100%;
+        }
+        
+        .form-header {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+</style>
+
+<script>
+    // Actualizar resumen de materiales en tiempo real
+    document.addEventListener('DOMContentLoaded', function() {
+        const inicioFibra = document.getElementById('{{ form.inicio_fibra.id_for_label }}');
+        const finalFibra = document.getElementById('{{ form.final_fibra.id_for_label }}');
+        const conectores = document.getElementById('{{ form.conectores.id_for_label }}');
+        const rosetas = document.getElementById('{{ form.rosetas.id_for_label }}');
+        const patchCord = document.getElementById('{{ form.patch_cord.id_for_label }}');
+        const tensores = document.getElementById('{{ form.tensores.id_for_label }}');
+        
+        function actualizarResumen() {
+            // Calcular metros
+            if (inicioFibra && finalFibra) {
+                const inicio = parseInt(inicioFibra.value) || 0;
+                const final = parseInt(finalFibra.value) || 0;
+                const metros = Math.abs(final - inicio);
+                document.getElementById('resumen-metros').textContent = metros;
+            }
+            
+            // Actualizar otros valores
+            if (conectores) document.getElementById('resumen-conectores').textContent = conectores.value || 0;
+            if (rosetas) document.getElementById('resumen-rosetas').textContent = rosetas.value || 0;
+            if (patchCord) document.getElementById('resumen-patch').textContent = patchCord.value || 0;
+            if (tensores) document.getElementById('resumen-tensores').textContent = tensores.value || 0;
+        }
+        
+        // Agregar event listeners
+        if (inicioFibra) inicioFibra.addEventListener('input', actualizarResumen);
+        if (finalFibra) finalFibra.addEventListener('input', actualizarResumen);
+        if (conectores) conectores.addEventListener('input', actualizarResumen);
+        if (rosetas) rosetas.addEventListener('input', actualizarResumen);
+        if (patchCord) patchCord.addEventListener('input', actualizarResumen);
+        if (tensores) tensores.addEventListener('input', actualizarResumen);
+        
+        // Actualizar al cargar
+        actualizarResumen();
+    });
+</script>
+{% endblock %}

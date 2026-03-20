@@ -1,7 +1,9 @@
 from django.urls import path
 from myapp.views_login import * 
 from myapp.views_admin import *
+from myapp.views_asignacion import *
 from myapp.views_vendedores import *
+from myapp.views_instaladores import *
 from . import views_vendedores
 from django.contrib.auth.decorators import user_passes_test
 
@@ -22,6 +24,16 @@ urlpatterns = [
     path('panel-admin/', panel_administrativo, name='panel_administrativo'),
     path('administrador/contratos/', gestionar_contratos, name='gestionar_contratos'),
     path('contrato/<int:contrato_id>/completar/', completar_contrato, name='completar_contrato'),
+    path('contrato/<int:contrato_id>/editar/', editar_contrato, name='editar_contrato'),
+    path('listar/cuadrilla/',lista_cuadrillas, name='lista_cuadrillas'),
+    path('crear/cuadrilla/',crear_cuadrilla, name='crear_cuadrilla'),
+    path('<int:pk>/editar/', editar_cuadrilla, name='editar_cuadrilla'),
+    path('cuadrillas/api/<int:pk>/',api_detalle_cuadrilla, name='api_detalle_cuadrilla'),
+    path('cuadrillas/<int:pk>/cambiar-estado/', cambiar_estado_cuadrilla, name='cambiar_estado_cuadrilla'),
+    path('cuadrillas/<int:pk>/eliminar/',eliminar_cuadrilla, name='eliminar_cuadrilla'),
+    path('asignaciones/', lista_asignaciones, name='lista_asignaciones'),
+    path('asignaciones/asignar/<int:contrato_id>/', asignar_contrato, name='asignar_contrato'),
+    path('asignaciones/desasignar/<int:asignacion_id>/', desasignar_contrato, name='desasignar_contrato'),
     #URLS DE VENDEDORES
     path('lista_clientes/', lista_clientes, name='lista_clientes'),
     path('crear_cliente/', crear_cliente, name='crear_cliente'),
@@ -33,6 +45,9 @@ urlpatterns = [
     path('lista_contratos/', lista_contratos, name='lista_contratos'),
     path('datos-contrato/<int:contrato_id>/', datos_contrato, name='datos_contrato'),
     path('contrato/crear/error/', crear_contrato_error, name='crear_contrato_error'),
+    #URLS DE INSTALADORES
+     path('instalaciones/', instalaciones_pendientes, name='instalaciones_pendientes'),
+    path('instalaciones/<int:instalacion_id>/realizar/', realizar_instalacion, name='realizar_instalacion'),
 ]
 
 

@@ -1,0 +1,507 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Mis Instalaciones{% endblock %}
+
+{% block page_title %}Mis Instalaciones{% endblock %}
+{% block page_subtitle %}Gestiona las instalaciones asignadas a tu cuadrilla{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'dashboard' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_pendientes }}</span>
+        <span class="stat-label">Pendientes</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_completadas }}</span>
+        <span class="stat-label">Completadas</span>
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
+            <span class="tab-icon">⏳</span>
+            Instalaciones Pendientes
+            <span class="tab-count">{{ total_pendientes }}</span>
+        </button>
+        <button class="tab-btn" onclick="cambiarTab('completadas')" id="tab-completadas-btn">
+            <span class="tab-icon">✅</span>
+            Instalaciones Completadas
+            <span class="tab-count">{{ total_completadas }}</span>
+        </button>
+    </div>
+
+    <!-- TAB: Instalaciones Pendientes -->
+    <div id="tab-pendientes" class="tab-content active">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Customer ID</th>
+                        <th>Plan</th>
+                        <th>Fecha Asignación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instalacion in instalaciones_pendientes %}
+                    <tr>
+                        
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ instalacion.cedula_cliente }}</td>
+                        <td><span class="badge completado">{{ instalacion.customer_id }}</span></td>
+                        <td>{{ instalacion.plan }}</td>
+                        <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</td>
+                        <td>
+                            <a href="{% url 'realizar_instalacion' instalacion.id %}" class="action-btn" title="Realizar instalación">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty">No tienes instalaciones pendientes</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación pendientes -->
+        {% if instalaciones_pendientes.has_other_pages %}
+        <div class="pagination">
+            {% if instalaciones_pendientes.has_previous %}
+            <a href="?page_pendientes=1" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page_pendientes={{ instalaciones_pendientes.previous_page_number }}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">{{ instalaciones_pendientes.number }}/{{ instalaciones_pendientes.paginator.num_pages }}</span>
+            
+            {% if instalaciones_pendientes.has_next %}
+            <a href="?page_pendientes={{ instalaciones_pendientes.next_page_number }}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page_pendientes={{ instalaciones_pendientes.paginator.num_pages }}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB: Instalaciones Completadas -->
+    <div id="tab-completadas" class="tab-content">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Orden de Servicio</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Customer ID</th>
+                        <th>Plan</th>
+                        <th>Fecha Instalación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instalacion in instalaciones_completadas %}
+                    <tr>
+                        <td><span class="badge" style="background: #4caf50; color: white;">{{ instalacion.orden_servicio }}</span></td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ instalacion.cedula_cliente }}</td>
+                        <td><span class="badge completado">{{ instalacion.customer_id }}</span></td>
+                        <td>{{ instalacion.plan }}</td>
+                        <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</td>
+                        <td>
+                            <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="empty">No tienes instalaciones completadas</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación completadas -->
+        {% if instalaciones_completadas.has_other_pages %}
+        <div class="pagination">
+            {% if instalaciones_completadas.has_previous %}
+            <a href="?page_completadas=1" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page_completadas={{ instalaciones_completadas.previous_page_number }}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">{{ instalaciones_completadas.number }}/{{ instalaciones_completadas.paginator.num_pages }}</span>
+            
+            {% if instalaciones_completadas.has_next %}
+            <a href="?page_completadas={{ instalaciones_completadas.next_page_number }}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page_completadas={{ instalaciones_completadas.paginator.num_pages }}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== ESTADÍSTICAS ===== */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--orange, #ff6b00);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange, #ff6b00);
+    }
+
+    .stat-label {
+        color: var(--gray-text, #666);
+    }
+
+    /* ===== PESTAÑAS ===== */
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        background: var(--gray-bg, #f8f9fa);
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--gray-text, #666);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange, #ff6b00);
+        background: var(--orange-light, #fff2e6);
+    }
+
+    .tab-btn.active {
+        color: var(--orange, #ff6b00);
+        border-bottom-color: var(--orange, #ff6b00);
+        background: white;
+    }
+
+    .tab-icon {
+        font-size: 18px;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange, #ff6b00);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* ===== TABLA ===== */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: var(--gray-text, #666);
+        background: var(--gray-bg, #f8f9fa);
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        color: var(--dark-text, #333);
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg, #f8f9fa);
+    }
+
+    /* ===== BADGES ===== */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge.completado {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    /* ===== USER AVATAR ===== */
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange, #ff6b00);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text, #333);
+        font-size: 13px;
+    }
+
+    /* ===== ACTION BUTTONS ===== */
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        background: white;
+        border-radius: 8px;
+        color: var(--gray-text, #666);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        margin-right: 5px;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange, #ff6b00);
+        color: var(--orange, #ff6b00);
+        background: var(--orange-light, #fff2e6);
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text, #666);
+        font-size: 14px;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 8px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange, #ff6b00);
+        color: var(--orange, #ff6b00);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: #666;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .tab-btn {
+            flex-direction: column;
+            font-size: 13px;
+            padding: 12px;
+        }
+
+        .tab-count {
+            margin-left: 0;
+        }
+
+        .table th, .table td {
+            padding: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Función para cambiar entre pestañas
+    function cambiarTab(tab) {
+        document.querySelectorAll('.tabs-header .tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`tab-${tab}-btn`).classList.add('active');
+        
+        document.querySelectorAll('.tabs-container > .tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-${tab}`).classList.add('active');
+    }
+
+    // Función para ver detalle de instalación (para completadas)
+    function verDetalleInstalacion(id) {
+        Swal.fire({
+            title: 'Ver instalación',
+            text: 'Funcionalidad en desarrollo',
+            icon: 'info',
+            confirmButtonColor: '#ff6b00'
+        });
+    }
+</script>
+{% endblock %}

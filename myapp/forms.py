@@ -327,13 +327,16 @@ class ClientePotencialForm(forms.ModelForm):
 
 
 class ContratoClienteForm(forms.ModelForm):
-    """Formulario para crear contratos de clientes"""
+    """Formulario para crear contratos de clientes - SIN CAMPOS DE PAGO"""
     
     class Meta:
         model = ContratoCliente
-        # Excluir campos que son solo para admin
-        exclude = ['ods', 'customer_id', 'atr', 'estado', 'cliente_potencial', 
-                  'cedula', 'nombre', 'apellido', 'telefono_principal', 'creado_por']
+        # Excluir campos de pago y otros que no queremos
+        exclude = [
+            'ods', 'customer_id', 'atr', 'estado', 'cliente_potencial',
+            'cedula', 'nombre', 'apellido', 'telefono_principal', 'creado_por',
+             # 👈 ELIMINAMOS ESTOS CAMPOS
+        ]
         widgets = {
             'otro_telefono': forms.TextInput(attrs={
                 'class': 'form-input',
@@ -372,14 +375,6 @@ class ContratoClienteForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': 'Ej: Casa #123, Edif. San José Piso 3 Apto 4'
             }),
-            'numero_pago_movil': forms.TextInput(attrs={
-                'class': 'form-input',
-                'placeholder': 'Ej: 0412-1234567'
-            }),
-            'foto_pago': forms.FileInput(attrs={
-                'class': 'form-file',
-                'accept': 'image/*'
-            }),
             'red': forms.Select(attrs={
                 'class': 'form-select'
             }),
@@ -395,14 +390,9 @@ class ContratoClienteForm(forms.ModelForm):
             'punto_referencia': 'Punto de Referencia',
             'tipo_vivienda': 'Tipo de Vivienda',
             'numero_casa': 'Número de Casa/Edificio',
-            'numero_pago_movil': 'Número de Pago Móvil',
-            'foto_pago': 'Foto del Comprobante de Pago',
             'red': 'Red',
         }
-        help_texts = {
-            'foto_pago': 'Suba una foto o captura del comprobante de pago (JPG, PNG)',
-            'simple_plus': 'Indique si el cliente cuenta con Simple Plus',
-        }
+    
     def clean_correo_electronico(self):
         """Validar que el correo no exista en OTRO contrato"""
         correo = self.cleaned_data.get('correo_electronico')
@@ -427,6 +417,7 @@ class ContratoClienteForm(forms.ModelForm):
                 )
         
         return correo
+    
     def __init__(self, *args, **kwargs):
         self.cliente_potencial = kwargs.pop('cliente_potencial', None)
         super().__init__(*args, **kwargs)
@@ -447,6 +438,185 @@ class ContratoClienteForm(forms.ModelForm):
         self.fields['punto_referencia'].required = True
         self.fields['tipo_vivienda'].required = True
         self.fields['numero_casa'].required = True
-        self.fields['numero_pago_movil'].required = True
-        self.fields['foto_pago'].required = True
-        self.fields['red'].required = True    
+        self.fields['red'].required = True
+        
+from django import forms
+from django.contrib.auth.models import Group, User
+from .models import Cuadrilla, PerfilUsuario
+
+class CuadrillaForm(forms.ModelForm):
+    class Meta:
+        model = Cuadrilla
+        fields = [
+            'nombre', 'codigo', 'instaladores', 'estado', 'activo'
+        ]
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: Cuadrilla Norte'
+            }),
+            'codigo': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: C001'
+            }),
+            'instaladores': forms.SelectMultiple(attrs={
+                'class': 'form-select instaladores-select',
+                'style': 'width: 100%; min-height: 200px;'
+            }),
+            'estado': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'activo': forms.CheckboxInput(attrs={
+                'class': 'form-checkbox',
+                'checked': True
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        try:
+            # Obtener el grupo de instaladores
+            grupo_instalador = Group.objects.get(name='Instalador')
+            
+            # Obtener IDs de instaladores que ya están en otras cuadrillas
+            instaladores_en_cuadrillas = PerfilUsuario.objects.filter(
+                cuadrillas__isnull=False
+            ).values_list('id', flat=True)
+            
+            # Si estamos editando, excluir los instaladores de esta cuadrilla
+            if self.instance.pk:
+                instaladores_de_esta_cuadrilla = self.instance.instaladores.values_list('id', flat=True)
+                # Excluir instaladores que están en otras cuadrillas pero incluir los de esta
+                instaladores_excluir = [id for id in instaladores_en_cuadrillas if id not in instaladores_de_esta_cuadrilla]
+            else:
+                # Para creación nueva, excluir todos los instaladores que ya están en alguna cuadrilla
+                instaladores_excluir = instaladores_en_cuadrillas
+            
+            # Filtrar instaladores
+            self.fields['instaladores'].queryset = PerfilUsuario.objects.filter(
+                usuario__groups=grupo_instalador,
+                usuario__is_active=True
+            ).exclude(
+                id__in=instaladores_excluir
+            ).select_related('usuario').order_by('usuario__first_name')
+            
+        except Group.DoesNotExist:
+            self.fields['instaladores'].queryset = PerfilUsuario.objects.none()
+        
+        # Personalizar etiquetas
+        self.fields['instaladores'].label_from_instance = self.instalador_label
+        
+        # Hacer campos obligatorios
+        self.fields['nombre'].required = True
+        self.fields['codigo'].required = True
+    
+    def instalador_label(self, obj):
+        """Formato personalizado para mostrar instaladores"""
+        nombre_completo = obj.usuario.get_full_name() or obj.usuario.username
+        return f"{nombre_completo} - {obj.cedula or 'Sin cédula'} - {obj.telefono or 'Sin teléfono'}"
+    
+    def clean_codigo(self):
+        codigo = self.cleaned_data.get('codigo')
+        if codigo:
+            codigo = codigo.upper()
+            # Excluir la instancia actual si estamos editando
+            queryset = Cuadrilla.objects.filter(codigo=codigo)
+            if self.instance.pk:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            if queryset.exists():
+                raise forms.ValidationError('Ya existe una cuadrilla con este código')
+        return codigo
+    
+    def clean_nombre(self):
+        nombre = self.cleaned_data.get('nombre')
+        if nombre:
+            # Excluir la instancia actual si estamos editando
+            queryset = Cuadrilla.objects.filter(nombre=nombre)
+            if self.instance.pk:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            if queryset.exists():
+                raise forms.ValidationError('Ya existe una cuadrilla con este nombre')
+        return nombre
+    
+    
+from django import forms
+from .models import AsignacionContrato, Cuadrilla
+
+class AsignacionContratoForm(forms.ModelForm):
+    class Meta:
+        model = AsignacionContrato
+        fields = ['cuadrilla', 'observaciones']
+        widgets = {
+            'cuadrilla': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'observaciones': forms.Textarea(attrs={
+                'class': 'form-textarea',
+                'rows': 3,
+                'placeholder': 'Observaciones adicionales...'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cuadrilla'].queryset = Cuadrilla.objects.filter(activo=True).order_by('nombre')
+        self.fields['cuadrilla'].label = "Seleccionar Cuadrilla"
+        self.fields['cuadrilla'].empty_label = "--- Seleccione una cuadrilla ---"  
+        
+        
+from django import forms
+from .models import Instalacion, ModeloModem
+
+class InstalacionForm(forms.ModelForm):
+    class Meta:
+        model = Instalacion
+        fields = [
+            'feeder', 'caja', 'puerto_utilizado',
+            'ubicacion_lat', 'ubicacion_lng',
+            'modelo_modem', 'sn_modem', 'mac_modem',
+            'inicio_fibra', 'final_fibra',
+            'conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos',
+            'observacion'
+        ]
+        widgets = {
+            'feeder': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: FVL01'}),
+            'caja': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: N0101'}),
+            'puerto_utilizado': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: 3'}),
+            'ubicacion_lat': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.000001', 'placeholder': '10.126830'}),
+            'ubicacion_lng': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.000001', 'placeholder': '-68.009860'}),
+            'modelo_modem': forms.Select(attrs={'class': 'form-select'}),
+            'sn_modem': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: ALCLFCD0A4C5'}),
+            'mac_modem': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: E8F8D0BC1560'}),
+            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '35'}),
+            'final_fibra': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '5'}),
+            'conectores': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
+            'rosetas': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
+            'patch_cord': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
+            'tensores': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
+            'conectores_malos': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
+            'observacion': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Observaciones adicionales...'}),
+        }
+        labels = {
+            'feeder': 'FEEDER',
+            'caja': 'CAJA',
+            'puerto_utilizado': 'PUERTO UTILIZADO',
+            'ubicacion_lat': 'Latitud',
+            'ubicacion_lng': 'Longitud',
+            'modelo_modem': 'MODELO',
+            'sn_modem': 'SERIAL',
+            'mac_modem': 'MAC',
+            'inicio_fibra': 'INICIO',
+            'final_fibra': 'FINAL',
+            'conectores': 'CONECTORES',
+            'rosetas': 'ROSETAS',
+            'patch_cord': 'PACH CORD',
+            'tensores': 'TENSORES',
+            'conectores_malos': 'CONECTORES MALOS',
+            'observacion': 'OBSERVACIÓN',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
+        self.fields['modelo_modem'].empty_label = "--- Seleccione un modelo ---"          

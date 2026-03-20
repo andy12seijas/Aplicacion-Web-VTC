@@ -46,8 +46,6 @@
             <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
             <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
         </select>
-        
-        
     </div>
 </div>
 
@@ -145,6 +143,7 @@
                         <th>Cédula</th>
                         <th>Customer ID</th>
                         <th>ODS</th>
+                        <th>Teléfono Pago</th>
                         <th>Plan</th>
                         <th>Estado</th>
                         <th>Vendedor</th>
@@ -166,6 +165,7 @@
                         <td>{{ contrato.cliente_potencial.cedula }}</td>
                         <td><span class="badge completado">{{ contrato.customer_id|default:"—" }}</span></td>
                         <td><span class="badge completado">{{ contrato.ods|default:"—" }}</span></td>
+                        <td>{{ contrato.numero_pago_movil|default:"—" }}</td>
                         <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
                         <td>
                             {% if contrato.estado == 'EN_PROCESO' %}
@@ -187,11 +187,23 @@
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
+                            <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar contrato">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </button>
+
+                            <button class="action-btn" onclick="verFotoPago('{{ contrato.id }}')" title="Ver comprobante">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                                    <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                                </svg>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="empty">No hay contratos completados</td>
+                        <td colspan="10" class="empty">No hay contratos completados</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -202,10 +214,10 @@
 
 <!-- ========== MODALES ========== -->
 
-<!-- Modal para completar contrato (ingresar Customer ID y ODS) -->
+<!-- Modal para completar contrato (con campos de pago) -->
 <div id="completarContratoModal" class="modal" style="display: none;">
     <div class="modal-overlay" onclick="cerrarModalCompletar()"></div>
-    <div class="modal-container modal-sm">
+    <div class="modal-container modal-md">
         <div class="modal-header">
             <h3>Completar Contrato</h3>
             <button class="modal-close" onclick="cerrarModalCompletar()">
@@ -216,7 +228,7 @@
         </div>
         
         <div class="modal-body">
-            <form id="completarContratoForm">
+            <form id="completarContratoForm" enctype="multipart/form-data">
                 {% csrf_token %}
                 <input type="hidden" name="contrato_id" id="modal_contrato_id" value="">
                 
@@ -242,11 +254,64 @@
                     <small class="help-text">Orden de Servicio</small>
                 </div>
                 
+                <div class="form-group">
+                    <label for="numero_pago_movil">Número de Pago Móvil <span class="required">*</span></label>
+                    <input type="text" 
+                           id="numero_pago_movil" 
+                           name="numero_pago_movil" 
+                           class="form-input" 
+                           placeholder="Ej: 0412-1234567"
+                           pattern="[0-9-]+"
+                           required>
+                    <small class="help-text">Número de teléfono donde se realizó el pago</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="foto_pago">Comprobante de Pago <span class="required">*</span></label>
+                    <div class="file-input-wrapper">
+                        <input type="file" 
+                               id="foto_pago" 
+                               name="foto_pago" 
+                               class="form-file" 
+                               accept="image/*"
+                               required>
+                    </div>
+                    <small class="help-text">Suba una foto o captura del comprobante (JPG, PNG)</small>
+                </div>
+                
                 <div class="form-actions" style="margin-top: 20px;">
                     <button type="button" class="btn-outline" onclick="cerrarModalCompletar()">Cancelar</button>
                     <button type="submit" class="btn-primary">Guardar y Completar</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver imagen completa -->
+<div id="imagenModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarImagenModal()"></div>
+    <div class="modal-container modal-image">
+        <div class="modal-header">
+            <h3>Comprobante de Pago</h3>
+            <button class="modal-close" onclick="cerrarImagenModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body image-container">
+            <img id="imagen-completa" src="" alt="Comprobante de pago" class="imagen-completa">
+            <div class="foto-pago-actions" style="margin-top: 20px;">
+                <a id="download-foto" href="#" download class="btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Descargar
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -377,6 +442,9 @@
                         </div>
                         <div id="modal-foto-content" style="display: none;">
                             <img id="modal-foto-img" src="" alt="Comprobante de pago" class="foto-pago-img">
+                            <div class="foto-pago-actions" style="margin-top: 10px;">
+                                <button class="btn-primary btn-sm" onclick="abrirFotoModal()">Ver imagen completa</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -422,12 +490,376 @@
         </div>
         
         <div class="modal-footer">
-            <button class="btn-outline" onclick="cerrarModalDetalle()">Cerrar</button>
+            <div class="footer-actions">
+                <button class="btn-close-modern" onclick="cerrarModalDetalle()">
+                    <span class="btn-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                    </span>
+                    <span class="btn-text">Cerrar</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 <style>
+    /* ===== FOOTER Y BOTÓN MEJORADOS ===== */
+.modal-footer {
+    padding: 20px 24px;
+    background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+    border-top: 2px solid #f0f0f0;
+    border-radius: 0 0 24px 24px;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* Botón de cerrar moderno */
+.btn-close-modern {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 32px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.btn-close-modern::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 107, 0, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+    z-index: 0;
+}
+
+.btn-close-modern:hover {
+    border-color: #ff6b00;
+    color: #ff6b00;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 107, 0, 0.15);
+}
+
+.btn-close-modern:hover::before {
+    width: 300px;
+    height: 300px;
+}
+
+.btn-close-modern:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
+}
+
+.btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    transition: transform 0.3s ease;
+}
+
+.btn-close-modern:hover .btn-icon {
+    transform: translateX(-4px);
+}
+
+.btn-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    transition: all 0.3s ease;
+}
+
+.btn-close-modern:hover .btn-icon svg {
+    stroke: #ff6b00;
+}
+
+.btn-text {
+    position: relative;
+    z-index: 1;
+    letter-spacing: 0.5px;
+}
+
+/* Variante solo icono para móviles */
+@media (max-width: 480px) {
+    .btn-close-modern {
+        width: 100%;
+        padding: 16px 24px;
+    }
+}
+
+/* Variante con efecto de onda al hacer click */
+.btn-close-modern::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 107, 0, 0.3);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(20, 20);
+        opacity: 0;
+    }
+}
+
+.btn-close-modern:focus:not(:active)::after {
+    animation: ripple 0.8s ease-out;
+}
+
+/* Si quieres un botón más minimalista */
+.btn-close-minimal {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    background: transparent;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.btn-close-minimal::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: #ff6b00;
+    transform: translateX(-50%);
+    transition: width 0.3s ease;
+}
+
+.btn-close-minimal:hover {
+    color: #ff6b00;
+}
+
+.btn-close-minimal:hover::after {
+    width: 80%;
+}
+
+.btn-close-minimal .btn-icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+}
+
+/* Botón con gradiente */
+.btn-close-gradient {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 36px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-close-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.btn-close-gradient:active {
+    transform: translateY(0);
+}
+
+/* Botón con borde animado */
+.btn-close-border {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 30px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-close-border::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.btn-close-border:hover {
+    border-color: #ff6b00;
+    color: #ff6b00;
+}
+
+.btn-close-border:hover::before {
+    left: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-footer {
+        padding: 16px 20px;
+    }
+    
+    .btn-close-modern {
+        padding: 12px 28px;
+        font-size: 15px;
+    }
+    
+    .btn-close-minimal {
+        padding: 10px 24px;
+    }
+    
+    .btn-close-gradient {
+        padding: 12px 30px;
+        font-size: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-footer {
+        padding: 14px 16px;
+    }
+    
+    .footer-actions {
+        justify-content: stretch;
+    }
+    
+    .btn-close-modern {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn-close-modern .btn-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+    
+    .btn-close-minimal {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn-close-gradient {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Animación de entrada para el footer */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-footer {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Efecto de brillo al pasar el mouse */
+.btn-close-modern {
+    position: relative;
+}
+
+.btn-close-modern .btn-icon {
+    transition: transform 0.3s ease;
+}
+
+.btn-close-modern:hover .btn-icon {
+    transform: translateX(-4px) scale(1.1);
+}
+
+/* Versión con badge de atajo de teclado */
+.btn-close-shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-close-shortcut:hover {
+    border-color: #ff6b00;
+}
+
+.btn-close-shortcut .shortcut-hint {
+    padding: 4px 8px;
+    background: #f0f0f0;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #999;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+}
+
+.btn-close-shortcut:hover .shortcut-hint {
+    background: #ff6b00;
+    color: white;
+}
     /* ===== FILTROS ===== */
     .filters-container {
         margin-bottom: 20px;
@@ -486,24 +918,6 @@
 
     .filter-select:hover {
         border-color: var(--orange);
-    }
-
-    .btn-primary {
-        background: #ff6b00;
-        color: white;
-        border: none;
-        border-radius: 30px;
-        padding: 8px 16px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 13px;
-        white-space: nowrap;
-    }
-
-    .btn-primary:hover {
-        background: #ff8c00;
     }
 
     /* ===== PESTAÑAS ===== */
@@ -745,8 +1159,13 @@
         max-width: 1000px;
     }
 
-    .modal-container.modal-sm {
-        max-width: 450px;
+    .modal-container.modal-md {
+        max-width: 600px;
+    }
+
+    .modal-container.modal-image {
+        max-width: 90%;
+        width: auto;
     }
 
     .modal-header {
@@ -875,6 +1294,24 @@
         border: 1px solid var(--gray-border);
     }
 
+    .image-container {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .imagen-completa {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+    }
+
+    .foto-pago-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 16px;
+    }
+
     .modal-footer {
         display: flex;
         justify-content: flex-end;
@@ -911,6 +1348,20 @@
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
 
+    .form-file {
+        width: 100%;
+        padding: 10px;
+        border: 1px dashed var(--gray-border);
+        border-radius: 8px;
+        background: #fafafa;
+        cursor: pointer;
+    }
+
+    .form-file:hover {
+        border-color: var(--orange);
+        background: var(--orange-light);
+    }
+
     .required {
         color: #f44336;
     }
@@ -922,6 +1373,11 @@
         margin-top: 4px;
     }
 
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
         .filters-grid {
@@ -930,8 +1386,7 @@
         }
 
         .search-box,
-        .filter-select,
-        .btn-primary {
+        .filter-select {
             width: 100%;
         }
 
@@ -957,59 +1412,58 @@
         .modal-tabs {
             flex-wrap: wrap;
         }
+
+        .foto-pago-actions {
+            flex-direction: column;
+        }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // Función para editar contrato
+    function editarContrato(id) {
+        window.location.href = `/contrato/${id}/editar/`;
+    }
     let contratoSeleccionado = null;
 
-    // Función para aplicar filtros
-    // Reemplaza la función aplicarFiltros y agrega esto:
-
-// Búsqueda en tiempo real
-document.getElementById('searchInput')?.addEventListener('keyup', function() {
-    const searchText = this.value.toLowerCase();
-    
-    // Filtrar tabla de pendientes
-    document.querySelectorAll('#tab-pendientes tbody tr').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchText) ? '' : 'none';
+    // Búsqueda en tiempo real
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        const searchText = this.value.toLowerCase();
+        
+        document.querySelectorAll('#tab-pendientes tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
+        
+        document.querySelectorAll('#tab-completados tbody tr').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchText) ? '' : 'none';
+        });
     });
-    
-    // Filtrar tabla de completados
-    document.querySelectorAll('#tab-completados tbody tr').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchText) ? '' : 'none';
-    });
-});
 
-// Filtros por vendedor y estado (estos SÍ recargan la página)
-document.getElementById('filterVendedor')?.addEventListener('change', function() {
-    aplicarFiltrosConRecarga();
-});
+    // Filtros por vendedor y estado
+    document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltrosConRecarga);
+    document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltrosConRecarga);
 
-document.getElementById('filterEstado')?.addEventListener('change', function() {
-    aplicarFiltrosConRecarga();
-});
+    function aplicarFiltrosConRecarga() {
+        const url = new URL(window.location.href);
+        const vendedor = document.getElementById('filterVendedor').value;
+        const estado = document.getElementById('filterEstado').value;
+        const busqueda = document.getElementById('searchInput').value;
+        
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        
+        if (estado) url.searchParams.set('estado', estado);
+        else url.searchParams.delete('estado');
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        window.location.href = url.toString();
+    }
 
-function aplicarFiltrosConRecarga() {
-    const url = new URL(window.location.href);
-    const vendedor = document.getElementById('filterVendedor').value;
-    const estado = document.getElementById('filterEstado').value;
-    const busqueda = document.getElementById('searchInput').value;
-    
-    if (vendedor) url.searchParams.set('vendedor', vendedor);
-    else url.searchParams.delete('vendedor');
-    
-    if (estado) url.searchParams.set('estado', estado);
-    else url.searchParams.delete('estado');
-    
-    if (busqueda) url.searchParams.set('busqueda', busqueda);
-    else url.searchParams.delete('busqueda');
-    
-    window.location.href = url.toString();
-}
     // Función para cambiar entre pestañas principales
     function cambiarTab(tab) {
         document.querySelectorAll('.tabs-header .tab-btn').forEach(btn => {
@@ -1048,11 +1502,57 @@ function aplicarFiltrosConRecarga() {
         document.getElementById('completarContratoModal').style.display = 'none';
         document.getElementById('customer_id').value = '';
         document.getElementById('ods').value = '';
+        document.getElementById('numero_pago_movil').value = '';
+        document.getElementById('foto_pago').value = '';
     }
 
     // Función para cerrar modal de detalle
     function cerrarModalDetalle() {
         document.getElementById('contratoModal').style.display = 'none';
+    }
+
+    // Función para cerrar modal de imagen
+    function cerrarImagenModal() {
+        document.getElementById('imagenModal').style.display = 'none';
+    }
+
+    // Función para abrir foto desde el modal de detalle
+    function abrirFotoModal() {
+        const fotoUrl = document.getElementById('modal-foto-img').src;
+        if (fotoUrl) {
+            document.getElementById('imagen-completa').src = fotoUrl;
+            document.getElementById('download-foto').href = fotoUrl;
+            document.getElementById('imagenModal').style.display = 'flex';
+        }
+    }
+
+    // Función para ver foto de pago desde la tabla
+    function verFotoPago(contratoId) {
+        fetch(`/datos-contrato/${contratoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.foto_pago) {
+                    document.getElementById('imagen-completa').src = data.foto_pago;
+                    document.getElementById('download-foto').href = data.foto_pago;
+                    document.getElementById('imagenModal').style.display = 'flex';
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin comprobante',
+                        text: 'Este contrato no tiene comprobante de pago',
+                        confirmButtonColor: '#ff6b00'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cargar la imagen',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
     }
 
     // Función para ver detalle del contrato
@@ -1165,18 +1665,15 @@ function aplicarFiltrosConRecarga() {
     document.getElementById('completarContratoForm')?.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        const formData = new FormData(this);
         const contratoId = document.getElementById('modal_contrato_id').value;
         
         fetch(`/contrato/${contratoId}/completar/`, {
             method: 'POST',
             headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: JSON.stringify({
-                customer_id: document.getElementById('customer_id').value,
-                ods: document.getElementById('ods').value
-            })
+            body: formData
         })
         .then(response => response.json())
         .then(data => {
@@ -1210,11 +1707,31 @@ function aplicarFiltrosConRecarga() {
         });
     });
 
+    // Validar que el teléfono solo contenga números y guiones
+    document.getElementById('numero_pago_movil')?.addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9-]/g, '');
+    });
+
+    // Validar archivo de imagen
+    document.getElementById('foto_pago')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file && !file.type.startsWith('image/')) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Archivo inválido',
+                text: 'Por favor seleccione un archivo de imagen válido (JPG, PNG)',
+                confirmButtonColor: '#ff6b00'
+            });
+            this.value = '';
+        }
+    });
+
     // Cerrar modales con ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cerrarModalCompletar();
             cerrarModalDetalle();
+            cerrarImagenModal();
         }
     });
 
@@ -1223,14 +1740,8 @@ function aplicarFiltrosConRecarga() {
         overlay.addEventListener('click', function() {
             cerrarModalCompletar();
             cerrarModalDetalle();
+            cerrarImagenModal();
         });
-    });
-
-    // Búsqueda en tiempo real (opcional)
-    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            aplicarFiltros();
-        }
     });
 </script>
 {% endblock %}

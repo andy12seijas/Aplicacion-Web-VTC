@@ -44,13 +44,22 @@
             <div class="button-arrow">→</div>
         </a>
         
-        <div class="admin-button placeholder">
-            <div class="button-icon">🔜</div>
+        <a href="{% url 'lista_cuadrillas' %}" class="admin-button">
+            <div class="button-icon">🛠️</div>
             <div class="button-content">
-                <h3>Próximamente</h3>
-                <p>Nuevas funcionalidades estarán disponibles aquí</p>
+                <h3>Ver Cuadrillas</h3>
+                <p>Administra equipos de instalación</p>
             </div>
-        </div>
+            <div class="button-arrow">→</div>
+        </a>
+        <a href="{% url 'lista_asignaciones' %}" class="admin-button">
+            <div class="button-icon">📋</div>
+            <div class="button-content">
+                <h3>Asignar Contratos</h3>
+                <p>Gestiona la asignación a cuadrillas</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
     </div>
     
     <!-- Estadísticas rápidas (opcional) -->
