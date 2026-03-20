@@ -202,7 +202,7 @@ def mapa_usuarios(request):
         'buscar': buscar,
     }
     
-    return render(request, 'admin/mapa_usuarios.html', context)
+    return render(request, 'Admin/mapa_usuarios.html', context)
 
 
 
