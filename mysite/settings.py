@@ -23,8 +23,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-s9z!fs@p1efs3ypgnetd7c5pi$5=--9@9_^w1z6mwtqb(vysu7'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# Configuración de ALLOWED_HOSTS
 ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
+
+# Configuración de CSRF - ¡IMPORTANTE!
+CSRF_TRUSTED_ORIGINS = [
+    'https://aplicacion-web-vtc-2.onrender.com',
+    'https://*.onrender.com',  # Esto permite cualquier subdominio de onrender.com
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
 
 
 
