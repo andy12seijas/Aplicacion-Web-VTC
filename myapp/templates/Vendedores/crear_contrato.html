@@ -19,7 +19,7 @@
 <div class="form-container">
     <div class="form-card">
         <!-- SECCIÓN DE VERIFICACIÓN DE CÉDULA -->
-        <div class="verification-section">
+        <div class="verification-section" {% if cliente_verificado %}style="display: none;"{% endif %}>
             <h3 class="section-title">Paso 1: Verificar Cliente</h3>
             <p class="verification-description">
                 Ingrese la cédula del cliente para verificar si existe en Clientes Potenciales.
@@ -46,14 +46,14 @@
                 <small class="help-text">Ingrese solo números, sin puntos ni letras</small>
             </div>
             
-            <!-- RESULTADO DE LA VERIFICACIÓN (se muestra aquí mismo) -->
+            <!-- RESULTADO DE LA VERIFICACIÓN -->
             <div id="verificacion-resultado" style="display: none;"></div>
         </div>
 
-        <!-- SECCIÓN DEL FORMULARIO (inicialmente bloqueada) -->
-        <div id="contrato-section" style="display: none;">
-            <!-- DATOS DEL CLIENTE (traídos de Clientes Potenciales) -->
-            <div class="cliente-info-card" id="cliente-info-card">
+        <!-- SECCIÓN DEL FORMULARIO -->
+        <div id="contrato-section" {% if not cliente_verificado %}style="display: none;"{% endif %}>
+            <!-- DATOS DEL CLIENTE -->
+            <div class="cliente-info-card">
                 <div class="cliente-info-header">
                     <h4>Datos del Cliente</h4>
                     <span class="badge-verificado">✓ Verificado</span>
@@ -61,26 +61,34 @@
                 <div class="cliente-info-grid">
                     <div class="info-item">
                         <span class="info-label">Cédula</span>
-                        <span class="info-value" id="display-cedula"></span>
+                        <span class="info-value" id="display-cedula">{{ cliente.cedula|default:"" }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Nombre</span>
-                        <span class="info-value" id="display-nombre"></span>
+                        <span class="info-value" id="display-nombre">{{ cliente.nombre|default:"" }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Apellido</span>
-                        <span class="info-value" id="display-apellido"></span>
+                        <span class="info-value" id="display-apellido">{{ cliente.apellido|default:"" }}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Teléfono</span>
-                        <span class="info-value" id="display-telefono"></span>
+                        <span class="info-value" id="display-telefono">{{ cliente.telefono|default:"" }}</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Mostrar error de correo si existe -->
+            {% if error_correo %}
+            <div class="alert-error" style="margin-bottom: 20px;">
+                <p>❌ {{ error_message }}</p>
+                <small class="help-text" style="color: #c62828;">Por favor ingrese un correo electrónico diferente.</small>
+            </div>
+            {% endif %}
+
             <form method="post" class="contrato-form" id="contratoForm" enctype="multipart/form-data">
                 {% csrf_token %}
-                <input type="hidden" name="cliente_id" id="cliente_id" value="">
+                <input type="hidden" name="cliente_id" id="cliente_id" value="{{ cliente.id|default:'' }}">
                 
                 {% if form.non_field_errors %}
                 <div class="alert-error">
@@ -95,11 +103,33 @@
                     <div class="form-section full-width">
                         <h3 class="section-title">Información de Contacto</h3>
                         <div class="grid-2">
+                            <!-- OTRO TELÉFONO CON OPERADORA -->
                             <div class="form-group">
-                                <label for="{{ form.otro_telefono.id_for_label }}">
+                                <label>
                                     {{ form.otro_telefono.label }}
                                 </label>
-                                {{ form.otro_telefono }}
+                                <div class="telefono-wrapper">
+                                    <select id="operadora_otro" class="form-select operadora-select" style="width: 95px;">
+                                        <option value="">Sel.</option>
+                                        <option value="0412">0412</option>
+                                        <option value="0414">0414</option>
+                                        <option value="0416">0416</option>
+                                        <option value="0424">0424</option>
+                                        <option value="0422">0422</option>
+                                        <option value="0426">0426</option>
+                                    </select>
+                                    <span class="telefono-guion">-</span>
+                                    <input type="text" 
+                                           id="numero_otro_telefono" 
+                                           class="form-input telefono-input" 
+                                           placeholder="1234567"
+                                           maxlength="7"
+                                           pattern="[0-9]{7}"
+                                           title="Ingrese 7 dígitos"
+                                           style="flex: 1;">
+                                </div>
+                                <!-- Campo oculto para guardar el teléfono completo -->
+                                <input type="hidden" name="otro_telefono" id="otro_telefono_completo" value="{{ form.otro_telefono.value|default:'' }}">
                                 {% if form.otro_telefono.errors %}
                                 <div class="field-error">
                                     {% for error in form.otro_telefono.errors %}
@@ -107,7 +137,7 @@
                                     {% endfor %}
                                 </div>
                                 {% endif %}
-                                <small class="help-text">Opcional</small>
+                                <small class="help-text">Opcional: Seleccione operadora y luego ingrese los 7 dígitos (Ej: 0412-1234567)</small>
                             </div>
                             
                             <div class="form-group">
@@ -121,11 +151,8 @@
                                     <small>{{ error }}</small>
                                     {% endfor %}
                                 </div>
-                                {% else %}
-                                <small class="help-text">
-                                   
-                                </small>
                                 {% endif %}
+                                <small class="help-text">Correo electrónico único por contrato</small>
                             </div>
                         </div>
                     </div>
@@ -280,13 +307,80 @@
                     </div>
 
                     <!-- Información de pago -->
-                    
+                    <div class="form-section full-width">
+                        <h3 class="section-title">Información de Pago (Opcional)</h3>
+                        <p class="verification-description" style="margin-bottom: 20px;">
+                            Complete esta sección si el cliente ya realizó el pago. Estos campos son opcionales.
+                        </p>
+                        
+                        <div class="grid-2">
+                            <!-- NÚMERO DE PAGO MÓVIL CON OPERADORA -->
+                            <div class="form-group">
+                                <label>
+                                    {{ form.numero_pago_movil.label }}
+                                </label>
+                                <div class="telefono-wrapper">
+                                    <select id="operadora_pago" class="form-select operadora-select" style="width: 95px;">
+                                        <option value="">Sel.</option>
+                                        <option value="0412">0412</option>
+                                        <option value="0414">0414</option>
+                                        <option value="0416">0416</option>
+                                        <option value="0424">0424</option>
+                                        <option value="0422">0422</option>
+                                        <option value="0426">0426</option>
+                                    </select>
+                                    <span class="telefono-guion">-</span>
+                                    <input type="text" 
+                                           id="numero_pago_movil" 
+                                           class="form-input telefono-input" 
+                                           placeholder="1234567"
+                                           maxlength="7"
+                                           pattern="[0-9]{7}"
+                                           title="Ingrese 7 dígitos"
+                                           style="flex: 1;">
+                                </div>
+                                <!-- Campo oculto para guardar el número de pago móvil completo -->
+                                <input type="hidden" name="numero_pago_movil" id="pago_movil_completo" value="{{ form.numero_pago_movil.value|default:'' }}">
+                                {% if form.numero_pago_movil.errors %}
+                                <div class="field-error">
+                                    {% for error in form.numero_pago_movil.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="help-text">Opcional: Seleccione operadora y luego ingrese los 7 dígitos (Ej: 0412-1234567)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="{{ form.foto_pago.id_for_label }}">
+                                    {{ form.foto_pago.label }}
+                                </label>
+                                <div class="file-input-wrapper">
+                                    {{ form.foto_pago }}
+                                </div>
+                                {% if form.foto_pago.errors %}
+                                <div class="field-error">
+                                    {% for error in form.foto_pago.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="help-text">Formatos permitidos: JPG, PNG. Tamaño máximo: 5MB</small>
+                                
+                                <!-- Preview de imagen -->
+                                <div id="preview-container" style="margin-top: 10px; display: none;">
+                                    <img id="image-preview" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="form-actions">
                     <a href="{% url 'lista_contratos' %}" class="btn-outline">
                         Cancelar
                     </a>
-                    <button type="submit" class="btn-primary" id="btnSubmit" {% if not cliente_verificado %}disabled{% endif %}>
+                    <button type="submit" class="btn-primary" id="btnSubmit">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 6L9 17l-5-5"/>
                         </svg>
@@ -310,6 +404,34 @@
         border: 1px solid var(--gray-border);
         overflow: hidden;
         padding: 24px;
+    }
+    
+    /* Estilos para el teléfono con operadora */
+    .telefono-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .operadora-select {
+        width: 85px;
+        flex-shrink: 0;
+        padding: 10px 8px;
+        text-align: center;
+    }
+    
+    .telefono-guion {
+        font-size: 18px;
+        font-weight: 600;
+        color: #999;
+        flex-shrink: 0;
+    }
+    
+    .telefono-input {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 12px;
     }
     
     /* Sección de verificación */
@@ -646,6 +768,12 @@
         transform: translateY(-1px);
     }
     
+    .btn-primary:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
     .btn-outline {
         background: white;
         color: #666;
@@ -665,6 +793,38 @@
     @keyframes spin {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
+    }
+    
+    /* Estilos para campo con error */
+    .error-input {
+        border-color: #f44336 !important;
+        background-color: #ffebee !important;
+    }
+    
+    .error-input:focus {
+        box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important;
+    }
+    
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fff2e6;
+        transform: translateY(-1px);
     }
     
     /* Responsive */
@@ -699,52 +859,170 @@
             width: 100%;
             justify-content: center;
         }
+        
+        .telefono-wrapper {
+            flex-wrap: wrap;
+        }
+        
+        .operadora-select {
+            width: 100%;
+        }
+        
+        .telefono-guion {
+            display: none;
+        }
+        
+        .telefono-input {
+            width: 100%;
+        }
     }
 </style>
 
-
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Solo mostrar SweetAlert si hay mensajes
-    {% if messages and es_pagina_crear %}
-        {% for message in messages %}
-            {% if message.message|slice:":17" == 'correo_duplicado:' %}
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Correo electrónico en uso',
-                    text: '{{ message.message|slice:"17:" }}',
-                    confirmButtonColor: '#ff6b00',
-                    confirmButtonText: 'Entendido'
-                });
-            {% elif message.tags == 'error' and 'correo_duplicado' not in message.message %}
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: '{{ message.message }}',
-                    confirmButtonColor: '#ff6b00'
-                });
-            {% endif %}
-        {% endfor %}
-    {% endif %}
-
+    // Variable para saber si ya hay un cliente verificado
+    let clienteVerificado = {{ cliente_verificado|lower|default:'false' }};
+    
     document.addEventListener('DOMContentLoaded', function() {
-        const esPostError = {{ es_post_error|lower|default:'false' }};
-        
-        if (esPostError) {
-            console.log('✅ Error POST - Manteniendo datos');
+        // Si ya hay un cliente verificado (por error POST), mostrar el formulario
+        if (clienteVerificado) {
             document.getElementById('contrato-section').style.display = 'block';
-            document.getElementById('btnSubmit').disabled = false;
-        } else {
-            console.log('✅ GET normal - Todo limpio');
-            // Ya viene limpio desde el backend
+            const verificationSection = document.querySelector('.verification-section');
+            if (verificationSection) {
+                verificationSection.style.display = 'none';
+            }
         }
+        
+        // Inicializar campos de teléfono con operadora
+        inicializarTelefono('operadora_otro', 'numero_otro_telefono', 'otro_telefono_completo');
+        inicializarTelefono('operadora_pago', 'numero_pago_movil', 'pago_movil_completo');
+        
+        // Inicializar validaciones de archivo
+        initFileValidation();
+        
+        // Si hay error de correo, enfocar en el campo de correo
+        {% if error_correo %}
+        const campoCorreo = document.getElementById('{{ form.correo_electronico.id_for_label }}');
+        if (campoCorreo) {
+            campoCorreo.focus();
+            campoCorreo.classList.add('error-input');
+        }
+        {% endif %}
+        
+        // Mostrar SweetAlert si hay mensajes
+        {% if messages %}
+            {% for message in messages %}
+                {% if 'correo_duplicado' in message.message %}
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Correo electrónico en uso',
+                        text: '{{ message.message|cut:"correo_duplicado:" }}',
+                        confirmButtonColor: '#ff6b00',
+                        confirmButtonText: 'Entendido'
+                    });
+                {% endif %}
+            {% endfor %}
+        {% endif %}
     });
+    
+    // Función para inicializar campos de teléfono con operadora
+    function inicializarTelefono(operadoraId, numeroId, hiddenId) {
+        const operadoraSelect = document.getElementById(operadoraId);
+        const numeroInput = document.getElementById(numeroId);
+        const telefonoHidden = document.getElementById(hiddenId);
+        
+        if (!operadoraSelect || !numeroInput || !telefonoHidden) return;
+        
+        // Si hay un teléfono guardado, separarlo para mostrarlo
+        const telefonoExistente = telefonoHidden.value;
+        if (telefonoExistente && telefonoExistente.includes('-')) {
+            const partes = telefonoExistente.split('-');
+            if (partes.length === 2) {
+                operadoraSelect.value = partes[0];
+                numeroInput.value = partes[1];
+            }
+        }
+        
+        // Función para actualizar el campo oculto
+        function actualizarTelefono() {
+            const operadora = operadoraSelect.value;
+            const numero = numeroInput.value;
+            
+            if (operadora && numero && numero.length === 7 && /^\d+$/.test(numero)) {
+                telefonoHidden.value = `${operadora}-${numero}`;
+            } else {
+                telefonoHidden.value = '';
+            }
+        }
+        
+        // Eventos
+        operadoraSelect.addEventListener('change', actualizarTelefono);
+        numeroInput.addEventListener('input', function(e) {
+            // Solo permitir números
+            this.value = this.value.replace(/[^0-9]/g, '');
+            // Limitar a 7 caracteres
+            if (this.value.length > 7) {
+                this.value = this.value.slice(0, 7);
+            }
+            actualizarTelefono();
+        });
+        
+        actualizarTelefono();
+    }
+    
+    function initFileValidation() {
+        // Validar archivo de imagen
+        const fotoPago = document.getElementById('{{ form.foto_pago.id_for_label }}');
+        if (fotoPago) {
+            fotoPago.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                const previewContainer = document.getElementById('preview-container');
+                const previewImage = document.getElementById('image-preview');
+                
+                if (file) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Archivo muy grande',
+                            text: 'El archivo no debe exceder los 5MB',
+                            confirmButtonColor: '#ff6b00'
+                        });
+                        this.value = '';
+                        previewContainer.style.display = 'none';
+                        return;
+                    }
+                    
+                    if (!file.type.startsWith('image/')) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Formato inválido',
+                            text: 'Por favor seleccione un archivo de imagen válido (JPG, PNG)',
+                            confirmButtonColor: '#ff6b00'
+                        });
+                        this.value = '';
+                        previewContainer.style.display = 'none';
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewImage.src = e.target.result;
+                        previewContainer.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    previewContainer.style.display = 'none';
+                }
+            });
+        }
+    }
 
     function verificarCliente() {
         const cedula = document.getElementById('cedula').value;
         const btnVerify = document.getElementById('btnVerificar');
         const resultado = document.getElementById('verificacion-resultado');
         const contratoSection = document.getElementById('contrato-section');
+        const verificationSection = document.querySelector('.verification-section');
         
         if (!cedula) {
             Swal.fire({
@@ -815,9 +1093,9 @@
                     
                     // MOSTRAR SECCIÓN DE CONTRATO
                     contratoSection.style.display = 'block';
-                    
-                    // HABILITAR BOTÓN DE SUBMIT
-                    document.getElementById('btnSubmit').disabled = false;
+                    if (verificationSection) {
+                        verificationSection.style.display = 'none';
+                    }
                     
                     // SCROLL SUAVE HACIA EL FORMULARIO
                     contratoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -837,7 +1115,6 @@
                     `;
                     resultado.style.display = 'block';
                     contratoSection.style.display = 'none';
-                    document.getElementById('btnSubmit').disabled = true;
                 }
             })
             .catch(error => {
@@ -864,28 +1141,6 @@
     // Validar que la cédula solo contenga números mientras se escribe
     document.getElementById('cedula')?.addEventListener('input', function(e) {
         this.value = this.value.replace(/[^0-9]/g, '');
-    });
-    
-    // Validaciones del formulario
-    document.getElementById('{{ form.otro_telefono.id_for_label }}')?.addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9-]/g, '');
-    });
-    
-    document.getElementById('{{ form.numero_pago_movil.id_for_label }}')?.addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9-]/g, '');
-    });
-    
-    document.getElementById('{{ form.foto_pago.id_for_label }}')?.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file && !file.type.startsWith('image/')) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Archivo inválido',
-                text: 'Por favor seleccione un archivo de imagen válido (JPG, PNG)',
-                confirmButtonColor: '#ff6b00'
-            });
-            this.value = '';
-        }
     });
 </script>
 {% endblock %}

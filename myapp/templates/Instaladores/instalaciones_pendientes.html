@@ -28,15 +28,68 @@
     </div>
 </div>
 
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <!-- Búsqueda -->
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por cliente, cédula, customer ID o N° Orden..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <!-- Filtro por vendedor (solo para admin) -->
+        {% if es_admin %}
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for vendedor in vendedores %}
+            <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                {{ vendedor.get_full_name|default:vendedor.username }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        
+        <!-- Filtro por fecha desde -->
+        <div class="date-filter">
+            <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde" value="{{ fecha_desde }}">
+        </div>
+        
+        <!-- Filtro por fecha hasta -->
+        <div class="date-filter">
+            <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta" value="{{ fecha_hasta }}">
+        </div>
+        
+        <div class="actions-wrapper">
+            <button onclick="aplicarFiltros()" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                Buscar
+            </button>
+            <button onclick="limpiarFiltros()" class="btn-clear">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6m-9 4v6m4-6v6"/>
+                </svg>
+                Limpiar
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Pestañas -->
 <div class="tabs-container">
     <div class="tabs-header">
-        <button class="tab-btn active" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
+        <button class="tab-btn {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
             <span class="tab-icon">⏳</span>
             Instalaciones Pendientes
             <span class="tab-count">{{ total_pendientes }}</span>
         </button>
-        <button class="tab-btn" onclick="cambiarTab('completadas')" id="tab-completadas-btn">
+        <button class="tab-btn {% if tab_activa == 'completadas' %}active{% endif %}" onclick="cambiarTab('completadas')" id="tab-completadas-btn">
             <span class="tab-icon">✅</span>
             Instalaciones Completadas
             <span class="tab-count">{{ total_completadas }}</span>
@@ -44,37 +97,72 @@
     </div>
 
     <!-- TAB: Instalaciones Pendientes -->
-    <div id="tab-pendientes" class="tab-content active">
+    <div id="tab-pendientes" class="tab-content {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}">
         <div class="table-container">
             <table class="table">
                 <thead>
                     <tr>
-                        
+                        <th>Tipo</th>
                         <th>Cliente</th>
                         <th>Cédula</th>
                         <th>Customer ID</th>
+                        <th>N° Orden / ODS</th>
                         <th>Plan</th>
                         <th>Fecha Asignación</th>
+                        {% if es_admin %}
+                        <th>Vendedor / Torre</th>
+                        {% endif %}
                         <th>Acciones</th>
-                    </tr>
-                </thead>
+                    </thead>
                 <tbody>
                     {% for instalacion in instalaciones_pendientes %}
                     <tr>
-                        
-                        <td>
+                        <td class="text-center">
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge badge-info">Contrato</span>
+                            {% else %}
+                            <span class="badge badge-warning">Venta Directa</span>
+                            {% endif %}
+                           </td>
+                           <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
                                 <div>
                                     <div class="user-name">{{ instalacion.nombre_cliente }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ instalacion.cedula_cliente }}</td>
-                        <td><span class="badge completado">{{ instalacion.customer_id }}</span></td>
-                        <td>{{ instalacion.plan }}</td>
-                        <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</td>
-                        <td>
+                           </td>
+                           <td>{{ instalacion.cedula_cliente }}</td>
+                           <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge completado">{{ instalacion.customer_id }}</span>
+                            {% else %}
+                            <span class="badge completado">{{ instalacion.customer_id }}</span>
+                            {% endif %}
+                           </td>
+                           <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge" style="background: #2196f3; color: white;">{{ instalacion.orden_servicio }}</span>
+                            {% else %}
+                            <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
+                            {% endif %}
+                           </td>
+                           <td>{{ instalacion.plan }}</td>
+                           <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</td>
+                        {% if es_admin %}
+                           <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="vendedor-badge">
+                                {{ instalacion.asignacion.contrato.creado_por.get_full_name|default:instalacion.asignacion.contrato.creado_por.username }}
+                            </span>
+                            {% else %}
+                            <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">
+                                {{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}
+                            </span>
+                            {% endif %}
+                           </td>
+                        {% endif %}
+                           <td>
                             <a href="{% url 'realizar_instalacion' instalacion.id %}" class="action-btn" title="Realizar instalación">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -84,12 +172,12 @@
                                     <polyline points="10 9 9 9 8 9"/>
                                 </svg>
                             </a>
-                        </td>
-                    </tr>
+                           </td>
+                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="7" class="empty">No tienes instalaciones pendientes</td>
-                    </tr>
+                     <tr>
+                        <td colspan="{% if es_admin %}9{% else %}8{% endif %}" class="empty">No tienes instalaciones pendientes</td>
+                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -99,27 +187,29 @@
         {% if instalaciones_pendientes.has_other_pages %}
         <div class="pagination">
             {% if instalaciones_pendientes.has_previous %}
-            <a href="?page_pendientes=1" class="page-link">
+            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Primera página">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
                 </svg>
             </a>
-            <a href="?page_pendientes={{ instalaciones_pendientes.previous_page_number }}" class="page-link">
+            <a href="?page_pendientes={{ instalaciones_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página anterior">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M15 18l-6-6 6-6"/>
                 </svg>
             </a>
             {% endif %}
             
-            <span class="page-info">{{ instalaciones_pendientes.number }}/{{ instalaciones_pendientes.paginator.num_pages }}</span>
+            <span class="page-info">
+                Página {{ instalaciones_pendientes.number }} de {{ instalaciones_pendientes.paginator.num_pages }}
+            </span>
             
             {% if instalaciones_pendientes.has_next %}
-            <a href="?page_pendientes={{ instalaciones_pendientes.next_page_number }}" class="page-link">
+            <a href="?page_pendientes={{ instalaciones_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página siguiente">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 18l6-6-6-6"/>
                 </svg>
             </a>
-            <a href="?page_pendientes={{ instalaciones_pendientes.paginator.num_pages }}" class="page-link">
+            <a href="?page_pendientes={{ instalaciones_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Última página">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
                 </svg>
@@ -130,49 +220,81 @@
     </div>
 
     <!-- TAB: Instalaciones Completadas -->
-    <div id="tab-completadas" class="tab-content">
+    <div id="tab-completadas" class="tab-content {% if tab_activa == 'completadas' %}active{% endif %}">
         <div class="table-container">
             <table class="table">
                 <thead>
-                    <tr>
-                        <th>Orden de Servicio</th>
+                      <tr>
+                        <th>Tipo</th>
                         <th>Cliente</th>
                         <th>Cédula</th>
                         <th>Customer ID</th>
+                        <th>N° Orden / ODS</th>
                         <th>Plan</th>
                         <th>Fecha Instalación</th>
+                        {% if es_admin %}
+                        <th>Vendedor / Torre</th>
+                        {% endif %}
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for instalacion in instalaciones_completadas %}
-                    <tr>
-                        <td><span class="badge" style="background: #4caf50; color: white;">{{ instalacion.orden_servicio }}</span></td>
-                        <td>
+                     <tr>
+                        <td class="text-center">
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge badge-info">Contrato</span>
+                            {% else %}
+                            <span class="badge badge-warning">Venta Directa</span>
+                            {% endif %}
+                         </td>
+                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
                                 <div>
                                     <div class="user-name">{{ instalacion.nombre_cliente }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ instalacion.cedula_cliente }}</td>
-                        <td><span class="badge completado">{{ instalacion.customer_id }}</span></td>
-                        <td>{{ instalacion.plan }}</td>
-                        <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</td>
-                        <td>
+                         </td>
+                         <td>{{ instalacion.cedula_cliente }}</td>
+                         <td>
+                            <span class="badge completado">{{ instalacion.customer_id }}</span>
+                         </td>
+                         <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge" style="background: #4caf50; color: white;">{{ instalacion.orden_servicio }}</span>
+                            {% else %}
+                            <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
+                            {% endif %}
+                         </td>
+                         <td>{{ instalacion.plan }}</td>
+                         <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</td>
+                        {% if es_admin %}
+                         <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="vendedor-badge">
+                                {{ instalacion.asignacion.contrato.creado_por.get_full_name|default:instalacion.asignacion.contrato.creado_por.username }}
+                            </span>
+                            {% else %}
+                            <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">
+                                {{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}
+                            </span>
+                            {% endif %}
+                         </td>
+                        {% endif %}
+                         <td>
                             <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="3"/>
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
-                        </td>
-                    </tr>
+                         </td>
+                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="7" class="empty">No tienes instalaciones completadas</td>
-                    </tr>
+                     <tr>
+                        <td colspan="{% if es_admin %}9{% else %}8{% endif %}" class="empty">No tienes instalaciones completadas</td>
+                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -182,27 +304,29 @@
         {% if instalaciones_completadas.has_other_pages %}
         <div class="pagination">
             {% if instalaciones_completadas.has_previous %}
-            <a href="?page_completadas=1" class="page-link">
+            <a href="?page_completadas=1&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Primera página">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
                 </svg>
             </a>
-            <a href="?page_completadas={{ instalaciones_completadas.previous_page_number }}" class="page-link">
+            <a href="?page_completadas={{ instalaciones_completadas.previous_page_number }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página anterior">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M15 18l-6-6 6-6"/>
                 </svg>
             </a>
             {% endif %}
             
-            <span class="page-info">{{ instalaciones_completadas.number }}/{{ instalaciones_completadas.paginator.num_pages }}</span>
+            <span class="page-info">
+                Página {{ instalaciones_completadas.number }} de {{ instalaciones_completadas.paginator.num_pages }}
+            </span>
             
             {% if instalaciones_completadas.has_next %}
-            <a href="?page_completadas={{ instalaciones_completadas.next_page_number }}" class="page-link">
+            <a href="?page_completadas={{ instalaciones_completadas.next_page_number }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página siguiente">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 18l6-6-6-6"/>
                 </svg>
             </a>
-            <a href="?page_completadas={{ instalaciones_completadas.paginator.num_pages }}" class="page-link">
+            <a href="?page_completadas={{ instalaciones_completadas.paginator.num_pages }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Última página">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
                 </svg>
@@ -212,10 +336,164 @@
         {% endif %}
     </div>
 </div>
-{% endblock %}
 
-{% block extra_css %}
 <style>
+    /* Estilos adicionales */
+    .badge-info {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .badge-warning {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    /* Resto de estilos existentes... */
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg, #f8f9fa);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange, #ff6b00);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text, #333);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .filter-select:hover {
+        border-color: var(--orange, #ff6b00);
+    }
+
+    .date-filter {
+        flex: 1;
+        min-width: 130px;
+    }
+
+    .filter-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text, #333);
+        outline: none;
+    }
+
+    .filter-input:focus {
+        border-color: var(--orange, #ff6b00);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .actions-wrapper {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-primary, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background: var(--orange, #ff6b00);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border, #e0e0e0);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange, #ff6b00);
+        color: var(--orange, #ff6b00);
+    }
+
     /* ===== ESTADÍSTICAS ===== */
     .stats-grid {
         display: flex;
@@ -329,6 +607,7 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        min-width: 900px;
     }
 
     .table th {
@@ -366,6 +645,15 @@
     .badge.completado {
         background: #e8f5e9;
         color: #2e7d32;
+    }
+
+    .vendedor-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #f0f0f0;
+        border-radius: 20px;
+        font-size: 11px;
+        color: #555;
     }
 
     /* ===== USER AVATAR ===== */
@@ -435,13 +723,13 @@
     }
 
     .page-link {
-        width: 34px;
-        height: 34px;
+        width: 38px;
+        height: 38px;
         display: flex;
         align-items: center;
         justify-content: center;
         border: 1px solid var(--gray-border, #e0e0e0);
-        border-radius: 8px;
+        border-radius: 10px;
         color: #666;
         text-decoration: none;
         transition: all 0.2s;
@@ -451,6 +739,7 @@
     .page-link:hover {
         border-color: var(--orange, #ff6b00);
         color: var(--orange, #ff6b00);
+        background: var(--orange-light, #fff2e6);
     }
 
     .page-info {
@@ -461,6 +750,26 @@
     }
 
     @media (max-width: 768px) {
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .search-box,
+        .filter-select,
+        .date-filter {
+            width: 100%;
+        }
+        
+        .actions-wrapper {
+            flex-direction: column;
+        }
+        
+        .btn-primary, .btn-clear {
+            width: 100%;
+            justify-content: center;
+        }
+        
         .tab-btn {
             flex-direction: column;
             font-size: 13px;
@@ -474,25 +783,147 @@
         .table th, .table td {
             padding: 10px;
         }
+        
+        .table {
+            min-width: 650px;
+        }
+        
+        .pagination {
+            gap: 6px;
+        }
+        
+        .page-link {
+            width: 34px;
+            height: 34px;
+        }
+        
+        .page-info {
+            font-size: 12px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .page-link {
+            width: 30px;
+            height: 30px;
+        }
+        
+        .page-link svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .page-info {
+            font-size: 11px;
+            padding: 0 8px;
+        }
     }
 </style>
-{% endblock %}
 
-{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Función para cambiar entre pestañas
     function cambiarTab(tab) {
-        document.querySelectorAll('.tabs-header .tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        document.getElementById(`tab-${tab}-btn`).classList.add('active');
+        // Construir la URL con el tab seleccionado
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
         
-        document.querySelectorAll('.tabs-container > .tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(`tab-${tab}`).classList.add('active');
+        // Mantener los filtros existentes
+        const busqueda = document.getElementById('searchInput')?.value;
+        const fecha_desde = document.getElementById('fecha_desde')?.value;
+        const fecha_hasta = document.getElementById('fecha_hasta')?.value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
+        else url.searchParams.delete('fecha_desde');
+        
+        if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
+        else url.searchParams.delete('fecha_hasta');
+        
+        {% if es_admin %}
+        const vendedor = document.getElementById('filterVendedor')?.value;
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        {% endif %}
+        
+        // Resetear las páginas
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completadas');
+        
+        window.location.href = url.toString();
     }
+
+    // Aplicar filtros
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const busqueda = document.getElementById('searchInput').value;
+        const fecha_desde = document.getElementById('fecha_desde').value;
+        const fecha_hasta = document.getElementById('fecha_hasta').value;
+        const tab = document.querySelector('.tab-btn.active')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'pendientes';
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
+        else url.searchParams.delete('fecha_desde');
+        
+        if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
+        else url.searchParams.delete('fecha_hasta');
+        
+        url.searchParams.set('tab', tab);
+        
+        {% if es_admin %}
+        const vendedor = document.getElementById('filterVendedor').value;
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        {% endif %}
+        
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completadas');
+        
+        window.location.href = url.toString();
+    }
+    
+    // Limpiar filtros
+    function limpiarFiltros() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('fecha_desde').value = '';
+        document.getElementById('fecha_hasta').value = '';
+        {% if es_admin %}
+        document.getElementById('filterVendedor').value = '';
+        {% endif %}
+        
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('fecha_desde');
+        url.searchParams.delete('fecha_hasta');
+        url.searchParams.delete('vendedor');
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completadas');
+        
+        // Mantener el tab actual
+        const tabActual = document.querySelector('.tab-btn.active')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'pendientes';
+        url.searchParams.set('tab', tabActual);
+        
+        window.location.href = url.toString();
+    }
+    
+    // Búsqueda con Enter
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            aplicarFiltros();
+        }
+    });
+    
+    // Filtros por fecha
+    document.getElementById('fecha_desde')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('fecha_hasta')?.addEventListener('change', aplicarFiltros);
+    
+    {% if es_admin %}
+    document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
+    {% endif %}
 
     // Función para ver detalle de instalación (para completadas)
     function verDetalleInstalacion(id) {

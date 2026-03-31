@@ -86,46 +86,156 @@
     </div>
 </div>
 
+<!-- Indicador de filtros activos -->
+<div id="filtrosActivos" class="filtros-activos" style="display: none;">
+    <span class="filtros-label">📌 Filtros activos:</span>
+    <span class="filtros-lista" id="filtrosLista"></span>
+    <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
+</div>
+
 <!-- Vista Desktop: Tabla -->
 <div class="desktop-view">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Instaladores</th>
-                <th>Estado</th>
-                <th>Creado por</th>
-                <th>Fecha</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cuadrilla in page_obj %}
-            <tr class="{% if not cuadrilla.activo %}inactivo{% endif %}">
-                <td class="codigo-cell">{{ cuadrilla.codigo }}</td>
-                <td>
-                    <div class="user-cell">
-                        <span class="user-avatar">{{ cuadrilla.nombre|first|upper }}</span>
-                        <div>
-                            <div class="user-name">{{ cuadrilla.nombre }}</div>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nombre</th>
+                    <th>Instaladores</th>
+                    <th>Estado</th>
+                    <th>Creado por</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cuadrilla in page_obj %}
+                <tr class="{% if not cuadrilla.activo %}inactivo{% endif %}">
+                    <td class="codigo-cell">{{ cuadrilla.codigo }}</td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="user-avatar">{{ cuadrilla.nombre|first|upper }}</span>
+                            <div>
+                                <div class="user-name">{{ cuadrilla.nombre }}</div>
+                            </div>
                         </div>
+                    </td>
+                    <td>
+                        {% if cuadrilla.instaladores.all %}
+                            <div class="instaladores-tags">
+                                {% for instalador in cuadrilla.instaladores.all %}
+                                    <span class="instalador-tag" title="{{ instalador.usuario.get_full_name }} - {{ instalador.telefono }}">
+                                        {{ instalador.usuario.first_name|default:instalador.usuario.username }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <span class="badge badge-secondary">Sin instaladores</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge 
+                            {% if cuadrilla.estado == 'DISPONIBLE' %}badge-success
+                            {% elif cuadrilla.estado == 'OCUPADO' %}badge-danger
+                            {% elif cuadrilla.estado == 'DESCANSO' %}badge-warning
+                            {% else %}badge-secondary{% endif %}">
+                            {{ cuadrilla.get_estado_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="creador-badge">
+                            {{ cuadrilla.creado_por.get_full_name|default:cuadrilla.creado_por.username|default:"Sistema" }}
+                        </span>
+                    </td>
+                    <td class="fecha-cell">{{ cuadrilla.fecha_creacion|date:"d/m/Y" }}</td>
+                    <td>
+                        <div class="actions">
+                            <button class="action-btn" onclick="verCuadrilla({{ cuadrilla.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                            <a href="{% url 'editar_cuadrilla' cuadrilla.id %}" class="action-btn" title="Editar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </a>
+                            {% if cuadrilla.activo %}
+                            <button class="action-btn" onclick="cambiarEstado({{ cuadrilla.id }}, '{{ cuadrilla.estado }}')" title="Cambiar estado">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 6v6l4 2"/>
+                                </svg>
+                            </button>
+                            <button class="action-btn" onclick="confirmarDesactivar({{ cuadrilla.id }}, '{{ cuadrilla.nombre }}')" title="Desactivar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 6L6 18M6 6l12 12"/>
+                                </svg>
+                            </button>
+                            {% else %}
+                            <form method="post" action="{% url 'activar_cuadrilla' cuadrilla.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="action-btn success" title="Activar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 6L9 17l-5-5"/>
+                                    </svg>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty">No hay cuadrillas registradas</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Vista Mobile: Cards (para mantener compatibilidad) -->
+<div class="mobile-view">
+    {% for cuadrilla in page_obj %}
+    <div class="cuadrilla-card">
+        <div class="card-header">
+            <div class="card-user">
+                <span class="card-avatar">{{ cuadrilla.nombre|first|upper }}</span>
+                <div>
+                    <div class="card-name">{{ cuadrilla.nombre }}</div>
+                    <div class="card-meta">
+                        <span class="card-meta-item">Código: {{ cuadrilla.codigo }}</span>
+                        <span class="card-meta-item">Creado: {{ cuadrilla.fecha_creacion|date:"d/m/Y" }}</span>
                     </div>
-                </td>
-                <td>
+                </div>
+            </div>
+            <span class="status-dot 
+                {% if cuadrilla.estado == 'DISPONIBLE' %}active
+                {% elif cuadrilla.estado == 'OCUPADO' %}warning
+                {% else %}inactive{% endif %}"></span>
+        </div>
+        
+        <div class="card-body">
+            <div class="card-row">
+                <span class="card-label">Instaladores:</span>
+                <span class="card-value">
                     {% if cuadrilla.instaladores.all %}
-                        <div class="instaladores-tags">
-                            {% for instalador in cuadrilla.instaladores.all %}
-                                <span class="instalador-tag" title="{{ instalador.usuario.get_full_name }} - {{ instalador.telefono }}">
-                                    {{ instalador.usuario.first_name|default:instalador.usuario.username }}
-                                </span>
-                            {% endfor %}
-                        </div>
+                        {% for instalador in cuadrilla.instaladores.all|slice:":3" %}
+                            <span class="instalador-tag">{{ instalador.usuario.first_name|default:instalador.usuario.username }}</span>
+                        {% endfor %}
+                        {% if cuadrilla.instaladores.all|length > 3 %}
+                            <span class="instalador-tag more">+{{ cuadrilla.instaladores.all|length|add:"-3" }}</span>
+                        {% endif %}
                     {% else %}
-                        <span class="badge badge-secondary">Sin instaladores</span>
+                        <span class="text-muted">Sin instaladores</span>
                     {% endif %}
-                </td>
-                <td>
+                </span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Estado:</span>
+                <span class="card-value">
                     <span class="badge 
                         {% if cuadrilla.estado == 'DISPONIBLE' %}badge-success
                         {% elif cuadrilla.estado == 'OCUPADO' %}badge-danger
@@ -133,61 +243,95 @@
                         {% else %}badge-secondary{% endif %}">
                         {{ cuadrilla.get_estado_display }}
                     </span>
-                </td>
-                <td>
+                </span>
+            </div>
+            {% if es_admin %}
+            <div class="card-row">
+                <span class="card-label">Creado por:</span>
+                <span class="card-value">
                     <span class="creador-badge">
                         {{ cuadrilla.creado_por.get_full_name|default:cuadrilla.creado_por.username|default:"Sistema" }}
                     </span>
-                </td>
-                <td class="fecha-cell">{{ cuadrilla.fecha_creacion|date:"d/m/Y" }}</td>
-                <td>
-                    <div class="actions">
-                        <button class="action-btn" onclick="verCuadrilla({{ cuadrilla.id }})" title="Ver detalles">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                            </svg>
-                        </button>
-                        <a href="{% url 'editar_cuadrilla' cuadrilla.id %}" class="action-btn" title="Editar">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                            </svg>
-                        </a>
-                        {% if cuadrilla.activo %}
-                        <button class="action-btn" onclick="cambiarEstado({{ cuadrilla.id }}, '{{ cuadrilla.estado }}')" title="Cambiar estado">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 6v6l4 2"/>
-                            </svg>
-                        </button>
-                        <button class="action-btn" onclick="confirmarDesactivar({{ cuadrilla.id }}, '{{ cuadrilla.nombre }}')" title="Desactivar">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 6L6 18M6 6l12 12"/>
-                            </svg>
-                        </button>
-                        {% else %}
-                        <form method="post" action="{% url 'activar_cuadrilla' cuadrilla.id %}" style="display: inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="action-btn success" title="Activar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 6L9 17l-5-5"/>
-                                </svg>
-                            </button>
-                        </form>
-                        {% endif %}
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7" class="empty">No hay cuadrillas registradas</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="card-actions">
+            <button class="card-action-btn" onclick="verCuadrilla({{ cuadrilla.id }})" title="Ver detalles">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                </svg>
+            </button>
+            <a href="{% url 'editar_cuadrilla' cuadrilla.id %}" class="card-action-btn" title="Editar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                </svg>
+            </a>
+            {% if cuadrilla.activo %}
+            <button class="card-action-btn" onclick="cambiarEstadoMobile({{ cuadrilla.id }}, '{{ cuadrilla.estado }}')" title="Cambiar estado">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </button>
+            <button class="card-action-btn" onclick="confirmarDesactivar({{ cuadrilla.id }}, '{{ cuadrilla.nombre }}')" title="Desactivar">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+            {% else %}
+            <form method="post" action="{% url 'activar_cuadrilla' cuadrilla.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="card-action-btn success" title="Activar">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-mobile">No hay cuadrillas registradas</div>
+    {% endfor %}
 </div>
 
-<!-- MODAL PARA DETALLE DE CUADRILLA -->
+<!-- Paginación -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+        </svg>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- MODAL PARA DETALLE DE CUADRILLA (igual que antes) -->
 <div id="cuadrillaModal" class="modal" style="display: none;">
     <div class="modal-overlay" onclick="cerrarModal()"></div>
     <div class="modal-container modal-lg">
@@ -288,41 +432,6 @@
     </div>
 </div>
 
-<!-- Paginación -->
-{% if page_obj.has_other_pages %}
-<div class="pagination">
-    {% if page_obj.has_previous %}
-    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 18l-6-6 6-6"/>
-        </svg>
-    </a>
-    {% endif %}
-
-    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18l6-6-6-6"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if activo_filtro %}&activo={{ activo_filtro }}{% endif %}{% if creador_filtro %}&creador={{ creador_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-        </svg>
-    </a>
-    {% endif %}
-</div>
-{% endif %}
-{% endblock %}
-
-{% block extra_css %}
 <style>
     /* ===== VARIABLES Y ESTILOS BASE ===== */
     .btn-orange {
@@ -353,6 +462,46 @@
         --gray-border: #e0e0e0;
         --gray-text: #666;
         --dark-text: #333;
+    }
+
+    /* ===== FILTROS ACTIVOS ===== */
+    .filtros-activos {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+    }
+    
+    .filtros-label {
+        font-weight: 600;
+        color: #1565c0;
+    }
+    
+    .filtros-lista {
+        color: #555;
+        flex: 1;
+    }
+    
+    .btn-limpiar-filtros {
+        background: white;
+        border: 1px solid #2196f3;
+        color: #2196f3;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-limpiar-filtros:hover {
+        background: #2196f3;
+        color: white;
     }
 
     /* ===== STATS ===== */
@@ -454,10 +603,15 @@
         margin-bottom: 20px;
     }
 
+    .table-container {
+        overflow-x: auto;
+    }
+
     .table {
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        min-width: 800px;
     }
 
     .table th {
@@ -1147,82 +1301,6 @@
         }
     }
 
-    /* Responsive para el modal */
-    @media (max-width: 768px) {
-        .modal-container {
-            width: 95%;
-            max-height: 95vh;
-        }
-
-        .modal-header {
-            flex-direction: column;
-            align-items: flex-start;
-            padding: 20px;
-        }
-
-        .modal-header-info {
-            width: 100%;
-        }
-
-        .modal-estado {
-            width: 100%;
-        }
-
-        .modal-avatar {
-            width: 48px;
-            height: 48px;
-            font-size: 20px;
-        }
-
-        .modal-header-info h2 {
-            font-size: 20px;
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-
-        .modal-grid.grid-3 {
-            grid-template-columns: 1fr;
-            gap: 15px;
-        }
-
-        .instaladores-modal-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .modal-footer {
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        .btn-outline, .btn-primary {
-            width: 100%;
-            justify-content: center;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .modal-avatar {
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
-        }
-
-        .modal-header-info h2 {
-            font-size: 18px;
-        }
-
-        .instalador-modal-card {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .instalador-modal-info p {
-            justify-content: center;
-        }
-    }
-
     /* ===== RESPONSIVE GENERAL ===== */
     @media screen and (max-width: 1024px) {
         .table {
@@ -1271,6 +1349,57 @@
         .page-link {
             width: 34px;
             height: 34px;
+        }
+
+        .modal-container {
+            width: 95%;
+            max-height: 95vh;
+        }
+
+        .modal-header {
+            padding: 20px;
+        }
+
+        .modal-avatar {
+            width: 48px;
+            height: 48px;
+            font-size: 20px;
+        }
+
+        .modal-header-info h2 {
+            font-size: 20px;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-grid.grid-3 {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .instaladores-modal-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .modal-footer {
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .btn-outline, .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .filtros-activos {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .btn-limpiar-filtros {
+            align-self: flex-start;
         }
     }
     
@@ -1321,44 +1450,60 @@
             text-align: center;
             margin-bottom: 8px;
         }
+
+        .modal-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .modal-close {
+            align-self: flex-end;
+        }
+        
+        .instalador-modal-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .instalador-modal-info p {
+            justify-content: center;
+        }
+    }
+    
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
     }
 </style>
-{% endblock %}
 
-{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Variable para almacenar los datos de las cuadrillas
     let cuadrillasData = {};
+    let searchTimeout;
 
-    // Búsqueda en tiempo real
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        const searchText = this.value.toLowerCase();
-        
-        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
-        });
-        
-        document.querySelectorAll('.cuadrilla-card').forEach(card => {
-            const text = card.textContent.toLowerCase();
-            card.style.display = text.includes(searchText) ? 'block' : 'none';
-        });
-    });
-
-    // Filtros
-    document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltros);
-    document.getElementById('filterActivo')?.addEventListener('change', aplicarFiltros);
-    
-    {% if es_admin %}
-    document.getElementById('filterCreador')?.addEventListener('change', aplicarFiltros);
-    {% endif %}
-
+    // Función para aplicar filtros con recarga de página
     function aplicarFiltros() {
         const url = new URL(window.location.href);
-        const estado = document.getElementById('filterEstado').value;
-        const activo = document.getElementById('filterActivo').value;
-        const busqueda = document.getElementById('searchInput').value;
+        const estado = document.getElementById('filterEstado')?.value || '';
+        const activo = document.getElementById('filterActivo')?.value || '';
+        const creador = document.getElementById('filterCreador')?.value || '';
+        const busqueda = document.getElementById('searchInput')?.value || '';
         
         if (estado) url.searchParams.set('estado', estado);
         else url.searchParams.delete('estado');
@@ -1366,15 +1511,42 @@
         if (activo) url.searchParams.set('activo', activo);
         else url.searchParams.delete('activo');
         
+        if (creador) url.searchParams.set('creador', creador);
+        else url.searchParams.delete('creador');
+        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
         
-        {% if es_admin %}
-        const creador = document.getElementById('filterCreador').value;
-        if (creador) url.searchParams.set('creador', creador);
-        else url.searchParams.delete('creador');
-        {% endif %}
+        // Resetear a la primera página al aplicar filtros
+        url.searchParams.delete('page');
         
+        window.location.href = url.toString();
+    }
+
+    // Búsqueda con debounce
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            aplicarFiltros();
+        }, 500);
+    });
+
+    // Filtros select
+    document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('filterActivo')?.addEventListener('change', aplicarFiltros);
+    
+    {% if es_admin %}
+    document.getElementById('filterCreador')?.addEventListener('change', aplicarFiltros);
+    {% endif %}
+
+    // Función para limpiar todos los filtros
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('estado');
+        url.searchParams.delete('activo');
+        url.searchParams.delete('creador');
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('page');
         window.location.href = url.toString();
     }
 
@@ -1591,13 +1763,41 @@
         });
     }
 
-    // Verificar que el modal existe al cargar la página
+    // Mostrar indicador de filtros activos al cargar la página
     document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('cuadrillaModal');
         if (!modal) {
             console.error('Error: No se encontró el modal en el DOM');
         } else {
             console.log('Modal encontrado correctamente');
+        }
+        
+        // Verificar filtros activos
+        const urlParams = new URLSearchParams(window.location.search);
+        const busqueda = urlParams.get('busqueda');
+        const estado = urlParams.get('estado');
+        const activo = urlParams.get('activo');
+        const creador = urlParams.get('creador');
+        
+        if (busqueda || estado || activo || creador) {
+            const filtrosActivosDiv = document.getElementById('filtrosActivos');
+            const filtrosLista = document.getElementById('filtrosLista');
+            const filtrosArray = [];
+            
+            if (busqueda) filtrosArray.push(`"${busqueda}"`);
+            if (estado) {
+                let estadoTexto = '';
+                if (estado === 'DISPONIBLE') estadoTexto = 'Disponible';
+                else if (estado === 'OCUPADO') estadoTexto = 'Ocupado';
+                else if (estado === 'DESCANSO') estadoTexto = 'En Descanso';
+                else if (estado === 'INACTIVO') estadoTexto = 'Inactivo';
+                filtrosArray.push(`estado: ${estadoTexto}`);
+            }
+            if (activo) filtrosArray.push(`estado: ${activo === 'activas' ? 'Activas' : 'Inactivas'}`);
+            if (creador) filtrosArray.push(`creador: ${creador}`);
+            
+            filtrosLista.textContent = filtrosArray.join(' • ');
+            filtrosActivosDiv.style.display = 'flex';
         }
     });
 </script>

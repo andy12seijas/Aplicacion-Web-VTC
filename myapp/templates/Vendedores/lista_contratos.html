@@ -71,85 +71,92 @@
     </div>
 </div>
 
+<!-- Indicador de filtros activos -->
+<div id="filtrosActivos" class="filtros-activos" style="display: none;">
+    <span class="filtros-label">📌 Filtros activos:</span>
+    <span class="filtros-lista" id="filtrosLista"></span>
+    <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
+</div>
+
 <!-- Vista Desktop: Tabla -->
 <div class="desktop-view">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Cliente</th>
-                <th>Cédula</th>
-                <th>Teléfono</th>
-                <th>Correo</th>
-                <th>Plan</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                <th>Vendedor</th>
-                {% endif %}
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for contrato in page_obj %}
-            <tr>
-                <td>
-                    <div class="user-cell">
-                        <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
-                        <div>
-                            <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
-                            
-                        </div>
-                    </div>
-                </td>
-                <td class="cedula-cell">{{ contrato.cliente_potencial.cedula }}</td>
-                <td class="telefono-cell">{{ contrato.cliente_potencial.telefono }}</td>
-                <td class="email-cell">{{ contrato.correo_electronico|truncatechars:25 }}</td>
-                <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
-                <td>
-                    {% if contrato.estado == 'EN_PROCESO' %}
-                    <span class="badge proceso">En Proceso</span>
-                    {% elif contrato.estado == 'COMPLETADO' %}
-                    <span class="badge completado">Completado</span>
-                    {% elif contrato.estado == 'NO_COMPLETADO' %}
-                    <span class="badge no-completado">No Completado</span>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Cédula</th>
+                    <th>Teléfono</th>
+                    <th>Correo</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                    <th>Vendedor</th>
                     {% endif %}
-                </td>
-                <td class="date-cell">{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
-                
-                <!-- Columna Vendedor (solo para admin) -->
-                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                <td>
-                    <span class="vendedor-badge">
-                        {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
-                    </span>
-                </td>
-                {% endif %}
-                
-                <td>
-                    <div class="actions">
-                        <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                            </svg>
-                        </button>
-                        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                        <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                            </svg>
-                        </button>
+                    <th>Acciones</th>
+                </thead>
+            <tbody>
+                {% for contrato in page_obj %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                            <div>
+                                <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="cedula-cell">{{ contrato.cliente_potencial.cedula }}</td>
+                    <td class="telefono-cell">{{ contrato.cliente_potencial.telefono }}</td>
+                    <td class="email-cell">{{ contrato.correo_electronico|truncatechars:25 }}</td>
+                    <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
+                    <td>
+                        {% if contrato.estado == 'EN_PROCESO' %}
+                        <span class="badge proceso">En Proceso</span>
+                        {% elif contrato.estado == 'COMPLETADO' %}
+                        <span class="badge completado">Completado</span>
+                        {% elif contrato.estado == 'NO_COMPLETADO' %}
+                        <span class="badge no-completado">No Completado</span>
                         {% endif %}
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="{% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}9{% else %}8{% endif %}" class="empty">No hay contratos registrados</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                    <td class="date-cell">{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
+                    
+                    <!-- Columna Vendedor (solo para admin) -->
+                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                    <td>
+                        <span class="vendedor-badge">
+                            {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
+                        </span>
+                    </td>
+                    {% endif %}
+                    
+                    <td>
+                        <div class="actions">
+                            <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                            <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}9{% else %}8{% endif %}" class="empty">No hay contratos registrados</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Vista Mobile: Cards -->
@@ -230,6 +237,39 @@
     <div class="empty-mobile">No hay contratos registrados</div>
     {% endfor %}
 </div>
+
+<!-- Paginación -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+        </svg>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
 
 <!-- Modal para detalle de contrato -->
 <div id="contratoModal" class="modal" style="display: none;">
@@ -444,40 +484,47 @@
     </div>
 </div>
 
-<!-- Paginación -->
-{% if page_obj.has_other_pages %}
-<div class="pagination">
-    {% if page_obj.has_previous %}
-    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 18l-6-6 6-6"/>
-        </svg>
-    </a>
-    {% endif %}
-
-    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18l6-6-6-6"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-        </svg>
-    </a>
-    {% endif %}
-</div>
-{% endif %}
-
 <style>
+    /* ===== FILTROS ACTIVOS ===== */
+    .filtros-activos {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+    }
+    
+    .filtros-label {
+        font-weight: 600;
+        color: #1565c0;
+    }
+    
+    .filtros-lista {
+        color: #555;
+        flex: 1;
+    }
+    
+    .btn-limpiar-filtros {
+        background: white;
+        border: 1px solid #2196f3;
+        color: #2196f3;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-limpiar-filtros:hover {
+        background: #2196f3;
+        color: white;
+    }
+
     /* ===== MODAL STYLES ===== */
     .modal {
         position: fixed;
@@ -597,6 +644,7 @@
         margin-bottom: 24px;
         border-bottom: 1px solid var(--gray-border);
         padding-bottom: 12px;
+        flex-wrap: wrap;
     }
 
     .tab-btn {
@@ -708,6 +756,7 @@
         border: 1px solid var(--gray-border);
         object-fit: contain;
         background: #fafafa;
+        cursor: pointer;
     }
 
     .foto-pago-actions {
@@ -715,6 +764,7 @@
         gap: 12px;
         margin-top: 16px;
         justify-content: center;
+        flex-wrap: wrap;
     }
 
     /* Modal de imagen */
@@ -866,6 +916,10 @@
         margin-bottom: 20px;
     }
 
+    .table-container {
+        overflow-x: auto;
+    }
+
     .table {
         width: 100%;
         border-collapse: collapse;
@@ -958,12 +1012,6 @@
         font-weight: 500;
         color: var(--dark-text);
         font-size: 13px;
-        line-height: 1.2;
-    }
-
-    .user-fullname {
-        font-size: 11px;
-        color: var(--gray-text);
         line-height: 1.2;
     }
 
@@ -1164,6 +1212,7 @@
         font-size: 14px;
     }
 
+    /* Responsive */
     @media (max-width: 768px) {
         .desktop-view {
             display: none;
@@ -1201,6 +1250,15 @@
         
         .foto-pago-actions {
             flex-direction: column;
+        }
+        
+        .filtros-activos {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .btn-limpiar-filtros {
+            align-self: flex-start;
         }
     }
 
@@ -1255,10 +1313,66 @@
 <script>
     // Variables globales
     let contratoData = null;
+    let searchTimeout;
+    
+    // Función para aplicar filtros con recarga de página
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const estado = document.getElementById('filterEstado')?.value || '';
+        const busqueda = document.getElementById('searchInput')?.value || '';
+        
+        if (estado) url.searchParams.set('estado', estado);
+        else url.searchParams.delete('estado');
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+        const vendedor = document.getElementById('filterVendedor')?.value || '';
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        {% endif %}
+        
+        // Resetear a la primera página al aplicar filtros
+        url.searchParams.delete('page');
+        
+        window.location.href = url.toString();
+    }
+
+    // Búsqueda con debounce
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            aplicarFiltros();
+        }, 500);
+    });
+    
+    // Filtro por estado
+    document.getElementById('filterEstado')?.addEventListener('change', function() {
+        aplicarFiltros();
+    });
+    
+    // Filtro por vendedor (solo si existe)
+    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+    document.getElementById('filterVendedor')?.addEventListener('change', function() {
+        aplicarFiltros();
+    });
+    {% endif %}
+    
+    // Función para limpiar todos los filtros
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('estado');
+        url.searchParams.delete('busqueda');
+        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+        url.searchParams.delete('vendedor');
+        {% endif %}
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
     
     // Función para ver detalle del contrato
     function verContrato(id) {
-        console.log('Ver contrato ID:', id);
         const modal = document.getElementById('contratoModal');
         
         if (!modal) {
@@ -1266,7 +1380,6 @@
             return;
         }
         
-        // Mostrar loading
         Swal.fire({
             title: 'Cargando...',
             text: 'Obteniendo información del contrato',
@@ -1277,18 +1390,15 @@
         });
         
         const url = `/datos-contrato/${id}/`;
-        console.log('Fetching URL:', url);
         
         fetch(url)
             .then(response => {
-                console.log('Response status:', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('Data received:', data);
                 Swal.close();
                 
                 if (data.error) {
@@ -1306,20 +1416,18 @@
                 modal.style.display = 'flex';
             })
             .catch(error => {
-                console.error('Error completo:', error);
+                console.error('Error:', error);
                 Swal.close();
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'No se pudo cargar la información del contrato. Ver consola para detalles.',
+                    text: 'No se pudo cargar la información del contrato',
                     confirmButtonColor: '#ff6b00'
                 });
             });
     }
     
     function llenarModal(data) {
-        console.log('Llenando modal con:', data);
-        
         try {
             // Avatar y datos básicos
             document.getElementById('modalAvatar').textContent = 
@@ -1365,14 +1473,12 @@
             const fotoContent = document.getElementById('foto-pago-content');
             
             if (data.foto_pago) {
-                console.log('Foto encontrada:', data.foto_pago);
                 fotoPlaceholder.style.display = 'none';
                 fotoContent.style.display = 'block';
                 document.getElementById('foto-pago-img').src = data.foto_pago;
                 document.getElementById('imagen-completa').src = data.foto_pago;
                 document.getElementById('download-foto').href = data.foto_pago;
             } else {
-                console.log('No hay foto');
                 fotoPlaceholder.style.display = 'block';
                 fotoContent.style.display = 'none';
                 fotoPlaceholder.innerHTML = '<p>No hay comprobante de pago adjunto</p>';
@@ -1399,13 +1505,11 @@
     }
     
     function cambiarTab(tab) {
-        // Actualizar botones
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.classList.remove('active');
         });
         document.getElementById(`tab-${tab}-btn`)?.classList.add('active');
         
-        // Actualizar contenido
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
         });
@@ -1414,7 +1518,6 @@
     
     function cerrarModal() {
         document.getElementById('contratoModal').style.display = 'none';
-        // Volver a la primera pestaña
         cambiarTab('info');
     }
     
@@ -1425,6 +1528,48 @@
     function cerrarImagenModal() {
         document.getElementById('imagenModal').style.display = 'none';
     }
+    
+    // Función para editar (redirige)
+    function editarContrato(id) {
+        window.location.href = `/contrato/${id}/editar/`;
+    }
+    
+    // Mostrar indicador de filtros activos al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('contratoModal');
+        if (!modal) {
+            console.error('Error: No se encontró el modal en el DOM');
+        }
+        
+        // Verificar filtros activos
+        const urlParams = new URLSearchParams(window.location.search);
+        const busqueda = urlParams.get('busqueda');
+        const estado = urlParams.get('estado');
+        const vendedor = urlParams.get('vendedor');
+        
+        if (busqueda || estado || vendedor) {
+            const filtrosActivosDiv = document.getElementById('filtrosActivos');
+            const filtrosLista = document.getElementById('filtrosLista');
+            const filtrosArray = [];
+            
+            if (busqueda) filtrosArray.push(`"${busqueda}"`);
+            if (estado) {
+                let estadoTexto = '';
+                if (estado === 'EN_PROCESO') estadoTexto = 'En Proceso';
+                else if (estado === 'COMPLETADO') estadoTexto = 'Completado';
+                else if (estado === 'NO_COMPLETADO') estadoTexto = 'No Completado';
+                filtrosArray.push(`estado: ${estadoTexto}`);
+            }
+            if (vendedor) {
+                const vendedorSelect = document.getElementById('filterVendedor');
+                const vendedorTexto = vendedorSelect?.options[vendedorSelect.selectedIndex]?.text || vendedor;
+                filtrosArray.push(`vendedor: ${vendedorTexto}`);
+            }
+            
+            filtrosLista.textContent = filtrosArray.join(' • ');
+            filtrosActivosDiv.style.display = 'flex';
+        }
+    });
     
     // Cerrar modales con tecla ESC
     document.addEventListener('keydown', function(e) {
@@ -1441,59 +1586,5 @@
             cerrarImagenModal();
         });
     });
-    
-    // Búsqueda en tiempo real
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        const searchText = this.value.toLowerCase();
-        
-        // Filtrar tabla desktop
-        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
-        });
-        
-        // Filtrar cards mobile
-        document.querySelectorAll('.contrato-card').forEach(card => {
-            const text = card.textContent.toLowerCase();
-            card.style.display = text.includes(searchText) ? 'block' : 'none';
-        });
-    });
-    
-    // Filtro por estado
-    document.getElementById('filterEstado')?.addEventListener('change', function() {
-        aplicarFiltros();
-    });
-    
-    // Filtro por vendedor (solo si existe)
-    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-    document.getElementById('filterVendedor')?.addEventListener('change', function() {
-        aplicarFiltros();
-    });
-    {% endif %}
-    
-    function aplicarFiltros() {
-        const url = new URL(window.location.href);
-        const estado = document.getElementById('filterEstado').value;
-        const busqueda = document.getElementById('searchInput').value;
-        
-        if (estado) url.searchParams.set('estado', estado);
-        else url.searchParams.delete('estado');
-        
-        if (busqueda) url.searchParams.set('busqueda', busqueda);
-        else url.searchParams.delete('busqueda');
-        
-        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-        const vendedor = document.getElementById('filterVendedor').value;
-        if (vendedor) url.searchParams.set('vendedor', vendedor);
-        else url.searchParams.delete('vendedor');
-        {% endif %}
-        
-        window.location.href = url.toString();
-    }
-    
-    // Función para editar (redirige)
-    function editarContrato(id) {
-        window.location.href = `/contrato/${id}/editar/`;
-    }
 </script>
 {% endblock %}

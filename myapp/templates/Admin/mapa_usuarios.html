@@ -1,10 +1,10 @@
 {% extends 'Inicio_De_Sesion/base.html' %}
 {% load static %}
 
-{% block title %}Simple Fibra - Mapa de Usuarios{% endblock %}
+{% block title %}Simple Fibra - Mapa de Cuadrillas y Vendedores{% endblock %}
 
-{% block page_title %}Mapa de Usuarios en Tiempo Real{% endblock %}
-{% block page_subtitle %}Ubicación ACTUAL de vendedores, instaladores y más{% endblock %}
+{% block page_title %}Mapa de Cuadrillas y Vendedores{% endblock %}
+{% block page_subtitle %}Ubicación en tiempo real de cuadrillas y vendedores{% endblock %}
 
 {% block header_actions %}
 <a href="{% url 'lista_clientes' %}" class="btn-secondary">
@@ -20,11 +20,11 @@
 <div class="stats-grid" id="stats-container">
     <div class="stat-card">
         <span class="stat-value" id="total-usuarios">{{ total_usuarios }}</span>
-        <span class="stat-label">Usuarios activos</span>
+        <span class="stat-label">Total en mapa</span>
     </div>
     <div class="stat-card">
         <span class="stat-value" id="activos-ahora">{{ activos_ahora }}</span>
-        <span class="stat-label">Activos última hora</span>
+        <span class="stat-label">Activos ahora</span>
     </div>
     {% for stat in stats_por_tipo %}
     <div class="stat-card" data-tipo="{{ stat.nombre }}">
@@ -43,7 +43,7 @@
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                 </svg>
-                <input type="text" placeholder="Buscar usuario..." id="searchInput" value="{{ buscar }}">
+                <input type="text" placeholder="Buscar por nombre, código o instalador..." id="searchInput" value="{{ buscar }}">
                 {% if buscar %}
                 <button class="clear-input" onclick="limpiarBusqueda()" title="Limpiar búsqueda">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
@@ -56,10 +56,9 @@
         
         <div class="filter-wrapper">
             <select id="filterTipo" class="filter-select">
-                <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos los tipos</option>
-                <option value="Vendedor" {% if filtro_tipo == 'Vendedor' %}selected{% endif %}>Vendedores</option>
-                <option value="Instalador" {% if filtro_tipo == 'Instalador' %}selected{% endif %}>Instaladores</option>
-                <option value="Administrador" {% if filtro_tipo == 'Administrador' %}selected{% endif %}>Administradores</option>
+                <option value="todos" {% if filtro_tipo == 'todos' %}selected{% endif %}>Todos</option>
+                <option value="cuadrillas" {% if filtro_tipo == 'cuadrillas' %}selected{% endif %}>Cuadrillas</option>
+                <option value="vendedores" {% if filtro_tipo == 'vendedores' %}selected{% endif %}>Vendedores</option>
             </select>
         </div>
         
@@ -89,7 +88,7 @@
 
 <!-- Leyenda responsive -->
 <div class="leyenda-container">
-    <h4 class="leyenda-titulo">📍 Usuarios activos ahora</h4>
+    <h4 class="leyenda-titulo">📍 Puntos en el mapa</h4>
     <div id="leyenda-usuarios" class="leyenda-grid"></div>
 </div>
 
@@ -105,6 +104,8 @@
     :root {
         --orange: #ff6b00;
         --orange-light: #fff2e6;
+        --blue: #2196F3;
+        --blue-light: #e3f2fd;
         --gray-bg: #f5f5f5;
         --gray-border: #eaeaea;
         --gray-text: #999;
@@ -270,6 +271,7 @@
         border-radius: 16px;
         overflow: hidden;
         border: 1px solid var(--gray-border);
+        background: #f8f9fa;
     }
     
     .map {
@@ -289,12 +291,15 @@
         margin-bottom: 12px;
         color: var(--dark-text);
         font-size: 14px;
+        font-weight: 600;
     }
     
     .leyenda-grid {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
+        max-height: 300px;
+        overflow-y: auto;
     }
     
     .leyenda-item {
@@ -308,11 +313,13 @@
         border: 1px solid transparent;
         transition: all 0.2s;
         flex: 0 1 auto;
+        cursor: pointer;
     }
     
     .leyenda-item:hover {
         border-color: var(--orange);
         background: white;
+        transform: translateY(-2px);
     }
     
     .color-dot {
@@ -320,38 +327,62 @@
         height: 12px;
         border-radius: 50%;
         border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         flex-shrink: 0;
     }
     
     .leyenda-info {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 6px;
         flex-wrap: wrap;
     }
     
     .timestamp {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--gray-text);
+        font-family: monospace;
     }
     
     .tipo-badge {
         font-size: 10px;
-        padding: 2px 6px;
+        padding: 2px 8px;
         border-radius: 12px;
-        background: #e0e0e0;
-        color: #555;
-        display: inline-block;
+        font-weight: 500;
     }
     
-    .tipo-badge.vendedor { background: #e3f2fd; color: #2196f3; }
-    .tipo-badge.instalador { background: #e8f5e9; color: #4caf50; }
-    .tipo-badge.admin { background: #fff2e6; color: #ff6b00; }
+    .tipo-badge.cuadrilla {
+        background: #fff2e6;
+        color: #ff6b00;
+    }
+    
+    .tipo-badge.vendedor {
+        background: #e3f2fd;
+        color: #2196f3;
+    }
     
     .activo-indicator {
         color: #4caf50;
-        margin-left: 4px;
+        font-size: 12px;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    .leyenda-grid::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .leyenda-grid::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .leyenda-grid::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 3px;
+    }
+    
+    .leyenda-grid::-webkit-scrollbar-thumb:hover {
+        background: #999;
     }
 
     /* ===== RESPONSIVE ===== */
@@ -391,6 +422,15 @@
             padding: 6px 12px;
             font-size: 12px;
         }
+        
+        .leyenda-item {
+            width: 100%;
+        }
+        
+        .leyenda-info {
+            flex: 1;
+            justify-content: space-between;
+        }
     }
     
     /* Móvil Pequeño (320px - 576px) */
@@ -421,22 +461,6 @@
         }
         
         .leyenda-item {
-            width: 100%;
-        }
-        
-        .leyenda-info {
-            flex: 1;
-            justify-content: space-between;
-        }
-    }
-    
-    /* Móvil muy pequeño (menos de 380px) */
-    @media screen and (max-width: 380px) {
-        .stat-card {
-            flex: 1 1 100%;
-        }
-        
-        .leyenda-item {
             flex-direction: column;
             text-align: center;
         }
@@ -445,6 +469,31 @@
             flex-direction: column;
             gap: 4px;
         }
+    }
+    
+    /* Móvil muy pequeño (menos de 380px) */
+    @media screen and (max-width: 380px) {
+        .stat-card {
+            flex: 1 1 100%;
+        }
+    }
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
     }
 </style>
 
@@ -459,25 +508,26 @@
     };
     
     const colores = {
-        'Vendedor': '#2196F3',
-        'Instalador': '#4CAF50',
-        'Administrador': '#FF6B00',
-        'default': '#9C27B0'
+        'cuadrilla': '#FF6B00',
+        'vendedor': '#2196F3',
     };
 
     // Inicialización
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Inicializando mapa...');
+        console.log('Inicializando mapa de cuadrillas y vendedores...');
         inicializarMapa();
         cargarUbicacionesIniciales();
         iniciarAutoActualizacion();
         
         // Agregar evento Enter en el campo de búsqueda
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                aplicarFiltros();
-            }
-        });
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    aplicarFiltros();
+                }
+            });
+        }
     });
 
     function limpiarBusqueda() {
@@ -492,7 +542,6 @@
     }
 
     function iniciarAutoActualizacion() {
-        // Actualizar cada 2 minutos (120,000 milisegundos)
         intervalAutoActualizacion = setInterval(function() {
             console.log('🔄 Actualizando ubicaciones automáticamente...');
             obtenerUbicacionesActualizadas();
@@ -514,17 +563,14 @@
             })
             .then(data => {
                 console.log(`📊 Actualización automática: ${data.ubicaciones.length} ubicaciones recibidas`);
-                
-                // Actualizar marcadores sin recargar la página
                 actualizarMarcadores(data.ubicaciones);
-                
-                // Actualizar estadísticas
                 actualizarEstadisticas(data);
                 
-                // Pequeña animación para indicar actualización (sutil)
-                document.querySelector('.stats-grid').style.opacity = '0.8';
+                // Animación sutil
+                const statsGrid = document.querySelector('.stats-grid');
+                statsGrid.style.opacity = '0.8';
                 setTimeout(() => {
-                    document.querySelector('.stats-grid').style.opacity = '1';
+                    statsGrid.style.opacity = '1';
                 }, 200);
             })
             .catch(error => {
@@ -542,15 +588,18 @@
             maxZoom: 19
         }).addTo(map);
         
-        // Hacer el mapa responsive
+        // Ajustar tamaño del mapa después de cargar
         setTimeout(() => {
             map.invalidateSize();
         }, 100);
     }
 
     function cargarUbicacionesIniciales() {
-        const ubicaciones = JSON.parse(document.getElementById('ubicaciones-data').textContent);
-        actualizarMarcadores(ubicaciones);
+        const ubicacionesElement = document.getElementById('ubicaciones-data');
+        if (ubicacionesElement) {
+            const ubicaciones = JSON.parse(ubicacionesElement.textContent);
+            actualizarMarcadores(ubicaciones);
+        }
     }
 
     function cargarUbicaciones() {
@@ -560,12 +609,7 @@
         console.log('Cargando ubicaciones con filtros:', { tipo, buscar });
         
         fetch(`/api/ubicaciones/?tipo=${tipo}&buscar=${buscar}&_=${Date.now()}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 actualizarMarcadores(data.ubicaciones);
                 actualizarEstadisticas(data);
@@ -583,27 +627,26 @@
         }
         
         const leyendaDiv = document.getElementById('leyenda-usuarios');
+        if (!leyendaDiv) return;
+        
         leyendaDiv.innerHTML = '';
         
         if (ubicaciones.length === 0) {
-            leyendaDiv.innerHTML = '<p style="color: #999; width: 100%; text-align: center;">No hay usuarios con ubicación registrada.</p>';
+            leyendaDiv.innerHTML = '<p style="color: #999; width: 100%; text-align: center;">No hay ubicaciones registradas.</p>';
             return;
         }
         
         const bounds = [];
         
-        ubicaciones.forEach((ubicacion) => {
-            if (!ubicacion.latitud || !ubicacion.longitud) return;
+        ubicaciones.forEach((item) => {
+            if (!item.latitud || !item.longitud) return;
             
-            const pos = [ubicacion.latitud, ubicacion.longitud];
+            const pos = [item.latitud, item.longitud];
             bounds.push(pos);
             
-            const tipo = ubicacion.usuario.tipo;
-            const color = colores[tipo] || colores['default'];
-            
-            // Determinar tamaño según actividad
-            const radius = ubicacion.activo ? 12 : 8;
-            const weight = ubicacion.activo ? 3 : 2;
+            const color = item.color || (item.tipo === 'cuadrilla' ? '#FF6B00' : '#2196F3');
+            const radius = item.radius || (item.tipo === 'cuadrilla' ? 14 : 10);
+            const weight = item.activo ? 3 : 2;
             
             // Crear marcador
             const marker = L.circleMarker(pos, {
@@ -618,7 +661,7 @@
             markers.push(marker);
             
             // Formatear fecha
-            const fecha = new Date(ubicacion.ultima_actualizacion);
+            const fecha = new Date(item.ultima_actualizacion);
             const fechaStr = fecha.toLocaleString('es-VE', {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -626,33 +669,86 @@
                 month: '2-digit'
             });
             
-            // Popup con información
-            marker.bindPopup(`
-                <div style="padding: 10px; min-width: 220px;">
-                    <h4 style="margin: 0 0 8px 0; color: #FF6B00;">
-                        ${ubicacion.usuario.first_name || ''} ${ubicacion.usuario.last_name || ''}
-                    </h4>
-                    <p style="margin: 4px 0;">
-                        <strong>👤 Usuario:</strong> ${ubicacion.usuario.username}
-                        <span class="tipo-badge ${tipo.toLowerCase()}">${tipo}</span>
-                    </p>
-                    <p style="margin: 4px 0;"><strong>🕐 Última actividad:</strong> ${fechaStr}</p>
-                    <p style="margin: 4px 0;"><strong>📊 Total clientes:</strong> ${ubicacion.total_clientes || 0}</p>
-                    ${ubicacion.activo ? 
-                        '<p style="color: #4CAF50; margin-top: 8px;">🟢 Activo ahora</p>' : 
-                        '<p style="color: #999; margin-top: 8px;">⚪ Inactivo</p>'}
-                </div>
-            `);
+            let popupContent = '';
+            
+            if (item.tipo === 'cuadrilla') {
+                // Popup para CUADRILLA
+                popupContent = `
+                    <div style="padding: 12px; min-width: 280px; max-width: 350px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <div style="background: #FF6B00; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👥</div>
+                            <div>
+                                <h3 style="margin: 0; color: #FF6B00;">${escapeHtml(item.cuadrilla.nombre)}</h3>
+                                <p style="margin: 2px 0 0 0; color: #666;">Código: ${escapeHtml(item.cuadrilla.codigo)} | ${escapeHtml(item.cuadrilla.estado_display)}</p>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 10px;">
+                            <strong>👷 Instaladores (${item.cuadrilla.instaladores.length}):</strong>
+                            <div style="margin-top: 6px; max-height: 200px; overflow-y: auto;">
+                `;
+                
+                item.cuadrilla.instaladores.forEach(inst => {
+                    popupContent += `
+                        <div style="display: flex; align-items: center; gap: 8px; padding: 6px; background: #f8f9fa; border-radius: 8px; margin-bottom: 4px;">
+                            <span style="font-size: 14px;">${inst.activo ? '🟢' : '⚪'}</span>
+                            <div>
+                                <strong>${escapeHtml(inst.nombre)}</strong>
+                                <div style="font-size: 11px; color: #666;">
+                                    ${inst.telefono ? `📞 ${escapeHtml(inst.telefono)} | ` : ''}Última: ${escapeHtml(inst.ultima_actualizacion)}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                popupContent += `
+                            </div>
+                        </div>
+                        
+                        <div style="background: #f5f5f5; padding: 8px; border-radius: 8px; margin-top: 8px;">
+                            <span>📍 Ubicación promedio de la cuadrilla</span>
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">Última actualización: ${fechaStr}</div>
+                        </div>
+                        ${item.activo ? '<div style="color: #4CAF50; margin-top: 8px; text-align: center;">🟢 Cuadrilla activa ahora</div>' : '<div style="color: #999; margin-top: 8px; text-align: center;">⚪ Cuadrilla inactiva</div>'}
+                    </div>
+                `;
+            } else {
+                // Popup para VENDEDOR
+                popupContent = `
+                    <div style="padding: 12px; min-width: 220px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                            <div style="background: #2196F3; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👤</div>
+                            <div>
+                                <h3 style="margin: 0; color: #2196F3;">${escapeHtml(item.vendedor.first_name || '')} ${escapeHtml(item.vendedor.last_name || '')}</h3>
+                                <p style="margin: 2px 0 0 0; color: #666;">@${escapeHtml(item.vendedor.username)}</p>
+                            </div>
+                        </div>
+                        
+                        <p style="margin: 6px 0;"><strong>📞 Teléfono:</strong> ${escapeHtml(item.vendedor.telefono || 'No registrado')}</p>
+                        <p style="margin: 6px 0;"><strong>📊 Total clientes:</strong> ${item.vendedor.total_clientes || 0}</p>
+                        
+                        <div style="background: #f5f5f5; padding: 8px; border-radius: 8px; margin-top: 8px;">
+                            <span>📍 Última ubicación registrada</span>
+                            <div style="font-size: 11px; color: #999; margin-top: 4px;">${fechaStr}</div>
+                        </div>
+                        ${item.activo ? '<div style="color: #4CAF50; margin-top: 8px; text-align: center;">🟢 Activo ahora</div>' : '<div style="color: #999; margin-top: 8px; text-align: center;">⚪ Inactivo</div>'}
+                    </div>
+                `;
+            }
+            
+            marker.bindPopup(popupContent);
             
             // Añadir a leyenda
+            const nombre = item.tipo === 'cuadrilla' ? item.cuadrilla.nombre : (item.vendedor.first_name || item.vendedor.username);
             leyendaDiv.innerHTML += `
-                <div class="leyenda-item">
+                <div class="leyenda-item" onclick="centrarEnPunto(${item.latitud}, ${item.longitud})">
                     <div class="color-dot" style="background-color: ${color};"></div>
                     <div class="leyenda-info">
-                        <strong>${ubicacion.usuario.first_name || ubicacion.usuario.username}</strong>
-                        <span class="tipo-badge ${tipo.toLowerCase()}">${tipo}</span>
+                        <strong>${escapeHtml(nombre)}</strong>
+                        <span class="tipo-badge ${item.tipo}">${item.tipo === 'cuadrilla' ? 'Cuadrilla' : 'Vendedor'}</span>
                         <span class="timestamp">${fechaStr}</span>
-                        ${ubicacion.activo ? '<span class="activo-indicator">🟢</span>' : ''}
+                        ${item.activo ? '<span class="activo-indicator">🟢</span>' : ''}
                     </div>
                 </div>
             `;
@@ -663,25 +759,39 @@
             map.fitBounds(bounds, { padding: [50, 50] });
         }
     }
+    
+    function centrarEnPunto(lat, lng) {
+        map.setView([lat, lng], 15);
+    }
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
     function actualizarEstadisticas(data) {
-        // Actualizar total de usuarios
-        document.getElementById('total-usuarios').textContent = data.total_usuarios;
-        document.getElementById('activos-ahora').textContent = data.activos_ahora;
+        const totalUsuarios = document.getElementById('total-usuarios');
+        const activosAhora = document.getElementById('activos-ahora');
         
-        // Actualizar estadísticas por tipo
+        if (totalUsuarios) totalUsuarios.textContent = data.total_usuarios;
+        if (activosAhora) activosAhora.textContent = data.activos_ahora;
+        
         if (data.stats_por_tipo) {
             data.stats_por_tipo.forEach(stat => {
                 const elemento = document.getElementById(`stat-${stat.nombre.toLowerCase()}`);
                 if (elemento) {
                     elemento.textContent = stat.cantidad;
                     
-                    // Animación sutil en la tarjeta actualizada
+                    // Animación
                     const card = elemento.closest('.stat-card');
-                    card.classList.add('actualizado');
-                    setTimeout(() => {
-                        card.classList.remove('actualizado');
-                    }, 500);
+                    if (card) {
+                        card.classList.add('actualizado');
+                        setTimeout(() => {
+                            card.classList.remove('actualizado');
+                        }, 500);
+                    }
                 }
             });
         }
@@ -691,10 +801,7 @@
         const tipo = document.getElementById('filterTipo').value;
         const buscar = document.getElementById('searchInput').value;
         
-        // Actualizar con los nuevos filtros
         filtrosActuales = { tipo, buscar };
-        
-        // Cargar ubicaciones con los nuevos filtros
         cargarUbicaciones();
     }
 

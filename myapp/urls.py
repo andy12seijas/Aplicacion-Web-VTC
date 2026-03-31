@@ -4,8 +4,10 @@ from myapp.views_admin import *
 from myapp.views_asignacion import *
 from myapp.views_vendedores import *
 from myapp.views_instaladores import *
-from . import views_vendedores
+from myapp.views_venta_directa import *
 from django.contrib.auth.decorators import user_passes_test
+from myapp.views_reporte import *
+from myapp.views_panel_estadisticas import *
 
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
@@ -32,8 +34,10 @@ urlpatterns = [
     path('cuadrillas/<int:pk>/cambiar-estado/', cambiar_estado_cuadrilla, name='cambiar_estado_cuadrilla'),
     path('cuadrillas/<int:pk>/eliminar/',eliminar_cuadrilla, name='eliminar_cuadrilla'),
     path('asignaciones/', lista_asignaciones, name='lista_asignaciones'),
-    path('asignaciones/asignar/<int:contrato_id>/', asignar_contrato, name='asignar_contrato'),
+    path('asignaciones/asignar/<int:item_id>/', asignar_contrato, name='asignar_contrato'),
     path('asignaciones/desasignar/<int:asignacion_id>/', desasignar_contrato, name='desasignar_contrato'),
+    path('panel-estadisticas/', panel_estadisticas, name='panel_estadisticas'),
+    path('usuarios/<int:user_id>/cambiar-estado/', cambiar_estado_usuario, name='cambiar_estado_usuario'),
     #URLS DE VENDEDORES
     path('lista_clientes/', lista_clientes, name='lista_clientes'),
     path('crear_cliente/', crear_cliente, name='crear_cliente'),
@@ -45,9 +49,22 @@ urlpatterns = [
     path('lista_contratos/', lista_contratos, name='lista_contratos'),
     path('datos-contrato/<int:contrato_id>/', datos_contrato, name='datos_contrato'),
     path('contrato/crear/error/', crear_contrato_error, name='crear_contrato_error'),
+    path('capturar-ubicacion-vendedor/', capturar_ubicacion_vendedor, name='capturar_ubicacion_vendedor'),
+    path('cuadrillas/estado/', estado_cuadrillas, name='estado_cuadrillas'),
+    path('reporte/', reporte_vendedor, name='reporte_vendedor'),
+    path('api/reporte-datos/', api_reporte_datos, name='api_reporte_datos'),
     #URLS DE INSTALADORES
      path('instalaciones/', instalaciones_pendientes, name='instalaciones_pendientes'),
     path('instalaciones/<int:instalacion_id>/realizar/', realizar_instalacion, name='realizar_instalacion'),
+    path('capturar-ubicacion-instalador/', capturar_ubicacion_instalador, name='capturar_ubicacion_instalador'),
+    #URLS DE VENTA DIRECTA
+    path('ventas-directas/',lista_ventas_directas, name='lista_ventas_directas'),
+    path('ventas-directas/crear/',crear_venta_directa, name='crear_venta_directa'),
+    path('ventas-directas/<int:venta_id>/editar/',editar_venta_directa, name='editar_venta_directa'),
+    
+    path('ventas-directas/<int:venta_id>/detalle/', detalle_venta_directa, name='detalle_venta_directa'),
+    path('ventas-directas/<int:venta_id>/cambiar-estado/', cambiar_estado_venta, name='cambiar_estado_venta'),
+    
 ]
 
 

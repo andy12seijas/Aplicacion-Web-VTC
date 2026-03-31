@@ -1,0 +1,914 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Ventas Directas{% endblock %}
+
+{% block page_title %}Ventas Directas{% endblock %}
+{% block page_subtitle %}Gestión de ventas desde la torre de control{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+<a href="{% url 'crear_venta_directa' %}" class="btn-orange">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nueva Venta Directa
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total }}</span>
+        <span class="stat-label">Total Ventas</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ en_proceso }}</span>
+        <span class="stat-label">En Proceso</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ completadas }}</span>
+        <span class="stat-label">Completadas</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ no_completadas }}</span>
+        <span class="stat-label">No Completadas</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ no_asignadas }}</span>
+        <span class="stat-label">Sin Asignar</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ asignadas }}</span>
+        <span class="stat-label">Asignadas</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por orden, cédula, nombre..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <select id="filterEstado" class="filter-select">
+            <option value="">Todos los estados</option>
+            <option value="EN_PROCESO" {% if estado_filtro == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+            <option value="COMPLETADO" {% if estado_filtro == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+            <option value="NO_COMPLETADO" {% if estado_filtro == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
+        </select>
+        
+        <input type="date" id="fecha_desde" class="filter-input" value="{{ fecha_desde }}" placeholder="Desde">
+        <input type="date" id="fecha_hasta" class="filter-input" value="{{ fecha_hasta }}" placeholder="Hasta">
+        
+        <button onclick="aplicarFiltros()" class="btn-primary">Aplicar</button>
+        <button onclick="limpiarFiltros()" class="btn-clear">Limpiar</button>
+    </div>
+</div>
+
+<!-- Tabla Desktop -->
+<div class="desktop-view">
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>N° Orden</th>
+                    <th>Cliente</th>
+                    <th>Cédula</th>
+                    <th>Teléfono</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
+                    
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                </thead>
+            <tbody>
+                {% for venta in page_obj %}
+                <tr>
+                    <td><strong>{{ venta.nro_orden }}</strong>{% if venta.customer_id %}<br><small class="text-muted">ID: {{ venta.customer_id }}</small>{% endif %}</td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="user-avatar">{{ venta.nombre|first|upper }}{{ venta.apellido|first|upper }}</span>
+                            <div>
+                                <div class="user-name">{{ venta.nombre }} {{ venta.apellido }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ venta.cedula }}</td>
+                    <td>{{ venta.telefono }}</td>
+                    <td>{{ venta.plan.nombre }}</td>
+                    <td>
+                        {% if venta.estado == 'EN_PROCESO' %}
+                        <span class="badge proceso">En Proceso</span>
+                        {% elif venta.estado == 'COMPLETADO' %}
+                        <span class="badge completado">Completado</span>
+                        {% elif venta.estado == 'NO_COMPLETADO' %}
+                        <span class="badge no-completado">No Completado</span>
+                        {% endif %}
+                    </td>
+                  
+                    <td>{{ venta.fecha|date:"d/m/Y" }}</td>
+                    <td>
+                        <div class="actions">
+                            <button class="action-btn" onclick="verDetalle({{ venta.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                            {% if es_admin %}
+                            <button class="action-btn" onclick="editarVenta({{ venta.id }})" title="Editar">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </button>
+                            
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="empty">No hay ventas directas registradas</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Paginación -->
+{% if page_obj.has_other_pages %}
+<div class="pagination">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">«</a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">‹</a>
+    {% endif %}
+
+    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">›</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">»</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Modal de detalle -->
+<div id="detalleModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModal()"></div>
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalNombreCompleto"></h2>
+                    <p id="modalOrden"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="modal-grid grid-2">
+                <div class="modal-item">
+                    <span class="modal-label">Cédula</span>
+                    <span class="modal-value" id="modalCedula"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Customer ID</span>
+                    <span class="modal-value" id="modalCustomerId"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Teléfono</span>
+                    <span class="modal-value" id="modalTelefono"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Plan</span>
+                    <span class="modal-value" id="modalPlan"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Estado</span>
+                    <span class="modal-value" id="modalEstado"></span>
+                </div>
+                <div class="modal-item full-width">
+                    <span class="modal-label">Observación</span>
+                    <span class="modal-value" id="modalObservacion"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Fecha de venta</span>
+                    <span class="modal-value" id="modalFecha"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Creado por</span>
+                    <span class="modal-value" id="modalCreadoPor"></span>
+                </div>
+                <div class="modal-item">
+                    <span class="modal-label">Asignación</span>
+                    <span class="modal-value" id="modalAsignacion"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
+            {% if es_admin %}
+            <button class="btn-primary" id="modalEditarBtn">Editar Venta</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .btn-primary, .btn-clear {
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+    }
+    
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .btn-clear:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .filter-input {
+        padding: 10px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 30px;
+        font-size: 13px;
+    }
+    
+    .block {
+        display: block;
+    }
+    
+    .text-muted {
+        color: #999;
+        font-size: 11px;
+    }
+    
+    .badge-info {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        display: inline-block;
+    }
+    
+    .badge-warning {
+        background: #fff3e0;
+        color: #ef6c00;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 10px;
+        display: inline-block;
+    }
+    
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid #e0e0e0;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+    
+    .stat-card:hover {
+        border-color: #ff6b00;
+        transform: translateY(-1px);
+    }
+    
+    .stat-value {
+        font-weight: 600;
+        color: #ff6b00;
+    }
+    
+    .stat-label {
+        color: #666;
+    }
+    
+    .filters-container {
+        margin-bottom: 20px;
+    }
+    
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .search-box {
+        flex: 2;
+        min-width: 250px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8f9fa;
+        padding: 0 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 30px;
+    }
+    
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+    
+    .filter-select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        cursor: pointer;
+    }
+    
+    .desktop-view {
+        display: block;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid #e0e0e0;
+        overflow: auto;
+        margin-bottom: 20px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        min-width: 1000px;
+    }
+    
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 500;
+        color: #666;
+    }
+    
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .table tbody tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+    }
+    
+    .user-name {
+        font-weight: 500;
+        color: #333;
+        font-size: 13px;
+    }
+    
+    .actions {
+        display: flex;
+        gap: 6px;
+    }
+    
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid #e0e0e0;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fff2e6;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .badge.proceso {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+    
+    .badge.completado {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .badge.no-completado {
+        background: #ffebee;
+        color: #c62828;
+    }
+    
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        background: white;
+        transition: all 0.2s;
+    }
+    
+    .page-link:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fff2e6;
+    }
+    
+    .page-info {
+        padding: 0 12px;
+        color: #999;
+        font-weight: 500;
+    }
+    
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: #999;
+    }
+    
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-container {
+        position: relative;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 24px;
+        z-index: 2001;
+    }
+    
+    .modal-container.modal-lg {
+        max-width: 1000px;
+    }
+    
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e0e0e0;
+        background: #f8f9fa;
+        border-radius: 24px 24px 0 0;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 20px;
+    }
+    
+    .modal-header-info h2 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    
+    .modal-header-info p {
+        font-size: 14px;
+        color: #999;
+    }
+    
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid #e0e0e0;
+        background: white;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .modal-grid {
+        display: grid;
+        gap: 16px;
+    }
+    
+    .modal-grid.grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .modal-item.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .modal-label {
+        font-size: 11px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .modal-value {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        word-break: break-word;
+    }
+    
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 20px 24px;
+        border-top: 1px solid #e0e0e0;
+        background: #f8f9fa;
+        border-radius: 0 0 24px 24px;
+    }
+    
+    .btn-outline {
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    @media (max-width: 768px) {
+        .filters-grid {
+            flex-direction: column;
+        }
+        
+        .search-box, .filter-select, .filter-input {
+            width: 100%;
+        }
+        
+        .modal-grid.grid-2 {
+            grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+            justify-content: center;
+        }
+        
+        .stat-card {
+            min-width: calc(50% - 8px);
+            justify-content: center;
+        }
+        
+        .modal-footer {
+            flex-direction: column;
+        }
+        
+        .btn-outline, .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let searchTimeout;
+    
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const busqueda = document.getElementById('searchInput').value;
+        const estado = document.getElementById('filterEstado').value;
+        const fecha_desde = document.getElementById('fecha_desde').value;
+        const fecha_hasta = document.getElementById('fecha_hasta').value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        if (estado) url.searchParams.set('estado', estado);
+        else url.searchParams.delete('estado');
+        
+        if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
+        else url.searchParams.delete('fecha_desde');
+        
+        if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
+        else url.searchParams.delete('fecha_hasta');
+        
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+    
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('estado');
+        url.searchParams.delete('fecha_desde');
+        url.searchParams.delete('fecha_hasta');
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+    
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(aplicarFiltros, 500);
+    });
+    
+    document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('fecha_desde')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('fecha_hasta')?.addEventListener('change', aplicarFiltros);
+    
+    function verDetalle(id) {
+        Swal.fire({
+            title: 'Cargando...',
+            text: 'Obteniendo información de la venta',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        fetch(`/ventas-directas/${id}/detalle/`)
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.error) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.error });
+                    return;
+                }
+                mostrarModal(data);
+            })
+            .catch(error => {
+                Swal.close();
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la información' });
+            });
+    }
+    
+    function mostrarModal(data) {
+        document.getElementById('modalAvatar').textContent = data.nombre[0] + data.apellido[0];
+        document.getElementById('modalNombreCompleto').textContent = data.nombre_completo;
+        document.getElementById('modalOrden').textContent = `Orden: ${data.nro_orden}`;
+        document.getElementById('modalCedula').textContent = data.cedula;
+        document.getElementById('modalCustomerId').textContent = data.customer_id || '—';
+        document.getElementById('modalTelefono').textContent = data.telefono;
+        document.getElementById('modalPlan').textContent = data.plan.nombre;
+        
+        let estadoClass = 'badge proceso';
+        if (data.estado_valor === 'COMPLETADO') estadoClass = 'badge completado';
+        if (data.estado_valor === 'NO_COMPLETADO') estadoClass = 'badge no-completado';
+        document.getElementById('modalEstado').innerHTML = `<span class="${estadoClass}">${data.estado}</span>`;
+        
+        document.getElementById('modalObservacion').textContent = data.observacion || '—';
+        document.getElementById('modalFecha').textContent = data.fecha;
+        document.getElementById('modalCreadoPor').textContent = data.creado_por;
+        
+        let asignacionText = data.asignada ? `Asignada a: ${data.cuadrilla_asignada} (${data.fecha_asignacion})` : 'Sin asignar';
+        document.getElementById('modalAsignacion').innerHTML = asignacionText;
+        
+        document.getElementById('modalEditarBtn').onclick = () => window.location.href = `/ventas-directas/${data.id}/editar/`;
+        
+        document.getElementById('detalleModal').style.display = 'flex';
+    }
+    
+    function cerrarModal() {
+        document.getElementById('detalleModal').style.display = 'none';
+    }
+    
+    function editarVenta(id) {
+        window.location.href = `/ventas-directas/${id}/editar/`;
+    }
+    
+    function eliminarVenta(id) {
+        Swal.fire({
+            title: '¿Eliminar venta?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/ventas-directas/${id}/eliminar/`;
+                const csrf = document.createElement('input');
+                csrf.name = 'csrfmiddlewaretoken';
+                csrf.value = '{{ csrf_token }}';
+                form.appendChild(csrf);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+    
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+    document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
+</script>
+{% endblock %}

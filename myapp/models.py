@@ -7,6 +7,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.backends import ModelBackend
+from django.contrib.auth.models import User
 class PerfilUsuario(models.Model):
     """Modelo para extender la información del usuario"""
     
@@ -295,6 +297,10 @@ class Cuadrilla(models.Model):
         default=True,
         verbose_name="Activo"
     )
+    @property
+    def cantidad_instaladores(self):
+        """Retorna la cantidad de instaladores en la cuadrilla"""
+        return self.instaladores.count()
     
     class Meta:
         verbose_name = "Cuadrilla"
@@ -314,22 +320,41 @@ class Cuadrilla(models.Model):
 class AsignacionContrato(models.Model):
     """Modelo para asignar contratos a cuadrillas"""
     
+    # Relación con ContratoCliente (opcional)
     contrato = models.ForeignKey(
         'ContratoCliente',
         on_delete=models.CASCADE,
         related_name='asignaciones',
-        verbose_name="Contrato"
+        verbose_name="Contrato de Vendedor",
+        null=True,
+        blank=True,
+        help_text="Contrato generado por vendedor"
     )
+    
+    # Relación con VentaDirecta (opcional)
+    venta_directa = models.ForeignKey(
+        'VentaDirecta',
+        on_delete=models.CASCADE,
+        related_name='asignaciones',
+        verbose_name="Venta Directa",
+        null=True,
+        blank=True,
+        help_text="Venta directa de la torre de control"
+    )
+    
+    # Relación con Cuadrilla
     cuadrilla = models.ForeignKey(
         'Cuadrilla',
         on_delete=models.CASCADE,
         related_name='asignaciones',
         verbose_name="Cuadrilla"
     )
+    
     fecha_asignacion = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Fecha de asignación"
     )
+    
     asignado_por = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -338,10 +363,12 @@ class AsignacionContrato(models.Model):
         related_name='asignaciones_realizadas',
         verbose_name="Asignado por"
     )
+    
     activo = models.BooleanField(
         default=True,
         verbose_name="Activo"
     )
+    
     observaciones = models.TextField(
         max_length=500,
         verbose_name="Observaciones",
@@ -356,10 +383,104 @@ class AsignacionContrato(models.Model):
         indexes = [
             models.Index(fields=['activo']),
             models.Index(fields=['fecha_asignacion']),
+            models.Index(fields=['contrato']),
+            models.Index(fields=['venta_directa']),
+        ]
+        # Validación: al menos uno de los dos debe estar presente
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(contrato__isnull=False) | 
+                    models.Q(venta_directa__isnull=False)
+                ),
+                name="asignacion_tiene_origen"
+            )
         ]
     
+    def save(self, *args, **kwargs):
+        """Validar que tenga al menos un origen antes de guardar"""
+        if not self.contrato and not self.venta_directa:
+            raise ValueError("La asignación debe tener un contrato o una venta directa")
+        super().save(*args, **kwargs)
+    
     def __str__(self):
-        return f"{self.contrato.nombre_completo} → {self.cuadrilla.nombre}"
+        if self.contrato:
+            return f"{self.contrato.nombre_completo} → {self.cuadrilla.nombre}"
+        elif self.venta_directa:
+            return f"{self.venta_directa.nombre_completo} → {self.cuadrilla.nombre}"
+        return f"Asignación #{self.id} → {self.cuadrilla.nombre}"
+    
+    @property
+    def tipo_asignacion(self):
+        """Retorna el tipo de asignación"""
+        if self.contrato:
+            return "vendedor"
+        elif self.venta_directa:
+            return "torre_control"
+        return "desconocido"
+    
+    @property
+    def cliente_nombre(self):
+        """Obtiene el nombre del cliente según el origen"""
+        if self.contrato:
+            return self.contrato.nombre_completo
+        elif self.venta_directa:
+            return self.venta_directa.nombre_completo
+        return "Cliente no disponible"
+    
+    @property
+    def cedula_cliente(self):
+        """Obtiene la cédula del cliente según el origen"""
+        if self.contrato:
+            return self.contrato.cedula
+        elif self.venta_directa:
+            return self.venta_directa.cedula
+        return "N/A"
+    
+    @property
+    def telefono_cliente(self):
+        """Obtiene el teléfono del cliente según el origen"""
+        if self.contrato:
+            return self.contrato.telefono_principal
+        elif self.venta_directa:
+            return self.venta_directa.telefono
+        return "N/A"
+    
+    @property
+    def plan(self):
+        """Obtiene el plan según el origen"""
+        if self.contrato:
+            return self.contrato.plan_contratado.nombre
+        elif self.venta_directa:
+            return self.venta_directa.plan.nombre
+        return "N/A"
+    
+    @property
+    def direccion(self):
+        """Obtiene la dirección según el origen"""
+        if self.contrato:
+            return self.contrato.direccion_detallada
+        elif self.venta_directa:
+            return self.venta_directa.direccion if hasattr(self.venta_directa, 'direccion') else "N/A"
+        return "N/A"
+    
+    @property
+    def referencia_externa(self):
+        """Obtiene referencia externa (número de orden de torre o customer ID)"""
+        if self.contrato:
+            return self.contrato.customer_id or "N/A"
+        elif self.venta_directa:
+            return self.venta_directa.nro_orden
+        return "N/A"
+    
+    @property
+    def ods(self):
+        """Obtiene ODS según el origen"""
+        if self.contrato:
+            return self.contrato.ods or "N/A"
+        elif self.venta_directa:
+            return self.venta_directa.ods if hasattr(self.venta_directa, 'ods') else "N/A"
+        return "N/A"
     
     
     
@@ -389,110 +510,337 @@ class Instalacion(models.Model):
         verbose_name="Asignación"
     )
     
-    # Número de orden de servicio autoincremental
-    orden_servicio = models.CharField(
-        max_length=10,
-        
-        editable=False,
-        verbose_name="Orden de Servicio"
+    # Ubicación de la instalación (coordenadas del cliente)
+    latitud = models.FloatField(
+        verbose_name="Latitud",
+        blank=True, null=True,
+        help_text="Coordenada de la ubicación del cliente"
+    )
+    longitud = models.FloatField(
+        verbose_name="Longitud",
+        blank=True, null=True,
+        help_text="Coordenada de la ubicación del cliente"
     )
     
-    # Datos de ubicación (nuevos)
-    feeder = models.CharField(max_length=50, verbose_name="FEEDER", blank=True, null=True)
-    caja = models.CharField(max_length=50, verbose_name="CAJA", blank=True, null=True)
-    puerto_utilizado = models.CharField(max_length=10, verbose_name="PUERTO UTILIZADO", blank=True, null=True)
-    ubicacion_lat = models.FloatField(verbose_name="Latitud", blank=True, null=True)
-    ubicacion_lng = models.FloatField(verbose_name="Longitud", blank=True, null=True)
+    # Datos técnicos de la instalación
+    feeder = models.CharField(
+        max_length=50,
+        verbose_name="FEEDER",
+        blank=True, null=True
+    )
+    caja = models.CharField(
+        max_length=50,
+        verbose_name="CAJA",
+        blank=True, null=True
+    )
+    puerto_utilizado = models.CharField(
+        max_length=10,
+        verbose_name="PUERTO UTILIZADO",
+        blank=True, null=True
+    )
     
-    # Datos del equipo
+    # Datos del equipo instalado
     modelo_modem = models.ForeignKey(
-        ModeloModem,
+        'ModeloModem',
         on_delete=models.PROTECT,
         related_name='instalaciones',
         verbose_name="Modelo del Módem",
-        null=True,  blank=True,
+        null=True, blank=True
     )
-    sn_modem = models.CharField(null=True,  blank=True,max_length=50, verbose_name="Serial del Módem")
-    mac_modem = models.CharField(null=True,  blank=True,max_length=50, verbose_name="MAC del Módem")
+    sn_modem = models.CharField(
+        max_length=50,
+        verbose_name="Serial del Módem",
+        blank=True, null=True
+    )
+    mac_modem = models.CharField(
+        max_length=50,
+        verbose_name="MAC del Módem",
+        blank=True, null=True
+    )
     
     # Materiales utilizados
-    inicio_fibra = models.PositiveIntegerField(null=True,blank=True,verbose_name="INICIO", help_text="Medición inicial de fibra")
-    final_fibra = models.PositiveIntegerField(null=True, blank=True,verbose_name="FINAL", help_text="Medición final de fibra")
+    inicio_fibra = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="INICIO",
+        help_text="Medición inicial de fibra"
+    )
+    final_fibra = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="FINAL",
+        help_text="Medición final de fibra"
+    )
     
     @property
     def metros_utilizados(self):
         """Calcula los metros utilizados"""
-        return self.final_fibra - self.inicio_fibra if self.final_fibra and self.inicio_fibra else 0
+        if self.final_fibra and self.inicio_fibra:
+            return self.final_fibra - self.inicio_fibra
+        return 0
     
-    conectores = models.PositiveIntegerField(null=True,blank=True,verbose_name="CONECTORES", default=0)
-    rosetas = models.PositiveIntegerField(null=True,blank=True,verbose_name="ROSETAS", default=0)
-    patch_cord = models.PositiveIntegerField(verbose_name="PACH CORD", default=0)
-    tensores = models.PositiveIntegerField(null=True,  blank=True,verbose_name="TENSORES", default=0)
-    conectores_malos = models.PositiveIntegerField(null=True,blank=True,verbose_name="CONECTORES MALOS", default=0)
+    conectores = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="CONECTORES",
+        default=0
+    )
+    rosetas = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="ROSETAS",
+        default=0
+    )
+    patch_cord = models.PositiveIntegerField(
+        verbose_name="PACH CORD",
+        default=0
+    )
+    tensores = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="TENSORES",
+        default=0
+    )
+    conectores_malos = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="CONECTORES MALOS",
+        default=0
+    )
+    
+    # Fotos de la instalación (múltiples imágenes)
+    fotos = models.JSONField(
+        default=list,
+        verbose_name="Fotos de la instalación",
+        help_text="Lista de URLs de las fotos subidas"
+    )
     
     # Observaciones
-    observacion = models.TextField(max_length=500, verbose_name="OBSERVACIÓN", blank=True, null=True)
+    observacion = models.TextField(
+        max_length=500,
+        verbose_name="OBSERVACIÓN",
+        blank=True, null=True
+    )
     
     # Estado de la instalación
-    completada = models.BooleanField(default=False, verbose_name="Completada")
-    fecha_instalacion = models.DateTimeField(verbose_name="Fecha de instalación", null=True, blank=True)
+    completada = models.BooleanField(
+        default=False,
+        verbose_name="Completada"
+    )
+    fecha_instalacion = models.DateTimeField(
+        verbose_name="Fecha de instalación",
+        null=True, blank=True
+    )
     
     # Campos de control
     creado_por = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        null=True, blank=True,
         related_name='instalaciones_realizadas',
         verbose_name="Realizada por"
     )
-    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
-    fecha_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Última actualización")
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación"
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización"
+    )
     
     class Meta:
         verbose_name = "Instalación"
         verbose_name_plural = "Instalaciones"
         ordering = ['-fecha_creacion']
         indexes = [
-            models.Index(fields=['orden_servicio']),
             models.Index(fields=['completada']),
             models.Index(fields=['fecha_instalacion']),
         ]
     
     def __str__(self):
-        return f"Instalación {self.orden_servicio} - {self.asignacion.contrato.cliente_potencial.nombre_completo}"
+        return f"Instalación - {self.asignacion.contrato.cliente_potencial.nombre_completo}"
+    
+    @property
+    def orden_servicio(self):
+        """Obtener ODS desde el contrato o número de orden desde venta directa"""
+        if self.asignacion.contrato:
+            return self.asignacion.contrato.ods
+        elif self.asignacion.venta_directa:
+            return self.asignacion.venta_directa.nro_orden
+        return "N/A"
     
     @property
     def nombre_cliente(self):
-        """Obtener nombre completo del cliente desde el contrato"""
-        if hasattr(self, 'asignacion') and self.asignacion:
+        """Obtener nombre completo del cliente según el origen"""
+        if self.asignacion.contrato:
             return self.asignacion.contrato.cliente_potencial.nombre_completo
+        elif self.asignacion.venta_directa:
+            return self.asignacion.venta_directa.nombre_completo
         return "Cliente no disponible"
     
     @property
     def cedula_cliente(self):
-        """Obtener cédula del cliente desde el contrato"""
-        if hasattr(self, 'asignacion') and self.asignacion:
+        """Obtener cédula del cliente según el origen"""
+        if self.asignacion.contrato:
             return self.asignacion.contrato.cliente_potencial.cedula
-        return "Cédula no disponible"
+        elif self.asignacion.venta_directa:
+            return self.asignacion.venta_directa.cedula
+        return "N/A"
     
     @property
     def customer_id(self):
-        """Obtener customer ID desde el contrato"""
-        if hasattr(self, 'asignacion') and self.asignacion:
-            return self.asignacion.contrato.customer_id
-        return "Customer ID no disponible"
+        """Obtener customer ID según el origen"""
+        if self.asignacion.contrato:
+            return self.asignacion.contrato.customer_id or "N/A"
+        elif self.asignacion.venta_directa:
+            return self.asignacion.venta_directa.customer_id or "N/A"
+        return "N/A"
     
     @property
     def plan(self):
-        """Obtener plan desde el contrato"""
-        if hasattr(self, 'asignacion') and self.asignacion:
+        """Obtener plan según el origen"""
+        if self.asignacion.contrato:
             return self.asignacion.contrato.plan_contratado.nombre
-        return "Plan no disponible"
+        elif self.asignacion.venta_directa:
+            return self.asignacion.venta_directa.plan.nombre
+        return "N/A"
     
     @property
     def atr(self):
-        """Obtener ATR desde el contrato"""
-        if hasattr(self, 'asignacion') and self.asignacion:
+        """Obtener ATR desde el contrato o venta directa"""
+        if self.asignacion.contrato:
             return self.asignacion.contrato.atr
-        return "ATR no disponible"        
+        elif self.asignacion.venta_directa:
+            return "*VTC Conexiones"  # Valor por defecto para ventas directas
+        return "N/A"
+    
+    @property
+    def creado_por_nombre(self):
+        """Obtener nombre del creador según el origen"""
+        if self.asignacion.contrato:
+            creador = self.asignacion.contrato.creado_por
+            return creador.get_full_name() or creador.username if creador else "Sistema"
+        elif self.asignacion.venta_directa:
+            creador = self.asignacion.venta_directa.creado_por
+            return creador.get_full_name() or creador.username if creador else "Sistema"
+        return "Sistema"
+    
+    @property
+    def es_venta_directa(self):
+        """Indica si la instalación es de una venta directa"""
+        return self.asignacion.venta_directa is not None
+    
+    @property
+    def nro_orden(self):
+        """Obtener número de orden de venta directa (si aplica)"""
+        if self.asignacion.venta_directa:
+            return self.asignacion.venta_directa.nro_orden
+        return None
+        
+        
+class VentaDirecta(models.Model):
+    """Modelo para ventas directas"""
+    
+    # Estados de la venta
+    class EstadoVenta(models.TextChoices):
+        EN_PROCESO = 'EN_PROCESO', 'En Proceso'
+        COMPLETADO = 'COMPLETADO', 'Completado'
+        NO_COMPLETADO = 'NO_COMPLETADO', 'No Completado'
+    
+    nro_orden = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Número de Orden",
+        help_text="Número único de orden de venta"
+    )
+    cedula = models.CharField(
+        max_length=15,
+        verbose_name="Cédula",
+        help_text="Cédula del cliente"
+    )
+    customer_id = models.CharField(
+        max_length=50,
+        verbose_name="Customer ID",
+        blank=True,
+        null=True,
+        help_text="ID del cliente en el sistema"
+    )
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name="Nombre"
+    )
+    apellido = models.CharField(
+        max_length=100,
+        verbose_name="Apellido"
+    )
+    telefono = models.CharField(
+        max_length=20,
+        verbose_name="Teléfono",
+        help_text="Teléfono de contacto"
+    )
+    plan = models.ForeignKey(
+        Plan,
+        on_delete=models.PROTECT,
+        related_name='ventas_directas',
+        verbose_name="Plan"
+    )
+    fecha = models.DateField(
+        auto_now_add=True,
+        verbose_name="Fecha de venta"
+    )
+    estado = models.CharField(
+        max_length=15,
+        choices=EstadoVenta.choices,
+        default=EstadoVenta.EN_PROCESO,
+        verbose_name="Estado de la Venta"
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación en sistema"
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización"
+    )
+    creado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ventas_directas_creadas',
+        verbose_name="Creado por"
+    )
+    observacion = models.TextField(
+        max_length=500,
+        verbose_name="Observaciones",
+        blank=True,
+        null=True,
+        help_text="Notas adicionales sobre la venta"
+    )
+    
+    class Meta:
+        verbose_name = "Venta Directa"
+        verbose_name_plural = "Ventas Directas"
+        ordering = ['-fecha', '-fecha_creacion']
+        indexes = [
+            models.Index(fields=['nro_orden']),
+            models.Index(fields=['cedula']),
+            models.Index(fields=['fecha']),
+            models.Index(fields=['estado']),
+        ]
+    
+    def __str__(self):
+        return f"{self.nro_orden} - {self.nombre} {self.apellido} - {self.plan.nombre} [{self.get_estado_display()}]"
+    
+    @property
+    def nombre_completo(self):
+        """Retorna el nombre completo"""
+        return f"{self.nombre} {self.apellido}".strip()
+    
+    
+@receiver(post_save, sender=User)
+def crear_perfil_usuario(sender, instance, created, **kwargs):
+    """Crea un perfil automáticamente cuando se crea un usuario"""
+    if created:
+        PerfilUsuario.objects.create(usuario=instance, activo=True)
+
+@receiver(post_save, sender=User)
+def guardar_perfil_usuario(sender, instance, **kwargs):
+    """Guarda el perfil cuando se guarda el usuario"""
+    if hasattr(instance, 'perfil'):
+        instance.perfil.save()            

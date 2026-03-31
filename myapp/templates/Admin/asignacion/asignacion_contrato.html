@@ -25,7 +25,7 @@
                 <circle cx="11" cy="11" r="8"/>
                 <path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input type="text" placeholder="Buscar por cliente, cédula, customer ID..." 
+            <input type="text" placeholder="Buscar por cliente, cédula, customer ID, correo..." 
                    id="searchInput" value="{{ busqueda }}">
         </div>
         
@@ -44,6 +44,14 @@
             <option value="">Todos los estados</option>
             <option value="asignado" {% if filtro_estado == 'asignado' %}selected{% endif %}>Asignados</option>
             <option value="no_asignado" {% if filtro_estado == 'no_asignado' %}selected{% endif %}>No Asignados</option>
+        </select>
+        
+        <!-- Filtro por estado del contrato (solo para asignados) -->
+        <select id="filterContratoEstado" class="filter-select">
+            <option value="">Todos los estados de contrato</option>
+            <option value="EN_PROCESO" {% if filtro_contrato_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+            <option value="COMPLETADO" {% if filtro_contrato_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+            <option value="NO_COMPLETADO" {% if filtro_contrato_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
         </select>
     </div>
 </div>
@@ -79,129 +87,317 @@
         </button>
     </div>
 
-    <!-- TAB: Contratos No Asignados -->
+    <!-- Vista Desktop: Tabla No Asignados -->
     <div id="tab-no_asignados" class="tab-content active">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Cédula</th>
-                        <th>Customer ID</th>
-                        <th>ODS</th>
-                        <th>Vendedor</th>
-                        <th>Plan</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for contrato in contratos_no_asignados %}
-                    <tr>
-                        <td>
-                            <div class="user-cell">
-                                <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
-                                <div>
-                                    <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Cliente</th>
+                            <th>Cédula</th>
+                            <th>Correo Electrónico</th>
+                            <th>Customer ID</th>
+                            <th>ODS</th>
+                            <th>Vendedor</th>
+                            <th>Plan</th>
+                            <th>Acciones</th>
+                        </thead>
+                    <tbody>
+                        {% for item in contratos_no_asignados %}
+                        <tr>
+                            <td>
+                                {% if item.tipo == 'contrato' %}
+                                <span class="badge badge-info">Contrato</span>
+                                {% else %}
+                                <span class="badge badge-warning">Venta Directa</span>
+                                {% endif %}
+                             </td>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ item.cliente_nombre|first|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ item.cliente_nombre }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>{{ contrato.cliente_potencial.cedula }}</td>
-                        <td><span class="badge completado">{{ contrato.customer_id|default:"—" }}</span></td>
-                        <td><span class="badge completado">{{ contrato.ods|default:"—" }}</span></td>
-                        <td>
-                            <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
-                        </td>
-                        <td>{{ contrato.plan_contratado.nombre }}</td>
-                        <td>
-                            <button class="action-btn" onclick="abrirModalAsignar({{ contrato.id }}, '{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}')" title="Asignar a cuadrilla">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="8.5" cy="7" r="4"/>
-                                    <line x1="20" y1="8" x2="20" y2="14"/>
-                                    <line x1="23" y1="11" x2="17" y2="11"/>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="empty">No hay contratos pendientes de asignar</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                             </td>
+                            <td>{{ item.cedula }}</td>
+                            <td class="email-cell">
+                                <span class="email-badge">{{ item.correo|default:"—" }}</span>
+                            </td>
+                            <td><span class="badge completado">{{ item.customer_id|default:"—" }}</span></td>
+                            <td><span class="badge completado">{{ item.ods|default:"—" }}</span></td>
+                            <td>
+                                <span class="vendedor-badge">{{ item.vendedor }}</span>
+                            </td>
+                            <td>{{ item.plan }}</td>
+                            <td>
+                                <button class="action-btn" onclick="abrirModalAsignar({{ item.id }}, '{{ item.cliente_nombre }}', '{{ item.tipo }}')" title="Asignar a cuadrilla">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="8.5" cy="7" r="4"/>
+                                        <line x1="20" y1="8" x2="20" y2="14"/>
+                                        <line x1="23" y1="11" x2="17" y2="11"/>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="empty">No hay contratos pendientes de asignar</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Vista Mobile: Cards No Asignados -->
+        <div class="mobile-view">
+            {% for item in contratos_no_asignados %}
+            <div class="contrato-card">
+                <div class="card-header">
+                    <div class="card-cliente">
+                        <span class="card-avatar">{{ item.cliente_nombre|first|upper }}</span>
+                        <div>
+                            <div class="card-name">{{ item.cliente_nombre }}</div>
+                            <div class="card-detail">C.I: {{ item.cedula }}</div>
+                        </div>
+                    </div>
+                    <div class="card-type">
+                        {% if item.tipo == 'contrato' %}
+                        <span class="badge badge-info">Contrato</span>
+                        {% else %}
+                        <span class="badge badge-warning">Venta Directa</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-row">
+                        <span class="card-label">✉️ Correo:</span>
+                        <span class="card-value">{{ item.correo|default:"—" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">🆔 Customer ID:</span>
+                        <span class="card-value">{{ item.customer_id|default:"—" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📋 ODS:</span>
+                        <span class="card-value">{{ item.ods|default:"—" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">👤 Vendedor:</span>
+                        <span class="card-value">{{ item.vendedor }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📡 Plan:</span>
+                        <span class="card-value">{{ item.plan }}</span>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    <button class="card-action" onclick="abrirModalAsignar({{ item.id }}, '{{ item.cliente_nombre }}', '{{ item.tipo }}')" title="Asignar a cuadrilla">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        Asignar
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-mobile">No hay contratos pendientes de asignar</div>
+            {% endfor %}
         </div>
     </div>
 
     <!-- TAB: Contratos Asignados -->
     <div id="tab-asignados" class="tab-content">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Cédula</th>
-                        <th>Customer ID</th>
-                        <th>ODS</th>
-                        <th>Vendedor</th>
-                        <th>Cuadrilla / Instaladores</th>
-                        <th>Fecha Asignación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for asignacion in contratos_asignados %}
-                    <tr>
-                        <td>
-                            <div class="user-cell">
-                                <span class="user-avatar">{{ asignacion.contrato.cliente_potencial.nombre|first|upper }}{{ asignacion.contrato.cliente_potencial.apellido|first|upper }}</span>
-                                <div>
-                                    <div class="user-name">{{ asignacion.contrato.cliente_potencial.nombre }} {{ asignacion.contrato.cliente_potencial.apellido }}</div>
+        <!-- Vista Desktop: Tabla Asignados -->
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Cliente</th>
+                            <th>Cédula</th>
+                            <th>Customer ID</th>
+                            <th>ODS</th>
+                            <th>Estado Contrato</th>
+                            <th>Vendedor</th>
+                            <th>Cuadrilla / Instaladores</th>
+                            <th>Fecha Asignación</th>
+                            <th>Acciones</th>
+                        </thead>
+                    <tbody>
+                        {% for item in contratos_asignados %}
+                        <tr>
+                            <td>
+                                {% if item.tipo == 'contrato' %}
+                                <span class="badge badge-info">Contrato</span>
+                                {% else %}
+                                <span class="badge badge-warning">Venta Directa</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ item.cliente_nombre|first|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ item.cliente_nombre }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>{{ asignacion.contrato.cliente_potencial.cedula }}</td>
-                        <td><span class="badge completado">{{ asignacion.contrato.customer_id|default:"—" }}</span></td>
-                        <td><span class="badge completado">{{ asignacion.contrato.ods|default:"—" }}</span></td>
-                        <td>
-                            <span class="vendedor-badge">{{ asignacion.contrato.creado_por.get_full_name|default:asignacion.contrato.creado_por.username }}</span>
-                        </td>
-                        <td>
-                            <div style="display: flex; flex-direction: column; gap: 5px;">
-                                <span class="badge" style="background: #ff6b00; color: white; width: fit-content;">{{ asignacion.cuadrilla.nombre }}</span>
-                                {% with instaladores=asignacion.cuadrilla.instaladores.all %}
-                                    {% if instaladores %}
-                                        <div style="display: flex; flex-wrap: wrap; gap: 3px;">
-                                            {% for inst in instaladores %}
-                                                <span class="instalador-tag" style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 12px; font-size: 10px;">
-                                                    {{ inst.usuario.first_name }}
-                                                </span>
-                                            {% endfor %}
-                                        </div>
-                                    {% else %}
-                                        <span class="instalador-tag" style="background: #f5f5f5; color: #999; padding: 2px 6px; border-radius: 12px; font-size: 10px;">
-                                            Sin instaladores
-                                        </span>
-                                    {% endif %}
-                                {% endwith %}
-                            </div>
-                        </td>
-                        <td>{{ asignacion.fecha_asignacion|date:"d/m/y H:i" }}</td>
-                        <td>
-                            <button class="action-btn" onclick="confirmarDesasignar({{ asignacion.id }})" title="Desasignar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M18 6L6 18M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="empty">No hay contratos asignados</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td>{{ item.cedula }}</td>
+                            
+                            <td><span class="badge completado">{{ item.customer_id|default:"—" }}</span></td>
+                            <td><span class="badge completado">{{ item.ods|default:"—" }}</span></td>
+                            <td>
+                                {% if item.estado == 'EN_PROCESO' %}
+                                <span class="badge proceso">En Proceso</span>
+                                {% elif item.estado == 'COMPLETADO' %}
+                                <span class="badge completado">Completado</span>
+                                {% elif item.estado == 'NO_COMPLETADO' %}
+                                <span class="badge no-completado">No Completado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="vendedor-badge">{{ item.vendedor }}</span>
+                            </td>
+                            <td>
+                                <div class="cuadrilla-info">
+                                    <span class="cuadrilla-badge">{{ item.cuadrilla.nombre }}</span>
+                                    {% with instaladores=item.cuadrilla.instaladores.all %}
+                                        {% if instaladores %}
+                                            <div class="instaladores-list">
+                                                {% for inst in instaladores %}
+                                                    <span class="instalador-tag">
+                                                        {{ inst.usuario.get_full_name|default:inst.usuario.username }}
+                                                    </span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="instalador-tag empty">Sin instaladores</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                            </td>
+                            <td>{{ item.fecha_asignacion|date:"d/m/y H:i" }}</td>
+                            <td>
+                                {% if item.estado == 'EN_PROCESO' %}
+                                <button class="action-btn" onclick="confirmarDesasignar({{ item.id }})" title="Desasignar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 6L6 18M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                {% else %}
+                                <button class="action-btn disabled" disabled title="No se puede desasignar un contrato completado">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 6L6 18M6 6l12 12"/>
+                                    </svg>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="empty">No hay contratos asignados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Vista Mobile: Cards Asignados -->
+        <div class="mobile-view">
+            {% for item in contratos_asignados %}
+            <div class="contrato-card">
+                <div class="card-header">
+                    <div class="card-cliente">
+                        <span class="card-avatar">{{ item.cliente_nombre|first|upper }}</span>
+                        <div>
+                            <div class="card-name">{{ item.cliente_nombre }}</div>
+                            <div class="card-detail">C.I: {{ item.cedula }}</div>
+                        </div>
+                    </div>
+                    <div class="card-status">
+                        {% if item.estado == 'EN_PROCESO' %}
+                        <span class="status-badge proceso">En Proceso</span>
+                        {% elif item.estado == 'COMPLETADO' %}
+                        <span class="status-badge completado">Completado</span>
+                        {% elif item.estado == 'NO_COMPLETADO' %}
+                        <span class="status-badge no-completado">No Completado</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-row">
+                        <span class="card-label">✉️ Correo:</span>
+                        <span class="card-value">{{ item.correo|default:"—" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">🆔 Customer ID:</span>
+                        <span class="card-value">{{ item.customer_id|default:"—" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📋 ODS:</span>
+                        <span class="card-value">{{ item.ods|default:"—" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">👤 Vendedor:</span>
+                        <span class="card-value">{{ item.vendedor }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">🚚 Cuadrilla:</span>
+                        <span class="card-value">{{ item.cuadrilla.nombre }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">👷 Instaladores:</span>
+                        <div class="card-value instaladores-group">
+                            {% with instaladores=item.cuadrilla.instaladores.all %}
+                                {% if instaladores %}
+                                    {% for inst in instaladores %}
+                                        <span class="instalador-tag-mobile">{{ inst.usuario.get_full_name|default:inst.usuario.username }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">Sin instaladores</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📅 Fecha:</span>
+                        <span class="card-value">{{ item.fecha_asignacion|date:"d/m/y H:i" }}</span>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    {% if item.estado == 'EN_PROCESO' %}
+                    <button class="card-action danger" onclick="confirmarDesasignar({{ item.id }})" title="Desasignar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                        Desasignar
+                    </button>
+                    {% else %}
+                    <button class="card-action disabled" disabled title="No se puede desasignar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                        Completado
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-mobile">No hay contratos asignados</div>
+            {% endfor %}
         </div>
     </div>
 </div>
@@ -212,9 +408,9 @@
     <div class="modal-container modal-lg">
         <div class="modal-header">
             <div class="modal-header-info">
-                <span class="modal-avatar" id="modalAvatar">👥</span>
+                <span class="modal-avatar">👥</span>
                 <div>
-                    <h2 id="modalTitulo">Asignar Contrato</h2>
+                    <h2 id="modalTitulo">Asignar</h2>
                     <p class="modal-subtitle" id="modalClienteInfo">Seleccione una cuadrilla</p>
                 </div>
             </div>
@@ -227,7 +423,8 @@
         
         <form method="post" action="" id="formAsignar">
             {% csrf_token %}
-            <input type="hidden" name="contrato_id" id="modalContratoId">
+            <input type="hidden" name="item_id" id="modalItemId">
+            <input type="hidden" name="tipo" id="modalTipo">
             
             <div class="modal-body">
                 <div class="form-group">
@@ -239,7 +436,7 @@
                             {{ cuadrilla.nombre }} - 
                             {% with instaladores=cuadrilla.instaladores.all %}
                                 {% if instaladores %}
-                                    ({% for inst in instaladores %}{{ inst.usuario.first_name }}{% if not forloop.last %}, {% endif %}{% endfor %})
+                                    ({% for inst in instaladores %}{{ inst.usuario.get_full_name|default:inst.usuario.username }}{% if not forloop.last %}, {% endif %}{% endfor %})
                                 {% else %}
                                     (Sin instaladores)
                                 {% endif %}
@@ -258,16 +455,24 @@
                 
                 <div class="form-actions" style="margin-top: 20px;">
                     <button type="button" class="btn-outline" onclick="cerrarModalAsignar()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Asignar Contrato</button>
+                    <button type="submit" class="btn-primary">Asignar</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_css %}
 <style>
+    /* ===== VARIABLES ===== */
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f8f9fa;
+        --gray-border: #e0e0e0;
+        --gray-text: #666;
+        --dark-text: #333;
+    }
+
     /* ===== ESTADÍSTICAS ===== */
     .stats-grid {
         display: flex;
@@ -280,7 +485,7 @@
         background: white;
         padding: 8px 16px;
         border-radius: 30px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -289,17 +494,17 @@
     }
 
     .stat-card:hover {
-        border-color: var(--orange, #ff6b00);
+        border-color: var(--orange);
         transform: translateY(-1px);
     }
 
     .stat-value {
         font-weight: 600;
-        color: var(--orange, #ff6b00);
+        color: var(--orange);
     }
 
     .stat-label {
-        color: var(--gray-text, #666);
+        color: var(--gray-text);
     }
 
     /* ===== FILTROS ===== */
@@ -315,24 +520,24 @@
         background: white;
         padding: 16px;
         border-radius: 16px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
     }
 
     .search-box {
         flex: 2;
-        min-width: 250px;
+        min-width: 200px;
         display: flex;
         align-items: center;
         gap: 8px;
-        background: var(--gray-bg, #f8f9fa);
+        background: var(--gray-bg);
         padding: 0 12px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
         border-radius: 30px;
         transition: all 0.2s;
     }
 
     .search-box:focus-within {
-        border-color: var(--orange, #ff6b00);
+        border-color: var(--orange);
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
 
@@ -347,34 +552,35 @@
 
     .filter-select {
         flex: 1;
-        min-width: 150px;
+        min-width: 140px;
         padding: 10px 12px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
         border-radius: 30px;
         background: white;
         font-size: 13px;
-        color: var(--dark-text, #333);
+        color: var(--dark-text);
         outline: none;
         cursor: pointer;
     }
 
     .filter-select:hover {
-        border-color: var(--orange, #ff6b00);
+        border-color: var(--orange);
     }
 
     /* ===== PESTAÑAS ===== */
     .tabs-container {
         background: white;
         border-radius: 16px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
         overflow: hidden;
         margin-bottom: 20px;
     }
 
     .tabs-header {
         display: flex;
-        border-bottom: 1px solid var(--gray-border, #e0e0e0);
-        background: var(--gray-bg, #f8f9fa);
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        flex-wrap: wrap;
     }
 
     .tab-btn {
@@ -389,19 +595,19 @@
         border-bottom: 3px solid transparent;
         font-size: 15px;
         font-weight: 500;
-        color: var(--gray-text, #666);
+        color: var(--gray-text);
         cursor: pointer;
         transition: all 0.2s;
     }
 
     .tab-btn:hover {
-        color: var(--orange, #ff6b00);
-        background: var(--orange-light, #fff2e6);
+        color: var(--orange);
+        background: var(--orange-light);
     }
 
     .tab-btn.active {
-        color: var(--orange, #ff6b00);
-        border-bottom-color: var(--orange, #ff6b00);
+        color: var(--orange);
+        border-bottom-color: var(--orange);
         background: white;
     }
 
@@ -419,7 +625,7 @@
     }
 
     .tab-btn.active .tab-count {
-        background: var(--orange, #ff6b00);
+        background: var(--orange);
         color: white;
     }
 
@@ -432,7 +638,16 @@
         display: block;
     }
 
-    /* ===== TABLA ===== */
+    /* ===== VISTAS DESKTOP Y MOBILE ===== */
+    .desktop-view {
+        display: block;
+    }
+
+    .mobile-view {
+        display: none;
+    }
+
+    /* ===== TABLA DESKTOP ===== */
     .table-container {
         overflow-x: auto;
     }
@@ -441,15 +656,16 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        min-width: 1000px;
     }
 
     .table th {
         text-align: left;
         padding: 14px 16px;
         font-weight: 500;
-        color: var(--gray-text, #666);
-        background: var(--gray-bg, #f8f9fa);
-        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -457,12 +673,12 @@
 
     .table td {
         padding: 12px 16px;
-        border-bottom: 1px solid var(--gray-border, #e0e0e0);
-        color: var(--dark-text, #333);
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
     }
 
     .table tbody tr:hover {
-        background: var(--gray-bg, #f8f9fa);
+        background: var(--gray-bg);
     }
 
     /* ===== BADGES ===== */
@@ -475,9 +691,47 @@
         white-space: nowrap;
     }
 
+    .badge-info {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .badge-warning {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge.proceso {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
     .badge.completado {
         background: #e8f5e9;
         color: #2e7d32;
+    }
+
+    .badge.no-completado {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .email-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .email-cell {
+        max-width: 180px;
     }
 
     .vendedor-badge {
@@ -489,21 +743,43 @@
         color: #555;
     }
 
-    /* ===== INSTALADORES TAGS ===== */
+    .cuadrilla-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: var(--orange);
+        color: white;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    .cuadrilla-info {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .instaladores-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
     .instalador-tag {
         display: inline-block;
         padding: 2px 8px;
+        background: #e3f2fd;
+        color: #1976d2;
         border-radius: 12px;
         font-size: 10px;
         font-weight: 500;
         white-space: nowrap;
     }
 
-    .help-text {
-        display: block;
+    .instalador-tag.empty {
+        background: #f5f5f5;
         color: #999;
-        font-size: 11px;
-        margin-top: 4px;
     }
 
     /* ===== USER AVATAR ===== */
@@ -516,7 +792,7 @@
     .user-avatar {
         width: 32px;
         height: 32px;
-        background: var(--orange, #ff6b00);
+        background: var(--orange);
         color: white;
         border-radius: 8px;
         display: flex;
@@ -529,7 +805,7 @@
 
     .user-name {
         font-weight: 500;
-        color: var(--dark-text, #333);
+        color: var(--dark-text);
         font-size: 13px;
     }
 
@@ -537,29 +813,223 @@
     .action-btn {
         width: 32px;
         height: 32px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
         background: white;
         border-radius: 8px;
-        color: var(--gray-text, #666);
+        color: var(--gray-text);
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
-        margin-right: 5px;
     }
 
     .action-btn:hover {
-        border-color: var(--orange, #ff6b00);
-        color: var(--orange, #ff6b00);
-        background: var(--orange-light, #fff2e6);
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .action-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
     }
 
     .empty {
         text-align: center;
         padding: 48px !important;
-        color: var(--gray-text, #666);
+        color: var(--gray-text);
         font-size: 14px;
+    }
+
+    /* ===== CARDS MOBILE ===== */
+    .contrato-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 16px;
+        overflow: hidden;
+        margin-bottom: 12px;
+    }
+
+    .card-header {
+        padding: 16px;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .card-cliente {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .card-avatar {
+        width: 44px;
+        height: 44px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .card-name {
+        font-weight: 600;
+        color: var(--dark-text);
+        font-size: 15px;
+        margin-bottom: 4px;
+        word-break: break-word;
+    }
+
+    .card-detail {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+
+    .card-type {
+        flex-shrink: 0;
+    }
+
+    .card-status {
+        flex-shrink: 0;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .status-badge.proceso {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .status-badge.completado {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .status-badge.no-completado {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .card-body {
+        padding: 16px;
+    }
+
+    .card-row {
+        display: flex;
+        margin-bottom: 10px;
+        font-size: 13px;
+        flex-wrap: wrap;
+    }
+
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .card-label {
+        width: 100px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+        font-weight: 500;
+    }
+
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+        flex: 1;
+    }
+
+    .instaladores-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .instalador-tag-mobile {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 16px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .card-actions {
+        display: flex;
+        gap: 10px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+
+    .card-action {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px;
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: var(--gray-text);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .card-action:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .card-action.danger:hover {
+        border-color: #f44336;
+        color: #f44336;
+        background: #ffebee;
+    }
+
+    .card-action.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .empty-mobile {
+        text-align: center;
+        padding: 48px;
+        color: var(--gray-text);
+        font-size: 14px;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .text-muted {
+        color: var(--gray-text);
+        font-size: 12px;
     }
 
     /* ===== MODAL STYLES ===== */
@@ -606,9 +1076,11 @@
         align-items: center;
         justify-content: space-between;
         padding: 20px 24px;
-        border-bottom: 1px solid var(--gray-border, #e0e0e0);
-        background: var(--gray-bg, #f8f9fa);
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
         border-radius: 24px 24px 0 0;
+        flex-wrap: wrap;
+        gap: 12px;
     }
 
     .modal-header-info {
@@ -620,7 +1092,7 @@
     .modal-avatar {
         width: 48px;
         height: 48px;
-        background: var(--orange, #ff6b00);
+        background: var(--orange);
         color: white;
         border-radius: 12px;
         display: flex;
@@ -633,22 +1105,22 @@
     .modal-header-info h2 {
         font-size: 20px;
         font-weight: 600;
-        color: var(--dark-text, #333);
+        color: var(--dark-text);
         margin-bottom: 4px;
     }
 
     .modal-subtitle {
         font-size: 13px;
-        color: var(--gray-text, #666);
+        color: var(--gray-text);
     }
 
     .modal-close {
         width: 36px;
         height: 36px;
-        border: 1px solid var(--gray-border, #e0e0e0);
+        border: 1px solid var(--gray-border);
         background: white;
         border-radius: 10px;
-        color: var(--gray-text, #666);
+        color: var(--gray-text);
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -656,8 +1128,8 @@
     }
 
     .modal-close:hover {
-        border-color: var(--orange, #ff6b00);
-        color: var(--orange, #ff6b00);
+        border-color: var(--orange);
+        color: var(--orange);
     }
 
     .modal-body {
@@ -679,7 +1151,7 @@
     .form-input {
         width: 100%;
         padding: 12px 16px;
-        border: 2px solid var(--gray-border, #e0e0e0);
+        border: 2px solid var(--gray-border);
         border-radius: 12px;
         font-size: 14px;
         transition: all 0.2s;
@@ -688,7 +1160,7 @@
 
     .form-input:focus {
         outline: none;
-        border-color: var(--orange, #ff6b00);
+        border-color: var(--orange);
         box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
     }
 
@@ -699,6 +1171,13 @@
 
     .required {
         color: #f44336;
+    }
+
+    .help-text {
+        display: block;
+        color: #999;
+        font-size: 11px;
+        margin-top: 4px;
     }
 
     .form-actions {
@@ -722,7 +1201,7 @@
     }
 
     .btn-primary {
-        background: var(--orange, #ff6b00);
+        background: var(--orange);
         color: white;
     }
 
@@ -734,58 +1213,164 @@
 
     .btn-outline {
         background: white;
-        color: var(--gray-text, #666);
-        border: 2px solid var(--gray-border, #e0e0e0);
+        color: var(--gray-text);
+        border: 2px solid var(--gray-border);
     }
 
     .btn-outline:hover {
-        border-color: var(--orange, #ff6b00);
-        color: var(--orange, #ff6b00);
+        border-color: var(--orange);
+        color: var(--orange);
     }
 
-    /* Responsive */
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+        .filters-grid {
+            gap: 8px;
+        }
+        
+        .filter-select {
+            min-width: 120px;
+        }
+    }
+
     @media (max-width: 768px) {
+        .desktop-view {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
+        }
+        
         .filters-grid {
             flex-direction: column;
             align-items: stretch;
         }
-
+        
         .search-box,
         .filter-select {
             width: 100%;
         }
-
+        
         .tab-btn {
             flex-direction: column;
             font-size: 13px;
             padding: 12px;
         }
-
+        
         .tab-count {
             margin-left: 0;
         }
-
-        .table th, .table td {
-            padding: 10px;
+        
+        .stats-grid {
+            justify-content: center;
         }
-
+        
+        .stat-card {
+            flex: 1;
+            justify-content: center;
+            min-width: 100px;
+        }
+        
         .form-actions {
             flex-direction: column-reverse;
         }
-
+        
         .btn-primary, .btn-outline {
             width: 100%;
             justify-content: center;
         }
-
-        .modal-container.modal-lg {
-            width: 95%;
+        
+        .modal-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .modal-header-info {
+            width: 100%;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+        }
+        
+        .card-row {
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .card-label {
+            width: 100%;
+        }
+        
+        .card-actions {
+            flex-direction: column;
+        }
+        
+        .card-action {
+            width: 100%;
         }
     }
-</style>
-{% endblock %}
 
-{% block extra_js %}
+    @media (max-width: 480px) {
+        .stats-grid {
+            gap: 6px;
+        }
+        
+        .stat-card {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+        }
+        
+        .card-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+        }
+        
+        .card-name {
+            font-size: 14px;
+        }
+        
+        .card-label {
+            font-size: 12px;
+        }
+        
+        .card-value {
+            font-size: 12px;
+        }
+        
+        .instalador-tag-mobile {
+            font-size: 10px;
+            padding: 3px 8px;
+        }
+    }
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+</style>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Variables
@@ -808,25 +1393,29 @@
     document.getElementById('searchInput')?.addEventListener('keyup', function() {
         const searchText = this.value.toLowerCase();
         
-        document.querySelectorAll('#tab-no_asignados tbody tr').forEach(row => {
+        // Filtrar desktop
+        document.querySelectorAll('#tab-no_asignados .desktop-view tbody tr, #tab-asignados .desktop-view tbody tr').forEach(row => {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(searchText) ? '' : 'none';
         });
         
-        document.querySelectorAll('#tab-asignados tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
+        // Filtrar mobile
+        document.querySelectorAll('#tab-no_asignados .contrato-card, #tab-asignados .contrato-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(searchText) ? 'block' : 'none';
         });
     });
 
     // Filtros
     document.getElementById('filterCuadrilla')?.addEventListener('change', aplicarFiltros);
     document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('filterContratoEstado')?.addEventListener('change', aplicarFiltros);
 
     function aplicarFiltros() {
         const url = new URL(window.location.href);
         const cuadrilla = document.getElementById('filterCuadrilla').value;
         const estado = document.getElementById('filterEstado').value;
+        const contratoEstado = document.getElementById('filterContratoEstado').value;
         const busqueda = document.getElementById('searchInput').value;
         
         if (cuadrilla) url.searchParams.set('cuadrilla', cuadrilla);
@@ -835,6 +1424,9 @@
         if (estado) url.searchParams.set('estado', estado);
         else url.searchParams.delete('estado');
         
+        if (contratoEstado) url.searchParams.set('contrato_estado', contratoEstado);
+        else url.searchParams.delete('contrato_estado');
+        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
         
@@ -842,11 +1434,12 @@
     }
 
     // Funciones del modal
-    function abrirModalAsignar(contratoId, clienteNombre) {
-        contratoSeleccionadoId = contratoId;
-        document.getElementById('modalClienteInfo').textContent = `Asignando contrato a: ${clienteNombre}`;
-        document.getElementById('modalContratoId').value = contratoId;
-        document.getElementById('formAsignar').action = `/asignaciones/asignar/${contratoId}/`;
+    function abrirModalAsignar(itemId, clienteNombre, tipo) {
+        contratoSeleccionadoId = itemId;
+        document.getElementById('modalClienteInfo').textContent = `Asignando ${tipo === 'contrato' ? 'contrato' : 'venta directa'} a: ${clienteNombre}`;
+        document.getElementById('modalItemId').value = itemId;
+        document.getElementById('modalTipo').value = tipo;
+        document.getElementById('formAsignar').action = `/asignaciones/asignar/${itemId}/`;
         document.getElementById('asignarModal').style.display = 'flex';
         document.body.style.overflow = 'hidden';
     }
@@ -860,8 +1453,8 @@
     
     function confirmarDesasignar(asignacionId) {
         Swal.fire({
-            title: '¿Desasignar contrato?',
-            text: 'Esta acción eliminará la asignación del contrato',
+            title: '¿Desasignar?',
+            text: 'Esta acción eliminará la asignación',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#ff6b00',

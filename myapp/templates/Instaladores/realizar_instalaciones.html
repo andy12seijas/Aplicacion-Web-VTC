@@ -29,7 +29,7 @@
                 </svg>
             </div>
             <div class="form-header-text">
-                <h2>Orden de Instalación #{{ instalacion.orden_servicio }}</h2>
+                <h2>Orden de Instalación #{{ instalacion.orden_servicio|default:"Nueva" }}</h2>
                 <p>Complete todos los campos para finalizar la instalación</p>
             </div>
         </div>
@@ -43,7 +43,7 @@
             <div class="cliente-info-grid">
                 <div class="info-item">
                     <span class="info-label">ATR VTC #</span>
-                    <span class="info-value">{{ instalacion.asignacion.contrato.atr|default:"03" }}</span>
+                    <span class="info-value">{{ instalacion.atr|default:"03" }}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">NOMBRE DEL CLIENTE</span>
@@ -55,7 +55,7 @@
                 </div>
                 <div class="info-item">
                     <span class="info-label">ORDEN DE SERVICIO</span>
-                    <span class="info-value">{{ instalacion.orden_servicio }}</span>
+                    <span class="info-value">{{ instalacion.orden_servicio|default:"—" }}</span>
                 </div>
                 <div class="info-item">
                     <span class="info-label">CUSTOMER</span>
@@ -68,7 +68,7 @@
             </div>
         </div>
 
-        <form method="post" class="edit-form" id="realizarInstalacionForm">
+        <form method="post" class="edit-form" id="realizarInstalacionForm" enctype="multipart/form-data">
             {% csrf_token %}
             
             {% if form.non_field_errors %}
@@ -79,14 +79,62 @@
             </div>
             {% endif %}
 
-            <!-- Datos de Ubicación -->
+            <!-- Ubicación de la Instalación (CLIENTE) -->
             <div class="form-section">
                 <h3 class="section-title">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                         <circle cx="12" cy="10" r="3"/>
                     </svg>
-                    Ubicación
+                    Ubicación del Cliente
+                </h3>
+                
+                <div class="ubicacion-container">
+                    <!-- Campos de latitud y longitud -->
+                    <div class="ubicacion-campos">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="{{ form.latitud.id_for_label }}">{{ form.latitud.label }}</label>
+                                {{ form.latitud }}
+                                <small class="help-text">Coordenadas de la casa del cliente</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.longitud.id_for_label }}">{{ form.longitud.label }}</label>
+                                {{ form.longitud }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón de capturar ubicación del cliente -->
+                    <div class="ubicacion-boton">
+                        <button type="button" class="btn-capture" id="capturarUbicacionBtn" onclick="capturarUbicacionCliente()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 8v4l3 3"/>
+                            </svg>
+                            Capturar ubicación del cliente
+                        </button>
+                        <small class="help-text">Párese frente a la casa y presione el botón</small>
+                    </div>
+                </div>
+                
+                <!-- Mostrar ubicación actual de la cuadrilla -->
+                {% if ubicacion_cuadrilla %}
+                <div class="cuadrilla-ubicacion-info">
+                    <p><strong>📍 Ubicación actual de tu cuadrilla:</strong></p>
+                    <p>Lat: {{ ubicacion_cuadrilla.lat|floatformat:6 }} | Lng: {{ ubicacion_cuadrilla.lng|floatformat:6 }}</p>
+                    <p class="help-text" style="margin-top: 5px;">Esta es la ubicación promedio de todos los instaladores de tu cuadrilla</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Datos de Ubicación Técnica -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M12 2v4M12 22v-4M4 12H2h2M20 12h2-2M5.64 5.64l-1.41 1.41 1.41-1.41M18.36 18.36l1.41-1.41-1.41 1.41M5.64 18.36l1.41-1.41-1.41 1.41M18.36 5.64l-1.41 1.41 1.41-1.41"/>
+                    </svg>
+                    Datos Técnicos
                 </h3>
                 
                 <div class="grid-3">
@@ -101,17 +149,6 @@
                     <div class="form-group">
                         <label for="{{ form.puerto_utilizado.id_for_label }}">{{ form.puerto_utilizado.label }}</label>
                         {{ form.puerto_utilizado }}
-                    </div>
-                </div>
-                
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label for="{{ form.ubicacion_lat.id_for_label }}">{{ form.ubicacion_lat.label }}</label>
-                        {{ form.ubicacion_lat }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.ubicacion_lng.id_for_label }}">{{ form.ubicacion_lng.label }}</label>
-                        {{ form.ubicacion_lng }}
                     </div>
                 </div>
             </div>
@@ -190,6 +227,31 @@
                 </div>
             </div>
 
+            <!-- Fotos de la Instalación con sistema de galería -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    FOTOS DE LA INSTALACIÓN
+                </h3>
+                
+                <div class="fotos-container">
+                    <div class="galeria-fotos" id="galeria-fotos">
+                        <!-- Las fotos existentes se mostrarán aquí -->
+                    </div>
+                    
+                    <div class="agregar-foto-btn" id="agregarFotoBtn" onclick="abrirSelectorFoto()">
+                        <div class="plus-icon">+</div>
+                        <span>Agregar foto</span>
+                    </div>
+                </div>
+                
+                <input type="file" id="inputFoto" accept="image/*" style="display: none;" onchange="procesarFoto(this)">
+                <small class="help-text">Haz clic en el botón + para agregar fotos de la instalación</small>
+            </div>
+
             <!-- Observaciones -->
             <div class="form-section">
                 <h3 class="section-title">
@@ -257,6 +319,62 @@
 </div>
 
 <style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    /* Contenedor principal de ubicación */
+    .ubicacion-container {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    /* Campos de latitud y longitud */
+    .ubicacion-campos {
+        flex: 2;
+        min-width: 250px;
+    }
+
+    /* Botón de capturar ubicación */
+    .ubicacion-boton {
+        flex: 1;
+        min-width: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .ubicacion-boton .btn-capture {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 8px;
+    }
+
+    .ubicacion-boton .help-text {
+        text-align: center;
+        width: 100%;
+    }
+
+    .ubicacion-campos .grid-2 {
+        margin-bottom: 0;
+    }
+
     /* Estilos del formulario */
     .form-container {
         max-width: 1000px;
@@ -424,6 +542,134 @@
         box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
     }
     
+    .btn-capture {
+        background: #ff6b00;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        transition: all 0.2s;
+    }
+    
+    .btn-capture:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    .cuadrilla-ubicacion-info {
+        margin-top: 15px;
+        padding: 12px;
+        background: #e3f2fd;
+        border-radius: 8px;
+        font-size: 13px;
+        color: #1976d2;
+    }
+    
+    /* Estilos para la galería de fotos */
+    .fotos-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .galeria-fotos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        flex: 1;
+    }
+    
+    .foto-item {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #e0e0e0;
+        background: #f5f5f5;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .foto-item:hover {
+        transform: scale(1.02);
+        border-color: #ff6b00;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .foto-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .foto-item .eliminar-foto {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 28px;
+        height: 28px;
+        background: rgba(0,0,0,0.6);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 2;
+        font-size: 14px;
+    }
+    
+    .foto-item:hover .eliminar-foto {
+        opacity: 1;
+    }
+    
+    .foto-item .eliminar-foto:hover {
+        background: #f44336;
+        transform: scale(1.1);
+    }
+    
+    .agregar-foto-btn {
+        width: 150px;
+        height: 150px;
+        border: 2px dashed #e0e0e0;
+        border-radius: 12px;
+        background: #fafafa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #999;
+    }
+    
+    .agregar-foto-btn:hover {
+        border-color: #ff6b00;
+        background: #fff2e6;
+        color: #ff6b00;
+    }
+    
+    .plus-icon {
+        font-size: 32px;
+        font-weight: 300;
+    }
+    
+    .agregar-foto-btn span {
+        font-size: 12px;
+    }
+    
     .resumen-section {
         background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
         border: 1px solid #ff6b00;
@@ -511,6 +757,29 @@
             grid-template-columns: 1fr;
         }
         
+        .ubicacion-container {
+            flex-direction: column;
+        }
+        
+        .ubicacion-campos,
+        .ubicacion-boton {
+            width: 100%;
+        }
+        
+        .ubicacion-boton {
+            align-items: stretch;
+        }
+        
+        .ubicacion-boton .btn-capture {
+            width: 100%;
+        }
+        
+        .foto-item, .agregar-foto-btn {
+            width: calc(33.33% - 10px);
+            height: auto;
+            aspect-ratio: 1;
+        }
+        
         .form-actions {
             flex-direction: column-reverse;
         }
@@ -524,9 +793,379 @@
             text-align: center;
         }
     }
+    
+    @media (max-width: 480px) {
+        .foto-item, .agregar-foto-btn {
+            width: calc(50% - 7.5px);
+        }
+    }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // ============================================================
+    // 1. CAPTURAR UBICACIÓN DEL INSTALADOR AUTOMÁTICAMENTE
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Capturar ubicación del instalador solo si no es admin
+        {% if not es_admin %}
+        console.log('📍 Capturando ubicación del instalador...');
+        capturarUbicacionInstalador();
+        {% endif %}
+        
+        // Cargar fotos existentes
+        cargarFotosExistentes();
+    });
+    
+    function capturarUbicacionInstalador() {
+        if (!navigator.geolocation) {
+            console.log('⚠️ Geolocalización no soportada por el navegador');
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                console.log(`📍 Ubicación obtenida: ${lat}, ${lng}`);
+                
+                // Enviar la ubicación al servidor para guardar en UbicacionUsuario
+                fetch('/capturar-ubicacion-instalador/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        latitud: lat,
+                        longitud: lng
+                    })
+                })
+                .then(async response => {
+                    const data = await response.json();
+                    if (data.success) {
+                        console.log('✅ Ubicación del instalador guardada correctamente');
+                        mostrarToast('📍 Tu ubicación ha sido actualizada', 'success');
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error al guardar ubicación:', error);
+                });
+            },
+            function(error) {
+                console.warn('⚠️ No se pudo capturar ubicación:', error.message);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+    
+    // ============================================================
+    // 2. CAPTURAR UBICACIÓN DEL CLIENTE (botón manual)
+    // ============================================================
+    function capturarUbicacionCliente() {
+        if (!navigator.geolocation) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Tu navegador no soporta geolocalización',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Capturando ubicación del cliente...',
+            text: 'Por favor espera mientras obtenemos la ubicación',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                document.getElementById('id_latitud').value = lat.toFixed(6);
+                document.getElementById('id_longitud').value = lng.toFixed(6);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ubicación del cliente capturada',
+                    text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`,
+                    confirmButtonColor: '#ff6b00',
+                    timer: 2000
+                });
+            },
+            function(error) {
+                let mensaje = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Ubicación no disponible.';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado.';
+                        break;
+                    default:
+                        mensaje = 'Error desconocido.';
+                }
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: mensaje,
+                    confirmButtonColor: '#ff6b00'
+                });
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+    
+    // ============================================================
+    // 3. MANEJO DE FOTOS CON BOTÓN +
+    // ============================================================
+    let fotosTemporales = [];
+    let fotosAEliminar = [];
+    
+    function cargarFotosExistentes() {
+        const fotosExistentes = {{ fotos_existentes|safe }};
+        const galeria = document.getElementById('galeria-fotos');
+        
+        if (fotosExistentes && fotosExistentes.length > 0) {
+            galeria.innerHTML = '';
+            fotosExistentes.forEach(foto => {
+                agregarFotoAGaleria(foto, true);
+            });
+        }
+    }
+    
+    function abrirSelectorFoto() {
+        document.getElementById('inputFoto').click();
+    }
+    
+    function procesarFoto(input) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        if (!file.type.startsWith('image/')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Archivo inválido',
+                text: 'Por favor seleccione un archivo de imagen válido (JPG, PNG)',
+                confirmButtonColor: '#ff6b00'
+            });
+            input.value = '';
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Archivo demasiado grande',
+                text: 'El archivo no debe superar los 5MB',
+                confirmButtonColor: '#ff6b00'
+            });
+            input.value = '';
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const fotoUrl = e.target.result;
+            
+            agregarFotoAGaleria(fotoUrl, false, file);
+            fotosTemporales.push(file);
+            
+            // SI ES LA PRIMERA FOTO, CAPTURAR UBICACIÓN AUTOMÁTICAMENTE
+            const totalFotosActuales = document.querySelectorAll('.foto-item:not(.cargando)').length;
+            if (totalFotosActuales === 0 && fotosTemporales.length === 1) {
+                console.log('📸 Primera foto agregada - Capturando ubicación...');
+                capturarUbicacionPorPrimeraFoto();
+            }
+        };
+        reader.readAsDataURL(file);
+        input.value = '';
+    }
+    
+    function agregarFotoAGaleria(url, esExistente = false, archivo = null) {
+        const galeria = document.getElementById('galeria-fotos');
+        const fotoDiv = document.createElement('div');
+        fotoDiv.className = 'foto-item';
+        
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Foto de instalación';
+        
+        const btnEliminar = document.createElement('div');
+        btnEliminar.className = 'eliminar-foto';
+        btnEliminar.innerHTML = '✕';
+        btnEliminar.onclick = function(e) {
+            e.stopPropagation();
+            eliminarFoto(fotoDiv, url, esExistente, archivo);
+        };
+        
+        fotoDiv.appendChild(img);
+        fotoDiv.appendChild(btnEliminar);
+        
+        fotoDiv.onclick = function() {
+            verFotoGrande(url);
+        };
+        
+        galeria.appendChild(fotoDiv);
+    }
+    
+    function eliminarFoto(fotoDiv, url, esExistente, archivo) {
+        Swal.fire({
+            title: '¿Eliminar foto?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fotoDiv.remove();
+                
+                if (esExistente) {
+                    fotosAEliminar.push(url);
+                } else if (archivo) {
+                    const index = fotosTemporales.indexOf(archivo);
+                    if (index > -1) fotosTemporales.splice(index, 1);
+                }
+            }
+        });
+    }
+    
+    function verFotoGrande(url) {
+        Swal.fire({
+            title: 'Foto de instalación',
+            imageUrl: url,
+            imageWidth: '90%',
+            imageAlt: 'Foto de instalación',
+            confirmButtonColor: '#ff6b00',
+            confirmButtonText: 'Cerrar',
+            width: '800px'
+        });
+    }
+    
+    // Capturar ubicación cuando se agrega la primera foto
+    function capturarUbicacionPorPrimeraFoto() {
+        if (!navigator.geolocation) {
+            console.log('⚠️ Geolocalización no soportada');
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Capturando ubicación...',
+            text: 'Se registrará la ubicación de la instalación',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                document.getElementById('id_latitud').value = lat.toFixed(6);
+                document.getElementById('id_longitud').value = lng.toFixed(6);
+                
+                fetch('/capturar-ubicacion-instalador/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        latitud: lat,
+                        longitud: lng
+                    })
+                })
+                .then(async response => {
+                    const data = await response.json();
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Ubicación registrada',
+                            text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`,
+                            confirmButtonColor: '#ff6b00',
+                            timer: 2000
+                        });
+                        mostrarToast('📍 Ubicación registrada automáticamente', 'success');
+                    }
+                    return data;
+                })
+                .catch(error => {
+                    console.error('Error al guardar ubicación:', error);
+                });
+            },
+            function(error) {
+                Swal.close();
+                let mensaje = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Ubicación no disponible.';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado.';
+                        break;
+                    default:
+                        mensaje = 'Error desconocido.';
+                }
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo capturar ubicación',
+                    text: mensaje,
+                    confirmButtonColor: '#ff6b00'
+                });
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+    
+    // ============================================================
+    // 4. FUNCIONES AUXILIARES
+    // ============================================================
+    function mostrarToast(mensaje, tipo) {
+        const color = tipo === 'success' ? '#4caf50' : '#ff9800';
+        const toast = document.createElement('div');
+        toast.innerHTML = `
+            <div style="position: fixed; bottom: 20px; right: 20px; background: ${color}; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                ${mensaje}
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
     // Actualizar resumen de materiales en tiempo real
     document.addEventListener('DOMContentLoaded', function() {
         const inicioFibra = document.getElementById('{{ form.inicio_fibra.id_for_label }}');
@@ -537,7 +1176,6 @@
         const tensores = document.getElementById('{{ form.tensores.id_for_label }}');
         
         function actualizarResumen() {
-            // Calcular metros
             if (inicioFibra && finalFibra) {
                 const inicio = parseInt(inicioFibra.value) || 0;
                 const final = parseInt(finalFibra.value) || 0;
@@ -545,14 +1183,12 @@
                 document.getElementById('resumen-metros').textContent = metros;
             }
             
-            // Actualizar otros valores
             if (conectores) document.getElementById('resumen-conectores').textContent = conectores.value || 0;
             if (rosetas) document.getElementById('resumen-rosetas').textContent = rosetas.value || 0;
             if (patchCord) document.getElementById('resumen-patch').textContent = patchCord.value || 0;
             if (tensores) document.getElementById('resumen-tensores').textContent = tensores.value || 0;
         }
         
-        // Agregar event listeners
         if (inicioFibra) inicioFibra.addEventListener('input', actualizarResumen);
         if (finalFibra) finalFibra.addEventListener('input', actualizarResumen);
         if (conectores) conectores.addEventListener('input', actualizarResumen);
@@ -560,8 +1196,84 @@
         if (patchCord) patchCord.addEventListener('input', actualizarResumen);
         if (tensores) tensores.addEventListener('input', actualizarResumen);
         
-        // Actualizar al cargar
         actualizarResumen();
+    });
+    
+    // ============================================================
+    // 5. ENVÍO DEL FORMULARIO CON FOTOS
+    // ============================================================
+    document.getElementById('realizarInstalacionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Guardando...',
+            text: 'Por favor espera mientras se guarda la instalación',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        const formData = new FormData(this);
+        
+        // Agregar fotos temporales
+        fotosTemporales.forEach((foto, index) => {
+            formData.append('fotos', foto);
+        });
+        
+        // Enviar formulario
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(async response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error en el servidor');
+                }
+                return data;
+            } else {
+                const text = await response.text();
+                console.error('Respuesta no JSON:', text);
+                throw new Error('Error en el servidor. Por favor, contacta al administrador.');
+            }
+        })
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Instalación completada',
+                    text: data.message || 'Los datos se han guardado correctamente',
+                    confirmButtonColor: '#ff6b00'
+                }).then(() => {
+                    window.location.href = '{% url 'instalaciones_pendientes' %}';
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.error || 'No se pudo completar la instalación',
+                    confirmButtonColor: '#ff6b00'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Error al procesar la solicitud',
+                confirmButtonColor: '#ff6b00'
+            });
+        });
     });
 </script>
 {% endblock %}

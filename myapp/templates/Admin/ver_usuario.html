@@ -121,11 +121,12 @@
                 <td>
                     <div class="actions">
                         <button class="action-btn" onclick="verUsuario('{{ usuario.id }}')" title="Ver">👁️</button>
-                        <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'">✎</button>
-                        <button class="action-btn" onclick="cambiarRol('{{ usuario.id }}')" title="Rol">👤</button>
+                        <button class="action-btn" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'" title="Editar">✎</button>
+                        <button class="action-btn" onclick="cambiarRol('{{ usuario.id }}')" title="Cambiar Rol">👤</button>
                         {% if usuario != user %}
-                        <button class="action-btn" onclick="cambiarEstado('{{ usuario.id }}', '{{ usuario.is_active }}')" 
-                                title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}">
+                        <button type="button" class="action-btn" onclick="cambiarEstadoUsuario(event, '{% url 'cambiar_estado_usuario' usuario.id %}', '{{ usuario.username }}', '{{ usuario.is_active }}')" 
+                                title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}" 
+                                style="{% if usuario.is_active %}color: #f44336;{% else %}color: #4caf50;{% endif %}">
                             {% if usuario.is_active %}✕{% else %}✓{% endif %}
                         </button>
                         {% endif %}
@@ -176,11 +177,12 @@
         </div>
         
         <div class="card-actions">
-            <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'">👁️</button>
-            <button class="card-action" onclick="editarUsuario('{{ usuario.id }}')">✎</button>
-            <button class="card-action" onclick="cambiarRol('{{ usuario.id }}')">👤</button>
+            <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'" title="Ver/Editar">👁️</button>
+            <button class="card-action" onclick="cambiarRol('{{ usuario.id }}')" title="Cambiar Rol">👤</button>
             {% if usuario != user %}
-            <button class="card-action" onclick="cambiarEstado('{{ usuario.id }}', '{{ usuario.is_active }}')">
+            <button type="button" class="card-action" onclick="cambiarEstadoUsuario(event, '{% url 'cambiar_estado_usuario' usuario.id %}', '{{ usuario.username }}', '{{ usuario.is_active }}')" 
+                    title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}" 
+                    style="{% if usuario.is_active %}color: #f44336;{% else %}color: #4caf50;{% endif %}">
                 {% if usuario.is_active %}✕{% else %}✓{% endif %}
             </button>
             {% endif %}
@@ -196,7 +198,11 @@
 <div class="pagination">
     {% if page_obj.has_previous %}
     <a href="?page=1" class="page-link">←←</a>
-    <a href="?page={{ page_obj.previous_page_number }}" class="page-link">←</a>
+    <a href="?page={{ page_obj.previous_page_number }}" class="page-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 18l6-6-6-6"/>
+        </svg>
+    </a>
     {% endif %}
 
     <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
@@ -347,11 +353,6 @@
         color: var(--dark-text);
     }
 
-    /* Hacer la tabla más compacta */
-    .table tbody tr {
-        height: 48px;
-    }
-
     .table tbody tr:hover {
         background: var(--gray-bg);
     }
@@ -446,6 +447,7 @@
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
+        text-decoration: none;
     }
 
     .action-btn:hover {
@@ -559,6 +561,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        text-decoration: none;
     }
 
     .card-action:hover {
@@ -661,6 +664,7 @@
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Search function
     document.getElementById('searchInput')?.addEventListener('keyup', function() {
@@ -711,14 +715,69 @@
     document.getElementById('filterRol')?.addEventListener('change', filterTable);
     document.getElementById('filterStatus')?.addEventListener('change', filterTable);
 
+    // Función para cambiar estado con confirmación
+    function cambiarEstadoUsuario(event, url, username, estadoActual) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        const esActivo = estadoActual === 'True';
+        const accion = esActivo ? 'desactivar' : 'activar';
+        
+        Swal.fire({
+            title: `¿${esActivo ? 'Desactivar' : 'Activar'} usuario?`,
+            html: `
+                <div style="text-align: center;">
+                    <p>¿Estás seguro de que deseas <strong>${accion}</strong> al usuario?</p>
+                    <p style="color: #666; margin-top: 10px;">
+                        <strong>Usuario:</strong> ${username}<br>
+                        <strong>Estado actual:</strong> ${esActivo ? 'Activo' : 'Inactivo'}
+                    </p>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: esActivo ? '#f44336' : '#4caf50',
+            cancelButtonColor: '#666',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Crear formulario y enviar
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url;
+                form.style.display = 'none';
+                
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+        
+        return false;
+    }
+
     // Action functions
-    function verUsuario(id) { console.log('Ver:', id); }
-    function editarUsuario(id) { console.log('Editar:', id); }
-    function cambiarRol(id) { console.log('Rol:', id); }
-    function cambiarEstado(id, estado) {
-        if (confirm(`¿${estado === 'True' ? 'Desactivar' : 'Activar'} usuario?`)) {
-            console.log('Cambiar estado:', id);
-        }
+    function verUsuario(id) {
+        window.location.href = `/usuarios/${id}/detalle/`;
+    }
+    
+    function editarUsuario(id) {
+        window.location.href = `/usuarios/${id}/editar/`;
+    }
+    
+    function cambiarRol(id) {
+        Swal.fire({
+            title: 'Cambiar Rol',
+            text: 'Funcionalidad en desarrollo',
+            icon: 'info',
+            confirmButtonColor: '#ff6b00'
+        });
     }
 </script>
 {% endblock %}

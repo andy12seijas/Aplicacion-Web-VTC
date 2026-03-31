@@ -1,0 +1,1004 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Panel Estadístico{% endblock %}
+
+{% block page_title %}Panel Estadístico{% endblock %}
+{% block page_subtitle %}Análisis de rendimiento y métricas del sistema{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros Generales -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="filter-group">
+            <label class="filter-label">
+                <i class="fas fa-calendar-alt"></i> Fecha Desde
+            </label>
+            <input type="date" id="fecha_inicio" class="filter-input" value="{{ fecha_inicio }}">
+        </div>
+        
+        <div class="filter-group">
+            <label class="filter-label">
+                <i class="fas fa-calendar-alt"></i> Fecha Hasta
+            </label>
+            <input type="date" id="fecha_fin" class="filter-input" value="{{ fecha_fin }}">
+        </div>
+        
+        <div class="filter-actions">
+            <button onclick="aplicarFiltros()" class="btn-primary">
+                <i class="fas fa-search"></i> Aplicar
+            </button>
+            <button onclick="limpiarFiltros()" class="btn-clear">
+                <i class="fas fa-trash-alt"></i> Limpiar
+            </button>
+        </div>
+    </div>
+    <div class="periodo-info">
+        <span class="periodo-badge">
+            <i class="fas fa-info-circle"></i> Período por defecto: 3 de cada mes al 2 del siguiente
+        </span>
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn {% if tab_activa == 'vendedores' %}active{% endif %}" onclick="cambiarTab('vendedores')">
+            <i class="fas fa-user-tie tab-icon"></i>
+            Estadísticas de Vendedores
+            <span class="tab-count">{{ total_vendedores }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'instaladores' %}active{% endif %}" onclick="cambiarTab('instaladores')">
+            <i class="fas fa-tools tab-icon"></i>
+            Estadísticas de Instaladores
+            <span class="tab-count">{{ total_cuadrillas }}</span>
+        </button>
+    </div>
+
+    <!-- ==================== TAB: VENDEDORES ==================== -->
+    <div id="tab-vendedores" class="tab-content {% if tab_activa == 'vendedores' %}active{% endif %}">
+        <!-- Filtro específico de vendedores -->
+        <div class="sub-filters">
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fas fa-user"></i> Vendedor
+                </label>
+                <select id="filterVendedor" class="filter-select" onchange="aplicarFiltrosConTab()">
+                    <option value="">Todos los vendedores</option>
+                    {% for vendedor in vendedores %}
+                    <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                        {{ vendedor.get_full_name|default:vendedor.username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Indicador de filtro activo -->
+        {% if filtro_vendedor and vendedor_seleccionado %}
+        <div class="filtro-activo-info">
+            <span class="filtro-activo-badge">
+                <i class="fas fa-filter"></i> Mostrando estadísticas de: <strong>{{ vendedor_seleccionado.get_full_name|default:vendedor_seleccionado.username }}</strong>
+                <button onclick="quitarFiltroVendedor()" class="btn-quitar-filtro"><i class="fas fa-times"></i></button>
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- KPIs Vendedores -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon clients">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ total_clientes_vendedores }}</span>
+                    <span class="kpi-label">Clientes Registrados</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon contracts">
+                    <i class="fas fa-file-signature"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ total_contratos }}</span>
+                    <span class="kpi-label">Contratos Generados</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon conversion">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ tasa_conversion_vendedores }}%</span>
+                    <span class="kpi-label">Tasa de Conversión</span>
+                    <small>{{ clientes_con_contrato_vendedores }} convertidos</small>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon direct-sales">
+                    <i class="fas fa-tag"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ total_ventas_directas }}</span>
+                    <span class="kpi-label">Ventas Directas</span>
+                    <small>Torre de control</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas y Rankings -->
+        <div class="dashboard-grid">
+            <!-- Evolución de Contratos -->
+            <div class="dashboard-card full-width">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> Evolución de Contratos</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="ventasVendedoresChart" class="responsive-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Distribución de Ventas y Top Vendedores -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-pie"></i> Distribución de Ventas</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="distribucionVentasChart"></canvas>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-trophy"></i> Top 5 Vendedores</h3>
+                </div>
+                <div class="card-body">
+                    <div class="ranking-list">
+                        {% if top_vendedores_data %}
+                            {% for vendedor in top_vendedores_data %}
+                            <div class="ranking-item">
+                                <div class="ranking-number">#{{ forloop.counter }}</div>
+                                <div class="ranking-details">
+                                    <div class="ranking-name">{{ vendedor.nombre }}</div>
+                                    <div class="ranking-stats">
+                                        <span><i class="fas fa-users"></i> {{ vendedor.clientes }}</span>
+                                        <span><i class="fas fa-file-signature"></i> {{ vendedor.contratos }}</span>
+                                        <span class="success"><i class="fas fa-check-circle"></i> {{ vendedor.completados }}</span>
+                                    </div>
+                                </div>
+                                <div class="ranking-progress">
+                                    <div class="progress-bar" style="width: {{ vendedor.porcentaje }}%">
+                                        <span>{{ vendedor.porcentaje }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">No hay datos suficientes</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasa de Conversión por Vendedor -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-percent"></i> Tasa de Conversión por Vendedor</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="conversionVendedoresChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Estado de Contratos -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-donut"></i> Estado de Contratos</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="estadoContratosChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== TAB: INSTALADORES ==================== -->
+    <div id="tab-instaladores" class="tab-content {% if tab_activa == 'instaladores' %}active{% endif %}">
+        <!-- Filtro específico de instaladores -->
+        <div class="sub-filters">
+            <div class="filter-group">
+                <label class="filter-label">
+                    <i class="fas fa-users"></i> Cuadrilla
+                </label>
+                <select id="filterCuadrilla" class="filter-select" onchange="aplicarFiltrosConTab()">
+                    <option value="">Todas las cuadrillas</option>
+                    {% for cuadrilla in cuadrillas %}
+                    <option value="{{ cuadrilla.id }}" {% if filtro_cuadrilla == cuadrilla.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cuadrilla.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Indicador de filtro activo -->
+        {% if filtro_cuadrilla and cuadrilla_seleccionada %}
+        <div class="filtro-activo-info">
+            <span class="filtro-activo-badge">
+                <i class="fas fa-filter"></i> Mostrando estadísticas de cuadrilla: <strong>{{ cuadrilla_seleccionada.nombre }}</strong>
+                <button onclick="quitarFiltroCuadrilla()" class="btn-quitar-filtro"><i class="fas fa-times"></i></button>
+            </span>
+        </div>
+        {% endif %}
+
+        <!-- KPIs Instaladores -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon completed">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ total_instalaciones_completadas }}</span>
+                    <span class="kpi-label">Instalaciones Completadas</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon pending">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ total_instalaciones_pendientes }}</span>
+                    <span class="kpi-label">Instalaciones Pendientes</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon efficiency">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ eficiencia_instalacion }}%</span>
+                    <span class="kpi-label">Eficiencia General</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon cuadrillas">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="kpi-info">
+                    <span class="kpi-value">{{ total_cuadrillas_activas }}</span>
+                    <span class="kpi-label">Cuadrillas Activas</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficas y Rankings -->
+        <div class="dashboard-grid">
+            <!-- Instalaciones por Día -->
+            <div class="dashboard-card full-width">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> Instalaciones por Día</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="instalacionesDiariasChart" class="responsive-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Cuadrillas -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-trophy"></i> Rendimiento de Cuadrillas</h3>
+                </div>
+                <div class="card-body">
+                    <div class="ranking-list">
+                        {% if cuadrillas_rendimiento_data %}
+                            {% for cuadrilla in cuadrillas_rendimiento_data %}
+                            <div class="ranking-item">
+                                <div class="ranking-number">#{{ forloop.counter }}</div>
+                                <div class="ranking-details">
+                                    <div class="ranking-name">{{ cuadrilla.nombre }}</div>
+                                    <div class="ranking-stats">
+                                        <span><i class="fas fa-tools"></i> {{ cuadrilla.completadas }} completadas</span>
+                                        <span><i class="fas fa-clock"></i> {{ cuadrilla.pendientes }} pendientes</span>
+                                        <span class="success"><i class="fas fa-chart-line"></i> {{ cuadrilla.eficiencia }}%</span>
+                                    </div>
+                                    <div class="instaladores-list">
+                                        <i class="fas fa-user-check"></i>
+                                        {% for instalador in cuadrilla.instaladores %}
+                                            <span class="instalador-tag">{{ instalador }}</span>
+                                        {% empty %}
+                                            <span class="text-muted">Sin instaladores</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="ranking-progress">
+                                    <div class="progress-bar" style="width: {{ cuadrilla.eficiencia }}%">
+                                        <span>{{ cuadrilla.eficiencia }}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-state">No hay datos suficientes</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rendimiento por Cuadrilla (Gráfica) -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-bar"></i> Instalaciones por Cuadrilla</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="cuadrillasChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Estado de Instalaciones -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-pie"></i> Estado de Instalaciones</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="estadoInstalacionesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Tasa de Completación -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-chart-line"></i> Tasa de Completación</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="tasaCompletacionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f8f9fa;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --danger: #ef4444;
+    }
+
+    /* Filtros */
+    .filters-container {
+        margin-bottom: 24px;
+    }
+
+    .filters-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-end;
+        background: white;
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 180px;
+    }
+
+    .filter-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--gray-text);
+        margin-bottom: 6px;
+    }
+
+    .filter-label i {
+        margin-right: 4px;
+    }
+
+    .filter-input, .filter-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--gray-border);
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .filter-input:focus, .filter-select:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-primary, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-primary {
+        background: var(--orange);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    .periodo-info {
+        text-align: right;
+        margin-top: 8px;
+    }
+
+    .periodo-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+
+    /* Pestañas */
+    .tabs-container {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--gray-text);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        color: var(--orange);
+        border-bottom-color: var(--orange);
+        background: white;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin-left: 8px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 24px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Sub filtros */
+    .sub-filters {
+        background: #f8f9fa;
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+    }
+
+    /* Filtro activo */
+    .filtro-activo-info {
+        margin-bottom: 20px;
+    }
+
+    .filtro-activo-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+
+    .btn-quitar-filtro {
+        background: none;
+        border: none;
+        color: #f44336;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 4px;
+    }
+
+    /* KPIs */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 20px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.3s;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border-color: var(--orange);
+    }
+
+    .kpi-icon {
+        width: 55px;
+        height: 55px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon i { font-size: 28px; }
+    .kpi-icon.clients { background: #e3f2fd; color: #1976d2; }
+    .kpi-icon.contracts { background: #e8f5e9; color: #2e7d32; }
+    .kpi-icon.conversion { background: #fff3e0; color: #ef6c00; }
+    .kpi-icon.direct-sales { background: #fce4ec; color: #c62828; }
+    .kpi-icon.completed { background: #e8f5e9; color: #2e7d32; }
+    .kpi-icon.pending { background: #fff3e0; color: #ef6c00; }
+    .kpi-icon.efficiency { background: #e3f2fd; color: #1976d2; }
+    .kpi-icon.cuadrillas { background: #f3e5f5; color: #7b1fa2; }
+
+    .kpi-info { flex: 1; }
+    .kpi-value { font-size: 28px; font-weight: 800; color: var(--dark-text); display: block; line-height: 1; }
+    .kpi-label { font-size: 12px; color: var(--gray-text); display: block; margin-top: 6px; }
+    .kpi-info small { font-size: 11px; color: var(--gray-text); display: block; margin-top: 4px; }
+
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+    }
+
+    .dashboard-card.full-width {
+        grid-column: span 2;
+    }
+
+    .card-header {
+        padding: 20px 24px 0;
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .card-header h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .card-header h3 i {
+        color: var(--orange);
+    }
+
+    .card-body {
+        padding: 20px 24px;
+    }
+
+    /* Ranking */
+    .ranking-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .ranking-item {
+        background: var(--gray-bg);
+        border-radius: 16px;
+        padding: 16px;
+        transition: all 0.3s;
+    }
+
+    .ranking-item:hover {
+        transform: translateX(4px);
+        background: var(--orange-light);
+    }
+
+    .ranking-number {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, var(--orange) 0%, #ff8c00 100%);
+        color: white;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 18px;
+        margin-bottom: 12px;
+    }
+
+    .ranking-details { margin-bottom: 12px; }
+    .ranking-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .ranking-stats { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--gray-text); }
+    .ranking-stats i { margin-right: 4px; }
+    .ranking-stats .success { color: var(--success); }
+
+    .ranking-progress {
+        margin-top: 12px;
+    }
+
+    .progress-bar {
+        background: linear-gradient(90deg, var(--orange) 0%, #ff8c00 100%);
+        height: 24px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 12px;
+        color: white;
+        font-size: 11px;
+        font-weight: 600;
+        transition: width 0.5s ease;
+    }
+
+    /* Instaladores */
+    .instaladores-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+        align-items: center;
+    }
+
+    .instalador-tag {
+        background: #e3f2fd;
+        color: #1976d2;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .text-muted { color: var(--gray-text); font-size: 12px; }
+    .empty-state { text-align: center; padding: 40px; color: var(--gray-text); }
+
+    /* Gráficas */
+    .responsive-chart {
+        max-width: 100%;
+        height: auto;
+        min-height: 300px;
+    }
+
+    canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
+
+    /* Botón secundario */
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .dashboard-grid { gap: 16px; }
+    }
+
+    @media (max-width: 768px) {
+        .filters-grid { flex-direction: column; align-items: stretch; }
+        .filter-actions { flex-direction: column; }
+        .btn-primary, .btn-clear { width: 100%; justify-content: center; }
+        
+        .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .dashboard-card.full-width { grid-column: span 1; }
+        
+        .tab-btn { flex-direction: column; font-size: 13px; padding: 12px; }
+        .tab-count { margin-left: 0; margin-top: 4px; }
+        
+        .sub-filters { flex-direction: column; }
+        .filter-group { width: 100%; }
+        
+        .filtro-activo-badge { width: 100%; justify-content: space-between; }
+        
+        .kpi-card { padding: 16px; }
+        .kpi-value { font-size: 22px; }
+        .kpi-icon { width: 45px; height: 45px; }
+        .kpi-icon i { font-size: 22px; }
+        
+        .card-header { padding: 16px 20px 0; }
+        .card-body { padding: 16px 20px; }
+        
+        .ranking-stats { flex-direction: column; gap: 6px; }
+        .ranking-name { font-size: 14px; }
+        .ranking-number { width: 30px; height: 30px; font-size: 14px; }
+    }
+
+    @media (max-width: 480px) {
+        .filters-grid { padding: 16px; }
+        .filter-input, .filter-select { padding: 8px 12px; font-size: 13px; }
+        .btn-primary, .btn-clear { padding: 8px 16px; font-size: 13px; }
+        
+        .kpi-card { padding: 12px; gap: 12px; }
+        .kpi-value { font-size: 20px; }
+        .kpi-icon { width: 40px; height: 40px; }
+        .kpi-icon i { font-size: 20px; }
+        
+        .card-header h3 { font-size: 14px; }
+        .ranking-name { font-size: 13px; }
+        .instalador-tag { font-size: 10px; padding: 2px 8px; }
+    }
+
+    /* Landscape */
+    @media (max-width: 768px) and (orientation: landscape) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+        .dashboard-card.full-width { grid-column: span 2; }
+        .tab-btn { flex-direction: row; }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Datos de las gráficas (desde el backend)
+    const fechas = {{ fechas_json|safe }};
+    const ventasDiarias = {{ ventas_diarias_json|safe }};
+    const instalacionesDiarias = {{ instalaciones_diarias_json|safe }};
+    const conversionDiaria = {{ conversion_diaria_json|safe }};
+    
+    const tiposVenta = {{ tipos_venta_json|safe }};
+    const valoresTipos = {{ valores_tipos_json|safe }};
+    const coloresTipos = {{ colores_tipos_json|safe }};
+    
+    const conversionVendedoresNombres = {{ conversion_vendedores_nombres_json|safe }};
+    const conversionVendedoresValores = {{ conversion_vendedores_valores_json|safe }};
+    
+    const cuadrillasNombres = {{ cuadrillas_nombres_json|safe }};
+    const cuadrillasCompletadas = {{ cuadrillas_completadas_json|safe }};
+    
+    const estadosContratos = {{ estados_contratos_json|safe }};
+    const estadosValores = {{ estados_valores_json|safe }};
+    const estadosColores = {{ estados_colores_json|safe }};
+    
+    const instalacionesCompletadasDiarias = {{ instalaciones_completadas_diarias_json|safe }};
+    const instalacionesPendientesDiarias = {{ instalaciones_pendientes_diarias_json|safe }};
+    
+    const estadoInstalacionesLabels = ['Completadas', 'Pendientes'];
+    const estadoInstalacionesValores = [{{ total_instalaciones_completadas }}, {{ total_instalaciones_pendientes }}];
+    const estadoInstalacionesColores = ['#4caf50', '#ff9800'];
+    
+    const tasaCompletacionDiaria = {{ tasa_completacion_diaria_json|safe }};
+    
+    let charts = {};
+    
+    function cambiarTab(tab) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.location.href = url.toString();
+    }
+    
+    function aplicarFiltrosConTab() {
+        const url = new URL(window.location.href);
+        const fecha_inicio = document.getElementById('fecha_inicio').value;
+        const fecha_fin = document.getElementById('fecha_fin').value;
+        const vendedor = document.getElementById('filterVendedor')?.value || '';
+        const cuadrilla = document.getElementById('filterCuadrilla')?.value || '';
+        const tabActiva = document.querySelector('.tab-content.active')?.id || 'tab-vendedores';
+        const tab = tabActiva === 'tab-vendedores' ? 'vendedores' : 'instaladores';
+        
+        if (fecha_inicio) url.searchParams.set('fecha_inicio', fecha_inicio);
+        else url.searchParams.delete('fecha_inicio');
+        
+        if (fecha_fin) url.searchParams.set('fecha_fin', fecha_fin);
+        else url.searchParams.delete('fecha_fin');
+        
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        
+        if (cuadrilla) url.searchParams.set('cuadrilla', cuadrilla);
+        else url.searchParams.delete('cuadrilla');
+        
+        url.searchParams.set('tab', tab);
+        window.location.href = url.toString();
+    }
+    
+    function aplicarFiltros() {
+        aplicarFiltrosConTab();
+    }
+    
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        const tabActiva = document.querySelector('.tab-content.active')?.id || 'tab-vendedores';
+        const tab = tabActiva === 'tab-vendedores' ? 'vendedores' : 'instaladores';
+        
+        url.searchParams.delete('fecha_inicio');
+        url.searchParams.delete('fecha_fin');
+        url.searchParams.delete('vendedor');
+        url.searchParams.delete('cuadrilla');
+        url.searchParams.set('tab', tab);
+        window.location.href = url.toString();
+    }
+    
+    function quitarFiltroVendedor() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('vendedor');
+        window.location.href = url.toString();
+    }
+    
+    function quitarFiltroCuadrilla() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('cuadrilla');
+        window.location.href = url.toString();
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Gráficas Vendedores
+        charts.ventasVendedores = new Chart(document.getElementById('ventasVendedoresChart'), {
+            type: 'line',
+            data: { labels: fechas, datasets: [{ label: 'Contratos', data: ventasDiarias, borderColor: '#ff6b00', backgroundColor: 'rgba(255, 107, 0, 0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        charts.distribucionVentas = new Chart(document.getElementById('distribucionVentasChart'), {
+            type: 'doughnut',
+            data: { labels: tiposVenta, datasets: [{ data: valoresTipos, backgroundColor: coloresTipos, borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        if (conversionVendedoresNombres.length > 0) {
+            charts.conversionVendedores = new Chart(document.getElementById('conversionVendedoresChart'), {
+                type: 'bar',
+                data: { labels: conversionVendedoresNombres, datasets: [{ label: 'Tasa de Conversión (%)', data: conversionVendedoresValores, backgroundColor: '#9c27b0', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+        }
+        
+        charts.estadoContratos = new Chart(document.getElementById('estadoContratosChart'), {
+            type: 'pie',
+            data: { labels: estadosContratos, datasets: [{ data: estadosValores, backgroundColor: estadosColores, borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        // Gráficas Instaladores
+        charts.instalacionesDiarias = new Chart(document.getElementById('instalacionesDiariasChart'), {
+            type: 'line',
+            data: { labels: fechas, datasets: [
+                { label: 'Completadas', data: instalacionesCompletadasDiarias, borderColor: '#4caf50', backgroundColor: 'rgba(76, 175, 80, 0.1)', fill: true, tension: 0.4 },
+                { label: 'Pendientes', data: instalacionesPendientesDiarias, borderColor: '#ff9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.4 }
+            ] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        if (cuadrillasNombres.length > 0) {
+            charts.cuadrillas = new Chart(document.getElementById('cuadrillasChart'), {
+                type: 'bar',
+                data: { labels: cuadrillasNombres, datasets: [{ label: 'Instalaciones Completadas', data: cuadrillasCompletadas, backgroundColor: '#4caf50', borderRadius: 8 }] },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+        }
+        
+        charts.estadoInstalaciones = new Chart(document.getElementById('estadoInstalacionesChart'), {
+            type: 'doughnut',
+            data: { labels: estadoInstalacionesLabels, datasets: [{ data: estadoInstalacionesValores, backgroundColor: estadoInstalacionesColores, borderWidth: 0 }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+        
+        charts.tasaCompletacion = new Chart(document.getElementById('tasaCompletacionChart'), {
+            type: 'line',
+            data: { labels: fechas, datasets: [{ label: 'Tasa de Completación (%)', data: tasaCompletacionDiaria, borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    });
+</script>
+{% endblock %}

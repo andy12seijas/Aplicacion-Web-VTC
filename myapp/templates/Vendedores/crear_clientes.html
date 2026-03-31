@@ -42,9 +42,12 @@
                 {% endfor %}
             </div>
             {% endif %}
+            
+            <!-- Campos ocultos para ubicación -->
             <input type="hidden" name="latitud" id="latitud" value="">
             <input type="hidden" name="longitud" id="longitud" value="">
             <input type="hidden" name="ubicacion_timestamp" id="ubicacion_timestamp" value="">
+            
             <div class="form-grid">
                 <!-- Cédula -->
                 <div class="form-group cedula-group">
@@ -62,7 +65,6 @@
                             </button>
                         </div>
                     {% else %}
-                        <!-- En edición, la cédula se muestra como texto no editable -->
                         <div class="campo-lectura">
                             <span class="valor-lectura">{{ form.cedula.value }}</span>
                             <input type="hidden" name="cedula" value="{{ form.cedula.value }}">
@@ -110,12 +112,33 @@
                     {% endif %}
                 </div>
                 
-                <!-- Teléfono -->
+                <!-- Teléfono con operadora -->
                 <div class="form-group campo-bloqueable" id="campoTelefono">
-                    <label for="{{ form.telefono.id_for_label }}">
+                    <label>
                         Teléfono <span class="required">*</span>
                     </label>
-                    {{ form.telefono }}
+                    <div class="telefono-wrapper">
+                        <select id="operadora" class="form-select operadora-select" style="width: 95px;">
+                            <option value="">Sel.</option>
+                            <option value="0412">0412</option>
+                            <option value="0414">0414</option>
+                            <option value="0416">0416</option>
+                            <option value="0424">0424</option>
+                            <option value="0422">0422</option>
+                            <option value="0426">0426</option>
+                        </select>
+                        <span class="telefono-guion">-</span>
+                        <input type="text" 
+                               id="numero_telefono" 
+                               class="form-input telefono-input" 
+                               placeholder="1234567"
+                               maxlength="7"
+                               pattern="[0-9]{7}"
+                               title="Ingrese 7 dígitos"
+                               style="flex: 1;">
+                    </div>
+                    <!-- Campo oculto para guardar el teléfono completo -->
+                    <input type="hidden" name="telefono" id="telefono_completo" value="{{ form.telefono.value|default:'' }}">
                     {% if form.telefono.errors %}
                     <div class="field-error">
                         {% for error in form.telefono.errors %}
@@ -123,7 +146,7 @@
                         {% endfor %}
                     </div>
                     {% endif %}
-                    <small class="help-text">{{ form.telefono.help_text }}</small>
+                    <small class="help-text">Seleccione operadora y luego ingrese los 7 dígitos (Ej: 0412-1234567)</small>
                 </div>
                 
                 <!-- Dirección -->
@@ -349,6 +372,34 @@
     .required {
         color: #f44336;
         margin-left: 2px;
+    }
+    
+    /* Estilos para el teléfono */
+    .telefono-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .operadora-select {
+        width: 85px;
+        flex-shrink: 0;
+        padding: 10px 8px;
+        text-align: center;
+    }
+    
+    .telefono-guion {
+        font-size: 18px;
+        font-weight: 600;
+        color: #999;
+        flex-shrink: 0;
+    }
+    
+    .telefono-input {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 12px;
     }
     
     /* Grupo especial para cédula con botón (solo creación) */
@@ -579,6 +630,7 @@
         color: #c62828;
     }
     
+    /* Responsive */
     @media (max-width: 768px) {
         .form-grid {
             grid-template-columns: 1fr;
@@ -616,11 +668,157 @@
             flex-direction: column;
             text-align: center;
         }
+        
+        .telefono-wrapper {
+            flex-wrap: wrap;
+        }
+        
+        .operadora-select {
+            width: 100%;
+        }
+        
+        .telefono-guion {
+            display: none;
+        }
+        
+        .telefono-input {
+            width: 100%;
+        }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // ============================================================
+    // CAPTURAR UBICACIÓN DEL VENDEDOR AUTOMÁTICAMENTE AL CARGAR LA PÁGINA
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📍 Capturando ubicación del vendedor...');
+        capturarUbicacionVendedor();
+        
+        // Inicializar el campo de teléfono
+        inicializarTelefono();
+    });
+    
+    function capturarUbicacionVendedor() {
+        if (!navigator.geolocation) {
+            console.log('⚠️ Geolocalización no soportada por el navegador');
+            mostrarToast('Tu navegador no soporta geolocalización. No se actualizará tu ubicación.', 'warning');
+            return;
+        }
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                console.log(`📍 Ubicación obtenida: ${lat}, ${lng}`);
+                
+                // Guardar en campos ocultos del formulario
+                document.getElementById('latitud').value = lat;
+                document.getElementById('longitud').value = lng;
+                document.getElementById('ubicacion_timestamp').value = new Date().toISOString();
+                
+                // Enviar la ubicación al servidor para guardar en UbicacionUsuario
+                fetch('/capturar-ubicacion-vendedor/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        latitud: lat,
+                        longitud: lng
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ Ubicación del vendedor guardada correctamente');
+                        mostrarToast('📍 Tu ubicación ha sido actualizada', 'success');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al guardar ubicación:', error);
+                });
+            },
+            function(error) {
+                let mensaje = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Ubicación no disponible.';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado.';
+                        break;
+                    default:
+                        mensaje = 'Error desconocido.';
+                }
+                console.warn('⚠️ No se pudo capturar ubicación:', mensaje);
+                mostrarToast('⚠️ No se pudo obtener tu ubicación: ' + mensaje, 'warning');
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    }
+    
+    // ============================================================
+    // MANEJO DE TELÉFONO (operadora + número)
+    // ============================================================
+    function inicializarTelefono() {
+        const operadoraSelect = document.getElementById('operadora');
+        const numeroInput = document.getElementById('numero_telefono');
+        const telefonoHidden = document.getElementById('telefono_completo');
+        
+        if (!operadoraSelect || !numeroInput || !telefonoHidden) return;
+        
+        // Si hay un teléfono guardado, separarlo para mostrarlo
+        const telefonoExistente = telefonoHidden.value;
+        if (telefonoExistente && telefonoExistente.includes('-')) {
+            const partes = telefonoExistente.split('-');
+            if (partes.length === 2) {
+                operadoraSelect.value = partes[0];
+                numeroInput.value = partes[1];
+            }
+        }
+        
+        // Función para actualizar el campo oculto
+        function actualizarTelefono() {
+            const operadora = operadoraSelect.value;
+            const numero = numeroInput.value;
+            
+            if (operadora && numero && numero.length === 7 && /^\d+$/.test(numero)) {
+                telefonoHidden.value = `${operadora}-${numero}`;
+            } else {
+                telefonoHidden.value = '';
+            }
+        }
+        
+        // Eventos
+        operadoraSelect.addEventListener('change', actualizarTelefono);
+        numeroInput.addEventListener('input', function(e) {
+            // Solo permitir números
+            this.value = this.value.replace(/[^0-9]/g, '');
+            // Limitar a 7 caracteres
+            if (this.value.length > 7) {
+                this.value = this.value.slice(0, 7);
+            }
+            actualizarTelefono();
+        });
+        
+        actualizarTelefono();
+    }
+    
+    // ============================================================
+    // FUNCIONES DE VERIFICACIÓN DE CÉDULA
+    // ============================================================
+    
     // Variable para controlar si la cédula está verificada (solo para creación)
     let cedulaVerificada = false;
     let cedulaValida = false;
@@ -693,7 +891,6 @@
                     cedulaVerificada = true;
                     cedulaValida = false;
                     
-                    // Mostrar SweetAlert con información simplificada
                     Swal.fire({
                         icon: 'error',
                         title: 'Cliente ya registrado',
@@ -718,7 +915,6 @@
                     verificationMsg.className = 'verification-message error';
                     verificationMsg.innerHTML = `❌ Cliente ya registrado el ${data.cliente.fecha_registro}`;
                     
-                    // Mantener campos bloqueados
                     bloquearCampos(true);
                     document.getElementById('btnSubmit').disabled = true;
                     
@@ -731,11 +927,9 @@
                     verificationMsg.className = 'verification-message success';
                     verificationMsg.innerHTML = '✅ Cédula verificada - Puede continuar con el registro';
                     
-                    // Desbloquear campos
                     bloquearCampos(false);
                     document.getElementById('btnSubmit').disabled = false;
                     
-                    // SweetAlert de éxito
                     Swal.fire({
                         icon: 'success',
                         title: 'Cédula disponible',
@@ -772,84 +966,41 @@
         this.value = this.value.replace(/[^0-9]/g, '');
         {% endif %}
     });
-    document.addEventListener('DOMContentLoaded', function() {
-        {% if es_creacion %}
-        solicitarUbicacion();
-        {% endif %}
-    });
-//Script para solicitar ubicación al cargar la página (solo para creación)
-    function solicitarUbicacion() {
-        Swal.fire({
-            title: 'Obteniendo tu ubicación',
-            text: 'Esto actualizará tu posición en el mapa...',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
     
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const timestamp = new Date().toISOString();
-                    
-                    // Guardar en campos ocultos
-                    document.getElementById('latitud').value = lat;
-                    document.getElementById('longitud').value = lng;
-                    document.getElementById('ubicacion_timestamp').value = timestamp;
-                    
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Ubicación actualizada!',
-                        text: 'Tu posición se ha actualizado en el mapa.',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                    
-                    console.log('Ubicación capturada:', lat, lng);
-                },
-                function(error) {
-                    let mensaje = '';
-                    switch(error.code) {
-                        case error.PERMISSION_DENIED:
-                            mensaje = 'Permiso denegado. No se actualizará tu ubicación.';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            mensaje = 'Ubicación no disponible.';
-                            break;
-                        case error.TIMEOUT:
-                            mensaje = 'Tiempo de espera agotado.';
-                            break;
-                        default:
-                            mensaje = 'Error al obtener ubicación.';
-                    }
-                    
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Ubicación no disponible',
-                        text: mensaje,
-                        confirmButtonColor: '#ff6b00'
-                    });
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
-            );
-        } else {
+    // Validar el formulario antes de enviar
+    document.getElementById('clienteForm').addEventListener('submit', function(e) {
+        const operadora = document.getElementById('operadora')?.value;
+        const numero = document.getElementById('numero_telefono')?.value;
+        
+        if (!operadora || !numero || numero.length !== 7) {
+            e.preventDefault();
             Swal.fire({
-                icon: 'warning',
-                title: 'Geolocalización no soportada',
-                text: 'Tu navegador no soporta la captura de ubicación.',
+                icon: 'error',
+                title: 'Teléfono inválido',
+                text: 'Debe seleccionar una operadora y completar los 7 dígitos del teléfono',
                 confirmButtonColor: '#ff6b00'
             });
         }
+    });
+    
+    // ============================================================
+    // FUNCIONES AUXILIARES
+    // ============================================================
+    function mostrarToast(mensaje, tipo) {
+        const color = tipo === 'success' ? '#4caf50' : tipo === 'warning' ? '#ff9800' : '#f44336';
+        const toast = document.createElement('div');
+        toast.innerHTML = `
+            <div style="position: fixed; bottom: 20px; right: 20px; background: ${color}; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                ${mensaje}
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
     }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     /* Animación para el spinner */
     @keyframes spin {

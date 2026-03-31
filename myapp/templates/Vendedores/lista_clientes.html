@@ -86,81 +86,89 @@
     </div>
 </div>
 
+<!-- Indicador de filtros activos -->
+<div id="filtrosActivos" class="filtros-activos" style="display: none;">
+    <span class="filtros-label">📌 Filtros activos:</span>
+    <span class="filtros-lista" id="filtrosLista"></span>
+    <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
+</div>
+
 <!-- Vista Desktop: Tabla -->
 <div class="desktop-view">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Cédula</th>
-                <th>Nombre</th>
-                <th>Teléfono</th>
-                <th>Interés</th>
-                <th>Internet</th>
-                <th>Fecha</th>
-                {% if es_admin %}
-                <th>Vendedor</th>
-                {% endif %}
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cliente in page_obj %}
-            <tr>
-                <td class="cedula-cell">{{ cliente.cedula }}</td>
-                <td>
-                    <div class="user-cell">
-                        <span class="user-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
-                        <div>
-                            <div class="user-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="telefono-cell">{{ cliente.telefono }}</td>
-                <td>
-                    <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
-                        {{ cliente.get_interesado_display }}
-                    </span>
-                </td>
-                <td>
-                    {% if cliente.posee_internet %}
-                    <span class="badge badge-info">Sí</span>
-                    {% else %}
-                    <span class="badge badge-secondary">No</span>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Cédula</th>
+                    <th>Nombre</th>
+                    <th>Teléfono</th>
+                    <th>Interés</th>
+                    <th>Internet</th>
+                    <th>Fecha</th>
+                    {% if es_admin %}
+                    <th>Vendedor</th>
                     {% endif %}
-                </td>
-                <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
-                {% if es_admin %}
-                <td>
-                    <span class="vendedor-badge">
-                        {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
-                    </span>
-                </td>
-                {% endif %}     
-                <td>
-                    <div class="actions">
-                        <button class="action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="3"/>
-                                <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                            </svg>
-                        </button>
-                        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                        <button class="action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                            </svg>
-                        </button>
+                    <th>Acciones</th>
+                </thead>
+            <tbody>
+                {% for cliente in page_obj %}
+                 <tr>
+                    <td class="cedula-cell">{{ cliente.cedula }}</td>
+                    <td>
+                        <div class="user-cell">
+                            <span class="user-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
+                            <div>
+                                <div class="user-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="telefono-cell">{{ cliente.telefono }}</td>
+                    <td>
+                        <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
+                            {{ cliente.get_interesado_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if cliente.posee_internet %}
+                        <span class="badge badge-info">Sí</span>
+                        {% else %}
+                        <span class="badge badge-secondary">No</span>
                         {% endif %}
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                    <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
+                    {% if es_admin %}
+                    <td>
+                        <span class="vendedor-badge">
+                            {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
+                        </span>
+                    </td>
+                    {% endif %}     
+                    <td>
+                        <div class="actions">
+                            <button class="action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                            <button class="action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <!-- Vista Mobile: Cards -->
@@ -480,6 +488,46 @@
         border-color: var(--orange);
     }
 
+    /* ===== FILTROS ACTIVOS ===== */
+    .filtros-activos {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 13px;
+    }
+    
+    .filtros-label {
+        font-weight: 600;
+        color: #1565c0;
+    }
+    
+    .filtros-lista {
+        color: #555;
+        flex: 1;
+    }
+    
+    .btn-limpiar-filtros {
+        background: white;
+        border: 1px solid #2196f3;
+        color: #2196f3;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-limpiar-filtros:hover {
+        background: #2196f3;
+        color: white;
+    }
+
     /* ===== TABLA DESKTOP ===== */
     .desktop-view {
         display: block;
@@ -490,10 +538,15 @@
         margin-bottom: 20px;
     }
 
+    .table-container {
+        overflow-x: auto;
+    }
+
     .table {
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        min-width: 800px;
     }
 
     .table th {
@@ -647,6 +700,7 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
+        position: relative;
     }
 
     .card-user {
@@ -1076,6 +1130,15 @@
         .modal-footer {
             padding: 16px;
         }
+        
+        .filtros-activos {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .btn-limpiar-filtros {
+            align-self: flex-start;
+        }
     }
     
     /* Móvil Pequeño (320px - 576px) */
@@ -1154,10 +1217,6 @@
             top: 16px;
             right: 16px;
         }
-        
-        .card-header {
-            position: relative;
-        }
     }
 </style>
 
@@ -1165,35 +1224,15 @@
 <script>
     // Variable para almacenar los datos de los clientes
     let clientesData = {};
+    let searchTimeout;
 
-    // Búsqueda en tiempo real
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        const searchText = this.value.toLowerCase();
-        
-        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
-        });
-        
-        document.querySelectorAll('.cliente-card').forEach(card => {
-            const text = card.textContent.toLowerCase();
-            card.style.display = text.includes(searchText) ? 'block' : 'none';
-        });
-    });
-
-    // Filtros
-    document.getElementById('filterInteres')?.addEventListener('change', aplicarFiltros);
-    document.getElementById('filterInternet')?.addEventListener('change', aplicarFiltros);
-    
-    {% if es_admin %}
-    document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
-    {% endif %}
-
+    // Función para aplicar filtros con recarga de página
     function aplicarFiltros() {
         const url = new URL(window.location.href);
-        const interes = document.getElementById('filterInteres').value;
-        const internet = document.getElementById('filterInternet').value;
-        const busqueda = document.getElementById('searchInput').value;
+        const interes = document.getElementById('filterInteres')?.value || '';
+        const internet = document.getElementById('filterInternet')?.value || '';
+        const vendedor = document.getElementById('filterVendedor')?.value || '';
+        const busqueda = document.getElementById('searchInput')?.value || '';
         
         if (interes) url.searchParams.set('interes', interes);
         else url.searchParams.delete('interes');
@@ -1201,30 +1240,53 @@
         if (internet) url.searchParams.set('internet', internet);
         else url.searchParams.delete('internet');
         
+        if (vendedor) url.searchParams.set('vendedor', vendedor);
+        else url.searchParams.delete('vendedor');
+        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
         
-        {% if es_admin %}
-        const vendedor = document.getElementById('filterVendedor').value;
-        if (vendedor) url.searchParams.set('vendedor', vendedor);
-        else url.searchParams.delete('vendedor');
-        {% endif %}
+        // Resetear a la primera página al aplicar filtros
+        url.searchParams.delete('page');
         
+        window.location.href = url.toString();
+    }
+
+    // Búsqueda con debounce
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            aplicarFiltros();
+        }, 500);
+    });
+
+    // Filtros select
+    document.getElementById('filterInteres')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('filterInternet')?.addEventListener('change', aplicarFiltros);
+    
+    {% if es_admin %}
+    document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
+    {% endif %}
+
+    // Función para limpiar todos los filtros
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('interes');
+        url.searchParams.delete('internet');
+        url.searchParams.delete('vendedor');
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('page');
         window.location.href = url.toString();
     }
 
     // Función para ver detalle del cliente
     function verCliente(id) {
-        console.log('Ver cliente:', id); // Para debug
-        
-        // Verificar si el modal existe
         const modal = document.getElementById('clienteModal');
         if (!modal) {
             console.error('Modal no encontrado');
             return;
         }
         
-        // Mostrar loading
         Swal.fire({
             title: 'Cargando...',
             text: 'Obteniendo información del cliente',
@@ -1234,7 +1296,6 @@
             }
         });
         
-        // Hacer la petición fetch
         fetch(`/cliente/${id}/datos/`)
             .then(response => {
                 if (!response.ok) {
@@ -1268,8 +1329,6 @@
     }
 
     function mostrarModal(cliente) {
-        console.log('Mostrando modal con datos:', cliente); // Para debug
-        
         // Actualizar avatar
         document.getElementById('modalAvatar').textContent = cliente.nombre.charAt(0).toUpperCase() + cliente.apellido.charAt(0).toUpperCase();
         document.getElementById('modalNombreCompleto').textContent = `${cliente.nombre} ${cliente.apellido}`;
@@ -1340,13 +1399,34 @@
         window.location.href = `/cliente/${id}/editar/`;
     }
 
-    // Verificar que el modal existe al cargar la página
+    // Mostrar indicador de filtros activos al cargar la página
     document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('clienteModal');
         if (!modal) {
             console.error('Error: No se encontró el modal en el DOM');
         } else {
             console.log('Modal encontrado correctamente');
+        }
+        
+        // Verificar filtros activos
+        const urlParams = new URLSearchParams(window.location.search);
+        const busqueda = urlParams.get('busqueda');
+        const interes = urlParams.get('interes');
+        const internet = urlParams.get('internet');
+        const vendedor = urlParams.get('vendedor');
+        
+        if (busqueda || interes || internet || vendedor) {
+            const filtrosActivosDiv = document.getElementById('filtrosActivos');
+            const filtrosLista = document.getElementById('filtrosLista');
+            const filtrosArray = [];
+            
+            if (busqueda) filtrosArray.push(`"${busqueda}"`);
+            if (interes) filtrosArray.push(`interés: ${interes === 'SI' ? 'Sí' : interes === 'TAL_VEZ' ? 'Tal vez' : 'No'}`);
+            if (internet) filtrosArray.push(`internet: ${internet === 'si' ? 'Sí' : 'No'}`);
+            if (vendedor) filtrosArray.push(`vendedor: ${vendedor}`);
+            
+            filtrosLista.textContent = filtrosArray.join(' • ');
+            filtrosActivosDiv.style.display = 'flex';
         }
     });
 </script>

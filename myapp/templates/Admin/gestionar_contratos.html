@@ -133,7 +133,7 @@
         </div>
     </div>
 
-    <!-- TAB: Contratos Completados -->
+    <!-- TAB: Contratos Completados (CON BOTÓN DE COPIAR) -->
     <div id="tab-completados" class="tab-content">
         <div class="table-container">
             <table class="table">
@@ -143,7 +143,6 @@
                         <th>Cédula</th>
                         <th>Customer ID</th>
                         <th>ODS</th>
-                        <th>Teléfono Pago</th>
                         <th>Plan</th>
                         <th>Estado</th>
                         <th>Vendedor</th>
@@ -165,7 +164,6 @@
                         <td>{{ contrato.cliente_potencial.cedula }}</td>
                         <td><span class="badge completado">{{ contrato.customer_id|default:"—" }}</span></td>
                         <td><span class="badge completado">{{ contrato.ods|default:"—" }}</span></td>
-                        <td>{{ contrato.numero_pago_movil|default:"—" }}</td>
                         <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
                         <td>
                             {% if contrato.estado == 'EN_PROCESO' %}
@@ -192,18 +190,17 @@
                                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                                 </svg>
                             </button>
-
-                            <button class="action-btn" onclick="verFotoPago('{{ contrato.id }}')" title="Ver comprobante">
+                            <button class="action-btn copy-btn" onclick="copiarInfoContrato({{ contrato.id }})" title="Copiar información del contrato">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="2" y="2" width="20" height="20" rx="2.18"/>
-                                    <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                                 </svg>
                             </button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="10" class="empty">No hay contratos completados</td>
+                        <td colspan="9" class="empty">No hay contratos completados</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -214,7 +211,7 @@
 
 <!-- ========== MODALES ========== -->
 
-<!-- Modal para completar contrato (con campos de pago) -->
+<!-- Modal para completar contrato -->
 <div id="completarContratoModal" class="modal" style="display: none;">
     <div class="modal-overlay" onclick="cerrarModalCompletar()"></div>
     <div class="modal-container modal-md">
@@ -254,69 +251,26 @@
                     <small class="help-text">Orden de Servicio</small>
                 </div>
                 
-                <div class="form-group">
-                    <label for="numero_pago_movil">Número de Pago Móvil <span class="required">*</span></label>
-                    <input type="text" 
-                           id="numero_pago_movil" 
-                           name="numero_pago_movil" 
-                           class="form-input" 
-                           placeholder="Ej: 0412-1234567"
-                           pattern="[0-9-]+"
-                           required>
-                    <small class="help-text">Número de teléfono donde se realizó el pago</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="foto_pago">Comprobante de Pago <span class="required">*</span></label>
-                    <div class="file-input-wrapper">
-                        <input type="file" 
-                               id="foto_pago" 
-                               name="foto_pago" 
-                               class="form-file" 
-                               accept="image/*"
-                               required>
-                    </div>
-                    <small class="help-text">Suba una foto o captura del comprobante (JPG, PNG)</small>
-                </div>
-                
                 <div class="form-actions" style="margin-top: 20px;">
-                    <button type="button" class="btn-outline" onclick="cerrarModalCompletar()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Guardar y Completar</button>
+                    <button type="button" class="btn-cancel" onclick="cerrarModalCompletar()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-save" id="btnGuardarCompletar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        Guardar y Completar
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Modal para ver imagen completa -->
-<div id="imagenModal" class="modal" style="display: none;">
-    <div class="modal-overlay" onclick="cerrarImagenModal()"></div>
-    <div class="modal-container modal-image">
-        <div class="modal-header">
-            <h3>Comprobante de Pago</h3>
-            <button class="modal-close" onclick="cerrarImagenModal()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body image-container">
-            <img id="imagen-completa" src="" alt="Comprobante de pago" class="imagen-completa">
-            <div class="foto-pago-actions" style="margin-top: 20px;">
-                <a id="download-foto" href="#" download class="btn-primary">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Descargar
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal para ver detalle de contrato -->
+<!-- Modal para ver detalle de contrato (CON BOTÓN DE COPIAR) -->
 <div id="contratoModal" class="modal" style="display: none;">
     <div class="modal-overlay" onclick="cerrarModalDetalle()"></div>
     <div class="modal-container modal-lg">
@@ -328,18 +282,26 @@
                     <p id="modalCedula"></p>
                 </div>
             </div>
-            <button class="modal-close" onclick="cerrarModalDetalle()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-            </button>
+            <div class="modal-header-actions">
+                <button class="action-btn copy-modal-btn" onclick="copiarInfoDesdeModal()" title="Copiar toda la información">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                    Copiar Todo
+                </button>
+                <button class="modal-close" onclick="cerrarModalDetalle()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
         </div>
         
         <div class="modal-body">
             <!-- Pestañas del modal de detalle -->
             <div class="modal-tabs">
                 <button class="tab-btn active" onclick="cambiarTabModal('info')" id="modal-tab-info-btn">Información General</button>
-                <button class="tab-btn" onclick="cambiarTabModal('pago')" id="modal-tab-pago-btn">Información de Pago</button>
                 <button class="tab-btn" onclick="cambiarTabModal('adicional')" id="modal-tab-adicional-btn">Datos Adicionales</button>
             </div>
             
@@ -423,8 +385,8 @@
                     </div>
                 </div>
             </div>
-            
-            <div id="modal-tab-pago" class="tab-content">
+            <div class="modal-section">
+            <div id="tab-pago" class="tab-content">
                 <div class="modal-section">
                     <h3 class="modal-section-title">Información de Pago</h3>
                     <div class="modal-grid grid-2">
@@ -437,22 +399,38 @@
                     <!-- Visor de foto del comprobante -->
                     <div class="foto-pago-container">
                         <h4 class="modal-section-title">Comprobante de Pago</h4>
-                        <div id="modal-foto-placeholder" class="foto-placeholder">
+                        <div id="foto-pago-placeholder" class="foto-placeholder">
                             <p>Cargando imagen...</p>
                         </div>
-                        <div id="modal-foto-content" style="display: none;">
-                            <img id="modal-foto-img" src="" alt="Comprobante de pago" class="foto-pago-img">
-                            <div class="foto-pago-actions" style="margin-top: 10px;">
-                                <button class="btn-primary btn-sm" onclick="abrirFotoModal()">Ver imagen completa</button>
+                        <div id="foto-pago-content" style="display: none;">
+                            <img id="foto-pago-img" src="" alt="Comprobante de pago" class="foto-pago-img">
+                            <div class="foto-pago-actions">
+                                <button class="btn-primary" onclick="abrirFoto()">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                                        <polyline points="15 3 21 3 21 9"/>
+                                        <line x1="10" y1="14" x2="21" y2="3"/>
+                                    </svg>
+                                    Ver imagen completa
+                                </button>
+                                <a id="download-foto" href="#" download class="btn-outline">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="7 10 12 15 17 10"/>
+                                        <line x1="12" y1="15" x2="12" y2="3"/>
+                                    </svg>
+                                    Descargar
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
             
             <div id="modal-tab-adicional" class="tab-content">
                 <div class="modal-section">
-                    <h3 class="modal-section-title">Datos Adicionales</h3>
+                    <h3 class="modal-section-title">Datos Administrativos</h3>
                     <div class="modal-grid grid-3">
                         <div class="modal-item">
                             <span class="modal-label">ODS</span>
@@ -465,6 +443,10 @@
                         <div class="modal-item">
                             <span class="modal-label">ATR</span>
                             <span class="modal-value" id="modalATR">—</span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">N° Pago Móvil</span>
+                            <span class="modal-value" id="modalNumeroPago">—</span>
                         </div>
                     </div>
                 </div>
@@ -505,362 +487,246 @@
 </div>
 
 <style>
-    /* ===== FOOTER Y BOTÓN MEJORADOS ===== */
-.modal-footer {
-    padding: 20px 24px;
-    background: linear-gradient(to bottom, #ffffff, #f8f9fa);
-    border-top: 2px solid #f0f0f0;
-    border-radius: 0 0 24px 24px;
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.02);
-}
-
-.footer-actions {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-}
-
-/* Botón de cerrar moderno */
-.btn-close-modern {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 14px 32px;
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 50px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.btn-close-modern::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 107, 0, 0.1);
-    transform: translate(-50%, -50%);
-    transition: width 0.6s, height 0.6s;
-    z-index: 0;
-}
-
-.btn-close-modern:hover {
-    border-color: #ff6b00;
-    color: #ff6b00;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 107, 0, 0.15);
-}
-
-.btn-close-modern:hover::before {
-    width: 300px;
-    height: 300px;
-}
-
-.btn-close-modern:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
-}
-
-.btn-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 1;
-    transition: transform 0.3s ease;
-}
-
-.btn-close-modern:hover .btn-icon {
-    transform: translateX(-4px);
-}
-
-.btn-icon svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    transition: all 0.3s ease;
-}
-
-.btn-close-modern:hover .btn-icon svg {
-    stroke: #ff6b00;
-}
-
-.btn-text {
-    position: relative;
-    z-index: 1;
-    letter-spacing: 0.5px;
-}
-
-/* Variante solo icono para móviles */
-@media (max-width: 480px) {
-    .btn-close-modern {
-        width: 100%;
-        padding: 16px 24px;
+    /* Estilos existentes (se mantienen todos) */
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding-top: 16px;
     }
-}
 
-/* Variante con efecto de onda al hacer click */
-.btn-close-modern::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 5px;
-    height: 5px;
-    background: rgba(255, 107, 0, 0.3);
-    opacity: 0;
-    border-radius: 100%;
-    transform: scale(1, 1) translate(-50%);
-    transform-origin: 50% 50%;
-}
-
-@keyframes ripple {
-    0% {
-        transform: scale(0, 0);
-        opacity: 0.5;
-    }
-    100% {
-        transform: scale(20, 20);
-        opacity: 0;
-    }
-}
-
-.btn-close-modern:focus:not(:active)::after {
-    animation: ripple 0.8s ease-out;
-}
-
-/* Si quieres un botón más minimalista */
-.btn-close-minimal {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 28px;
-    background: transparent;
-    border: none;
-    font-size: 15px;
-    font-weight: 500;
-    color: #999;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-}
-
-.btn-close-minimal::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    width: 0;
-    height: 2px;
-    background: #ff6b00;
-    transform: translateX(-50%);
-    transition: width 0.3s ease;
-}
-
-.btn-close-minimal:hover {
-    color: #ff6b00;
-}
-
-.btn-close-minimal:hover::after {
-    width: 80%;
-}
-
-.btn-close-minimal .btn-icon svg {
-    width: 18px;
-    height: 18px;
-    stroke: currentColor;
-}
-
-/* Botón con gradiente */
-.btn-close-gradient {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 36px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    border-radius: 50px;
-    font-size: 16px;
-    font-weight: 600;
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.btn-close-gradient:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-.btn-close-gradient:active {
-    transform: translateY(0);
-}
-
-/* Botón con borde animado */
-.btn-close-border {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 30px;
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    color: #666;
-    cursor: pointer;
-    transition: all 0.3s;
-    position: relative;
-    overflow: hidden;
-}
-
-.btn-close-border::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.1), transparent);
-    transition: left 0.5s;
-}
-
-.btn-close-border:hover {
-    border-color: #ff6b00;
-    color: #ff6b00;
-}
-
-.btn-close-border:hover::before {
-    left: 100%;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .modal-footer {
-        padding: 16px 20px;
-    }
-    
-    .btn-close-modern {
-        padding: 12px 28px;
-        font-size: 15px;
-    }
-    
-    .btn-close-minimal {
-        padding: 10px 24px;
-    }
-    
-    .btn-close-gradient {
-        padding: 12px 30px;
-        font-size: 15px;
-    }
-}
-
-@media (max-width: 480px) {
-    .modal-footer {
-        padding: 14px 16px;
-    }
-    
-    .footer-actions {
-        justify-content: stretch;
-    }
-    
-    .btn-close-modern {
-        width: 100%;
+    .btn-save, .btn-cancel {
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        text-decoration: none;
+        min-width: 140px;
+        position: relative;
+        overflow: hidden;
     }
-    
-    .btn-close-modern .btn-icon svg {
-        width: 18px;
-        height: 18px;
-    }
-    
-    .btn-close-minimal {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .btn-close-gradient {
-        width: 100%;
-        justify-content: center;
-    }
-}
 
-/* Animación de entrada para el footer */
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+    .btn-save {
+        background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
     }
-    to {
-        opacity: 1;
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
+        background: linear-gradient(135deg, #ff8c00 0%, #ff9f2e 100%);
+    }
+
+    .btn-save:active {
         transform: translateY(0);
     }
-}
 
-.modal-footer {
-    animation: slideUp 0.3s ease-out;
-}
+    .btn-save:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
 
-/* Efecto de brillo al pasar el mouse */
-.btn-close-modern {
-    position: relative;
-}
+    .btn-cancel {
+        background: white;
+        color: #666;
+        border: 2px solid #e0e0e0;
+    }
 
-.btn-close-modern .btn-icon {
-    transition: transform 0.3s ease;
-}
+    .btn-cancel:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fffaf5;
+        transform: translateY(-2px);
+    }
 
-.btn-close-modern:hover .btn-icon {
-    transform: translateX(-4px) scale(1.1);
-}
+    .btn-cancel:active {
+        transform: translateY(0);
+    }
 
-/* Versión con badge de atajo de teclado */
-.btn-close-shortcut {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 24px;
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
+    .btn-save.loading {
+        pointer-events: none;
+        opacity: 0.8;
+    }
 
-.btn-close-shortcut:hover {
-    border-color: #ff6b00;
-}
+    .btn-save.loading svg {
+        animation: spin 1s linear infinite;
+    }
 
-.btn-close-shortcut .shortcut-hint {
-    padding: 4px 8px;
-    background: #f0f0f0;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #999;
-    letter-spacing: 1px;
-    transition: all 0.2s;
-}
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
 
-.btn-close-shortcut:hover .shortcut-hint {
-    background: #ff6b00;
-    color: white;
-}
-    /* ===== FILTROS ===== */
+    .modal-footer {
+        padding: 20px 24px;
+        background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+        border-top: 2px solid #f0f0f0;
+        border-radius: 0 0 24px 24px;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.02);
+    }
+
+    .footer-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .btn-close-modern {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 28px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 50px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-close-modern::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 107, 0, 0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+        z-index: 0;
+    }
+
+    .btn-close-modern:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 107, 0, 0.15);
+    }
+
+    .btn-close-modern:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        z-index: 1;
+        transition: transform 0.3s ease;
+    }
+
+    .btn-close-modern:hover .btn-icon {
+        transform: translateX(-4px);
+    }
+
+    .btn-icon svg {
+        width: 18px;
+        height: 18px;
+        stroke: currentColor;
+    }
+
+    .btn-text {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Nuevos estilos para el botón de copiar */
+    .modal-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .copy-modal-btn {
+        width: auto;
+        padding: 8px 16px;
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--gray-text);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .copy-modal-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .copy-btn {
+        background: #f0f0f0;
+    }
+    
+    .copy-btn:hover {
+        background: var(--orange-light);
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    /* Toast notification */
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #4caf50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    }
+    
+    .toast-notification.error {
+        background: #f44336;
+    }
+    
+    .toast-notification.warning {
+        background: #ff9800;
+    }
+    
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    /* Resto de estilos existentes */
     .filters-container {
         margin-bottom: 20px;
     }
@@ -920,7 +786,6 @@
         border-color: var(--orange);
     }
 
-    /* ===== PESTAÑAS ===== */
     .tabs-container {
         background: white;
         border-radius: 16px;
@@ -990,7 +855,6 @@
         display: block;
     }
 
-    /* ===== TABLA ===== */
     .table-container {
         overflow-x: auto;
     }
@@ -1023,7 +887,6 @@
         background: var(--gray-bg);
     }
 
-    /* ===== BADGES ===== */
     .badge {
         display: inline-block;
         padding: 4px 10px;
@@ -1057,7 +920,6 @@
         color: #555;
     }
 
-    /* ===== USER AVATAR ===== */
     .user-cell {
         display: flex;
         align-items: center;
@@ -1084,7 +946,6 @@
         font-size: 13px;
     }
 
-    /* ===== ACTION BUTTONS ===== */
     .action-btn {
         width: 32px;
         height: 32px;
@@ -1120,7 +981,6 @@
         font-size: 14px;
     }
 
-    /* ===== MODAL STYLES ===== */
     .modal {
         position: fixed;
         top: 0;
@@ -1161,11 +1021,6 @@
 
     .modal-container.modal-md {
         max-width: 600px;
-    }
-
-    .modal-container.modal-image {
-        max-width: 90%;
-        width: auto;
     }
 
     .modal-header {
@@ -1278,50 +1133,6 @@
         margin-bottom: 16px;
     }
 
-    .foto-placeholder {
-        background: var(--gray-bg);
-        border: 2px dashed var(--gray-border);
-        border-radius: 12px;
-        padding: 40px;
-        text-align: center;
-        color: var(--gray-text);
-    }
-
-    .foto-pago-img {
-        max-width: 100%;
-        max-height: 300px;
-        border-radius: 12px;
-        border: 1px solid var(--gray-border);
-    }
-
-    .image-container {
-        text-align: center;
-        padding: 20px;
-    }
-
-    .imagen-completa {
-        max-width: 100%;
-        max-height: 70vh;
-        object-fit: contain;
-    }
-
-    .foto-pago-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-        margin-top: 16px;
-    }
-
-    .modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        padding: 20px 24px;
-        border-top: 1px solid var(--gray-border);
-        background: var(--gray-bg);
-        border-radius: 0 0 24px 24px;
-    }
-
     .form-group {
         margin-bottom: 20px;
     }
@@ -1340,26 +1151,13 @@
         border: 1px solid var(--gray-border);
         border-radius: 8px;
         font-size: 14px;
+        transition: all 0.2s;
     }
 
     .form-input:focus {
         outline: none;
         border-color: var(--orange);
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
-    }
-
-    .form-file {
-        width: 100%;
-        padding: 10px;
-        border: 1px dashed var(--gray-border);
-        border-radius: 8px;
-        background: #fafafa;
-        cursor: pointer;
-    }
-
-    .form-file:hover {
-        border-color: var(--orange);
-        background: var(--orange-light);
     }
 
     .required {
@@ -1373,12 +1171,6 @@
         margin-top: 4px;
     }
 
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 12px;
-    }
-
-    /* Responsive */
     @media (max-width: 768px) {
         .filters-grid {
             flex-direction: column;
@@ -1413,18 +1205,144 @@
             flex-wrap: wrap;
         }
 
-        .foto-pago-actions {
-            flex-direction: column;
+        .form-actions {
+            flex-direction: column-reverse;
         }
+
+        .btn-save, .btn-cancel {
+            width: 100%;
+        }
+        
+        .modal-header {
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+        
+        .modal-header-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    let datosContratoActual = null;
+    
+    // Función para copiar información del contrato
+    async function copiarInfoContrato(id) {
+        try {
+            const response = await fetch(`/datos-contrato/${id}/`);
+            const data = await response.json();
+            
+            if (data.error) {
+                mostrarToast('Error al obtener los datos', 'error');
+                return;
+            }
+            
+            datosContratoActual = data;
+            const textoFormateado = formatearInfoContrato(data);
+            await navigator.clipboard.writeText(textoFormateado);
+            mostrarToast('✅ Información copiada al portapapeles', 'success');
+            
+        } catch (error) {
+            console.error('Error:', error);
+            mostrarToast('Error al copiar la información', 'error');
+        }
+    }
+    
+    // Función para copiar información desde el modal
+    async function copiarInfoDesdeModal() {
+        if (datosContratoActual) {
+            const textoFormateado = formatearInfoContrato(datosContratoActual);
+            await navigator.clipboard.writeText(textoFormateado);
+            mostrarToast('✅ Información copiada al portapapeles', 'success');
+        }
+    }
+    
+    // Función para formatear la información del contrato
+    function formatearInfoContrato(data) {
+        const cliente = data.cliente;
+        const contrato = data;
+        
+        // Formatear fecha de nacimiento
+        let fechaNacimiento = contrato.fecha_nacimiento || '—';
+        if (fechaNacimiento !== '—' && fechaNacimiento.includes('-')) {
+            const partes = fechaNacimiento.split('-');
+            if (partes.length === 3) {
+                fechaNacimiento = `${partes[2]}/${partes[1]}/${partes[0]}`;
+            }
+        }
+        
+        // Formatear teléfonos
+        let telefonoPrincipal = cliente.telefono || '—';
+        let otroTelefono = contrato.otro_telefono || '—';
+        
+        const texto = `Nombre completo: ${cliente.nombre} ${cliente.apellido}
+Correo electrónico: ${contrato.correo_electronico || '—'}
+Customer ID: ${contrato.customer_id || '—'}
+C.I.: ${cliente.cedula}
+Número de teléfono: ${telefonoPrincipal}
+Otro número de teléfono: ${otroTelefono}
+Dirección detallada: ${contrato.direccion_detallada || '—'}
+Fecha de nacimiento: ${fechaNacimiento}
+Plan a contratar: ${contrato.plan?.nombre || '—'}
+Simpleplus: ${contrato.simple_plus || '—'}
+Modalidad del equipo: ${contrato.modalidad_equipo || '—'}
+Punto de referencia: ${contrato.punto_referencia || '—'}
+Tipo de vivienda: ${contrato.tipo_vivienda || '—'}
+Número de la Casa: ${contrato.numero_casa || '—'}
+Número desde donde se hizo el pago móvil: ${contrato.numero_pago_movil || '—'}
+Red: ${contrato.red || '—'}
+ODS: ${contrato.ods || '—'}
+ATR: ${contrato.atr || '*VTC Conexiones'}
+Vendedor(a): ${contrato.creado_por || '—'}`;
+        
+        return texto;
+    }
+    
+    // Función para mostrar notificación tipo toast
+    function mostrarToast(mensaje, tipo = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast-notification ${tipo}`;
+        
+        const icon = tipo === 'success' ? '✅' : tipo === 'error' ? '❌' : '⚠️';
+        toast.innerHTML = `
+            <span style="font-size: 18px;">${icon}</span>
+            <span style="font-size: 14px;">${mensaje}</span>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
     // Función para editar contrato
     function editarContrato(id) {
         window.location.href = `/contrato/${id}/editar/`;
     }
+    
     let contratoSeleccionado = null;
 
     // Búsqueda en tiempo real
@@ -1494,6 +1412,8 @@
     function abrirModalCompletar(contratoId) {
         contratoSeleccionado = contratoId;
         document.getElementById('modal_contrato_id').value = contratoId;
+        document.getElementById('customer_id').value = '';
+        document.getElementById('ods').value = '';
         document.getElementById('completarContratoModal').style.display = 'flex';
     }
 
@@ -1502,57 +1422,17 @@
         document.getElementById('completarContratoModal').style.display = 'none';
         document.getElementById('customer_id').value = '';
         document.getElementById('ods').value = '';
-        document.getElementById('numero_pago_movil').value = '';
-        document.getElementById('foto_pago').value = '';
+        const btnSave = document.querySelector('#completarContratoForm .btn-save');
+        if (btnSave) {
+            btnSave.classList.remove('loading');
+            btnSave.disabled = false;
+        }
     }
 
     // Función para cerrar modal de detalle
     function cerrarModalDetalle() {
         document.getElementById('contratoModal').style.display = 'none';
-    }
-
-    // Función para cerrar modal de imagen
-    function cerrarImagenModal() {
-        document.getElementById('imagenModal').style.display = 'none';
-    }
-
-    // Función para abrir foto desde el modal de detalle
-    function abrirFotoModal() {
-        const fotoUrl = document.getElementById('modal-foto-img').src;
-        if (fotoUrl) {
-            document.getElementById('imagen-completa').src = fotoUrl;
-            document.getElementById('download-foto').href = fotoUrl;
-            document.getElementById('imagenModal').style.display = 'flex';
-        }
-    }
-
-    // Función para ver foto de pago desde la tabla
-    function verFotoPago(contratoId) {
-        fetch(`/datos-contrato/${contratoId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.foto_pago) {
-                    document.getElementById('imagen-completa').src = data.foto_pago;
-                    document.getElementById('download-foto').href = data.foto_pago;
-                    document.getElementById('imagenModal').style.display = 'flex';
-                } else {
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'Sin comprobante',
-                        text: 'Este contrato no tiene comprobante de pago',
-                        confirmButtonColor: '#ff6b00'
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo cargar la imagen',
-                    confirmButtonColor: '#ff6b00'
-                });
-            });
+        datosContratoActual = null;
     }
 
     // Función para ver detalle del contrato
@@ -1583,6 +1463,7 @@
                     return;
                 }
                 
+                datosContratoActual = data;
                 llenarModalDetalle(data);
                 modal.style.display = 'flex';
             })
@@ -1599,63 +1480,42 @@
     }
 
     function llenarModalDetalle(data) {
-        // Avatar y datos básicos
-        document.getElementById('modalAvatar').textContent = 
-            (data.cliente.nombre[0] + data.cliente.apellido[0]).toUpperCase();
-        document.getElementById('modalNombreCompleto').textContent = 
-            `${data.cliente.nombre} ${data.cliente.apellido}`;
-        document.getElementById('modalCedula').textContent = `C.I: ${data.cliente.cedula}`;
+        const cliente = data.cliente;
         
-        // Información personal
+        document.getElementById('modalAvatar').textContent = 
+            (cliente.nombre[0] + cliente.apellido[0]).toUpperCase();
+        document.getElementById('modalNombreCompleto').textContent = 
+            `${cliente.nombre} ${cliente.apellido}`;
+        document.getElementById('modalCedula').textContent = `C.I: ${cliente.cedula}`;
+        
         document.getElementById('modalNombre').textContent = 
-            `${data.cliente.nombre} ${data.cliente.apellido}`;
-        document.getElementById('modalCedulaValue').textContent = data.cliente.cedula;
+            `${cliente.nombre} ${cliente.apellido}`;
+        document.getElementById('modalCedulaValue').textContent = cliente.cedula;
         document.getElementById('modalFechaNacimiento').textContent = data.fecha_nacimiento || '—';
-        document.getElementById('modalTelefonoPrincipal').textContent = data.cliente.telefono;
+        document.getElementById('modalTelefonoPrincipal').textContent = cliente.telefono;
         document.getElementById('modalOtroTelefono').textContent = data.otro_telefono || '—';
         document.getElementById('modalCorreo').textContent = data.correo_electronico || '—';
         
-        // Dirección
         document.getElementById('modalDireccion').textContent = data.direccion_detallada || '—';
         document.getElementById('modalTipoVivienda').textContent = data.tipo_vivienda || '—';
         document.getElementById('modalNumeroCasa').textContent = data.numero_casa || '—';
         document.getElementById('modalPuntoReferencia').textContent = data.punto_referencia || '—';
         
-        // Plan y servicios
         document.getElementById('modalPlan').textContent = data.plan?.nombre || '—';
         document.getElementById('modalSimplePlus').textContent = data.simple_plus || '—';
         document.getElementById('modalModalidad').textContent = data.modalidad_equipo || '—';
         document.getElementById('modalRed').textContent = data.red || '—';
         
-        // Estado
         let estadoClass = 'badge proceso';
         if (data.estado === 'Completado') estadoClass = 'badge completado';
         if (data.estado === 'No Completado') estadoClass = 'badge no-completado';
         document.getElementById('modalEstado').innerHTML = `<span class="${estadoClass}">${data.estado}</span>`;
         
-        // Información de pago
-        document.getElementById('modalPagoMovil').textContent = data.numero_pago_movil || '—';
-        
-        // Foto de pago
-        const fotoPlaceholder = document.getElementById('modal-foto-placeholder');
-        const fotoContent = document.getElementById('modal-foto-content');
-        
-        if (data.foto_pago) {
-            fotoPlaceholder.style.display = 'none';
-            fotoContent.style.display = 'block';
-            document.getElementById('modal-foto-img').src = data.foto_pago;
-        } else {
-            fotoPlaceholder.style.display = 'block';
-            fotoContent.style.display = 'none';
-            fotoPlaceholder.innerHTML = '<p>No hay comprobante de pago</p>';
-        }
-        
-        // Datos adicionales
         document.getElementById('modalODS').textContent = data.ods || '—';
         document.getElementById('modalCustomerID').textContent = data.customer_id || '—';
-        document.getElementById('modalATR').textContent = data.atr || '—';
+        document.getElementById('modalATR').textContent = data.atr || '*VTC Conexiones';
+        document.getElementById('modalNumeroPago').textContent = data.numero_pago_movil || '—';
         
-        // Información del contrato
         document.getElementById('modalCreadoPor').textContent = data.creado_por || '—';
         document.getElementById('modalFechaCreacion').textContent = data.fecha_creacion || '—';
         document.getElementById('modalFechaActualizacion').textContent = data.fecha_actualizacion || '—';
@@ -1667,6 +1527,17 @@
         
         const formData = new FormData(this);
         const contratoId = document.getElementById('modal_contrato_id').value;
+        const btnSave = document.querySelector('#completarContratoForm .btn-save');
+        
+        btnSave.classList.add('loading');
+        btnSave.disabled = true;
+        btnSave.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spin">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+            </svg>
+            Guardando...
+        `;
         
         fetch(`/contrato/${contratoId}/completar/`, {
             method: 'POST',
@@ -1678,16 +1549,29 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                cerrarModalCompletar();
+                
                 Swal.fire({
                     icon: 'success',
-                    title: 'Contrato completado',
+                    title: '¡Contrato completado!',
                     text: 'Los datos se han guardado correctamente',
-                    timer: 2000,
-                    showConfirmButton: false
+                    confirmButtonColor: '#ff6b00',
+                    confirmButtonText: 'Aceptar',
+                    timer: 3000,
+                    showConfirmButton: true
                 }).then(() => {
                     location.reload();
                 });
             } else {
+                btnSave.classList.remove('loading');
+                btnSave.disabled = false;
+                btnSave.innerHTML = `
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    Guardar y Completar
+                `;
+                
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
@@ -1698,6 +1582,15 @@
         })
         .catch(error => {
             console.error('Error:', error);
+            btnSave.classList.remove('loading');
+            btnSave.disabled = false;
+            btnSave.innerHTML = `
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 6L9 17l-5-5"/>
+                </svg>
+                Guardar y Completar
+            `;
+            
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
@@ -1707,31 +1600,11 @@
         });
     });
 
-    // Validar que el teléfono solo contenga números y guiones
-    document.getElementById('numero_pago_movil')?.addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9-]/g, '');
-    });
-
-    // Validar archivo de imagen
-    document.getElementById('foto_pago')?.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file && !file.type.startsWith('image/')) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Archivo inválido',
-                text: 'Por favor seleccione un archivo de imagen válido (JPG, PNG)',
-                confirmButtonColor: '#ff6b00'
-            });
-            this.value = '';
-        }
-    });
-
     // Cerrar modales con ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cerrarModalCompletar();
             cerrarModalDetalle();
-            cerrarImagenModal();
         }
     });
 
@@ -1740,7 +1613,6 @@
         overlay.addEventListener('click', function() {
             cerrarModalCompletar();
             cerrarModalDetalle();
-            cerrarImagenModal();
         });
     });
 </script>

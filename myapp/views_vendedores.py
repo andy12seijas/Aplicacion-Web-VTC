@@ -1,4 +1,5 @@
 from email.headerregistry import Group
+import json
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -91,7 +92,7 @@ def lista_clientes(request):
         vendedores = User.objects.all().order_by('username')
     
     # ===== PAGINACIÓN =====
-    paginator = Paginator(clientes, 15)
+    paginator = Paginator(clientes, 5)
     page = request.GET.get('page')
     page_obj = paginator.get_page(page)
     
@@ -272,13 +273,37 @@ def editar_cliente(request, cliente_id):
         'es_creacion': False,
         'cliente': cliente
     })
+
+
+@login_required
+def capturar_ubicacion_vendedor(request):
+    """API para capturar la ubicación del vendedor automáticamente al cargar el formulario"""
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        latitud = data.get('latitud')
+        longitud = data.get('longitud')
+        
+        if latitud and longitud:
+            # Guardar la ubicación en la tabla UbicacionUsuario del vendedor
+            ubicacion, created = UbicacionUsuario.objects.update_or_create(
+                usuario=request.user,
+                defaults={
+                    'latitud': latitud,
+                    'longitud': longitud
+                }
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'latitud': latitud,
+                'longitud': longitud,
+                'ultima_actualizacion': ubicacion.ultima_actualizacion.isoformat(),
+                'created': created
+            })
+        else:
+            return JsonResponse({'success': False, 'error': 'Coordenadas inválidas'}, status=400)
     
-from django.http import JsonResponse
-from django.db.models import Q
-from django.utils import timezone
-from datetime import timedelta
-from django.contrib.auth.models import Group
-from .models import UbicacionUsuario, ClientePotencial
+    return JsonResponse({'error': 'Método no permitido'}, status=405)    
 
 @login_required
 def api_ubicaciones(request):
@@ -409,18 +434,13 @@ def crear_contrato(request):
         
         cliente = get_object_or_404(ClientePotencial, id=cliente_id)
         
-        # 👇 VERIFICACIÓN DE PERMISOS MODIFICADA
-        # Ya NO verificamos que el cliente sea del vendedor actual
-        # CUALQUIER vendedor puede crear contratos para CUALQUIER cliente potencial
-        # Solo verificamos que el usuario esté autenticado (ya lo hace @login_required)
-        
         # Pasar el cliente_potencial al formulario
         form = ContratoClienteForm(request.POST, request.FILES, cliente_potencial=cliente)
         
         if form.is_valid():
             contrato = form.save(commit=False)
             contrato.cliente_potencial = cliente
-            contrato.creado_por = request.user  # El que crea el contrato es el vendedor actual
+            contrato.creado_por = request.user
             contrato.save()
             
             messages.success(
@@ -429,20 +449,15 @@ def crear_contrato(request):
             )
             return redirect('lista_contratos')
         else:
-            # Manejar error específico de correo
-            if 'correo_electronico' in form.errors:
-                error_msg = form.errors['correo_electronico'][0]
-                messages.error(request, f'correo_duplicado:{error_msg}')
-            else:
-                # Mostrar otros errores
-                for field, errors in form.errors.items():
-                    for error in errors:
-                        messages.error(request, f'Error en {field}: {error}')
-            
-            # Guardar los datos en la sesión para mantenerlos después del redirect
+            # Si hay errores, guardar los datos en la sesión y redirigir con el error
             request.session['form_data'] = request.POST.urlencode()
             request.session['cliente_id'] = cliente.id
             request.session['error_correo'] = 'correo_electronico' in form.errors
+            request.session['error_message'] = form.errors.get('correo_electronico', [''])[0] if 'correo_electronico' in form.errors else ''
+            
+            # También guardar los archivos en sesión (solo los nombres, no los archivos en sí)
+            if request.FILES.get('foto_pago'):
+                request.session['foto_pago_name'] = request.FILES['foto_pago'].name
             
             return redirect('crear_contrato_error')
     
@@ -450,6 +465,8 @@ def crear_contrato(request):
     form_data = request.session.pop('form_data', None)
     cliente_id = request.session.pop('cliente_id', None)
     error_correo = request.session.pop('error_correo', False)
+    error_message = request.session.pop('error_message', '')
+    foto_pago_name = request.session.pop('foto_pago_name', None)
     
     if cliente_id and form_data:
         # Venimos de un error, reconstruir el formulario con los datos
@@ -457,7 +474,6 @@ def crear_contrato(request):
         
         from django.http import QueryDict
         data = QueryDict(form_data)
-        # Nota: Los archivos no se pueden guardar en sesión, es una limitación
         
         form = ContratoClienteForm(data, request.FILES, cliente_potencial=cliente)
         
@@ -470,6 +486,9 @@ def crear_contrato(request):
             'boton_texto': 'Guardar Contrato',
             'es_pagina_crear': True,
             'es_post_error': True,
+            'error_correo': error_correo,
+            'error_message': error_message,
+            'foto_pago_name': foto_pago_name,
         }
     else:
         # GET normal - empezar desde cero
@@ -531,7 +550,7 @@ def lista_contratos(request):
         contratos = contratos.filter(creado_por_id=vendedor_id)
     
     # Paginación
-    paginator = Paginator(contratos, 10)
+    paginator = Paginator(contratos, 5)
     page = request.GET.get('page')
     page_obj = paginator.get_page(page)
     
@@ -634,3 +653,132 @@ def datos_contrato(request, contrato_id):
         import traceback
         traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
+    
+    
+    
+@login_required
+def estado_cuadrillas(request):
+    """
+    Vista para vendedores - Muestra el estado de las cuadrillas y sus instalaciones
+    Incluye tanto contratos de vendedor como ventas directas
+    """
+    
+    # Verificar que el usuario sea vendedor o administrador
+    es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_vendedor = request.user.groups.filter(name='Vendedor').exists()
+    
+    if not (es_admin or es_vendedor):
+        messages.error(request, 'No tienes permisos para acceder a esta página.')
+        return redirect('dashboard')
+    
+    # Obtener todas las cuadrillas activas
+    cuadrillas = Cuadrilla.objects.filter(activo=True).prefetch_related(
+        'instaladores__usuario',
+        'asignaciones__contrato__cliente_potencial',
+        'asignaciones__venta_directa',
+        'asignaciones__instalacion'
+    )
+    
+    # Estadísticas generales
+    total_cuadrillas = cuadrillas.count()
+    cuadrillas_disponibles = cuadrillas.filter(estado='DISPONIBLE').count()
+    cuadrillas_ocupadas = cuadrillas.filter(estado='OCUPADO').count()
+    cuadrillas_descanso = cuadrillas.filter(estado='DESCANSO').count()
+    
+    # Datos por cuadrilla
+    datos_cuadrillas = []
+    for cuadrilla in cuadrillas:
+        # Obtener asignaciones de esta cuadrilla (incluye contratos y ventas directas)
+        asignaciones = AsignacionContrato.objects.filter(
+            cuadrilla=cuadrilla,
+            activo=True
+        ).select_related(
+            'contrato__cliente_potencial',
+            'contrato__plan_contratado',
+            'venta_directa',
+            'instalacion'
+        )
+        
+        # Contar instalaciones por estado
+        total_asignaciones = asignaciones.count()
+        instalaciones_pendientes = 0
+        instalaciones_completadas = 0
+        
+        for asignacion in asignaciones:
+            try:
+                if asignacion.instalacion.completada:
+                    instalaciones_completadas += 1
+                else:
+                    instalaciones_pendientes += 1
+            except:
+                instalaciones_pendientes += 1
+        
+        # Instalaciones de hoy
+        hoy = timezone.now().date()
+        instalaciones_hoy = asignaciones.filter(
+            fecha_asignacion__date=hoy
+        ).count()
+        
+        # Instalaciones de la semana
+        semana_pasada = hoy - timedelta(days=7)
+        instalaciones_semana = asignaciones.filter(
+            fecha_asignacion__date__gte=semana_pasada
+        ).count()
+        
+        # Última instalación
+        ultima_instalacion = asignaciones.order_by('-fecha_asignacion').first()
+        ultima_instalacion_info = None
+        if ultima_instalacion:
+            # Obtener nombre del cliente según el tipo
+            if ultima_instalacion.contrato:
+                cliente_nombre = ultima_instalacion.contrato.cliente_potencial.nombre_completo
+            else:
+                cliente_nombre = ultima_instalacion.venta_directa.nombre_completo
+            
+            ultima_instalacion_info = {
+                'cliente': cliente_nombre,
+                'fecha': ultima_instalacion.fecha_asignacion,
+                'estado': 'Completada' if hasattr(ultima_instalacion, 'instalacion') and ultima_instalacion.instalacion.completada else 'Pendiente'
+            }
+        
+        # Calcular porcentaje de eficiencia
+        eficiencia = 0
+        if total_asignaciones > 0:
+            eficiencia = int((instalaciones_completadas / total_asignaciones) * 100)
+        
+        # Obtener lista de instaladores
+        instaladores_list = []
+        for inst in cuadrilla.instaladores.all():
+            nombre = inst.usuario.get_full_name() or inst.usuario.username
+            instaladores_list.append(nombre)
+        
+        datos_cuadrillas.append({
+            'id': cuadrilla.id,
+            'nombre': cuadrilla.nombre,
+            'codigo': cuadrilla.codigo,
+            'estado': cuadrilla.estado,
+            'estado_display': cuadrilla.get_estado_display(),
+            'cantidad_instaladores': cuadrilla.cantidad_instaladores,
+            'instaladores': instaladores_list,
+            'total_asignaciones': total_asignaciones,
+            'instalaciones_pendientes': instalaciones_pendientes,
+            'instalaciones_completadas': instalaciones_completadas,
+            'instalaciones_hoy': instalaciones_hoy,
+            'instalaciones_semana': instalaciones_semana,
+            'eficiencia': eficiencia,
+            'ultima_instalacion': ultima_instalacion_info,
+        })
+    
+    # Ordenar por estado y eficiencia
+    orden_estado = {'DISPONIBLE': 1, 'OCUPADO': 2, 'DESCANSO': 3}
+    datos_cuadrillas.sort(key=lambda x: (orden_estado.get(x['estado'], 4), -x['eficiencia']))
+    
+    context = {
+        'cuadrillas': datos_cuadrillas,
+        'total_cuadrillas': total_cuadrillas,
+        'cuadrillas_disponibles': cuadrillas_disponibles,
+        'cuadrillas_ocupadas': cuadrillas_ocupadas,
+        'cuadrillas_descanso': cuadrillas_descanso,
+        'es_admin': es_admin,
+    }
+    return render(request, 'Vendedores/estado_cuadrillas.html', context)

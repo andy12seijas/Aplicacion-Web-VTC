@@ -378,6 +378,16 @@ class ContratoClienteForm(forms.ModelForm):
             'red': forms.Select(attrs={
                 'class': 'form-select'
             }),
+             # 👇 AGREGAR LOS CAMPOS DE PAGO
+            'numero_pago_movil': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: 0414-1234567',
+                'maxlength': '20'
+            }),
+            'foto_pago': forms.FileInput(attrs={
+                'class': 'form-file',
+                'accept': 'image/*'
+            }),
         }
         labels = {
             'otro_telefono': 'Otro Teléfono (opcional)',
@@ -391,6 +401,8 @@ class ContratoClienteForm(forms.ModelForm):
             'tipo_vivienda': 'Tipo de Vivienda',
             'numero_casa': 'Número de Casa/Edificio',
             'red': 'Red',
+            'numero_pago_movil': 'Número de Pago Móvil ',
+            'foto_pago': 'Foto del Comprobante de Pago ',
         }
     
     def clean_correo_electronico(self):
@@ -565,44 +577,161 @@ class AsignacionContratoForm(forms.ModelForm):
         self.fields['cuadrilla'].empty_label = "--- Seleccione una cuadrilla ---"  
         
         
+
+
 from django import forms
 from .models import Instalacion, ModeloModem
 
+# forms.py
+
+from django import forms
+from .models import Instalacion, ModeloModem
+
+class MultipleFileInput(forms.ClearableFileInput):
+    """Widget personalizado para permitir múltiples archivos"""
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    """Campo personalizado para manejar múltiples archivos"""
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput(attrs={
+            'multiple': True,
+            'accept': 'image/*',
+            'class': 'form-file',
+            'id': 'id_fotos'
+        }))
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        # Si no se subieron archivos, devolver lista vacía
+        if not data:
+            return []
+        
+        # Si es una lista de archivos, validar cada uno
+        if isinstance(data, list):
+            valid_files = []
+            for file in data:
+                # Validar cada archivo individualmente
+                if file:
+                    try:
+                        # Validar el archivo usando el método clean del padre
+                        cleaned_file = super().clean(file, initial)
+                        valid_files.append(cleaned_file)
+                    except forms.ValidationError as e:
+                        # Si hay error, lo añadimos a los errores del campo
+                        if hasattr(self, 'field'):
+                            self.field.add_error(e)
+                        raise
+            return valid_files
+        else:
+            # Si es un solo archivo
+            return [super().clean(data, initial)] if data else []
+
+
 class InstalacionForm(forms.ModelForm):
+    """Formulario para registrar instalación"""
+    
+    fotos = MultipleFileField(
+        required=False,
+        help_text="Puede seleccionar múltiples fotos (JPG, PNG)"
+    )
+    
     class Meta:
         model = Instalacion
         fields = [
+            'latitud', 'longitud',
             'feeder', 'caja', 'puerto_utilizado',
-            'ubicacion_lat', 'ubicacion_lng',
             'modelo_modem', 'sn_modem', 'mac_modem',
             'inicio_fibra', 'final_fibra',
             'conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos',
             'observacion'
         ]
         widgets = {
-            'feeder': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: FVL01'}),
-            'caja': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: N0101'}),
-            'puerto_utilizado': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: 3'}),
-            'ubicacion_lat': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.000001', 'placeholder': '10.126830'}),
-            'ubicacion_lng': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.000001', 'placeholder': '-68.009860'}),
-            'modelo_modem': forms.Select(attrs={'class': 'form-select'}),
-            'sn_modem': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: ALCLFCD0A4C5'}),
-            'mac_modem': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: E8F8D0BC1560'}),
-            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '35'}),
-            'final_fibra': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '5'}),
-            'conectores': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
-            'rosetas': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
-            'patch_cord': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
-            'tensores': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
-            'conectores_malos': forms.NumberInput(attrs={'class': 'form-input', 'value': 0}),
-            'observacion': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Observaciones adicionales...'}),
+            'latitud': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'step': '0.000001', 
+                'placeholder': '10.126830',
+                'readonly': 'readonly',
+                'id': 'id_latitud'
+            }),
+            'longitud': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'step': '0.000001', 
+                'placeholder': '-68.009860',
+                'readonly': 'readonly',
+                'id': 'id_longitud'
+            }),
+            'feeder': forms.TextInput(attrs={
+                'class': 'form-input', 
+                'placeholder': 'Ej: FVL01'
+            }),
+            'caja': forms.TextInput(attrs={
+                'class': 'form-input', 
+                'placeholder': 'Ej: N0101'
+            }),
+            'puerto_utilizado': forms.TextInput(attrs={
+                'class': 'form-input', 
+                'placeholder': 'Ej: 3'
+            }),
+            'modelo_modem': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'sn_modem': forms.TextInput(attrs={
+                'class': 'form-input', 
+                'placeholder': 'Ej: ALCLFCD0A4C5'
+            }),
+            'mac_modem': forms.TextInput(attrs={
+                'class': 'form-input', 
+                'placeholder': 'Ej: E8F8D0BC1560'
+            }),
+            'inicio_fibra': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'placeholder': '35',
+                'min': '0'
+            }),
+            'final_fibra': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'placeholder': '5',
+                'min': '0'
+            }),
+            'conectores': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'value': 0,
+                'min': '0'
+            }),
+            'rosetas': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'value': 0,
+                'min': '0'
+            }),
+            'patch_cord': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'value': 0,
+                'min': '0'
+            }),
+            'tensores': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'value': 0,
+                'min': '0'
+            }),
+            'conectores_malos': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'value': 0,
+                'min': '0'
+            }),
+            'observacion': forms.Textarea(attrs={
+                'class': 'form-input', 
+                'rows': 3, 
+                'placeholder': 'Observaciones adicionales...'
+            }),
         }
         labels = {
+            'latitud': 'LATITUD',
+            'longitud': 'LONGITUD',
             'feeder': 'FEEDER',
             'caja': 'CAJA',
             'puerto_utilizado': 'PUERTO UTILIZADO',
-            'ubicacion_lat': 'Latitud',
-            'ubicacion_lng': 'Longitud',
             'modelo_modem': 'MODELO',
             'sn_modem': 'SERIAL',
             'mac_modem': 'MAC',
@@ -618,5 +747,123 @@ class InstalacionForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Configurar queryset para modelo_modem
         self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
-        self.fields['modelo_modem'].empty_label = "--- Seleccione un modelo ---"          
+        self.fields['modelo_modem'].empty_label = "--- Seleccione un modelo ---"
+        
+        # Hacer que latitud y longitud no sean requeridos
+        self.fields['latitud'].required = False
+        self.fields['longitud'].required = False
+        
+        # Hacer que los campos numéricos tengan valor por defecto 0
+        for field_name in ['conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos']:
+            if field_name in self.fields:
+                self.fields[field_name].initial = 0
+                self.fields[field_name].required = False
+    
+    def clean(self):
+        """Validaciones personalizadas"""
+        cleaned_data = super().clean()
+        
+        # Validar que si hay inicio_fibra, también haya final_fibra
+        inicio = cleaned_data.get('inicio_fibra')
+        final = cleaned_data.get('final_fibra')
+        
+        if inicio is not None and final is None:
+            self.add_error('final_fibra', 'Debe ingresar el valor FINAL')
+        elif final is not None and inicio is None:
+            self.add_error('inicio_fibra', 'Debe ingresar el valor INICIO')
+        
+        # Validar que los valores numéricos no sean negativos
+        for field_name in ['conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos']:
+            value = cleaned_data.get(field_name)
+            if value is not None and value < 0:
+                self.add_error(field_name, 'El valor no puede ser negativo')
+        
+        return cleaned_data
+
+
+class VentaDirectaForm(forms.ModelForm):
+    """Formulario para crear/editar ventas directas"""
+    
+    class Meta:
+        model = VentaDirecta
+        fields = [
+            'nro_orden', 'cedula', 'customer_id', 'nombre', 'apellido',
+            'telefono', 'plan', 'observacion'
+        ]
+        widgets = {
+            'nro_orden': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: ORD-001',
+                'required': True
+            }),
+            'cedula': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: 12345678',
+                'required': True
+            }),
+            'customer_id': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: CUS-123456',
+                'required': True
+            }),
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Nombre del cliente',
+                'required': True
+            }),
+            'apellido': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Apellido del cliente',
+                'required': True
+            }),
+            'telefono': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ej: 0412-1234567',
+                'required': True
+            }),
+            'plan': forms.Select(attrs={
+                'class': 'form-select',
+                'required': True
+            }),
+            'observacion': forms.Textarea(attrs={
+                'class': 'form-input',
+                'rows': 3,
+                'placeholder': 'Notas adicionales sobre la venta...'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['plan'].queryset = Plan.objects.filter(activo=True)
+        self.fields['plan'].empty_label = "Seleccione un plan"
+    
+    def clean_nro_orden(self):
+        """Validar que el número de orden no esté duplicado"""
+        nro_orden = self.cleaned_data.get('nro_orden')
+        if nro_orden:
+            instance = getattr(self, 'instance', None)
+            if instance and instance.pk:
+                if VentaDirecta.objects.filter(nro_orden=nro_orden).exclude(pk=instance.pk).exists():
+                    raise forms.ValidationError('Este número de orden ya existe.')
+            else:
+                if VentaDirecta.objects.filter(nro_orden=nro_orden).exists():
+                    raise forms.ValidationError('Este número de orden ya existe.')
+        return nro_orden
+    
+    def clean_customer_id(self):
+        """Validar que customer_id sea obligatorio"""
+        customer_id = self.cleaned_data.get('customer_id')
+        if not customer_id:
+            raise forms.ValidationError('El Customer ID es obligatorio.')
+        return customer_id
+
+
+class CambiarEstadoVentaForm(forms.Form):
+    """Formulario para cambiar estado de una venta directa"""
+    estado = forms.ChoiceField(
+        choices=VentaDirecta.EstadoVenta.choices,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )    

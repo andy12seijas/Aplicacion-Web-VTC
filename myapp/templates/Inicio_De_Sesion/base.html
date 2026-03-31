@@ -26,6 +26,7 @@
             --dark-text: #333;
             --sidebar-width: 80px;
             --sidebar-expanded: 250px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         html, body {
@@ -44,7 +45,7 @@
             position: relative;
         }
 
-        /* ===== SIDEBAR ===== */
+        /* ===== SIDEBAR MEJORADO (CON FUNCIONALIDAD MODERNA) ===== */
         .sidebar {
             background-color: #ffffff;
             color: #1f2937;
@@ -53,57 +54,37 @@
             top: 0;
             left: 0;
             height: 100vh;
-            overflow: hidden;
-            white-space: nowrap;
-            transition: all 0.3s ease-in-out;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: var(--transition);
             z-index: 1000;
             display: flex;
             flex-direction: column;
-            align-items: center;
             box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .sidebar:hover {
-            width: var(--sidebar-expanded);
-            align-items: flex-start;
-            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-        }
-
-        /* En móvil, no aplicar hover */
-        @media (max-width: 768px) {
-            .sidebar:hover {
-                width: var(--sidebar-width);
-                align-items: center;
-            }
-        }
-
-        .menu {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            width: 100%;
-            padding-top: 1.5rem;
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
+            border-right: 1px solid var(--gray-border);
         }
 
         /* Scrollbar personalizada */
-        .menu::-webkit-scrollbar {
+        .sidebar::-webkit-scrollbar {
             width: 4px;
         }
 
-        .menu::-webkit-scrollbar-track {
+        .sidebar::-webkit-scrollbar-track {
             background: transparent;
         }
 
-        .menu::-webkit-scrollbar-thumb {
+        .sidebar::-webkit-scrollbar-thumb {
             background: var(--gray-border);
-            border-radius: 4px;
+            border-radius: 20px;
         }
 
-        .menu::-webkit-scrollbar-thumb:hover {
+        .sidebar::-webkit-scrollbar-thumb:hover {
             background: var(--orange);
+        }
+
+        /* Estado expandido con hover */
+        .sidebar.expanded {
+            width: var(--sidebar-expanded);
         }
 
         /* Logo Area */
@@ -113,14 +94,21 @@
             align-items: center;
             gap: 12px;
             width: 100%;
-            margin-bottom: 0.5rem;
+            border-bottom: 1px solid var(--gray-border);
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .logo-area:hover {
+            background: var(--orange-light);
         }
 
         .logo {
             width: 32px;
             height: 32px;
             object-fit: contain;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             flex-shrink: 0;
         }
 
@@ -129,12 +117,15 @@
             font-size: 16px;
             color: var(--orange);
             letter-spacing: -0.3px;
-            display: none;
             white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
         }
 
-        .sidebar:hover .logo-text {
-            display: block;
+        .sidebar.expanded .logo-text {
+            opacity: 1;
+            visibility: visible;
         }
 
         /* User Info */
@@ -161,16 +152,23 @@
             font-weight: 500;
             font-size: 16px;
             flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .sidebar.expanded .user-avatar {
+            box-shadow: 0 2px 8px rgba(255, 107, 0, 0.2);
         }
 
         .user-details {
             flex: 1;
-            display: none;
-            min-width: 0;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
         }
 
-        .sidebar:hover .user-details {
-            display: block;
+        .sidebar.expanded .user-details {
+            opacity: 1;
+            visibility: visible;
         }
 
         .user-name {
@@ -192,46 +190,55 @@
         }
 
         /* Menú items */
+        .menu {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 0 12px;
+        }
+
         .menu-section {
-            padding: 16px 20px 4px;
+            padding: 16px 12px 8px 12px;
             color: var(--gray-text);
             font-size: 11px;
             font-weight: 500;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            width: 100%;
-            display: none;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
         }
 
-        .sidebar:hover .menu-section {
-            display: block;
+        .sidebar.expanded .menu-section {
+            opacity: 1;
+            visibility: visible;
         }
 
         .menu-item {
-            padding: 10px 20px;
+            padding: 10px 12px;
             display: flex;
             align-items: center;
             gap: 12px;
             width: 100%;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: var(--transition);
             color: #666;
             font-size: 14px;
             position: relative;
-            border-left: 3px solid transparent;
+            border-radius: 8px;
         }
 
         .menu-item:hover {
-            background-color: #f5f5f5;
+            background-color: var(--orange-light);
             color: var(--orange);
-            border-left-color: var(--orange);
+            transform: translateX(4px);
         }
 
         .menu-item.active {
             background-color: var(--orange-light);
             color: var(--orange);
             font-weight: 500;
-            border-left-color: var(--orange);
         }
 
         .menu-icon {
@@ -240,6 +247,7 @@
             text-align: center;
             color: #999;
             flex-shrink: 0;
+            transition: var(--transition);
         }
 
         .menu-item:hover .menu-icon,
@@ -248,28 +256,30 @@
         }
 
         .menu-title {
-            display: none;
             flex: 1;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
         }
 
-        .sidebar:hover .menu-title {
-            display: block;
+        .sidebar.expanded .menu-title {
+            opacity: 1;
+            visibility: visible;
         }
 
         .arrow {
             margin-left: auto;
             transition: transform 0.3s ease;
-            display: none;
             font-size: 12px;
             color: #ccc;
-            flex-shrink: 0;
+            opacity: 0;
+            visibility: hidden;
         }
 
-        .sidebar:hover .arrow {
-            display: inline;
+        .sidebar.expanded .arrow {
+            opacity: 1;
+            visibility: visible;
         }
 
         .menu-item.open .arrow {
@@ -281,10 +291,12 @@
         .submenu {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease;
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background-color: #f9f9f9;
             width: 100%;
             list-style: none;
+            margin-left: 42px;
+            border-radius: 8px;
         }
 
         .submenu.show {
@@ -292,12 +304,13 @@
         }
 
         .submenu-item {
-            padding: 8px 20px 8px 52px;
+            padding: 8px 12px;
             font-size: 13px;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: var(--transition);
             color: #666;
-            border-left: 2px solid transparent;
+            border-radius: 6px;
+            margin: 2px 0;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -306,34 +319,33 @@
         .submenu-item:hover {
             background-color: var(--orange-light);
             color: var(--orange);
-            border-left: 2px solid var(--orange);
-            padding-left: 56px;
+            transform: translateX(4px);
         }
 
-        /* ===== BOTÓN DE LOGOUT EN SIDEBAR ===== */
+        /* Footer del sidebar */
         .sidebar-footer {
-            width: 100%;
-            padding: 16px 0;
-            border-top: 1px solid var(--gray-border);
             margin-top: auto;
+            padding: 16px 12px 24px 12px;
+            border-top: 1px solid var(--gray-border);
         }
 
         .logout-sidebar {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 20px;
+            padding: 10px 12px;
             width: 100%;
             color: #f44336;
             text-decoration: none;
-            transition: all 0.2s ease;
-            border-left: 3px solid transparent;
+            transition: var(--transition);
+            border-radius: 8px;
+            font-weight: 500;
         }
 
         .logout-sidebar:hover {
-            background-color: #ffebee;
+            background: #ffebee;
             color: #d32f2f;
-            border-left-color: #f44336;
+            transform: translateX(4px);
         }
 
         .logout-sidebar i {
@@ -344,28 +356,30 @@
         }
 
         .logout-sidebar span {
-            display: none;
-            font-size: 14px;
-            font-weight: 500;
+            opacity: 0;
+            visibility: hidden;
+            transition: var(--transition);
+            white-space: nowrap;
         }
 
-        .sidebar:hover .logout-sidebar span {
-            display: block;
+        .sidebar.expanded .logout-sidebar span {
+            opacity: 1;
+            visibility: visible;
         }
 
         /* ===== MAIN CONTENT ===== */
         .main-content {
             margin-left: var(--sidebar-width);
-            transition: margin-left 0.3s ease-in-out;
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: var(--gray-bg);
             height: 100vh;
             width: calc(100% - var(--sidebar-width));
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 20px;
+            padding: 24px 32px;
         }
 
-        .sidebar:hover ~ .main-content {
+        .sidebar.expanded ~ .main-content {
             margin-left: var(--sidebar-expanded);
             width: calc(100% - var(--sidebar-expanded));
         }
@@ -412,6 +426,14 @@
             align-items: center;
             gap: 6px;
             white-space: nowrap;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .notification-badge:hover {
+            border-color: var(--orange);
+            color: var(--orange);
+            transform: translateY(-2px);
         }
 
         /* Cards Grid */
@@ -427,7 +449,8 @@
             padding: 20px;
             border-radius: 16px;
             border: 1px solid var(--gray-border);
-            transition: all 0.2s;
+            transition: var(--transition);
+            cursor: pointer;
         }
 
         .card:hover {
@@ -461,13 +484,54 @@
             gap: 4px;
         }
 
+        /* Botón de menú móvil */
+        .mobile-menu-toggle {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 40px;
+            height: 40px;
+            background: var(--orange);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 20px;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
+            transition: var(--transition);
+        }
+
+        .mobile-menu-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        /* Overlay para móvil */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 999;
+            transition: var(--transition);
+        }
+
+        .sidebar-overlay.active {
+            display: block;
+        }
+
         /* Utilidades */
         .text-orange { color: var(--orange); }
         .text-muted { color: var(--gray-text); }
 
         /* ===== RESPONSIVE ===== */
-
-        /* Tablet (768px - 1024px) */
         @media screen and (max-width: 1024px) {
             .cards-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -475,66 +539,30 @@
             }
 
             .main-content {
-                padding: 16px;
-            }
-
-            .page-title h1 {
-                font-size: 22px;
+                padding: 20px 24px;
             }
         }
 
-        /* Móvil (hasta 768px) */
         @media screen and (max-width: 768px) {
-            :root {
-                --sidebar-width: 0px;
-            }
-
-            /* Sidebar flotante para móvil */
             .sidebar {
-                width: 220px;
-                left: -220px;
-                transition: left 0.3s ease-in-out;
-                box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-            }
-
-            .sidebar:hover {
-                width: 220px;
-                left: -220px;
+                width: 260px;
+                left: -260px;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
 
             .sidebar.mobile-open {
                 left: 0;
             }
 
-            /* Botón de menú hamburguesa para móvil */
             .mobile-menu-toggle {
-                display: flex !important;
-                position: fixed;
-                top: 16px;
-                left: 16px;
-                width: 40px;
-                height: 40px;
-                background: var(--orange);
-                border: none;
-                border-radius: 8px;
-                color: white;
-                font-size: 20px;
-                align-items: center;
-                justify-content: center;
-                z-index: 1001;
-                cursor: pointer;
-                box-shadow: 0 4px 10px rgba(255, 107, 0, 0.3);
+                display: flex;
             }
 
             .main-content {
                 margin-left: 0;
                 width: 100%;
-                padding: 16px;
-                padding-top: 70px;
-            }
-
-            .sidebar.mobile-open ~ .main-content {
-                margin-left: 0;
+                padding: 20px;
+                padding-top: 80px;
             }
 
             .content-header {
@@ -546,11 +574,6 @@
             .header-actions {
                 width: 100%;
                 justify-content: flex-start;
-            }
-
-            .notification-badge {
-                padding: 6px 12px;
-                font-size: 12px;
             }
 
             .cards-grid {
@@ -565,41 +588,17 @@
                 font-size: 24px;
             }
 
-            /* ===== CORRECCIÓN: OCULTAR BOTÓN DE LOGOUT EN SIDEBAR CERRADO ===== */
-            .sidebar-footer {
-                opacity: 0;
-                visibility: hidden;
-                transition: opacity 0.3s ease, visibility 0.3s ease;
-            }
-
-            .sidebar.mobile-open .sidebar-footer {
+            .sidebar.mobile-open .logo-text,
+            .sidebar.mobile-open .user-details,
+            .sidebar.mobile-open .menu-title,
+            .sidebar.mobile-open .arrow,
+            .sidebar.mobile-open .menu-section,
+            .sidebar.mobile-open .logout-sidebar span {
                 opacity: 1;
                 visibility: visible;
             }
-
-            /* También ocultar otros elementos cuando el sidebar está cerrado */
-            .sidebar .menu-section,
-            .sidebar .menu-title,
-            .sidebar .arrow,
-            .sidebar .user-details,
-            .sidebar .logo-text {
-                display: none;
-            }
-
-            .sidebar.mobile-open .menu-section,
-            .sidebar.mobile-open .menu-title,
-            .sidebar.mobile-open .arrow,
-            .sidebar.mobile-open .user-details,
-            .sidebar.mobile-open .logo-text {
-                display: block;
-            }
-
-            .sidebar.mobile-open .logout-sidebar span {
-                display: block;
-            }
         }
 
-        /* Móvil Pequeño (320px - 480px) */
         @media screen and (max-width: 480px) {
             .cards-grid {
                 grid-template-columns: 1fr;
@@ -607,16 +606,12 @@
             }
 
             .main-content {
-                padding: 12px;
-                padding-top: 70px;
+                padding: 16px;
+                padding-top: 80px;
             }
 
             .page-title h1 {
                 font-size: 20px;
-            }
-
-            .page-title p {
-                font-size: 12px;
             }
 
             .card {
@@ -627,63 +622,41 @@
                 font-size: 22px;
             }
 
-            .notification-badge {
-                padding: 5px 10px;
-                font-size: 11px;
-            }
-
-            .header-actions {
-                gap: 8px;
-            }
-
             .sidebar {
-                width: 200px;
-            }
-        }
-
-        /* Ajustes para pantallas muy pequeñas */
-        @media screen and (max-width: 360px) {
-            .header-actions {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .notification-badge {
-                width: 100%;
-                justify-content: center;
+                width: 240px;
             }
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <!-- Botón de menú hamburguesa para móvil -->
-    <button class="mobile-menu-toggle" id="mobileMenuToggle" style="display: none;" onclick="toggleMobileMenu()">
+    <!-- Overlay para móvil -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
+    
+    <!-- Botón de menú hamburguesa -->
+    <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()">
         <i class="fas fa-bars"></i>
     </button>
 
     <div class="dashboard">
-        <!-- Sidebar -->
+        <!-- Sidebar con funcionalidad moderna pero diseño original -->
         <div class="sidebar" id="sidebar">
+            <div class="logo-area" onclick="window.location.href='/'">
+                <img src="{% static 'cd.png' %}" alt="VTC" class="logo">
+                <span class="logo-text">V T C</span>
+            </div>
+
+            <div class="user-info">
+                <div class="user-avatar">
+                    {{ user.username|first|upper }}
+                </div>
+                <div class="user-details">
+                    <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                    <div class="user-email">{{ user.email|default:"usuario@vtc.com" }}</div>
+                </div>
+            </div>
+
             <div class="menu">
-                <!-- Logo Area -->
-                <div class="logo-area">
-                    <img src="{% static 'cd.png' %}" alt="VTC" class="logo">
-                    <span class="logo-text">V T C</span>
-                </div>
-
-                <!-- User Info -->
-                <div class="user-info">
-                    <div class="user-avatar">
-                        {{ user.username|first|upper }}
-                    </div>
-                    <div class="user-details">
-                        <div class="user-name">{{ user.username }}</div>
-                        <div class="user-email">{{ user.email|default:"usuario@vtc.com" }}</div>
-                    </div>
-                </div>
-
-                <!-- Menú VENTAS -->
                 <div class="menu-section">VENTAS</div>
                 
                 <div class="menu-item" onclick="toggleSubmenu(this, 'vendedorSubmenu')">
@@ -695,9 +668,12 @@
                 <ul class="submenu" id="vendedorSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_clientes' %}'">Captura de Cliente</li>
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_contratos' %}'">Contrato de Cliente</li>
+                    <li class="submenu-item" onclick="window.location.href='{% url 'estado_cuadrillas' %}'">Estados de las Cuadrillas</li>
+                    <li class="submenu-item" onclick="window.location.href='{% url 'reporte_vendedor' %}'">Reporte</li>
                 </ul>
 
-                <!-- Menú OPERACIONES -->
+                <!-- SECCIÓN OPERACIONES - SOLO PARA INSTALADORES Y ADMIN -->
+                {% if user.groups.all.0.name == 'Instalador' or user.groups.all.0.name == 'Administrador' or user.is_superuser %}
                 <div class="menu-section">OPERACIONES</div>
                 
                 <div class="menu-item" onclick="toggleSubmenu(this, 'instaladorSubmenu')">
@@ -709,9 +685,9 @@
                 <ul class="submenu" id="instaladorSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'instalaciones_pendientes' %}'">Instalaciones</li>
                 </ul>
-                 
+                {% endif %}
                 
-               <!-- Menú CONFIGURACION - Solo para Administradores -->
+                <!-- SECCIÓN ADMINISTRACIÓN - SOLO PARA ADMIN -->
                 {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
                 <div class="menu-section">ADMINISTRACIÓN</div>
 
@@ -722,7 +698,6 @@
                 {% endif %}
             </div>
 
-            <!-- Footer del sidebar con botón de logout -->
             <div class="sidebar-footer">
                 <a href="{% url 'logout' %}" class="logout-sidebar" onclick="return confirm('¿Estás seguro que deseas cerrar sesión?')">
                     <i class="fas fa-sign-out-alt"></i>
@@ -733,7 +708,6 @@
 
         <!-- Main Content -->
         <div class="main-content" id="mainContent">
-            <!-- Header con bloques -->
             <div class="content-header">
                 <div class="page-title">
                     <h1>{% block page_title %}Dashboard{% endblock %}</h1>
@@ -749,9 +723,7 @@
                 </div>
             </div>
 
-            <!-- Contenido principal -->
             {% block content %}
-            <!-- Contenido por defecto del dashboard -->
             <div class="cards-grid">
                 <div class="card">
                     <div class="card-title">Clientes</div>
@@ -793,45 +765,31 @@
         // Función para toggle submenús
         function toggleSubmenu(element, submenuId) {
             const sidebar = document.getElementById('sidebar');
+            const isExpanded = sidebar.classList.contains('expanded') || window.innerWidth <= 768;
             
-            // En móvil, verificar si el sidebar está abierto
             if (window.innerWidth <= 768) {
                 if (!sidebar.classList.contains('mobile-open')) {
-                    return; // No abrir submenús si el sidebar está cerrado
+                    return;
                 }
-                
-                const isOpen = element.classList.contains('open');
-                const submenu = document.getElementById(submenuId);
-                
-                if (!isOpen) {
-                    element.classList.add('open');
-                    submenu.classList.add('show');
-                } else {
-                    element.classList.remove('open');
-                    submenu.classList.remove('show');
-                }
+            } else if (!isExpanded) {
                 return;
             }
-            
-            // En desktop, solo si el sidebar está expandido
-            if (sidebar.offsetWidth <= 80) return;
             
             const isOpen = element.classList.contains('open');
             const submenu = document.getElementById(submenuId);
             
-            document.querySelectorAll('.menu-item.open').forEach(item => {
-                if (item !== element) {
-                    item.classList.remove('open');
-                }
-            });
-            
-            document.querySelectorAll('.submenu.show').forEach(sub => {
-                if (sub.id !== submenuId) {
-                    sub.classList.remove('show');
-                }
-            });
-            
             if (!isOpen) {
+                // Cerrar otros submenús
+                document.querySelectorAll('.menu-item.open').forEach(item => {
+                    if (item !== element) {
+                        item.classList.remove('open');
+                        const otherSubmenu = item.nextElementSibling;
+                        if (otherSubmenu && otherSubmenu.classList) {
+                            otherSubmenu.classList.remove('show');
+                        }
+                    }
+                });
+                
                 element.classList.add('open');
                 submenu.classList.add('show');
             } else {
@@ -840,28 +798,42 @@
             }
         }
 
-        // Cerrar submenús cuando el mouse sale del sidebar (solo desktop)
-        document.getElementById('sidebar').addEventListener('mouseleave', function() {
-            if (window.innerWidth > 768) {
-                document.querySelectorAll('.menu-item.open').forEach(item => {
-                    item.classList.remove('open');
-                });
-                
-                document.querySelectorAll('.submenu.show').forEach(sub => {
-                    sub.classList.remove('show');
-                });
-            }
-        });
+        // Manejar expansión del sidebar en desktop
+        let hoverTimeout;
+        const sidebar = document.getElementById('sidebar');
+        
+        if (window.innerWidth > 768) {
+            sidebar.addEventListener('mouseenter', () => {
+                clearTimeout(hoverTimeout);
+                sidebar.classList.add('expanded');
+            });
+            
+            sidebar.addEventListener('mouseleave', () => {
+                hoverTimeout = setTimeout(() => {
+                    sidebar.classList.remove('expanded');
+                    // Cerrar todos los submenús al colapsar
+                    document.querySelectorAll('.menu-item.open').forEach(item => {
+                        item.classList.remove('open');
+                    });
+                    document.querySelectorAll('.submenu.show').forEach(sub => {
+                        sub.classList.remove('show');
+                    });
+                }, 100);
+            });
+        }
 
         // Función para toggle del menú móvil
         function toggleMobileMenu() {
             const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
             const toggleBtn = document.getElementById('mobileMenuToggle');
             
             sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
             
             if (sidebar.classList.contains('mobile-open')) {
                 toggleBtn.innerHTML = '<i class="fas fa-times"></i>';
+                document.body.style.overflow = 'hidden';
                 // Cerrar todos los submenús al abrir
                 document.querySelectorAll('.menu-item.open').forEach(item => {
                     item.classList.remove('open');
@@ -871,45 +843,57 @@
                 });
             } else {
                 toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+                document.body.style.overflow = '';
             }
         }
 
-        // Mostrar/ocultar botón de menú según el tamaño de pantalla
-        function checkScreenSize() {
-            const toggleBtn = document.getElementById('mobileMenuToggle');
+        function closeMobileMenu() {
             const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggleBtn = document.getElementById('mobileMenuToggle');
             
-            if (window.innerWidth <= 768) {
-                toggleBtn.style.display = 'flex';
+            if (sidebar.classList.contains('mobile-open')) {
                 sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('active');
                 toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
-            } else {
-                toggleBtn.style.display = 'none';
-                sidebar.classList.remove('mobile-open');
+                document.body.style.overflow = '';
             }
         }
 
-        // Ejecutar al cargar la página
-        window.addEventListener('load', checkScreenSize);
-
-        // Ejecutar al cambiar el tamaño de la ventana
-        window.addEventListener('resize', function() {
-            checkScreenSize();
+        // Cerrar sidebar al hacer clic en un enlace en móvil
+        document.querySelectorAll('.menu-item, .submenu-item, .logout-sidebar').forEach(item => {
+            item.addEventListener('click', function(e) {
+                if (window.innerWidth <= 768) {
+                    const isSubmenuToggle = this.classList.contains('menu-item') && this.querySelector('.arrow');
+                    
+                    if (!isSubmenuToggle) {
+                        setTimeout(() => {
+                            closeMobileMenu();
+                        }, 150);
+                    }
+                }
+            });
         });
 
-        // Cerrar sidebar al hacer clic fuera en móvil
-        document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const toggleBtn = document.getElementById('mobileMenuToggle');
-            
-            if (window.innerWidth <= 768) {
-                if (sidebar.classList.contains('mobile-open') && 
-                    !sidebar.contains(event.target) && 
-                    !toggleBtn.contains(event.target)) {
-                    sidebar.classList.remove('mobile-open');
-                    toggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+        // Manejar redimensionamiento de ventana
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (window.innerWidth > 768) {
+                    closeMobileMenu();
+                    sidebar.classList.remove('expanded');
+                } else {
+                    sidebar.classList.remove('expanded');
                 }
-            }
+            }, 250);
+        });
+
+        // Prevenir que los submenús se cierren al hacer clic en ellos
+        document.querySelectorAll('.submenu').forEach(submenu => {
+            submenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
         });
     </script>
     
