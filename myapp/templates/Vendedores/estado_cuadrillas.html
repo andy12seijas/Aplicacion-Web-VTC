@@ -16,34 +16,34 @@
 {% endblock %}
 
 {% block content %}
-<!-- Estadísticas generales -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon">👥</div>
-        <div class="stat-info">
-            <span class="stat-value">{{ total_cuadrillas }}</span>
-            <span class="stat-label">Total Cuadrillas</span>
+<!-- Estadísticas generales - Horizontal y compactas -->
+<div class="stats-horizontal">
+    <div class="stat-item">
+        <div class="stat-icon-small">👥</div>
+        <div class="stat-content">
+            <span class="stat-number">{{ total_cuadrillas }}</span>
+            <span class="stat-name">Total</span>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon">✅</div>
-        <div class="stat-info">
-            <span class="stat-value">{{ cuadrillas_disponibles }}</span>
-            <span class="stat-label">Disponibles</span>
+    <div class="stat-item">
+        <div class="stat-icon-small">✅</div>
+        <div class="stat-content">
+            <span class="stat-number">{{ cuadrillas_disponibles }}</span>
+            <span class="stat-name">Disponibles</span>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon">🔧</div>
-        <div class="stat-info">
-            <span class="stat-value">{{ cuadrillas_ocupadas }}</span>
-            <span class="stat-label">Ocupadas</span>
+    <div class="stat-item">
+        <div class="stat-icon-small">🔧</div>
+        <div class="stat-content">
+            <span class="stat-number">{{ cuadrillas_ocupadas }}</span>
+            <span class="stat-name">Ocupadas</span>
         </div>
     </div>
-    <div class="stat-card">
-        <div class="stat-icon">😴</div>
-        <div class="stat-info">
-            <span class="stat-value">{{ cuadrillas_descanso }}</span>
-            <span class="stat-label">En Descanso</span>
+    <div class="stat-item">
+        <div class="stat-icon-small">😴</div>
+        <div class="stat-content">
+            <span class="stat-number">{{ cuadrillas_descanso }}</span>
+            <span class="stat-name">Descanso</span>
         </div>
     </div>
 </div>
@@ -119,7 +119,6 @@
     :root {
         --orange: #ff6b00;
         --orange-light: #fff2e6;
-        --orange-dark: #ff8c00;
         --gray-bg: #f9fafb;
         --gray-border: #e5e7eb;
         --gray-text: #6b7280;
@@ -132,66 +131,67 @@
         --warning-light: #fed7aa;
         --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* ===== ESTADÍSTICAS GENERALES ===== */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-        margin-bottom: 30px;
+    /* ===== ESTADÍSTICAS HORIZONTALES ===== */
+    .stats-horizontal {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+        justify-content: space-between;
     }
     
-    .stat-card {
+    .stat-item {
         background: white;
-        padding: 20px;
-        border-radius: 20px;
+        border-radius: 16px;
         border: 1px solid var(--gray-border);
+        padding: 12px 16px;
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
+        flex: 1;
+        min-width: 100px;
         transition: var(--transition);
         box-shadow: var(--shadow-sm);
     }
     
-    .stat-card:hover {
+    .stat-item:hover {
         transform: translateY(-2px);
         box-shadow: var(--shadow-md);
         border-color: var(--orange);
     }
     
-    .stat-icon {
-        font-size: 32px;
-        width: 55px;
-        height: 55px;
+    .stat-icon-small {
+        font-size: 24px;
+        width: 40px;
+        height: 40px;
         background: var(--orange-light);
-        border-radius: 16px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
     }
     
-    .stat-info {
+    .stat-content {
         flex: 1;
     }
     
-    .stat-value {
-        font-size: 28px;
-        font-weight: 800;
-        color: var(--dark-text);
+    .stat-number {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--orange);
         display: block;
         line-height: 1;
-        letter-spacing: -0.5px;
     }
     
-    .stat-label {
-        font-size: 12px;
+    .stat-name {
+        font-size: 11px;
         color: var(--gray-text);
         display: block;
-        margin-top: 6px;
+        margin-top: 4px;
         font-weight: 500;
     }
     
@@ -201,7 +201,6 @@
         grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
         gap: 20px;
         margin-top: 20px;
-        padding-bottom: 20px;
     }
     
     /* ===== TARJETA DE CUADRILLA ===== */
@@ -218,7 +217,7 @@
     
     .cuadrilla-card:hover {
         transform: translateY(-4px);
-        box-shadow: var(--shadow-lg);
+        box-shadow: var(--shadow-md);
         border-color: var(--orange);
     }
     
@@ -227,7 +226,7 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        padding: 20px 24px;
+        padding: 16px 20px;
         background: linear-gradient(135deg, #fafbfc 0%, #ffffff 100%);
         border-bottom: 1px solid var(--gray-border);
         gap: 12px;
@@ -244,11 +243,11 @@
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
     }
     
     .cuadrilla-info h3 {
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 700;
         color: var(--dark-text);
         margin: 0;
@@ -260,16 +259,16 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 14px;
+        padding: 5px 12px;
         border-radius: 30px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
         white-space: nowrap;
         flex-shrink: 0;
     }
     
     .badge-estado i {
-        font-size: 12px;
+        font-size: 11px;
     }
     
     .estado-disponible {
@@ -294,16 +293,16 @@
     
     /* Body */
     .cuadrilla-body {
-        padding: 20px 24px;
+        padding: 16px 20px;
         flex: 1;
     }
     
     .info-row {
         display: flex;
         align-items: flex-start;
-        gap: 14px;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
         border-bottom: 1px solid #f0f0f0;
     }
     
@@ -314,8 +313,8 @@
     }
     
     .info-icon {
-        font-size: 28px;
-        width: 40px;
+        font-size: 24px;
+        width: 32px;
         text-align: center;
         flex-shrink: 0;
     }
@@ -327,9 +326,9 @@
     
     .info-content strong {
         display: block;
-        font-size: 12px;
+        font-size: 11px;
         color: var(--gray-text);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 600;
@@ -338,15 +337,15 @@
     .instaladores-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
     }
     
     .instalador-tag {
         background: var(--orange-light);
         color: var(--orange);
-        padding: 6px 12px;
+        padding: 4px 10px;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 500;
         display: inline-flex;
         align-items: center;
@@ -356,7 +355,7 @@
     }
     
     .instalador-tag i {
-        font-size: 11px;
+        font-size: 10px;
     }
     
     .instalador-tag:hover {
@@ -368,19 +367,19 @@
     .instalaciones-pendientes {
         display: flex;
         align-items: baseline;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
     }
     
     .numero-pendientes {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 800;
         color: var(--orange);
         line-height: 1;
     }
     
     .pendientes-texto {
-        font-size: 13px;
+        font-size: 12px;
         color: var(--gray-text);
         font-weight: 500;
     }
@@ -388,7 +387,7 @@
     /* Empty state */
     .empty-state {
         text-align: center;
-        padding: 60px 40px;
+        padding: 40px 20px;
         background: white;
         border-radius: 20px;
         border: 1px solid var(--gray-border);
@@ -396,26 +395,26 @@
     }
     
     .empty-icon {
-        font-size: 64px;
-        margin-bottom: 16px;
+        font-size: 48px;
+        margin-bottom: 12px;
         opacity: 0.5;
     }
     
     .empty-state p {
         color: var(--dark-text);
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 500;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
     
     .empty-state small {
         color: var(--gray-text);
-        font-size: 13px;
+        font-size: 12px;
     }
     
     .text-muted {
         color: var(--gray-text);
-        font-size: 13px;
+        font-size: 12px;
     }
     
     /* Botón secundario */
@@ -445,172 +444,63 @@
     
     /* Tablet (768px - 1024px) */
     @media screen and (max-width: 1024px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+        .stats-horizontal {
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            padding: 10px 12px;
+        }
+        
+        .stat-icon-small {
+            width: 36px;
+            height: 36px;
+            font-size: 20px;
+        }
+        
+        .stat-number {
+            font-size: 20px;
         }
         
         .cuadrillas-grid {
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 16px;
         }
-        
-        .stat-card {
-            padding: 16px;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-        }
-        
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            font-size: 28px;
-        }
-        
-        .cuadrilla-header {
-            padding: 16px 20px;
-        }
-        
-        .cuadrilla-body {
-            padding: 16px 20px;
-        }
     }
     
     /* Móvil (hasta 768px) */
     @media screen and (max-width: 768px) {
-        .stats-grid {
+        .stats-horizontal {
+            display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-item {
+            padding: 10px;
+            min-width: auto;
+        }
+        
+        .stat-icon-small {
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+        }
+        
+        .stat-number {
+            font-size: 18px;
+        }
+        
+        .stat-name {
+            font-size: 10px;
         }
         
         .cuadrillas-grid {
             grid-template-columns: 1fr;
             gap: 12px;
-            padding-bottom: 16px;
-        }
-        
-        .stat-card {
-            padding: 12px;
-            gap: 10px;
-        }
-        
-        .stat-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 22px;
-        }
-        
-        .stat-value {
-            font-size: 20px;
-        }
-        
-        .stat-label {
-            font-size: 10px;
-            margin-top: 4px;
-        }
-        
-        .cuadrilla-header {
-            padding: 14px 16px;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        
-        .cuadrilla-estado {
-            align-self: flex-start;
-        }
-        
-        .cuadrilla-info h3 {
-            font-size: 16px;
-        }
-        
-        .badge-estado {
-            padding: 4px 12px;
-            font-size: 11px;
-        }
-        
-        .cuadrilla-body {
-            padding: 14px 16px;
-        }
-        
-        .info-row {
-            gap: 10px;
-            margin-bottom: 14px;
-            padding-bottom: 12px;
-        }
-        
-        .info-icon {
-            font-size: 22px;
-            width: 32px;
-        }
-        
-        .info-content strong {
-            font-size: 11px;
-            margin-bottom: 6px;
-        }
-        
-        .instalador-tag {
-            padding: 4px 10px;
-            font-size: 11px;
-        }
-        
-        .instalador-tag i {
-            font-size: 10px;
-        }
-        
-        .numero-pendientes {
-            font-size: 26px;
-        }
-        
-        .pendientes-texto {
-            font-size: 11px;
-        }
-        
-        .empty-state {
-            padding: 40px 20px;
-        }
-        
-        .empty-icon {
-            font-size: 48px;
-        }
-        
-        .empty-state p {
-            font-size: 14px;
-        }
-        
-        /* Asegurar que el contenido no se desborde */
-        body {
-            overflow-x: hidden;
-        }
-        
-        .main-content {
-            overflow-x: hidden;
-            width: 100%;
-        }
-    }
-    
-    /* Móvil pequeño (hasta 480px) */
-    @media screen and (max-width: 480px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 10px;
-        }
-        
-        .stat-card {
-            padding: 10px 12px;
-        }
-        
-        .stat-icon {
-            width: 36px;
-            height: 36px;
-            font-size: 18px;
-        }
-        
-        .stat-value {
-            font-size: 18px;
+            margin-top: 16px;
         }
         
         .cuadrilla-header {
@@ -621,12 +511,17 @@
             font-size: 15px;
         }
         
+        .badge-estado {
+            padding: 4px 10px;
+            font-size: 10px;
+        }
+        
         .cuadrilla-body {
             padding: 12px 14px;
         }
         
         .info-row {
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 12px;
             padding-bottom: 10px;
         }
@@ -636,8 +531,9 @@
             width: 28px;
         }
         
-        .instaladores-list {
-            gap: 6px;
+        .info-content strong {
+            font-size: 10px;
+            margin-bottom: 5px;
         }
         
         .instalador-tag {
@@ -650,18 +546,58 @@
         }
         
         .pendientes-texto {
-            font-size: 10px;
+            font-size: 11px;
+        }
+    }
+    
+    /* Móvil pequeño (hasta 480px) */
+    @media screen and (max-width: 480px) {
+        .stats-horizontal {
+            gap: 8px;
+        }
+        
+        .stat-item {
+            padding: 8px;
+        }
+        
+        .stat-icon-small {
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+        }
+        
+        .stat-number {
+            font-size: 16px;
+        }
+        
+        .cuadrilla-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .cuadrilla-estado {
+            align-self: flex-start;
         }
         
         .badge-estado {
-            padding: 3px 10px;
-            font-size: 10px;
+            padding: 3px 8px;
+            font-size: 9px;
+        }
+        
+        .instalador-tag {
+            padding: 2px 6px;
+            font-size: 9px;
+        }
+        
+        .numero-pendientes {
+            font-size: 22px;
         }
     }
     
     /* Landscape en móvil */
     @media screen and (max-width: 768px) and (orientation: landscape) {
-        .stats-grid {
+        .stats-horizontal {
             grid-template-columns: repeat(4, 1fr);
         }
         
@@ -676,10 +612,6 @@
         
         .cuadrilla-estado {
             align-self: auto;
-        }
-        
-        .cuadrilla-card {
-            min-height: auto;
         }
     }
     
@@ -696,32 +628,18 @@
     }
     
     .cuadrilla-card {
-        animation: fadeInUp 0.4s ease-out;
+        animation: fadeInUp 0.3s ease-out;
     }
     
-    .stat-card {
-        animation: fadeInUp 0.4s ease-out;
+    .stat-item {
+        animation: fadeInUp 0.3s ease-out;
         animation-fill-mode: backwards;
     }
     
-    .stat-card:nth-child(1) { animation-delay: 0.05s; }
-    .stat-card:nth-child(2) { animation-delay: 0.1s; }
-    .stat-card:nth-child(3) { animation-delay: 0.15s; }
-    .stat-card:nth-child(4) { animation-delay: 0.2s; }
-    
-    /* Ajustes para scroll suave */
-    html {
-        scroll-behavior: smooth;
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    /* Asegurar que el contenido principal no tenga desbordamiento */
-    .main-content {
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch;
-        padding-bottom: 20px;
-    }
+    .stat-item:nth-child(1) { animation-delay: 0.05s; }
+    .stat-item:nth-child(2) { animation-delay: 0.1s; }
+    .stat-item:nth-child(3) { animation-delay: 0.15s; }
+    .stat-item:nth-child(4) { animation-delay: 0.2s; }
 </style>
 
 <script>
@@ -731,7 +649,7 @@
     
     // Animación para los números (contador)
     document.addEventListener('DOMContentLoaded', function() {
-        const stats = document.querySelectorAll('.stat-value');
+        const stats = document.querySelectorAll('.stat-number');
         stats.forEach(stat => {
             const finalValue = parseInt(stat.innerText);
             if (!isNaN(finalValue)) {
@@ -747,16 +665,6 @@
                     }
                 }, 20);
             }
-        });
-        
-        // Animar barras de progreso
-        const progressBars = document.querySelectorAll('.progress-bar');
-        progressBars.forEach(bar => {
-            const width = bar.style.width;
-            bar.style.width = '0%';
-            setTimeout(() => {
-                bar.style.width = width;
-            }, 100);
         });
     });
 </script>

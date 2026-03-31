@@ -3,7 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>{% block title %}Simple Fibra - Dashboard{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -36,6 +36,7 @@
             width: 100%;
             background: var(--gray-bg);
             overflow: hidden;
+            position: relative;
         }
 
         /* ===== LAYOUT PRINCIPAL ===== */
@@ -43,6 +44,7 @@
             display: flex;
             min-height: 100vh;
             position: relative;
+            height: 100%;
         }
 
         /* ===== SIDEBAR MEJORADO (CON FUNCIONALIDAD MODERNA) ===== */
@@ -53,7 +55,7 @@
             position: fixed;
             top: 0;
             left: 0;
-            height: 100vh;
+            height: 100%;
             overflow-y: auto;
             overflow-x: hidden;
             transition: var(--transition);
@@ -372,11 +374,12 @@
             margin-left: var(--sidebar-width);
             transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: var(--gray-bg);
-            height: 100vh;
+            height: 100%;
             width: calc(100% - var(--sidebar-width));
             overflow-y: auto;
             overflow-x: hidden;
             padding: 24px 32px;
+            position: relative;
         }
 
         .sidebar.expanded ~ .main-content {
@@ -561,8 +564,8 @@
             .main-content {
                 margin-left: 0;
                 width: 100%;
-                padding: 20px;
-                padding-top: 80px;
+                padding: 16px;
+                padding-top: 70px;
             }
 
             .content-header {
@@ -606,8 +609,8 @@
             }
 
             .main-content {
-                padding: 16px;
-                padding-top: 80px;
+                padding: 12px;
+                padding-top: 65px;
             }
 
             .page-title h1 {
