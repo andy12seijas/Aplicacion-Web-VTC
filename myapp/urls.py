@@ -2,13 +2,15 @@ from django.urls import path
 from myapp.views_login import * 
 from myapp.views_admin import *
 from myapp.views_asignacion import *
+from myapp.views_nomina import recalcular_nomina
 from myapp.views_vendedores import *
 from myapp.views_instaladores import *
 from myapp.views_venta_directa import *
 from django.contrib.auth.decorators import user_passes_test
 from myapp.views_reporte import *
 from myapp.views_panel_estadisticas import *
-
+from myapp.views_nomina import *
+from myapp.views_soporte import *
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
 
@@ -53,10 +55,12 @@ urlpatterns = [
     path('cuadrillas/estado/', estado_cuadrillas, name='estado_cuadrillas'),
     path('reporte/', reporte_vendedor, name='reporte_vendedor'),
     path('api/reporte-datos/', api_reporte_datos, name='api_reporte_datos'),
+    path('contrato/<int:contrato_id>/completar-pago/', completar_pago, name='completar_pago'),
     #URLS DE INSTALADORES
      path('instalaciones/', instalaciones_pendientes, name='instalaciones_pendientes'),
     path('instalaciones/<int:instalacion_id>/realizar/', realizar_instalacion, name='realizar_instalacion'),
     path('capturar-ubicacion-instalador/', capturar_ubicacion_instalador, name='capturar_ubicacion_instalador'),
+    path('instalacion/detalle/<int:instalacion_id>/', obtener_detalle_instalacion, name='detalle_instalacion'),
     #URLS DE VENTA DIRECTA
     path('ventas-directas/',lista_ventas_directas, name='lista_ventas_directas'),
     path('ventas-directas/crear/',crear_venta_directa, name='crear_venta_directa'),
@@ -64,7 +68,13 @@ urlpatterns = [
     
     path('ventas-directas/<int:venta_id>/detalle/', detalle_venta_directa, name='detalle_venta_directa'),
     path('ventas-directas/<int:venta_id>/cambiar-estado/', cambiar_estado_venta, name='cambiar_estado_venta'),
-    
+    #URLS NOMINA
+    path('nomina/', resumen_nomina, name='resumen_nomina'),
+    path('nomina/vendedor/<int:vendedor_id>/', detalle_nomina_vendedor, name='detalle_nomina_vendedor'),
+    path('nomina/recalcular/', recalcular_nomina, name='recalcular_nomina'),
+    #Soporte
+    path('soportes/', lista_soportes, name='lista_soportes'),
+    path('soporte/nuevo/', crear_soporte_unificado, name='crear_soporte_unificado'),
 ]
 
 

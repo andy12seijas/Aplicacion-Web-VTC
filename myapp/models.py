@@ -509,7 +509,12 @@ class Instalacion(models.Model):
         related_name='instalacion',
         verbose_name="Asignación"
     )
-    
+    instaladores = models.ManyToManyField(
+        User,
+        related_name='instalaciones',
+        verbose_name="Instaladores que realizaron la instalación",
+        blank=True
+    )
     # Ubicación de la instalación (coordenadas del cliente)
     latitud = models.FloatField(
         verbose_name="Latitud",
@@ -844,3 +849,410 @@ def guardar_perfil_usuario(sender, instance, **kwargs):
     """Guarda el perfil cuando se guarda el usuario"""
     if hasattr(instance, 'perfil'):
         instance.perfil.save()            
+        
+        
+        
+# ==================== NÓMINA DE VENDEDORES ====================
+
+class TasaCambio(models.Model):
+    """Modelo para almacenar la tasa de cambio USD/BS"""
+    
+    tasa = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Tasa de Cambio (USD a Bs)"
+    )
+    fecha = models.DateField(
+        default=datetime.date.today,
+        verbose_name="Fecha de vigencia"
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Activo"
+    )
+    
+    class Meta:
+        verbose_name = "Tasa de Cambio"
+        verbose_name_plural = "Tasas de Cambio"
+        ordering = ['-fecha']
+    
+    def __str__(self):
+        return f"1 USD = {self.tasa} Bs ({self.fecha})"
+    
+    def save(self, *args, **kwargs):
+        if self.activo:
+            TasaCambio.objects.filter(activo=True).update(activo=False)
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_tasa_activa(cls):
+        """Obtiene la tasa de cambio activa actual"""
+        tasa_obj = cls.objects.filter(activo=True).first()
+        if tasa_obj:
+            return tasa_obj.tasa
+        ultima_tasa = cls.objects.order_by('-fecha').first()
+        return ultima_tasa.tasa if ultima_tasa else 0
+
+
+class NominaVendedor(models.Model):
+    """Modelo para la nómina de vendedores"""
+    
+    class RangoContratos(models.TextChoices):
+        RANGO_1_5 = '1-5', '1 a 5 contratos'
+        RANGO_6_10 = '6-10', '6 a 10 contratos'
+        RANGO_11_MAS = '11+', '11 o más contratos'
+    
+    vendedor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='nominas',
+        verbose_name="Vendedor"
+    )
+    semana_inicio = models.DateField(
+        verbose_name="Inicio de semana (viernes)"
+    )
+    semana_fin = models.DateField(
+        verbose_name="Fin de semana (viernes siguiente)"
+    )
+    total_contratos = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Total contratos completados en la semana"
+    )
+    rango = models.CharField(
+        max_length=10,
+        choices=RangoContratos.choices,
+        blank=True,
+        null=True,
+        verbose_name="Rango alcanzado"
+    )
+    comision_por_contrato = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Comisión por contrato (USD)"
+    )
+    comision_total_usd = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total comisiones (USD)"
+    )
+    bono_usd = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Bono semanal (USD)"
+    )
+    total_usd = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total a pagar (USD)"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Nómina de Vendedor"
+        verbose_name_plural = "Nóminas de Vendedores"
+        ordering = ['-semana_inicio', 'vendedor__username']
+        unique_together = ['vendedor', 'semana_inicio']
+    
+    def __str__(self):
+        return f"{self.vendedor.get_full_name() or self.vendedor.username} - Semana {self.semana_inicio.strftime('%d/%m')} al {self.semana_fin.strftime('%d/%m')}"
+    
+    def calcular_comision_y_bono(self):
+        """Calcula comisión y bono según la cantidad de contratos de la semana"""
+        cant = self.total_contratos
+        
+        if cant >= 1 and cant <= 5:
+            self.comision_por_contrato = 8
+            self.bono_usd = 20
+            self.rango = self.RangoContratos.RANGO_1_5
+        elif cant >= 6 and cant <= 10:
+            self.comision_por_contrato = 10
+            self.bono_usd = 40
+            self.rango = self.RangoContratos.RANGO_6_10
+        elif cant >= 11:
+            self.comision_por_contrato = 10
+            self.bono_usd = 60
+            self.rango = self.RangoContratos.RANGO_11_MAS
+        else:
+            self.comision_por_contrato = 0
+            self.bono_usd = 0
+            self.rango = None
+        
+        self.comision_total_usd = cant * self.comision_por_contrato
+        self.total_usd = self.comision_total_usd + self.bono_usd
+    
+    @property
+    def total_bs(self):
+        """Calcula el total en Bolívares usando la tasa de cambio activa"""
+        tasa = TasaCambio.get_tasa_activa()
+        return self.total_usd * tasa
+    
+    def save(self, *args, **kwargs):
+        self.calcular_comision_y_bono()
+        super().save(*args, **kwargs)        
+        
+        
+class Soporte(models.Model):
+    """Modelo para registrar soportes técnicos (Mudanza, Retiro, Recableado)"""
+    
+    class TipoSoporte(models.TextChoices):
+        MUDANZA = 'MUDANZA', 'Mudanza'
+        RETIRO = 'RETIRO', 'Retiro'
+        RECABLEADO = 'RECABLEADO', 'Recableado'
+    
+    class EstadoSoporte(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente'
+        EN_PROCESO = 'EN_PROCESO', 'En Proceso'
+        COMPLETADO = 'COMPLETADO', 'Completado'
+        INCOMPLETO = 'INCOMPLETO', 'Incompleto'
+        CANCELADO = 'CANCELADO', 'Cancelado'
+    
+    # Relación con la instalación previa
+    instalacion = models.ForeignKey(
+        'Instalacion',
+        on_delete=models.CASCADE,
+        related_name='soportes',
+        verbose_name="Instalación relacionada"
+    )
+    
+    # Tipo de soporte
+    tipo = models.CharField(
+        max_length=20,
+        choices=TipoSoporte.choices,
+        verbose_name="Tipo de Soporte",
+        db_index=True
+    )
+    
+    # Estado del soporte
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoSoporte.choices,
+        default=EstadoSoporte.PENDIENTE,
+        verbose_name="Estado del Soporte",
+        db_index=True
+    )
+    
+    # Instaladores que realizaron el soporte (histórico)
+    instaladores = models.ManyToManyField(
+        User,
+        related_name='soportes_realizados',
+        verbose_name="Instaladores que realizaron el soporte"
+    )
+    
+    # Cuadrilla que realizó el soporte (para referencia histórica)
+    cuadrilla = models.ForeignKey(
+        'Cuadrilla',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='soportes',
+        verbose_name="Cuadrilla que realizó el soporte"
+    )
+    
+    # ===== CAMPOS OBLIGATORIOS DEL SOPORTE =====
+    fecha_hora_servicio = models.DateTimeField(
+        verbose_name="Fecha y hora del servicio realizado",
+        help_text="Fecha y hora en que se realizó el servicio"
+    )
+    
+    falla_encontrada = models.TextField(
+        max_length=500,
+        verbose_name="Falla encontrada",
+        help_text="Breve descripción de la falla encontrada"
+    )
+    
+    solucion = models.TextField(
+        max_length=500,
+        verbose_name="Solución de la misma",
+        help_text="Breve descripción de la solución aplicada"
+    )
+    modelo_modem = models.ForeignKey(
+        'ModeloModem',
+        on_delete=models.PROTECT,
+        related_name='soportes',
+        verbose_name="Modelo del Módem",
+        null=True, blank=True
+    )
+    sn_modem = models.CharField(
+        max_length=50,
+        verbose_name="Serial del Módem",
+        blank=True, null=True
+    )
+    mac_modem = models.CharField(
+        max_length=50,
+        verbose_name="MAC del Módem",
+        blank=True, null=True
+    )
+    # ===== MATERIALES USADOS (igual que en Instalacion) =====
+    inicio_fibra = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="INICIO",
+        help_text="Medición inicial de fibra"
+    )
+    final_fibra = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="FINAL",
+        help_text="Medición final de fibra"
+    )
+    
+    conectores = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="CONECTORES",
+        default=0
+    )
+    rosetas = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="ROSETAS",
+        default=0
+    )
+    patch_cord = models.PositiveIntegerField(
+        verbose_name="PATCH CORD",
+        default=0
+    )
+    tensores = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="TENSORES",
+        default=0
+    )
+    conectores_malos = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="CONECTORES MALOS",
+        default=0
+    )
+    
+    @property
+    def metros_utilizados(self):
+        """Calcula los metros utilizados"""
+        if self.final_fibra and self.inicio_fibra:
+            return self.final_fibra - self.inicio_fibra
+        return 0
+    
+    # ===== UBICACIÓN (PIN) =====
+    pin_ubicacion_lat = models.FloatField(
+        verbose_name="Latitud del pin de ubicación",
+        blank=True, null=True,
+        help_text="Coordenada de latitud donde se realizó el soporte"
+    )
+    pin_ubicacion_lng = models.FloatField(
+        verbose_name="Longitud del pin de ubicación",
+        blank=True, null=True,
+        help_text="Coordenada de longitud donde se realizó el soporte"
+    )
+    
+    @property
+    def pin_ubicacion(self):
+        """Retorna el pin de ubicación como string"""
+        if self.pin_ubicacion_lat and self.pin_ubicacion_lng:
+            return f"{self.pin_ubicacion_lat}, {self.pin_ubicacion_lng}"
+        return ""
+    
+    # Puerto en caja NAP utilizado
+    puerto_nap_utilizado = models.CharField(
+        max_length=20,
+        verbose_name="Puerto en caja NAP utilizado",
+        blank=True, null=True
+    )
+    
+    # Caja NAP utilizada (nomenclatura)
+    caja_nap_utilizada = models.CharField(
+        max_length=100,
+        verbose_name="Caja NAP utilizada (Nomenclatura)",
+        blank=True, null=True
+    )
+   
+    # Fotos del soporte (múltiples)
+    fotos = models.JSONField(
+        default=list,
+        verbose_name="Soporte fotográfico",
+        help_text="Lista de URLs de las fotos (equipos, material, falla, solución, speed test)"
+    )
+    
+    # Observaciones adicionales
+    observaciones = models.TextField(
+        max_length=500,
+        verbose_name="Observaciones",
+        blank=True, null=True
+    )
+    
+    # Campos de control
+    creado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='soportes_creados',
+        verbose_name="Creado por"
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación"
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización"
+    )
+    
+    class Meta:
+        verbose_name = "Soporte"
+        verbose_name_plural = "Soportes"
+        ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['tipo']),
+            models.Index(fields=['estado']),
+            models.Index(fields=['fecha_hora_servicio']),
+            models.Index(fields=['instalacion']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.instalacion.nombre_cliente} - {self.fecha_hora_servicio.strftime('%d/%m/%Y')}"
+    
+    @property
+    def esta_completo(self):
+        """Verifica si el soporte tiene toda la información requerida"""
+        return bool(
+            self.fecha_hora_servicio and
+            self.falla_encontrada and
+            self.solucion and
+            self.fotos and
+            self.puerto_nap_utilizado and
+            self.caja_nap_utilizada and
+            self.pin_ubicacion_lat and
+            self.pin_ubicacion_lng
+        )
+    
+    @property
+    def nombre_cliente(self):
+        """Obtiene el nombre del cliente desde la instalación"""
+        return self.instalacion.nombre_cliente
+    
+    @property
+    def cedula_cliente(self):
+        """Obtiene la cédula del cliente"""
+        return self.instalacion.cedula_cliente
+    
+    @property
+    def direccion(self):
+        """Obtiene la dirección del cliente desde la instalación"""
+        if self.instalacion.asignacion.contrato:
+            return self.instalacion.asignacion.contrato.direccion_detallada
+        elif self.instalacion.asignacion.venta_directa:
+            return self.instalacion.asignacion.venta_directa.direccion if hasattr(self.instalacion.asignacion.venta_directa, 'direccion') else "N/A"
+        return "N/A"
+    
+    @property
+    def customer_id(self):
+        """Obtiene el customer ID"""
+        return self.instalacion.customer_id
+    
+    @property
+    def plan(self):
+        """Obtiene el plan contratado"""
+        return self.instalacion.plan
+    
+    @property
+    def atr(self):
+        """Obtiene el ATR"""
+        return self.instalacion.atr        

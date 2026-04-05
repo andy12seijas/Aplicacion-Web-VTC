@@ -65,6 +65,14 @@
                     <span class="info-label">PLAN</span>
                     <span class="info-value">{{ instalacion.plan }}</span>
                 </div>
+                <div class="info-item">
+                    <span class="info-label">CUADRILLA</span>
+                    <span class="info-value">{{ instalacion.asignacion.cuadrilla.nombre }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CÓDIGO CUADRILLA</span>
+                    <span class="info-value">{{ instalacion.asignacion.cuadrilla.codigo }}</span>
+                </div>
             </div>
         </div>
 
@@ -78,6 +86,42 @@
                 {% endfor %}
             </div>
             {% endif %}
+
+            <!-- SECCIÓN: INSTALADORES DE LA CUADRILLA (SOLO INFORMATIVO) -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Instaladores de la Cuadrilla
+                </h3>
+                <div class="instaladores-container readonly">
+                    {% for instalador in instaladores_disponibles %}
+                    <div class="instalador-item">
+                        <div class="instalador-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <span class="instalador-nombre">
+                            {{ instalador.get_full_name|default:instalador.username }}
+                            {% if instalador == request.user %}
+                            <span class="badge-current">(Tú)</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">⚠️ No hay instaladores asignados a esta cuadrilla.</p>
+                    {% endfor %}
+                </div>
+                <small class="help-text">Estos son los instaladores que pertenecen a la cuadrilla asignada. Todos quedarán registrados como participantes de la instalación.</small>
+            </div>
+
+            <!-- Campo oculto para enviar los IDs de los instaladores automáticamente -->
+            <input type="hidden" name="instaladores" id="instaladoresHidden" value="">
 
             <!-- Ubicación de la Instalación (CLIENTE) -->
             <div class="form-section">
@@ -337,6 +381,59 @@
         border-color: var(--orange);
         color: var(--orange);
     }
+    
+    /* ===== ESTILOS PARA INSTALADORES (SOLO LECTURA) ===== */
+    .instaladores-container.readonly {
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .instalador-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .instalador-icon {
+        width: 24px;
+        height: 24px;
+        background: #fff2e6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ff6b00;
+    }
+
+    .instalador-nombre {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .badge-current {
+        background: #e3f2fd;
+        color: #1976d2;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 12px;
+        margin-left: 6px;
+    }
+
+    .text-muted {
+        color: #666;
+        font-size: 13px;
+        margin: 0;
+    }
+
     /* Contenedor principal de ubicación */
     .ubicacion-container {
         display: flex;
@@ -452,7 +549,7 @@
     
     .cliente-info-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 16px;
     }
     
@@ -526,7 +623,7 @@
         text-transform: uppercase;
     }
     
-    .form-input, .form-select {
+    .form-input, .form-select, .form-textarea {
         width: 100%;
         padding: 12px 16px;
         border: 2px solid #e0e0e0;
@@ -536,7 +633,7 @@
         background: white;
     }
     
-    .form-input:focus, .form-select:focus {
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
         outline: none;
         border-color: #ff6b00;
         box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
@@ -752,7 +849,10 @@
     
     /* Responsive */
     @media (max-width: 768px) {
-        .cliente-info-grid,
+        .cliente-info-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
         .grid-2, .grid-3, .grid-4 {
             grid-template-columns: 1fr;
         }
@@ -792,9 +892,21 @@
             flex-direction: column;
             text-align: center;
         }
+        
+        .instaladores-container.readonly {
+            flex-direction: column;
+        }
+        
+        .instalador-item {
+            width: 100%;
+        }
     }
     
     @media (max-width: 480px) {
+        .cliente-info-grid {
+            grid-template-columns: 1fr;
+        }
+        
         .foto-item, .agregar-foto-btn {
             width: calc(50% - 7.5px);
         }
@@ -804,19 +916,27 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // ============================================================
-    // 1. CAPTURAR UBICACIÓN DEL INSTALADOR AUTOMÁTICAMENTE
+    // 1. LLENAR CAMPO OCULTO CON LOS INSTALADORES DE LA CUADRILLA
     // ============================================================
     document.addEventListener('DOMContentLoaded', function() {
-        // Capturar ubicación del instalador solo si no es admin
-        {% if not es_admin %}
-        console.log('📍 Capturando ubicación del instalador...');
-        capturarUbicacionInstalador();
-        {% endif %}
+        // Obtener los IDs de los instaladores seleccionados desde el contexto
+        const instaladoresSeleccionados = {{ instaladores_seleccionados|safe }};
         
-        // Cargar fotos existentes
-        cargarFotosExistentes();
+        // Llenar el campo oculto con los IDs de los instaladores
+        const hiddenInput = document.getElementById('instaladoresHidden');
+        if (hiddenInput && instaladoresSeleccionados.length > 0) {
+            hiddenInput.value = instaladoresSeleccionados.join(',');
+            console.log('✅ Instaladores cargados automáticamente:', instaladoresSeleccionados.length);
+        } else if (hiddenInput && instaladoresSeleccionados.length === 0) {
+            // Si no hay instaladores, al menos poner el ID del usuario actual
+            hiddenInput.value = '{{ request.user.id }}';
+            console.log('⚠️ No hay instaladores en cuadrilla, usando usuario actual');
+        }
     });
     
+    // ============================================================
+    // 2. CAPTURAR UBICACIÓN DEL INSTALADOR AUTOMÁTICAMENTE
+    // ============================================================
     function capturarUbicacionInstalador() {
         if (!navigator.geolocation) {
             console.log('⚠️ Geolocalización no soportada por el navegador');
@@ -866,8 +986,19 @@
         );
     }
     
+    // Capturar ubicación del instalador al cargar la página (solo si no es admin)
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if not es_admin %}
+        console.log('📍 Capturando ubicación del instalador...');
+        capturarUbicacionInstalador();
+        {% endif %}
+        
+        // Cargar fotos existentes
+        cargarFotosExistentes();
+    });
+    
     // ============================================================
-    // 2. CAPTURAR UBICACIÓN DEL CLIENTE (botón manual)
+    // 3. CAPTURAR UBICACIÓN DEL CLIENTE (botón manual)
     // ============================================================
     function capturarUbicacionCliente() {
         if (!navigator.geolocation) {
@@ -936,7 +1067,7 @@
     }
     
     // ============================================================
-    // 3. MANEJO DE FOTOS CON BOTÓN +
+    // 4. MANEJO DE FOTOS CON BOTÓN +
     // ============================================================
     let fotosTemporales = [];
     let fotosAEliminar = [];
@@ -1150,7 +1281,7 @@
     }
     
     // ============================================================
-    // 4. FUNCIONES AUXILIARES
+    // 5. FUNCIONES AUXILIARES
     // ============================================================
     function mostrarToast(mensaje, tipo) {
         const color = tipo === 'success' ? '#4caf50' : '#ff9800';
@@ -1200,7 +1331,7 @@
     });
     
     // ============================================================
-    // 5. ENVÍO DEL FORMULARIO CON FOTOS
+    // 6. ENVÍO DEL FORMULARIO CON FOTOS
     // ============================================================
     document.getElementById('realizarInstalacionForm').addEventListener('submit', function(e) {
         e.preventDefault();

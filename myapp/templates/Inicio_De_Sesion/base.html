@@ -644,7 +644,7 @@
     <div class="dashboard">
         <!-- Sidebar con funcionalidad moderna pero diseño original -->
         <div class="sidebar" id="sidebar">
-            <div class="logo-area" onclick="window.location.href='/'">
+            <div class="logo-area" onclick="window.location.href='{% url 'dashboard' %}'">
                 <img src="{% static 'cd.png' %}" alt="VTC" class="logo">
                 <span class="logo-text">V T C</span>
             </div>
@@ -687,6 +687,7 @@
                 
                 <ul class="submenu" id="instaladorSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'instalaciones_pendientes' %}'">Instalaciones</li>
+                    <li class="submenu-item" onclick="window.location.href='{% url 'lista_soportes' %}'">Soporte</li>
                 </ul>
                 {% endif %}
                 

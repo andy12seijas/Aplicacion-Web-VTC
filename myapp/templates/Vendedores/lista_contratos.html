@@ -16,260 +16,335 @@
 {% endblock %}
 
 {% block content %}
-<!-- Estadísticas -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-value">{{ total_contratos }}</span>
-        <span class="stat-label">Total Contratos</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ en_proceso }}</span>
-        <span class="stat-label">En Proceso</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ completados }}</span>
-        <span class="stat-label">Completados</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ no_completados }}</span>
-        <span class="stat-label">No Completados</span>
-    </div>
-</div>
-
-<!-- Filtros -->
-<div class="filters-container">
-    <div class="filters-grid">
-        <!-- Búsqueda -->
-        <div class="search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Buscar por nombre, cédula, correo..." 
-                   id="searchInput" value="{{ busqueda }}">
+<div class="contratos-container">
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_contratos }}</span>
+            <span class="stat-label">Total Contratos</span>
         </div>
-        
-        <!-- Filtro por estado -->
-        <select id="filterEstado" class="filter-select">
-            <option value="">Todos los estados</option>
-            <option value="EN_PROCESO" {% if filtro_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
-            <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
-            <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
-        </select>
-        
-        <!-- FILTRO POR VENDEDOR (solo para administradores) -->
-        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-        <select id="filterVendedor" class="filter-select">
-            <option value="">Todos los vendedores</option>
-            {% for vendedor in vendedores %}
-            <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
-                {{ vendedor.get_full_name|default:vendedor.username }}
-            </option>
-            {% endfor %}
-        </select>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Indicador de filtros activos -->
-<div id="filtrosActivos" class="filtros-activos" style="display: none;">
-    <span class="filtros-label">📌 Filtros activos:</span>
-    <span class="filtros-lista" id="filtrosLista"></span>
-    <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
-</div>
-
-<!-- Vista Desktop: Tabla -->
-<div class="desktop-view">
-    <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Cliente</th>
-                    <th>Cédula</th>
-                    <th>Teléfono</th>
-                    <th>Correo</th>
-                    <th>Plan</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                    <th>Vendedor</th>
-                    {% endif %}
-                    <th>Acciones</th>
-                </thead>
-            <tbody>
-                {% for contrato in page_obj %}
-                <tr>
-                    <td>
-                        <div class="user-cell">
-                            <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
-                            <div>
-                                <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="cedula-cell">{{ contrato.cliente_potencial.cedula }}</td>
-                    <td class="telefono-cell">{{ contrato.cliente_potencial.telefono }}</td>
-                    <td class="email-cell">{{ contrato.correo_electronico|truncatechars:25 }}</td>
-                    <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
-                    <td>
-                        {% if contrato.estado == 'EN_PROCESO' %}
-                        <span class="badge proceso">En Proceso</span>
-                        {% elif contrato.estado == 'COMPLETADO' %}
-                        <span class="badge completado">Completado</span>
-                        {% elif contrato.estado == 'NO_COMPLETADO' %}
-                        <span class="badge no-completado">No Completado</span>
-                        {% endif %}
-                    </td>
-                    <td class="date-cell">{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
-                    
-                    <!-- Columna Vendedor (solo para admin) -->
-                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                    <td>
-                        <span class="vendedor-badge">
-                            {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
-                        </span>
-                    </td>
-                    {% endif %}
-                    
-                    <td>
-                        <div class="actions">
-                            <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="3"/>
-                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                                </svg>
-                            </button>
-                            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                            <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                </svg>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="{% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}9{% else %}8{% endif %}" class="empty">No hay contratos registrados</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Vista Mobile: Cards -->
-<div class="mobile-view">
-    {% for contrato in page_obj %}
-    <div class="contrato-card">
-        <div class="card-header">
-            <div class="card-cliente">
-                <span class="card-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
-                <div>
-                    <div class="card-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
-                    <div class="card-detail">C.I: {{ contrato.cliente_potencial.cedula }}</div>
-                </div>
-            </div>
-            <span class="status-dot {% if contrato.estado == 'EN_PROCESO' %}proceso{% elif contrato.estado == 'COMPLETADO' %}completado{% else %}no-completado{% endif %}"></span>
+        <div class="stat-card">
+            <span class="stat-value">{{ en_proceso }}</span>
+            <span class="stat-label">En Proceso</span>
         </div>
-        
-        <div class="card-body">
-            <div class="card-row">
-                <span class="card-label">📞 Teléfono:</span>
-                <span class="card-value">{{ contrato.cliente_potencial.telefono }}</span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">✉️ Correo:</span>
-                <span class="card-value">{{ contrato.correo_electronico|truncatechars:25 }}</span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">📋 Plan:</span>
-                <span class="card-value">{{ contrato.plan_contratado.nombre }}</span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">📅 Fecha:</span>
-                <span class="card-value">{{ contrato.fecha_creacion|date:"d/m/y" }}</span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">📌 Estado:</span>
-                <span class="card-value">
-                    {% if contrato.estado == 'EN_PROCESO' %}
-                    <span class="badge proceso">En Proceso</span>
-                    {% elif contrato.estado == 'COMPLETADO' %}
-                    <span class="badge completado">Completado</span>
-                    {% elif contrato.estado == 'NO_COMPLETADO' %}
-                    <span class="badge no-completado">No Completado</span>
-                    {% endif %}
-                </span>
+        <div class="stat-card">
+            <span class="stat-value">{{ completados }}</span>
+            <span class="stat-label">Completados</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ no_completados }}</span>
+            <span class="stat-label">No Completados</span>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-container">
+        <div class="filters-grid">
+            <!-- Búsqueda -->
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" placeholder="Buscar por nombre, cédula, correo..." 
+                       id="searchInput" value="{{ busqueda }}">
             </div>
             
-            <!-- Información del vendedor (solo para admin) -->
-            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-            <div class="card-row">
-                <span class="card-label">👤 Vendedor:</span>
-                <span class="card-value">
-                    <span class="vendedor-badge">
-                        {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
-                    </span>
-                </span>
-            </div>
-            {% endif %}
-        </div>
-        
-        <div class="card-actions">
-            <button class="card-action" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                </svg>
-            </button>
-            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-            <button class="card-action" onclick="editarContrato({{ contrato.id }})" title="Editar">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                </svg>
-            </button>
+            <!-- Filtro por estado -->
+            <select id="filterEstado" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="EN_PROCESO" {% if filtro_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+                <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+                <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
+            </select>
+            
+            <!-- FILTRO POR VENDEDOR (solo para administradores) -->
+            {% if es_admin %}
+            <select id="filterVendedor" class="filter-select">
+                <option value="">Todos los vendedores</option>
+                {% for vendedor in vendedores %}
+                <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                    {{ vendedor.get_full_name|default:vendedor.username }}
+                </option>
+                {% endfor %}
+            </select>
             {% endif %}
         </div>
     </div>
-    {% empty %}
-    <div class="empty-mobile">No hay contratos registrados</div>
-    {% endfor %}
-</div>
 
-<!-- Paginación -->
-{% if page_obj.has_other_pages %}
-<div class="pagination">
-    {% if page_obj.has_previous %}
-    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 18l-6-6 6-6"/>
-        </svg>
-    </a>
+    <!-- Indicador de filtros activos -->
+    <div id="filtrosActivos" class="filtros-activos" style="display: none;">
+        <span class="filtros-label">📌 Filtros activos:</span>
+        <span class="filtros-lista" id="filtrosLista"></span>
+        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
+    </div>
+
+    <!-- Contenedor con scroll (SOLO para la tabla/cards) -->
+    <div class="contratos-scroll-wrapper">
+        <!-- Vista Desktop: Tabla -->
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Cédula</th>
+                            <th>Teléfono</th>
+                            <th>Correo</th>
+                            <th>Plan</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            {% if es_admin %}
+                            <th>Vendedor</th>
+                            {% endif %}
+                            <th>Acciones</th>
+                        </thead>
+                    <tbody>
+                        {% for contrato in page_obj %}
+                        <tr>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="cedula-cell">{{ contrato.cliente_potencial.cedula }}</td>
+                            <td class="telefono-cell">{{ contrato.cliente_potencial.telefono }}</td>
+                            <td class="email-cell">{{ contrato.correo_electronico|truncatechars:25 }}</td>
+                            <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
+                            <td>
+                                {% if contrato.estado == 'EN_PROCESO' %}
+                                <span class="badge proceso">En Proceso</span>
+                                {% elif contrato.estado == 'COMPLETADO' %}
+                                <span class="badge completado">Completado</span>
+                                {% elif contrato.estado == 'NO_COMPLETADO' %}
+                                <span class="badge no-completado">No Completado</span>
+                                {% endif %}
+                            </td>
+                            <td class="date-cell">{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
+                            
+                            <!-- Columna Vendedor (solo para admin) -->
+                            {% if es_admin %}
+                            <td>
+                                <span class="vendedor-badge">
+                                    {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
+                                </span>
+                            </td>
+                            {% endif %}
+                            
+                            <td>
+                                <div class="actions">
+                                    <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    <!-- BOTÓN PARA COMPLETAR PAGO - Solo aparece si NO tiene número de pago O NO tiene foto -->
+                                    {% if not contrato.numero_pago_movil or not contrato.foto_pago %}
+                                    <button class="action-btn pago-pendiente" onclick="abrirModalPago({{ contrato.id }})" title="Completar información de pago">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    {% if es_admin %}
+                                    <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{% if es_admin %}9{% else %}8{% endif %}" class="empty">No hay contratos registrados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Vista Mobile: Cards -->
+        <div class="mobile-view">
+            {% for contrato in page_obj %}
+            <div class="contrato-card">
+                <div class="card-header">
+                    <div class="card-cliente">
+                        <span class="card-avatar">{{ contrato.cliente_potencial.nombre|first|upper }}{{ contrato.cliente_potencial.apellido|first|upper }}</span>
+                        <div>
+                            <div class="card-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
+                            <div class="card-detail">C.I: {{ contrato.cliente_potencial.cedula }}</div>
+                        </div>
+                    </div>
+                    <span class="status-dot {% if contrato.estado == 'EN_PROCESO' %}proceso{% elif contrato.estado == 'COMPLETADO' %}completado{% else %}no-completado{% endif %}"></span>
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-row">
+                        <span class="card-label">📞 Teléfono:</span>
+                        <span class="card-value">{{ contrato.cliente_potencial.telefono }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">✉️ Correo:</span>
+                        <span class="card-value">{{ contrato.correo_electronico|truncatechars:25 }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📋 Plan:</span>
+                        <span class="card-value">{{ contrato.plan_contratado.nombre }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📅 Fecha:</span>
+                        <span class="card-value">{{ contrato.fecha_creacion|date:"d/m/y" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📌 Estado:</span>
+                        <span class="card-value">
+                            {% if contrato.estado == 'EN_PROCESO' %}
+                            <span class="badge proceso">En Proceso</span>
+                            {% elif contrato.estado == 'COMPLETADO' %}
+                            <span class="badge completado">Completado</span>
+                            {% elif contrato.estado == 'NO_COMPLETADO' %}
+                            <span class="badge no-completado">No Completado</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <!-- Información del vendedor (solo para admin) -->
+                    {% if es_admin %}
+                    <div class="card-row">
+                        <span class="card-label">👤 Vendedor:</span>
+                        <span class="card-value">
+                            <span class="vendedor-badge">
+                                {{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}
+                            </span>
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-actions">
+                    <button class="card-action" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                        </svg>
+                    </button>
+                    
+                    <!-- BOTÓN PARA COMPLETAR PAGO en móvil -->
+                    {% if not contrato.numero_pago_movil or not contrato.foto_pago %}
+                    <button class="card-action pago-pendiente" onclick="abrirModalPago({{ contrato.id }})" title="Completar información de pago">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    
+                    {% if es_admin %}
+                    <button class="card-action" onclick="editarContrato({{ contrato.id }})" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-mobile">No hay contratos registrados</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- PAGINACIÓN - FUERA DEL SCROLL, SIEMPRE VISIBLE -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} contratos
+        </div>
+        
+        <div class="pagination-controls">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Primera página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </span>
+            {% endif %}
+
+            <div class="page-numbers">
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <span class="page-current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-num">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Última página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Selector de página para móvil (dropdown) -->
+        <div class="page-selector-mobile">
+            <span>Ir a página</span>
+            <select id="pageSelect" class="page-select">
+                {% for num in page_obj.paginator.page_range %}
+                <option value="{{ num }}" {% if num == page_obj.number %}selected{% endif %}>
+                    {{ num }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
     {% endif %}
-
-    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18l6-6-6-6"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-        </svg>
-    </a>
-    {% endif %}
 </div>
-{% endif %}
 
 <!-- Modal para detalle de contrato -->
 <div id="contratoModal" class="modal" style="display: none;">
@@ -396,7 +471,7 @@
                             <p>Cargando imagen...</p>
                         </div>
                         <div id="foto-pago-content" style="display: none;">
-                            <img id="foto-pago-img" src="" alt="Comprobante de pago" class="foto-pago-img">
+                            <img id="foto-pago-img" src="" alt="Comprobante de pago" class="foto-pago-img" onclick="abrirFoto()">
                             <div class="foto-pago-actions">
                                 <button class="btn-primary" onclick="abrirFoto()">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -466,6 +541,83 @@
     </div>
 </div>
 
+<!-- Modal para completar información de pago -->
+<div id="modalPago" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModalPago()"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalPagoAvatar">💰</span>
+                <div>
+                    <h2>Completar Información de Pago</h2>
+                    <p id="modalPagoCliente">Cargando...</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalPago()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <form id="formCompletarPago" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="contratoId" name="contrato_id">
+            
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Información de Pago</h3>
+                    
+                    <div class="form-group">
+                        <label for="numero_pago_movil">Número de Pago Móvil</label>
+                        <input type="text" 
+                               id="numero_pago_movil" 
+                               name="numero_pago_movil" 
+                               class="form-control" 
+                               placeholder="Ej: 04141234567"
+                               autocomplete="off">
+                        <small class="form-text text-muted">Número de teléfono donde se realizó el pago</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="foto_pago">Foto del Comprobante de Pago</label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <input type="file" 
+                                   id="foto_pago" 
+                                   name="foto_pago" 
+                                   accept="image/*"
+                                   style="display: none;">
+                            <div class="upload-placeholder">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M12 4v16M4 12h16"/>
+                                </svg>
+                                <p>Haz clic o arrastra una imagen</p>
+                                <small>JPG, PNG, GIF o WEBP (Máx. 5MB)</small>
+                            </div>
+                            <div class="upload-preview" style="display: none;">
+                                <img id="uploadPreview" src="" alt="Vista previa">
+                                <button type="button" class="btn-remove-image" onclick="removerImagen()">✕</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn-outline" onclick="cerrarModalPago()">Cancelar</button>
+                <button type="submit" class="btn-primary" id="btnGuardarPago">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Guardar Información de Pago
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Modal para ver imagen completa -->
 <div id="imagenModal" class="modal" style="display: none;">
     <div class="modal-overlay" onclick="cerrarImagenModal()"></div>
@@ -485,18 +637,165 @@
 </div>
 
 <style>
+    /* ===== VARIABLES ===== */
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f9fafb;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fed7aa;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
+        --info: #3b82f6;
+        --info-light: #dbeafe;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    .contratos-container {
+        height: calc(100vh - 120px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* ===== STATS ===== */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-shrink: 0;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 6px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .stat-card:hover {
+        border-color: var(--orange);
+        transform: translateY(-1px);
+    }
+    
+    .stat-value {
+        font-weight: 700;
+        color: var(--orange);
+        font-size: 14px;
+    }
+    
+    .stat-label {
+        color: var(--gray-text);
+        font-size: 11px;
+    }
+    
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 12px;
+        flex-shrink: 0;
+    }
+    
+    .filters-grid {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: var(--transition);
+    }
+    
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    .search-box input {
+        border: none;
+        padding: 9px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+    
+    .filter-select {
+        flex: 1;
+        min-width: 140px;
+        padding: 9px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        outline: none;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .filter-select:hover,
+    .filter-select:focus {
+        border-color: var(--orange);
+    }
+    
     /* ===== FILTROS ACTIVOS ===== */
     .filtros-activos {
         background: #e3f2fd;
         border-left: 4px solid #2196f3;
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin-bottom: 20px;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 12px;
-        font-size: 13px;
+        gap: 8px;
+        font-size: 12px;
+        flex-shrink: 0;
     }
     
     .filtros-label {
@@ -507,24 +806,435 @@
     .filtros-lista {
         color: #555;
         flex: 1;
+        font-size: 11px;
     }
     
     .btn-limpiar-filtros {
         background: white;
         border: 1px solid #2196f3;
         color: #2196f3;
-        padding: 6px 12px;
+        padding: 4px 10px;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 11px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: var(--transition);
     }
     
-    .btn-limpiar-filtros:hover {
-        background: #2196f3;
+    /* ===== WRAPPER CON SCROLL ===== */
+    .contratos-scroll-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        margin-right: -4px;
+        min-height: 0;
+    }
+    
+    .contratos-scroll-wrapper::-webkit-scrollbar {
+        width: 5px;
+    }
+    
+    .contratos-scroll-wrapper::-webkit-scrollbar-track {
+        background: var(--gray-border);
+        border-radius: 10px;
+    }
+    
+    .contratos-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: var(--orange);
+        border-radius: 10px;
+    }
+    
+    /* ===== TABLA ===== */
+    .desktop-view {
+        display: block;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: auto;
+        margin-bottom: 12px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        min-width: 900px;
+    }
+    
+    .table th {
+        text-align: left;
+        padding: 12px 12px;
+        font-weight: 600;
+        color: var(--gray-text);
+        background: #f9fafb;
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+    
+    .table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+    }
+    
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+    
+    .cedula-cell,
+    .telefono-cell,
+    .date-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 11px;
+    }
+    
+    .email-cell {
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #666;
+        font-size: 11px;
+    }
+    
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .user-avatar {
+        width: 28px;
+        height: 28px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 11px;
+    }
+    
+    .user-name {
+        font-weight: 500;
+        font-size: 12px;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    
+    .badge.proceso {
+        background: var(--warning-light);
+        color: #9b2c1d;
+    }
+    
+    .badge.completado {
+        background: var(--success-light);
+        color: #065f46;
+    }
+    
+    .badge.no-completado {
+        background: var(--danger-light);
+        color: #991b1b;
+    }
+    
+    .vendedor-badge {
+        display: inline-block;
+        padding: 3px 6px;
+        background: #f3f4f6;
+        border-radius: 20px;
+        font-size: 10px;
+        color: #4b5563;
+    }
+    
+    .actions {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 6px;
+        color: var(--gray-text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+    
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    /* Estilos para el botón de pago pendiente */
+    .action-btn.pago-pendiente,
+    .card-action.pago-pendiente {
+        background: #fff3e0;
+        border-color: #ff9800;
+        color: #ff9800;
+    }
+    
+    .action-btn.pago-pendiente:hover,
+    .card-action.pago-pendiente:hover {
+        background: #ff9800;
+        border-color: #ff9800;
         color: white;
     }
-
+    
+    /* ===== MOBILE CARDS ===== */
+    .mobile-view {
+        display: none;
+    }
+    
+    .contrato-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    
+    .contrato-card .card-header {
+        padding: 12px;
+        background: #f9fafb;
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-cliente {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--orange);
+        color: white;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    
+    .card-name {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .card-detail {
+        font-size: 10px;
+        color: var(--gray-text);
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .status-dot.proceso { background: var(--warning); }
+    .status-dot.completado { background: var(--success); }
+    .status-dot.no-completado { background: var(--danger); }
+    
+    .contrato-card .card-body {
+        padding: 12px;
+    }
+    
+    .card-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+    
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .card-label {
+        width: 70px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+        font-size: 11px;
+    }
+    
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        flex: 1;
+        font-size: 12px;
+        word-break: break-word;
+    }
+    
+    .contrato-card .card-actions {
+        display: flex;
+        gap: 8px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--gray-border);
+        background: #f9fafb;
+        justify-content: flex-end;
+    }
+    
+    .card-action {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+    
+    /* ===== PAGINACIÓN ===== */
+    .pagination-container {
+        flex-shrink: 0;
+        background: white;
+        border-radius: 14px;
+        border: 1px solid var(--gray-border);
+        padding: 12px;
+        margin-top: 8px;
+    }
+    
+    .pagination-info {
+        text-align: center;
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-bottom: 10px;
+    }
+    
+    .pagination-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    
+    .page-link {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        color: var(--gray-text);
+        text-decoration: none;
+        transition: var(--transition);
+        background: white;
+    }
+    
+    .page-link:hover:not(.disabled) {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f5f5f5;
+    }
+    
+    .page-numbers {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .page-num {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        color: var(--gray-text);
+        text-decoration: none;
+        font-size: 13px;
+        transition: var(--transition);
+        background: white;
+    }
+    
+    .page-num:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .page-current {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    
+    .page-selector-mobile {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--gray-border);
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    .page-select {
+        padding: 6px 10px;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        background: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
+    .empty, .empty-mobile {
+        text-align: center;
+        padding: 40px !important;
+        color: var(--gray-text);
+    }
+    
     /* ===== MODAL STYLES ===== */
     .modal {
         position: fixed;
@@ -537,7 +1247,7 @@
         align-items: center;
         justify-content: center;
     }
-
+    
     .modal-overlay {
         position: absolute;
         top: 0;
@@ -546,47 +1256,45 @@
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(4px);
-        animation: fadeIn 0.2s ease;
     }
-
+    
     .modal-container {
         position: relative;
         width: 90%;
-        max-width: 800px;
-        max-height: 90vh;
+        max-width: 900px;
+        max-height: 85vh;
         overflow-y: auto;
         background: white;
-        border-radius: 24px;
+        border-radius: 20px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-        animation: slideUp 0.3s ease;
         z-index: 2001;
     }
-
+    
     .modal-container.modal-lg {
         max-width: 1000px;
     }
-
+    
     .modal-container.modal-image {
         max-width: 90%;
         width: auto;
     }
-
+    
     .modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 20px 24px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--gray-border);
-        background: var(--gray-bg);
-        border-radius: 24px 24px 0 0;
+        background: #f9fafb;
+        border-radius: 20px 20px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-
+    
     .modal-header-info {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
     }
-
+    
     .modal-avatar {
         width: 48px;
         height: 48px;
@@ -597,623 +1305,331 @@
         align-items: center;
         justify-content: center;
         font-weight: 600;
-        font-size: 20px;
-        flex-shrink: 0;
+        font-size: 18px;
     }
-
+    
     .modal-header-info h2 {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 600;
-        color: var(--dark-text);
-        margin-bottom: 4px;
+        margin-bottom: 2px;
     }
-
+    
     .modal-header-info p {
-        font-size: 14px;
+        font-size: 12px;
         color: var(--gray-text);
     }
-
+    
     .modal-close {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         border: 1px solid var(--gray-border);
         background: white;
-        border-radius: 10px;
-        color: var(--gray-text);
+        border-radius: 8px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
+        transition: var(--transition);
     }
-
+    
     .modal-close:hover {
         border-color: var(--orange);
         color: var(--orange);
-        background: var(--orange-light);
     }
-
+    
     .modal-body {
-        padding: 24px;
+        padding: 20px;
     }
-
-    /* Pestañas */
+    
     .modal-tabs {
         display: flex;
         gap: 8px;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
         border-bottom: 1px solid var(--gray-border);
-        padding-bottom: 12px;
+        padding-bottom: 10px;
         flex-wrap: wrap;
     }
-
+    
     .tab-btn {
-        padding: 8px 16px;
+        padding: 6px 14px;
         background: none;
         border: none;
         border-radius: 20px;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
         color: var(--gray-text);
         cursor: pointer;
-        transition: all 0.2s;
+        transition: var(--transition);
     }
-
+    
     .tab-btn:hover {
         color: var(--orange);
         background: var(--orange-light);
     }
-
+    
     .tab-btn.active {
         background: var(--orange);
         color: white;
     }
-
+    
     .tab-content {
         display: none;
     }
-
+    
     .tab-content.active {
         display: block;
     }
-
-    /* Grids del modal */
+    
+    .modal-section {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .modal-section:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .modal-section-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+    
     .modal-grid {
         display: grid;
-        gap: 16px;
-        margin-bottom: 24px;
+        gap: 12px;
     }
-
+    
     .modal-grid.grid-2 {
         grid-template-columns: repeat(2, 1fr);
     }
-
+    
     .modal-grid.grid-3 {
         grid-template-columns: repeat(3, 1fr);
     }
-
+    
     .modal-item {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
-
+    
     .modal-item.full-width {
         grid-column: 1 / -1;
     }
-
+    
     .modal-label {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--gray-text);
         text-transform: uppercase;
-        letter-spacing: 0.3px;
     }
-
+    
     .modal-value {
-        font-size: 14px;
-        color: var(--dark-text);
+        font-size: 13px;
         font-weight: 500;
         word-break: break-word;
     }
-
-    .modal-section {
-        margin-bottom: 24px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid var(--gray-border);
-    }
-
-    .modal-section:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-        padding-bottom: 0;
-    }
-
-    .modal-section-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--dark-text);
-        margin-bottom: 16px;
-    }
-
-    /* Foto de pago */
+    
     .foto-pago-container {
-        margin-top: 20px;
+        margin-top: 16px;
     }
-
+    
     .foto-placeholder {
-        background: var(--gray-bg);
+        background: #f9fafb;
         border: 2px dashed var(--gray-border);
         border-radius: 12px;
-        padding: 40px;
+        padding: 30px;
         text-align: center;
         color: var(--gray-text);
+        font-size: 13px;
     }
-
+    
     .foto-pago-img {
         max-width: 100%;
-        max-height: 300px;
-        border-radius: 12px;
+        max-height: 250px;
+        border-radius: 10px;
         border: 1px solid var(--gray-border);
         object-fit: contain;
-        background: #fafafa;
         cursor: pointer;
     }
-
+    
     .foto-pago-actions {
         display: flex;
-        gap: 12px;
-        margin-top: 16px;
+        gap: 10px;
+        margin-top: 12px;
         justify-content: center;
         flex-wrap: wrap;
     }
-
-    /* Modal de imagen */
+    
+    /* Estilos para el formulario de pago */
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        font-size: 13px;
+        color: var(--dark-text);
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        font-size: 14px;
+        transition: var(--transition);
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    .form-text {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+    
+    /* Área de subida de archivos */
+    .file-upload-area {
+        border: 2px dashed var(--gray-border);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: var(--transition);
+        background: #f9fafb;
+    }
+    
+    .file-upload-area:hover {
+        border-color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .upload-placeholder svg {
+        color: var(--gray-text);
+        margin-bottom: 10px;
+    }
+    
+    .upload-placeholder p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: var(--dark-text);
+    }
+    
+    .upload-placeholder small {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+    
+    .upload-preview {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .upload-preview img {
+        max-width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .btn-remove-image {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        width: 28px;
+        height: 28px;
+        background: white;
+        border: 1px solid var(--danger);
+        border-radius: 50%;
+        color: var(--danger);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+    
+    .btn-remove-image:hover {
+        background: var(--danger);
+        color: white;
+    }
+    
+    .btn-primary {
+        padding: 6px 14px;
+        background: var(--orange);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: var(--transition);
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline {
+        padding: 6px 14px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: var(--transition);
+    }
+    
+    .btn-outline:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .modal-footer {
+        padding: 12px 20px;
+        border-top: 1px solid var(--gray-border);
+        background: #f9fafb;
+        border-radius: 0 0 20px 20px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
     .image-container {
         text-align: center;
         padding: 20px;
     }
-
+    
     .imagen-completa {
         max-width: 100%;
         max-height: 70vh;
         object-fit: contain;
         border-radius: 8px;
     }
-
-    /* Variables y estilos existentes */
-    .btn-orange {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: #ff6b00;
-        color: white;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-    }
     
-    .btn-orange:hover {
-        background: #ff8c00;
-        transform: translateY(-1px);
-    }
-    
-    :root {
-        --orange: #ff6b00;
-        --orange-light: #fff2e6;
-        --gray-bg: #fafafa;
-        --gray-border: #f0f0f0;
-        --gray-text: #999;
-        --dark-text: #333;
-    }
-
-    .vendedor-badge {
-        display: inline-block;
-        padding: 4px 8px;
-        background: #f0f0f0;
-        border-radius: 20px;
-        font-size: 11px;
-        color: #555;
-    }
-
-    .stats-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 20px;
-    }
-
-    .stat-card {
-        background: white;
-        padding: 8px 16px;
-        border-radius: 30px;
-        border: 1px solid var(--gray-border);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        transition: all 0.2s;
-    }
-
-    .stat-card:hover {
-        border-color: var(--orange);
-        transform: translateY(-1px);
-    }
-
-    .stat-value {
-        font-weight: 600;
-        color: var(--orange);
-    }
-
-    .stat-label {
-        color: var(--gray-text);
-    }
-
-    .filters-container {
-        margin-bottom: 20px;
-    }
-
-    .filters-grid {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .search-box {
-        flex: 2;
-        min-width: 250px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: white;
-        padding: 0 12px;
-        border: 1px solid var(--gray-border);
-        border-radius: 30px;
-        transition: all 0.2s;
-    }
-
-    .search-box:focus-within {
-        border-color: var(--orange);
-        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
-    }
-
-    .search-box input {
-        border: none;
-        padding: 10px 0;
-        width: 100%;
-        outline: none;
-        font-size: 13px;
-        background: transparent;
-    }
-
-    .filter-select {
-        flex: 1;
-        min-width: 150px;
-        padding: 10px 12px;
-        border: 1px solid var(--gray-border);
-        border-radius: 30px;
-        background: white;
-        font-size: 13px;
-        color: var(--dark-text);
-        outline: none;
-        cursor: pointer;
-    }
-
-    .filter-select:hover {
-        border-color: var(--orange);
-    }
-
-    .desktop-view {
-        display: block;
-        background: white;
-        border-radius: 16px;
-        border: 1px solid var(--gray-border);
-        overflow: auto;
-        margin-bottom: 20px;
-    }
-
-    .table-container {
-        overflow-x: auto;
-    }
-
-    .table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-        min-width: 1000px;
-    }
-
-    .table th {
-        text-align: left;
-        padding: 14px 16px;
-        font-weight: 500;
-        color: var(--gray-text);
-        background: var(--gray-bg);
-        border-bottom: 1px solid var(--gray-border);
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .table td {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--gray-border);
-        color: var(--dark-text);
-    }
-
-    .table tbody tr:hover {
-        background: var(--gray-bg);
-    }
-
-    .cedula-cell,
-    .telefono-cell,
-    .date-cell {
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 12px;
-    }
-
-    .email-cell {
-        max-width: 180px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: #666;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 30px;
-        font-size: 11px;
-        font-weight: 500;
-        white-space: nowrap;
-    }
-
-    .badge.proceso {
-        background: #fff3e0;
-        color: #ef6c00;
-    }
-
-    .badge.completado {
-        background: #e8f5e9;
-        color: #2e7d32;
-    }
-
-    .badge.no-completado {
-        background: #ffebee;
-        color: #c62828;
-    }
-
-    .user-cell {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .user-avatar {
-        width: 32px;
-        height: 32px;
-        background: var(--orange);
-        color: white;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-        font-size: 13px;
-        flex-shrink: 0;
-    }
-
-    .user-name {
-        font-weight: 500;
-        color: var(--dark-text);
-        font-size: 13px;
-        line-height: 1.2;
-    }
-
-    .actions {
-        display: flex;
-        gap: 6px;
-    }
-
-    .action-btn {
-        width: 32px;
-        height: 32px;
-        border: 1px solid var(--gray-border);
-        background: white;
-        border-radius: 8px;
-        color: var(--gray-text);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        flex-shrink: 0;
-    }
-
-    .action-btn:hover {
-        border-color: var(--orange);
-        color: var(--orange);
-        background: var(--orange-light);
-    }
-
-    .mobile-view {
-        display: none;
-    }
-
-    .contrato-card {
-        background: white;
-        border: 1px solid var(--gray-border);
-        border-radius: 16px;
-        overflow: hidden;
-        margin-bottom: 12px;
-    }
-
-    .contrato-card .card-header {
-        padding: 16px;
-        background: var(--gray-bg);
-        border-bottom: 1px solid var(--gray-border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-    }
-
-    .card-cliente {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        min-width: 0;
-        flex: 1;
-    }
-
-    .card-avatar {
-        width: 44px;
-        height: 44px;
-        background: var(--orange);
-        color: white;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 18px;
-        flex-shrink: 0;
-    }
-
-    .card-name {
-        font-weight: 600;
-        color: var(--dark-text);
-        font-size: 15px;
-        margin-bottom: 4px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .card-detail {
-        font-size: 11px;
-        color: var(--gray-text);
-    }
-
-    .status-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        display: block;
-        flex-shrink: 0;
-    }
-
-    .status-dot.proceso { background: #ef6c00; }
-    .status-dot.completado { background: #2e7d32; }
-    .status-dot.no-completado { background: #c62828; }
-
-    .contrato-card .card-body {
-        padding: 16px;
-    }
-
-    .card-row {
-        display: flex;
-        margin-bottom: 8px;
-        font-size: 13px;
-        flex-wrap: wrap;
-    }
-
-    .card-row:last-child {
-        margin-bottom: 0;
-    }
-
-    .card-label {
-        width: 80px;
-        color: var(--gray-text);
-        flex-shrink: 0;
-    }
-
-    .card-value {
-        color: var(--dark-text);
-        font-weight: 500;
-        word-break: break-word;
-        flex: 1;
-    }
-
-    .contrato-card .card-actions {
-        display: flex;
-        gap: 8px;
-        padding: 12px 16px;
-        border-top: 1px solid var(--gray-border);
-        background: var(--gray-bg);
-        justify-content: flex-end;
-    }
-
-    .card-action {
-        width: 36px;
-        height: 36px;
-        border: 1px solid var(--gray-border);
-        background: white;
-        border-radius: 10px;
-        color: var(--gray-text);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-    }
-
-    .card-action:hover {
-        border-color: var(--orange);
-        color: var(--orange);
-        background: white;
-    }
-
-    .pagination {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin-top: 24px;
-        flex-wrap: wrap;
-    }
-
-    .page-link {
-        width: 38px;
-        height: 38px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid var(--gray-border);
-        border-radius: 10px;
-        color: #666;
-        text-decoration: none;
-        transition: all 0.2s;
-        background: white;
-    }
-
-    .page-link:hover {
-        border-color: var(--orange);
-        color: var(--orange);
-        background: var(--orange-light);
-    }
-
-    .page-info {
-        padding: 0 12px;
-        color: var(--gray-text);
-        font-size: 13px;
-        font-weight: 500;
-    }
-
-    .empty, .empty-mobile {
-        text-align: center;
-        padding: 48px !important;
-        color: var(--gray-text);
-        font-size: 14px;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
+    /* ===== RESPONSIVE ===== */
+    @media screen and (max-width: 768px) {
+        .contratos-container {
+            height: calc(100vh - 80px);
+        }
+        
         .desktop-view {
             display: none;
         }
@@ -1232,11 +1648,21 @@
         }
         
         .stats-grid {
-            justify-content: flex-start;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
         }
         
         .stat-card {
-            flex: 0 1 auto;
+            justify-content: center;
+        }
+        
+        .page-numbers {
+            display: none;
+        }
+        
+        .page-selector-mobile {
+            display: flex;
         }
         
         .modal-grid.grid-2,
@@ -1248,10 +1674,6 @@
             flex-wrap: wrap;
         }
         
-        .foto-pago-actions {
-            flex-direction: column;
-        }
-        
         .filtros-activos {
             flex-direction: column;
             align-items: flex-start;
@@ -1261,50 +1683,46 @@
             align-self: flex-start;
         }
     }
-
-    @media (max-width: 480px) {
+    
+    @media screen and (max-width: 480px) {
         .stats-grid {
-            gap: 6px;
+            grid-template-columns: repeat(2, 1fr);
         }
         
         .stat-card {
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 5px 10px;
+        }
+        
+        .stat-value {
+            font-size: 13px;
         }
         
         .card-avatar {
-            width: 40px;
-            height: 40px;
-            font-size: 16px;
-        }
-        
-        .card-name {
+            width: 36px;
+            height: 36px;
             font-size: 14px;
         }
         
+        .card-name {
+            font-size: 13px;
+        }
+        
         .card-label {
-            width: 70px;
-            font-size: 12px;
+            width: 65px;
+            font-size: 10px;
         }
         
         .card-value {
-            font-size: 12px;
+            font-size: 11px;
         }
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
+        
+        .pagination-info {
+            font-size: 10px;
         }
-        to {
-            opacity: 1;
-            transform: translateY(0);
+        
+        .page-link {
+            width: 30px;
+            height: 30px;
         }
     }
 </style>
@@ -1314,6 +1732,7 @@
     // Variables globales
     let contratoData = null;
     let searchTimeout;
+    let contratoPagoId = null;
     
     // Función para aplicar filtros con recarga de página
     function aplicarFiltros() {
@@ -1327,7 +1746,7 @@
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
         
-        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+        {% if es_admin %}
         const vendedor = document.getElementById('filterVendedor')?.value || '';
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
@@ -1353,7 +1772,7 @@
     });
     
     // Filtro por vendedor (solo si existe)
-    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+    {% if es_admin %}
     document.getElementById('filterVendedor')?.addEventListener('change', function() {
         aplicarFiltros();
     });
@@ -1364,12 +1783,19 @@
         const url = new URL(window.location.href);
         url.searchParams.delete('estado');
         url.searchParams.delete('busqueda');
-        {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+        {% if es_admin %}
         url.searchParams.delete('vendedor');
         {% endif %}
         url.searchParams.delete('page');
         window.location.href = url.toString();
     }
+    
+    // Selector de página para móvil
+    document.getElementById('pageSelect')?.addEventListener('change', function() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', this.value);
+        window.location.href = url.toString();
+    });
     
     // Función para ver detalle del contrato
     function verContrato(id) {
@@ -1529,18 +1955,185 @@
         document.getElementById('imagenModal').style.display = 'none';
     }
     
-    // Función para editar (redirige)
     function editarContrato(id) {
         window.location.href = `/contrato/${id}/editar/`;
     }
     
+    // Función para abrir el modal de pago
+    function abrirModalPago(contratoId) {
+        contratoPagoId = contratoId;
+        
+        Swal.fire({
+            title: 'Cargando...',
+            text: 'Obteniendo información del contrato',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Obtener datos del cliente
+        fetch(`/datos-contrato/${contratoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                
+                if (!data.error) {
+                    document.getElementById('modalPagoCliente').textContent = 
+                        `${data.cliente.nombre} ${data.cliente.apellido} - C.I: ${data.cliente.cedula}`;
+                    document.getElementById('modalPagoAvatar').textContent = 
+                        (data.cliente.nombre[0] + data.cliente.apellido[0]).toUpperCase();
+                    document.getElementById('contratoId').value = contratoId;
+                    
+                    // Si ya tiene algún dato, precargarlo
+                    if (data.numero_pago_movil) {
+                        document.getElementById('numero_pago_movil').value = data.numero_pago_movil;
+                    }
+                    
+                    // Mostrar modal
+                    document.getElementById('modalPago').style.display = 'flex';
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error || 'Error al cargar los datos',
+                        confirmButtonColor: '#ff6b00'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.close();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo cargar la información del contrato',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
+    }
+    
+    // Función para cerrar el modal de pago
+    function cerrarModalPago() {
+        document.getElementById('modalPago').style.display = 'none';
+        document.getElementById('formCompletarPago').reset();
+        document.querySelector('.upload-preview').style.display = 'none';
+        document.querySelector('.upload-placeholder').style.display = 'block';
+        contratoPagoId = null;
+    }
+    
+    // Manejar la subida de imágenes
+    document.getElementById('fileUploadArea')?.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('foto_pago').click();
+    });
+    
+    document.getElementById('foto_pago')?.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Validar tipo
+            const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Formato de imagen no válido. Usa JPG, PNG, GIF o WEBP',
+                    confirmButtonColor: '#ff6b00'
+                });
+                this.value = '';
+                return;
+            }
+            
+            // Validar tamaño (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'La imagen no debe superar los 5MB',
+                    confirmButtonColor: '#ff6b00'
+                });
+                this.value = '';
+                return;
+            }
+            
+            // Mostrar preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('uploadPreview').src = e.target.result;
+                document.querySelector('.upload-placeholder').style.display = 'none';
+                document.querySelector('.upload-preview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    function removerImagen() {
+        document.getElementById('foto_pago').value = '';
+        document.querySelector('.upload-preview').style.display = 'none';
+        document.querySelector('.upload-placeholder').style.display = 'block';
+    }
+    
+    // Enviar formulario de pago
+    document.getElementById('formCompletarPago')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const contratoId = document.getElementById('contratoId').value;
+        
+        // Mostrar loading
+        Swal.fire({
+            title: 'Guardando...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        fetch(`/contrato/${contratoId}/completar-pago/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            
+            if (data.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: data.message,
+                    confirmButtonColor: '#ff6b00'
+                }).then(() => {
+                    cerrarModalPago();
+                    location.reload(); // Recargar para actualizar los botones
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.error || 'Error al guardar la información',
+                    confirmButtonColor: '#ff6b00'
+                });
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            console.error('Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error de conexión al servidor',
+                confirmButtonColor: '#ff6b00'
+            });
+        });
+    });
+    
     // Mostrar indicador de filtros activos al cargar la página
     document.addEventListener('DOMContentLoaded', function() {
-        const modal = document.getElementById('contratoModal');
-        if (!modal) {
-            console.error('Error: No se encontró el modal en el DOM');
-        }
-        
         // Verificar filtros activos
         const urlParams = new URLSearchParams(window.location.search);
         const busqueda = urlParams.get('busqueda');
@@ -1576,6 +2169,7 @@
         if (e.key === 'Escape') {
             cerrarModal();
             cerrarImagenModal();
+            cerrarModalPago();
         }
     });
     
@@ -1584,6 +2178,7 @@
         overlay.addEventListener('click', function() {
             cerrarModal();
             cerrarImagenModal();
+            cerrarModalPago();
         });
     });
 </script>

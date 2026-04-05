@@ -1,5 +1,6 @@
 from email.headerregistry import Group
 import json
+import os
 from django.http import JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -13,7 +14,7 @@ from .forms import ClientePotencialForm, ContratoClienteForm
 from django.contrib.auth.models import User, Group 
 from .decorators import admin_required
 from myapp.models import *
-
+from django.views.decorators.csrf import csrf_exempt
 
 # ============================================
 # VISTA PARA LISTAR CLIENTES
@@ -782,3 +783,51 @@ def estado_cuadrillas(request):
         'es_admin': es_admin,
     }
     return render(request, 'Vendedores/estado_cuadrillas.html', context)
+
+
+
+@login_required
+@csrf_exempt
+def completar_pago(request, contrato_id):
+    """API para completar el pago del contrato"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    contrato = get_object_or_404(ContratoCliente, id=contrato_id)
+    
+    
+    
+    
+    try:
+        numero_pago_movil = request.POST.get('numero_pago_movil', '').strip()
+        foto_pago = request.FILES.get('foto_pago')
+        
+        # Validar que al menos un campo tenga información
+        if not numero_pago_movil and not foto_pago:
+            return JsonResponse({'error': 'Debes proporcionar al menos el número de pago móvil o la foto del comprobante'}, status=400)
+        
+        # Guardar número de pago móvil
+        if numero_pago_movil:
+            contrato.numero_pago_movil = numero_pago_movil
+        
+        # Guardar foto del pago
+        if foto_pago:
+            # Validar tipo de archivo
+           
+            # Validar tamaño (máximo 5MB)
+            if foto_pago.size > 5 * 1024 * 1024:
+                return JsonResponse({'error': 'La imagen no debe superar los 5MB'}, status=400)
+            
+            contrato.foto_pago = foto_pago
+        
+        contrato.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Información de pago actualizada correctamente',
+            'numero_pago_movil': contrato.numero_pago_movil,
+            'foto_pago_url': contrato.foto_pago.url if contrato.foto_pago else None
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

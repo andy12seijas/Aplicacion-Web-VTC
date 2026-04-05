@@ -867,3 +867,132 @@ class CambiarEstadoVentaForm(forms.Form):
         choices=VentaDirecta.EstadoVenta.choices,
         widget=forms.Select(attrs={'class': 'form-select'})
     )    
+    
+    
+class SoporteForm(forms.ModelForm):
+    """Formulario para crear/editar soportes"""
+    
+    # Campo para múltiples fotos
+    fotos_upload = MultipleFileField(
+        required=False,
+        label="Fotos del soporte",
+        help_text="Puedes seleccionar múltiples imágenes (JPG, PNG, GIF - Máx. 5MB cada una)"
+    )
+    
+    class Meta:
+        model = Soporte
+        fields = [
+            'instalacion', 'tipo', 'fecha_hora_servicio',
+            'falla_encontrada', 'solucion',
+            'modelo_modem', 'sn_modem', 'mac_modem',  # ← NUEVOS CAMPOS
+            'inicio_fibra', 'final_fibra',
+            'conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos',
+            'pin_ubicacion_lat', 'pin_ubicacion_lng',
+            'puerto_nap_utilizado', 'caja_nap_utilizada',
+            'observaciones'
+        ]
+        widgets = {
+            'instalacion': forms.HiddenInput(),
+            'tipo': forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo'}),
+            'fecha_hora_servicio': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'falla_encontrada': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la falla encontrada...'}),
+            'solucion': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la solución aplicada...'}),
+            'modelo_modem': forms.Select(attrs={'class': 'form-control'}),  # ← NUEVO
+            'sn_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Serial del módem (Ej: ABC123XYZ)'}),  # ← NUEVO
+            'mac_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'MAC Address (Ej: 00:1A:2B:3C:4D:5E)'}),  # ← NUEVO
+            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 100'}),
+            'final_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 115'}),
+            'conectores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores usados'}),
+            'rosetas': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de rosetas usadas'}),
+            'patch_cord': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de patch cord usados'}),
+            'tensores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de tensores usados'}),
+            'conectores_malos': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores malos'}),
+            'pin_ubicacion_lat': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: 10.123456', 'id': 'id_pin_lat'}),
+            'pin_ubicacion_lng': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: -66.123456', 'id': 'id_pin_lng'}),
+            'puerto_nap_utilizado': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: P1, P2, P3...'}),
+            'caja_nap_utilizada': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CAJA-001, NAP-002...'}),
+            'observaciones': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Observaciones adicionales...'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Si es edición, cargar las fotos existentes
+        if self.instance and self.instance.pk and self.instance.fotos:
+            self.initial['fotos_upload'] = self.instance.fotos
+        
+        # Filtrar solo modelos activos
+        from myapp.models import ModeloModem
+        self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
+        self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
+    
+    def clean_mac_modem(self):
+        """Validar formato de MAC address"""
+        mac = self.cleaned_data.get('mac_modem')
+        if mac:
+            import re
+            # Formato MAC: XX:XX:XX:XX:XX:XX o XX-XX-XX-XX-XX-XX
+            pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+            if not re.match(pattern, mac):
+                raise forms.ValidationError('Formato de MAC inválido. Use formato XX:XX:XX:XX:XX:XX')
+            # Normalizar a mayúsculas
+            mac = mac.upper()
+        return mac
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        inicio_fibra = cleaned_data.get('inicio_fibra')
+        final_fibra = cleaned_data.get('final_fibra')
+        
+        if inicio_fibra and final_fibra and final_fibra <= inicio_fibra:
+            self.add_error('final_fibra', 'El valor FINAL debe ser mayor que INICIO')
+        
+        # Validar que si se ingresa latitud, también se ingrese longitud
+        pin_lat = cleaned_data.get('pin_ubicacion_lat')
+        pin_lng = cleaned_data.get('pin_ubicacion_lng')
+        
+        if pin_lat and not pin_lng:
+            self.add_error('pin_ubicacion_lng', 'Debe ingresar la longitud junto con la latitud')
+        if pin_lng and not pin_lat:
+            self.add_error('pin_ubicacion_lat', 'Debe ingresar la latitud junto con la longitud')
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        soporte = super().save(commit=False)
+        
+        if commit:
+            soporte.save()
+            self.save_m2m()
+            
+            # Procesar las fotos subidas
+            fotos = self.cleaned_data.get('fotos_upload', [])
+            if fotos:
+                fotos_urls = []
+                from django.core.files.storage import default_storage
+                import os
+                from django.utils import timezone
+                
+                for foto in fotos:
+                    # Guardar foto
+                    extension = os.path.splitext(foto.name)[1].lower()
+                    nombre_archivo = f"soporte_{soporte.id}_{timezone.now().timestamp()}{extension}"
+                    ruta = os.path.join('soportes', nombre_archivo)
+                    
+                    saved_path = default_storage.save(ruta, foto)
+                    fotos_urls.append(default_storage.url(saved_path))
+                
+                # Actualizar el campo fotos del soporte
+                if soporte.fotos:
+                    soporte.fotos.extend(fotos_urls)
+                else:
+                    soporte.fotos = fotos_urls
+                soporte.save()
+        
+        return soporte
+
+class SoporteFotosForm(forms.Form):
+    """Formulario para subir fotos adicionales al soporte"""
+    fotos = MultipleFileField(
+        required=False,
+        label="Agregar más fotos"
+    )

@@ -16,265 +16,310 @@
 {% endblock %}
 
 {% block content %}
-<!-- Estadísticas compactas -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-value">{{ total_clientes }}</span>
-        <span class="stat-label">Total</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ interesados }}</span>
-        <span class="stat-label">Interesados</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ tal_vez }}</span>
-        <span class="stat-label">Tal vez</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ no_interesados }}</span>
-        <span class="stat-label">No</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ con_internet }}</span>
-        <span class="stat-label">Con Internet</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ clientes_hoy }}</span>
-        <span class="stat-label">Hoy</span>
-    </div>
-</div>
-
-<!-- Filtros -->
-<div class="filters-container">
-    <div class="filters-grid">
-        <!-- Búsqueda -->
-        <div class="search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Buscar por nombre, cédula, teléfono..." 
-                   id="searchInput" value="{{ busqueda }}">
+<div class="clientes-container">
+    <!-- Estadísticas compactas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_clientes }}</span>
+            <span class="stat-label">Total</span>
         </div>
-        
-        <!-- Filtro por interés -->
-        <select id="filterInteres" class="filter-select">
-            <option value="">Todos los intereses</option>
-            <option value="SI" {% if interes_seleccionado == 'SI' %}selected{% endif %}>Sí</option>
-            <option value="TAL_VEZ" {% if interes_seleccionado == 'TAL_VEZ' %}selected{% endif %}>Tal vez</option>
-            <option value="NO" {% if interes_seleccionado == 'NO' %}selected{% endif %}>No</option>
-        </select>
-        
-        <!-- Filtro por internet -->
-        <select id="filterInternet" class="filter-select">
-            <option value="">Todos</option>
-            <option value="si" {% if internet_seleccionado == 'si' %}selected{% endif %}>Con internet</option>
-            <option value="no" {% if internet_seleccionado == 'no' %}selected{% endif %}>Sin internet</option>
-        </select>
-        
-        <!-- FILTRO POR VENDEDOR (solo para administradores) -->
-        {% if es_admin %}
-        <select id="filterVendedor" class="filter-select">
-            <option value="">Todos los vendedores</option>
-            {% for vendedor in vendedores %}
-            <option value="{{ vendedor.username }}" {% if vendedor_filtro == vendedor.username %}selected{% endif %}>
-                {{ vendedor.get_full_name|default:vendedor.username }}
-            </option>
-            {% endfor %}
-        </select>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Indicador de filtros activos -->
-<div id="filtrosActivos" class="filtros-activos" style="display: none;">
-    <span class="filtros-label">📌 Filtros activos:</span>
-    <span class="filtros-lista" id="filtrosLista"></span>
-    <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
-</div>
-
-<!-- Vista Desktop: Tabla -->
-<div class="desktop-view">
-    <div class="table-container">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Cédula</th>
-                    <th>Nombre</th>
-                    <th>Teléfono</th>
-                    <th>Interés</th>
-                    <th>Internet</th>
-                    <th>Fecha</th>
-                    {% if es_admin %}
-                    <th>Vendedor</th>
-                    {% endif %}
-                    <th>Acciones</th>
-                </thead>
-            <tbody>
-                {% for cliente in page_obj %}
-                 <tr>
-                    <td class="cedula-cell">{{ cliente.cedula }}</td>
-                    <td>
-                        <div class="user-cell">
-                            <span class="user-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
-                            <div>
-                                <div class="user-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="telefono-cell">{{ cliente.telefono }}</td>
-                    <td>
-                        <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
-                            {{ cliente.get_interesado_display }}
-                        </span>
-                    </td>
-                    <td>
-                        {% if cliente.posee_internet %}
-                        <span class="badge badge-info">Sí</span>
-                        {% else %}
-                        <span class="badge badge-secondary">No</span>
-                        {% endif %}
-                    </td>
-                    <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
-                    {% if es_admin %}
-                    <td>
-                        <span class="vendedor-badge">
-                            {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
-                        </span>
-                    </td>
-                    {% endif %}     
-                    <td>
-                        <div class="actions">
-                            <button class="action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="3"/>
-                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                                </svg>
-                            </button>
-                            {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                            <button class="action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                </svg>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Vista Mobile: Cards -->
-<div class="mobile-view">
-    {% for cliente in page_obj %}
-    <div class="card cliente-card">
-        <div class="card-header">
-            <div class="card-user">
-                <span class="card-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
-                <div>
-                    <div class="card-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
-                    <div class="card-meta">
-                        <span class="card-meta-item">C.I: {{ cliente.cedula }}</span>
-                        <span class="card-meta-item">📞 {{ cliente.telefono }}</span>
-                    </div>
-                </div>
-            </div>
-            <span class="status-dot {% if cliente.interesado == 'SI' %}active{% elif cliente.interesado == 'TAL_VEZ' %}warning{% else %}inactive{% endif %}"></span>
+        <div class="stat-card">
+            <span class="stat-value">{{ interesados }}</span>
+            <span class="stat-label">Interesados</span>
         </div>
-        
-        <div class="card-body">
-            <div class="card-row">
-                <span class="card-label">Interés:</span>
-                <span class="card-value">
-                    <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
-                        {{ cliente.get_interesado_display }}
-                    </span>
-                </span>
+        <div class="stat-card">
+            <span class="stat-value">{{ tal_vez }}</span>
+            <span class="stat-label">Tal vez</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ no_interesados }}</span>
+            <span class="stat-label">No</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ con_internet }}</span>
+            <span class="stat-label">Con Internet</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ clientes_hoy }}</span>
+            <span class="stat-label">Hoy</span>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-container">
+        <div class="filters-grid">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" placeholder="Buscar..." id="searchInput" value="{{ busqueda }}">
             </div>
-            <div class="card-row">
-                <span class="card-label">Internet:</span>
-                <span class="card-value">
-                    {% if cliente.posee_internet %}
-                    <span class="badge badge-info">Sí</span>
-                    {% else %}
-                    <span class="badge badge-secondary">No</span>
-                    {% endif %}
-                </span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">Registro:</span>
-                <span class="card-value">{{ cliente.fecha_registro|date:"d/m/Y" }}</span>
-            </div>
+            <select id="filterInteres" class="filter-select">
+                <option value="">Todos los intereses</option>
+                <option value="SI" {% if interes_seleccionado == 'SI' %}selected{% endif %}>Sí</option>
+                <option value="TAL_VEZ" {% if interes_seleccionado == 'TAL_VEZ' %}selected{% endif %}>Tal vez</option>
+                <option value="NO" {% if interes_seleccionado == 'NO' %}selected{% endif %}>No</option>
+            </select>
+            <select id="filterInternet" class="filter-select">
+                <option value="">Todos</option>
+                <option value="si" {% if internet_seleccionado == 'si' %}selected{% endif %}>Con internet</option>
+                <option value="no" {% if internet_seleccionado == 'no' %}selected{% endif %}>Sin internet</option>
+            </select>
             {% if es_admin %}
-            <div class="card-row">
-                <span class="card-label">Vendedor:</span>
-                <span class="card-value">
-                    <span class="vendedor-badge">
-                        {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
-                    </span>
-                </span>
-            </div>
+            <select id="filterVendedor" class="filter-select">
+                <option value="">Todos los vendedores</option>
+                {% for vendedor in vendedores %}
+                <option value="{{ vendedor.username }}" {% if vendedor_filtro == vendedor.username %}selected{% endif %}>
+                    {{ vendedor.get_full_name|default:vendedor.username }}
+                </option>
+                {% endfor %}
+            </select>
             {% endif %}
         </div>
-        
-        <div class="card-actions">
-            <button class="card-action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                </svg>
-            </button>
-            <button class="card-action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                </svg>
-            </button>
+    </div>
+
+    <!-- Indicador de filtros activos -->
+    <div id="filtrosActivos" class="filtros-activos" style="display: none;">
+        <span class="filtros-label">📌 Filtros activos:</span>
+        <span class="filtros-lista" id="filtrosLista"></span>
+        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar ✕</button>
+    </div>
+
+    <!-- Contenedor con scroll (SOLO para la tabla/cards) -->
+    <div class="clientes-scroll-wrapper">
+        <!-- Vista Desktop: Tabla -->
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Cédula</th>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Interés</th>
+                            <th>Internet</th>
+                            <th>Fecha</th>
+                            {% if es_admin %}
+                            <th>Vendedor</th>
+                            {% endif %}
+                            <th>Acciones</th>
+                        </thead>
+                    <tbody>
+                        {% for cliente in page_obj %}
+                        <tr>
+                            <td class="cedula-cell">{{ cliente.cedula }}</td>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="telefono-cell">{{ cliente.telefono }}</td>
+                            <td>
+                                <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
+                                    {{ cliente.get_interesado_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if cliente.posee_internet %}
+                                <span class="badge badge-info">Sí</span>
+                                {% else %}
+                                <span class="badge badge-secondary">No</span>
+                                {% endif %}
+                            </td>
+                            <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
+                            {% if es_admin %}
+                            <td>
+                                <span class="vendedor-badge">
+                                    {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
+                                </span>
+                            </td>
+                            {% endif %}     
+                            <td>
+                                <div class="actions">
+                                    <button class="action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                        </svg>
+                                    </button>
+                                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                                    <button class="action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Vista Mobile: Cards -->
+        <div class="mobile-view">
+            {% for cliente in page_obj %}
+            <div class="card cliente-card">
+                <div class="card-header">
+                    <div class="card-user">
+                        <span class="card-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
+                        <div>
+                            <div class="card-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
+                            <div class="card-meta">
+                                <span class="card-meta-item">C.I: {{ cliente.cedula }}</span>
+                                <span class="card-meta-item">📞 {{ cliente.telefono }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="status-dot {% if cliente.interesado == 'SI' %}active{% elif cliente.interesado == 'TAL_VEZ' %}warning{% else %}inactive{% endif %}"></span>
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-row">
+                        <span class="card-label">Interés:</span>
+                        <span class="card-value">
+                            <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
+                                {{ cliente.get_interesado_display }}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Internet:</span>
+                        <span class="card-value">
+                            {% if cliente.posee_internet %}
+                            <span class="badge badge-info">Sí</span>
+                            {% else %}
+                            <span class="badge badge-secondary">No</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">Registro:</span>
+                        <span class="card-value">{{ cliente.fecha_registro|date:"d/m/Y" }}</span>
+                    </div>
+                    {% if es_admin %}
+                    <div class="card-row">
+                        <span class="card-label">Vendedor:</span>
+                        <span class="card-value">
+                            <span class="vendedor-badge">
+                                {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
+                            </span>
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-actions">
+                    <button class="card-action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                        </svg>
+                    </button>
+                    <button class="card-action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-mobile">No hay clientes registrados</div>
+            {% endfor %}
         </div>
     </div>
-    {% empty %}
-    <div class="empty-mobile">No hay clientes registrados</div>
-    {% endfor %}
-</div>
 
-<!-- Paginación -->
-{% if page_obj.has_other_pages %}
-<div class="pagination">
-    {% if page_obj.has_previous %}
-    <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M15 18l-6-6 6-6"/>
-        </svg>
-    </a>
+    <!-- PAGINACIÓN - FUERA DEL SCROLL, SIEMPRE VISIBLE -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} clientes
+        </div>
+        
+        <div class="pagination-controls">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link" title="Primera página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link" title="Página anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </span>
+            {% endif %}
+
+            <div class="page-numbers">
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <span class="page-current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-num">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link" title="Página siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link" title="Última página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Selector de página para móvil (dropdown) -->
+        <div class="page-selector-mobile">
+            <span>Ir a página</span>
+            <select id="pageSelect" class="page-select">
+                {% for num in page_obj.paginator.page_range %}
+                <option value="{{ num }}" {% if num == page_obj.number %}selected{% endif %}>
+                    {{ num }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
     {% endif %}
-
-    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18l6-6-6-6"/>
-        </svg>
-    </a>
-    <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if interes_seleccionado %}&interes={{ interes_seleccionado }}{% endif %}{% if internet_seleccionado %}&internet={{ internet_seleccionado }}{% endif %}{% if vendedor_filtro %}&vendedor={{ vendedor_filtro }}{% endif %}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-        </svg>
-    </a>
-    {% endif %}
 </div>
-{% endif %}
 
 <!-- Modal para detalle de cliente -->
 <div id="clienteModal" class="modal" style="display: none;">
@@ -296,7 +341,6 @@
         </div>
         
         <div class="modal-body">
-            <!-- Información personal -->
             <div class="modal-section">
                 <h3 class="modal-section-title">Información Personal</h3>
                 <div class="modal-grid">
@@ -319,7 +363,6 @@
                 </div>
             </div>
             
-            <!-- Estado del cliente -->
             <div class="modal-section">
                 <h3 class="modal-section-title">Estado del Cliente</h3>
                 <div class="modal-grid">
@@ -334,7 +377,6 @@
                 </div>
             </div>
             
-            <!-- Información de registro -->
             <div class="modal-section">
                 <h3 class="modal-section-title">Información de Registro</h3>
                 <div class="modal-grid">
@@ -353,7 +395,6 @@
                 </div>
             </div>
             
-            <!-- Observación -->
             <div class="modal-section" id="modalObservacionSection" style="display: none;">
                 <h3 class="modal-section-title">Observación</h3>
                 <div class="modal-observacion" id="modalObservacion"></div>
@@ -369,18 +410,38 @@
 
 <style>
     /* ===== VARIABLES ===== */
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f9fafb;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fed7aa;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
+        --info: #3b82f6;
+        --info-light: #dbeafe;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
     .btn-orange {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         padding: 8px 16px;
-        background: #ff6b00;
+        background: var(--orange);
         color: white;
-        border-radius: 8px;
-        font-size: 14px;
+        border-radius: 12px;
+        font-size: 13px;
         font-weight: 500;
         text-decoration: none;
-        transition: all 0.2s;
+        transition: var(--transition);
         border: none;
         cursor: pointer;
     }
@@ -388,62 +449,67 @@
     .btn-orange:hover {
         background: #ff8c00;
         transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
     }
     
-    :root {
-        --orange: #ff6b00;
-        --orange-light: #fff2e6;
-        --gray-bg: #fafafa;
-        --gray-border: #f0f0f0;
-        --gray-text: #999;
-        --dark-text: #333;
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    .clientes-container {
+        height: calc(100vh - 120px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
     }
-
+    
     /* ===== STATS ===== */
     .stats-grid {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
+        flex-shrink: 0;
     }
-
+    
     .stat-card {
         background: white;
-        padding: 8px 16px;
+        padding: 6px 14px;
         border-radius: 30px;
         border: 1px solid var(--gray-border);
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        font-size: 13px;
-        transition: all 0.2s;
+        font-size: 12px;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
     }
-
+    
     .stat-card:hover {
         border-color: var(--orange);
         transform: translateY(-1px);
     }
-
+    
     .stat-value {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--orange);
+        font-size: 14px;
     }
-
+    
     .stat-label {
         color: var(--gray-text);
+        font-size: 11px;
     }
-
+    
     /* ===== FILTROS ===== */
     .filters-container {
-        margin-bottom: 20px;
+        margin-bottom: 12px;
+        flex-shrink: 0;
     }
-
+    
     .filters-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 8px;
     }
-
+    
     .search-box {
         display: flex;
         align-items: center;
@@ -452,54 +518,52 @@
         padding: 0 12px;
         border: 1px solid var(--gray-border);
         border-radius: 30px;
-        transition: all 0.2s;
-        min-width: 0;
+        transition: var(--transition);
     }
-
+    
     .search-box:focus-within {
         border-color: var(--orange);
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
-
+    
     .search-box input {
         border: none;
-        padding: 10px 0;
+        padding: 9px 0;
         width: 100%;
         outline: none;
         font-size: 13px;
         background: transparent;
     }
-
+    
     .filter-select {
-        padding: 10px 12px;
+        padding: 9px 12px;
         border: 1px solid var(--gray-border);
         border-radius: 30px;
         background: white;
         font-size: 13px;
-        color: var(--dark-text);
         outline: none;
         cursor: pointer;
-        transition: all 0.2s;
-        width: 100%;
+        transition: var(--transition);
     }
-
+    
     .filter-select:hover,
     .filter-select:focus {
         border-color: var(--orange);
     }
-
+    
     /* ===== FILTROS ACTIVOS ===== */
     .filtros-activos {
         background: #e3f2fd;
         border-left: 4px solid #2196f3;
-        border-radius: 8px;
-        padding: 12px 16px;
-        margin-bottom: 20px;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 12px;
-        font-size: 13px;
+        gap: 8px;
+        font-size: 12px;
+        flex-shrink: 0;
     }
     
     .filtros-label {
@@ -510,359 +574,389 @@
     .filtros-lista {
         color: #555;
         flex: 1;
+        font-size: 11px;
     }
     
     .btn-limpiar-filtros {
         background: white;
         border: 1px solid #2196f3;
         color: #2196f3;
-        padding: 6px 12px;
+        padding: 4px 10px;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 11px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: var(--transition);
     }
     
-    .btn-limpiar-filtros:hover {
-        background: #2196f3;
-        color: white;
+    /* ===== WRAPPER CON SCROLL - SOLO PARA CONTENIDO ===== */
+    .clientes-scroll-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        margin-right: -4px;
+        min-height: 0; /* Importante para que flex funcione correctamente */
     }
-
-    /* ===== TABLA DESKTOP ===== */
+    
+    .clientes-scroll-wrapper::-webkit-scrollbar {
+        width: 5px;
+    }
+    
+    .clientes-scroll-wrapper::-webkit-scrollbar-track {
+        background: var(--gray-border);
+        border-radius: 10px;
+    }
+    
+    .clientes-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: var(--orange);
+        border-radius: 10px;
+    }
+    
+    /* ===== TABLA ===== */
     .desktop-view {
         display: block;
         background: white;
         border-radius: 16px;
         border: 1px solid var(--gray-border);
         overflow: auto;
-        margin-bottom: 20px;
+        margin-bottom: 12px;
     }
-
+    
     .table-container {
         overflow-x: auto;
     }
-
+    
     .table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
-        min-width: 800px;
+        font-size: 12px;
+        min-width: 700px;
     }
-
+    
     .table th {
         text-align: left;
-        padding: 14px 16px;
-        font-weight: 500;
+        padding: 12px 12px;
+        font-weight: 600;
         color: var(--gray-text);
-        background: var(--gray-bg);
+        background: #f9fafb;
         border-bottom: 1px solid var(--gray-border);
         font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        white-space: nowrap;
     }
-
+    
     .table td {
-        padding: 12px 16px;
+        padding: 10px 12px;
         border-bottom: 1px solid var(--gray-border);
         color: var(--dark-text);
-        white-space: nowrap;
     }
-
+    
     .table tbody tr:hover {
         background: var(--gray-bg);
     }
-
-    .cedula-cell,
-    .telefono-cell,
-    .fecha-cell {
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 12px;
-    }
-
-    /* ===== BADGES ===== */
-    .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 30px;
-        font-size: 11px;
-        font-weight: 500;
-        white-space: nowrap;
-    }
-
-    .badge-success {
-        background: #e8f5e9;
-        color: #2e7d32;
-    }
-
-    .badge-warning {
-        background: #fff3e0;
-        color: #ef6c00;
-    }
-
-    .badge-danger {
-        background: #ffebee;
-        color: #c62828;
-    }
-
-    .badge-info {
-        background: #e3f2fd;
-        color: #1565c0;
-    }
-
-    .badge-secondary {
-        background: #f5f5f5;
-        color: #616161;
-    }
-
-    .vendedor-badge {
-        display: inline-block;
-        padding: 4px 8px;
-        background: #f0f0f0;
-        border-radius: 20px;
-        font-size: 11px;
-        color: #555;
-    }
-
-    /* ===== USER AVATAR ===== */
+    
     .user-cell {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
-
+    
     .user-avatar {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         background: var(--orange);
         color: white;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 500;
-        font-size: 13px;
-        flex-shrink: 0;
+        font-weight: 600;
+        font-size: 11px;
     }
-
-    .user-name {
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
         font-weight: 500;
-        color: var(--dark-text);
-        font-size: 13px;
-        white-space: nowrap;
     }
-
-    /* ===== ACTION BUTTONS ===== */
+    
+    .badge-success { background: var(--success-light); color: #065f46; }
+    .badge-warning { background: var(--warning-light); color: #9b2c1d; }
+    .badge-danger { background: var(--danger-light); color: #991b1b; }
+    .badge-info { background: var(--info-light); color: #1e40af; }
+    .badge-secondary { background: #f3f4f6; color: #4b5563; }
+    
+    .vendedor-badge {
+        display: inline-block;
+        padding: 3px 6px;
+        background: #f3f4f6;
+        border-radius: 20px;
+        font-size: 10px;
+        color: #4b5563;
+    }
+    
     .actions {
         display: flex;
-        gap: 6px;
+        gap: 5px;
     }
-
+    
     .action-btn {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border: 1px solid var(--gray-border);
         background: white;
-        border-radius: 8px;
+        border-radius: 6px;
         color: var(--gray-text);
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
-        flex-shrink: 0;
+        transition: var(--transition);
     }
-
+    
     .action-btn:hover {
         border-color: var(--orange);
         color: var(--orange);
         background: var(--orange-light);
     }
-
+    
     /* ===== MOBILE CARDS ===== */
     .mobile-view {
         display: none;
     }
-
+    
     .cliente-card {
         background: white;
         border: 1px solid var(--gray-border);
-        border-radius: 16px;
+        border-radius: 14px;
         overflow: hidden;
-        margin-bottom: 12px;
+        margin-bottom: 10px;
     }
-
+    
     .cliente-card .card-header {
-        padding: 16px;
-        background: var(--gray-bg);
+        padding: 12px;
+        background: #f9fafb;
         border-bottom: 1px solid var(--gray-border);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
-        position: relative;
     }
-
+    
     .card-user {
         display: flex;
         align-items: center;
-        gap: 12px;
-        min-width: 0;
+        gap: 10px;
         flex: 1;
+        min-width: 0;
     }
-
+    
     .card-avatar {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         background: var(--orange);
         color: white;
-        border-radius: 12px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 600;
-        font-size: 18px;
+        font-size: 16px;
         flex-shrink: 0;
     }
-
+    
     .card-name {
         font-weight: 600;
-        color: var(--dark-text);
-        font-size: 15px;
-        margin-bottom: 4px;
+        font-size: 14px;
+        margin-bottom: 2px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-
-    .card-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
+    
     .card-meta-item {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--gray-text);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
-
+    
     .status-dot {
-        width: 10px;
-        height: 10px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
-        display: block;
         flex-shrink: 0;
     }
-
-    .status-dot.active { background: #4caf50; }
-    .status-dot.warning { background: #ff9800; }
-    .status-dot.inactive { background: #f44336; }
-
+    .status-dot.active { background: var(--success); }
+    .status-dot.warning { background: var(--warning); }
+    .status-dot.inactive { background: var(--danger); }
+    
     .cliente-card .card-body {
-        padding: 16px;
+        padding: 12px;
     }
-
+    
     .card-row {
         display: flex;
         margin-bottom: 8px;
-        font-size: 13px;
-        flex-wrap: wrap;
+        font-size: 12px;
     }
-
+    
     .card-row:last-child {
         margin-bottom: 0;
     }
-
+    
     .card-label {
-        width: 80px;
+        width: 70px;
         color: var(--gray-text);
         flex-shrink: 0;
+        font-size: 11px;
     }
-
+    
     .card-value {
         color: var(--dark-text);
         font-weight: 500;
-        word-break: break-word;
         flex: 1;
     }
-
+    
     .cliente-card .card-actions {
         display: flex;
         gap: 8px;
-        padding: 12px 16px;
+        padding: 10px 12px;
         border-top: 1px solid var(--gray-border);
-        background: var(--gray-bg);
+        background: #f9fafb;
         justify-content: flex-end;
     }
-
+    
     .card-action-btn {
-        width: 36px;
-        height: 36px;
+        width: 32px;
+        height: 32px;
         border: 1px solid var(--gray-border);
         background: white;
-        border-radius: 10px;
-        color: var(--gray-text);
+        border-radius: 8px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
+        transition: var(--transition);
     }
-
-    .card-action-btn:hover {
-        border-color: var(--orange);
-        color: var(--orange);
+    
+    /* ===== PAGINACIÓN - SIEMPRE VISIBLE ===== */
+    .pagination-container {
+        flex-shrink: 0;
         background: white;
+        border-radius: 14px;
+        border: 1px solid var(--gray-border);
+        padding: 12px;
+        margin-top: 8px;
     }
-
-    /* ===== PAGINATION ===== */
-    .pagination {
+    
+    .pagination-info {
+        text-align: center;
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-bottom: 10px;
+    }
+    
+    .pagination-controls {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        margin-top: 24px;
+        gap: 6px;
         flex-wrap: wrap;
     }
-
+    
     .page-link {
-        width: 38px;
-        height: 38px;
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
         border: 1px solid var(--gray-border);
-        border-radius: 10px;
-        color: #666;
+        border-radius: 8px;
+        color: var(--gray-text);
         text-decoration: none;
-        transition: all 0.2s;
+        transition: var(--transition);
         background: white;
     }
-
-    .page-link:hover {
+    
+    .page-link:hover:not(.disabled) {
         border-color: var(--orange);
         color: var(--orange);
         background: var(--orange-light);
     }
-
-    .page-info {
-        padding: 0 12px;
-        color: var(--gray-text);
-        font-size: 13px;
-        font-weight: 500;
+    
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f5f5f5;
     }
-
+    
+    .page-numbers {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .page-num {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        color: var(--gray-text);
+        text-decoration: none;
+        font-size: 13px;
+        transition: var(--transition);
+        background: white;
+    }
+    
+    .page-num:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .page-current {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    
+    .page-selector-mobile {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--gray-border);
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    .page-select {
+        padding: 6px 10px;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        background: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
     .empty, .empty-mobile {
         text-align: center;
-        padding: 48px !important;
+        padding: 40px !important;
         color: var(--gray-text);
-        font-size: 14px;
     }
-
-    /* ===== MODAL STYLES ===== */
+    
+    /* ===== MODAL ===== */
     .modal {
         position: fixed;
         top: 0;
@@ -883,91 +977,79 @@
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
         backdrop-filter: blur(4px);
-        animation: fadeIn 0.2s ease;
     }
     
     .modal-container {
         position: relative;
         width: 90%;
-        max-width: 600px;
-        max-height: 90vh;
+        max-width: 500px;
+        max-height: 85vh;
         overflow-y: auto;
         background: white;
-        border-radius: 24px;
+        border-radius: 20px;
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-        animation: slideUp 0.3s ease;
         z-index: 2001;
     }
     
     .modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 24px;
+        padding: 16px;
         border-bottom: 1px solid var(--gray-border);
-        background: var(--gray-bg);
-        border-radius: 24px 24px 0 0;
+        background: #f9fafb;
+        border-radius: 20px 20px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
     
     .modal-header-info {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
     }
     
     .modal-avatar {
-        width: 64px;
-        height: 64px;
+        width: 50px;
+        height: 50px;
         background: var(--orange);
         color: white;
-        border-radius: 16px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 600;
-        font-size: 24px;
-        flex-shrink: 0;
+        font-size: 20px;
     }
     
     .modal-header-info h2 {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 600;
-        color: var(--dark-text);
-        margin-bottom: 4px;
+        margin-bottom: 2px;
     }
     
     .modal-header-info p {
-        font-size: 14px;
+        font-size: 12px;
         color: var(--gray-text);
     }
     
     .modal-close {
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         border: 1px solid var(--gray-border);
         background: white;
-        border-radius: 12px;
-        color: var(--gray-text);
+        border-radius: 8px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.2s;
-    }
-    
-    .modal-close:hover {
-        border-color: var(--orange);
-        color: var(--orange);
-        background: var(--orange-light);
     }
     
     .modal-body {
-        padding: 24px;
+        padding: 16px;
     }
     
     .modal-section {
-        margin-bottom: 24px;
-        padding-bottom: 24px;
+        margin-bottom: 16px;
+        padding-bottom: 16px;
         border-bottom: 1px solid var(--gray-border);
     }
     
@@ -978,96 +1060,77 @@
     }
     
     .modal-section-title {
-        font-size: 16px;
+        font-size: 14px;
         font-weight: 600;
-        color: var(--dark-text);
-        margin-bottom: 16px;
+        margin-bottom: 12px;
     }
     
     .modal-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
+        gap: 12px;
     }
     
     .modal-item {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 2px;
     }
     
     .modal-label {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--gray-text);
         text-transform: uppercase;
-        letter-spacing: 0.3px;
     }
     
     .modal-value {
-        font-size: 14px;
-        color: var(--dark-text);
+        font-size: 13px;
         font-weight: 500;
-        word-break: break-word;
     }
     
     .modal-observacion {
-        padding: 16px;
-        background: var(--gray-bg);
-        border-radius: 12px;
-        font-size: 14px;
-        color: var(--dark-text);
-        line-height: 1.6;
-        white-space: pre-wrap;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 10px;
+        font-size: 13px;
+        line-height: 1.5;
     }
     
     .modal-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--gray-border);
+        background: #f9fafb;
+        border-radius: 0 0 20px 20px;
         display: flex;
         justify-content: flex-end;
-        gap: 12px;
-        padding: 20px 24px;
-        border-top: 1px solid var(--gray-border);
-        background: var(--gray-bg);
-        border-radius: 0 0 24px 24px;
+        gap: 10px;
     }
     
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+    .btn-outline {
+        padding: 6px 14px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
     }
     
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .btn-primary {
+        padding: 6px 14px;
+        background: var(--orange);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
     }
-
+    
     /* ===== RESPONSIVE ===== */
-    
-    /* Tablet (768px - 1024px) */
-    @media screen and (max-width: 1024px) {
-        .table {
-            font-size: 12px;
-        }
-        
-        .table th,
-        .table td {
-            padding: 12px;
-        }
-        
-        .user-avatar {
-            width: 28px;
-            height: 28px;
-            font-size: 12px;
-        }
-    }
-    
-    /* Móvil Grande (576px - 768px) */
     @media screen and (max-width: 768px) {
+        .clientes-container {
+            height: calc(100vh - 80px);
+        }
+        
         .desktop-view {
             display: none;
         }
@@ -1081,152 +1144,88 @@
         }
         
         .stats-grid {
-            justify-content: center;
-        }
-        
-        .stat-card {
-            flex: 1 1 auto;
-            min-width: calc(50% - 8px);
-            justify-content: center;
-        }
-        
-        .pagination {
-            gap: 4px;
-        }
-        
-        .page-link {
-            width: 34px;
-            height: 34px;
-        }
-
-        .modal-container {
-            width: 95%;
-            max-height: 95vh;
-        }
-
-        .modal-header {
-            padding: 16px;
-        }
-
-        .modal-avatar {
-            width: 48px;
-            height: 48px;
-            font-size: 20px;
-        }
-
-        .modal-header-info h2 {
-            font-size: 18px;
-        }
-
-        .modal-body {
-            padding: 16px;
-        }
-
-        .modal-grid {
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-
-        .modal-footer {
-            padding: 16px;
-        }
-        
-        .filtros-activos {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        
-        .btn-limpiar-filtros {
-            align-self: flex-start;
-        }
-    }
-    
-    /* Móvil Pequeño (320px - 576px) */
-    @media screen and (max-width: 576px) {
-        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 6px;
         }
         
         .stat-card {
-            min-width: 100%;
-            padding: 8px 12px;
+            justify-content: center;
+            padding: 5px 8px;
         }
         
         .stat-value {
-            font-size: 14px;
+            font-size: 13px;
         }
         
-        .stat-label {
-            font-size: 12px;
+        .page-numbers {
+            display: none;
         }
         
-        .card-avatar {
+        .page-selector-mobile {
+            display: flex;
+        }
+        
+        .pagination-controls {
+            justify-content: center;
+        }
+        
+        .modal-grid {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+        
+        .modal-header {
+            padding: 12px;
+        }
+        
+        .modal-avatar {
             width: 40px;
             height: 40px;
             font-size: 16px;
         }
         
-        .card-name {
-            font-size: 14px;
-        }
-        
-        .card-label {
-            width: 70px;
-            font-size: 12px;
-        }
-        
-        .card-value {
-            font-size: 12px;
-        }
-        
-        .pagination {
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        .page-info {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 8px;
-        }
-
-        .modal-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 12px;
-        }
-
-        .modal-close {
-            align-self: flex-end;
+        .modal-header-info h2 {
+            font-size: 16px;
         }
     }
     
-    /* Móvil muy pequeño (menos de 360px) */
-    @media screen and (max-width: 360px) {
-        .card-header {
-            flex-direction: column;
-            align-items: flex-start;
+    @media screen and (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
         
-        .card-user {
-            width: 100%;
+        .card-avatar {
+            width: 36px;
+            height: 36px;
+            font-size: 14px;
         }
         
-        .status-dot {
-            position: absolute;
-            top: 16px;
-            right: 16px;
+        .card-name {
+            font-size: 13px;
+        }
+        
+        .card-label {
+            width: 65px;
+            font-size: 10px;
+        }
+        
+        .pagination-info {
+            font-size: 10px;
+        }
+        
+        .page-link {
+            width: 30px;
+            height: 30px;
         }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Variable para almacenar los datos de los clientes
     let clientesData = {};
     let searchTimeout;
 
-    // Función para aplicar filtros con recarga de página
     function aplicarFiltros() {
         const url = new URL(window.location.href);
         const interes = document.getElementById('filterInteres')?.value || '';
@@ -1236,39 +1235,27 @@
         
         if (interes) url.searchParams.set('interes', interes);
         else url.searchParams.delete('interes');
-        
         if (internet) url.searchParams.set('internet', internet);
         else url.searchParams.delete('internet');
-        
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
-        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
-        
-        // Resetear a la primera página al aplicar filtros
         url.searchParams.delete('page');
-        
         window.location.href = url.toString();
     }
 
-    // Búsqueda con debounce
     document.getElementById('searchInput')?.addEventListener('keyup', function() {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            aplicarFiltros();
-        }, 500);
+        searchTimeout = setTimeout(() => aplicarFiltros(), 500);
     });
 
-    // Filtros select
     document.getElementById('filterInteres')?.addEventListener('change', aplicarFiltros);
     document.getElementById('filterInternet')?.addEventListener('change', aplicarFiltros);
-    
     {% if es_admin %}
     document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
     {% endif %}
 
-    // Función para limpiar todos los filtros
     function limpiarFiltros() {
         const url = new URL(window.location.href);
         url.searchParams.delete('interes');
@@ -1279,104 +1266,66 @@
         window.location.href = url.toString();
     }
 
-    // Función para ver detalle del cliente
+    // Selector de página para móvil
+    document.getElementById('pageSelect')?.addEventListener('change', function() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', this.value);
+        window.location.href = url.toString();
+    });
+
     function verCliente(id) {
-        const modal = document.getElementById('clienteModal');
-        if (!modal) {
-            console.error('Modal no encontrado');
-            return;
-        }
-        
         Swal.fire({
             title: 'Cargando...',
-            text: 'Obteniendo información del cliente',
             allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
+            didOpen: () => Swal.showLoading()
         });
         
         fetch(`/cliente/${id}/datos/`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
                 Swal.close();
                 if (data.error) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.error,
-                        confirmButtonColor: '#ff6b00'
-                    });
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.error, confirmButtonColor: '#ff6b00' });
                 } else {
                     clientesData[id] = data;
                     mostrarModal(data);
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo cargar la información del cliente',
-                    confirmButtonColor: '#ff6b00'
-                });
+            .catch(() => {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la información', confirmButtonColor: '#ff6b00' });
             });
     }
 
     function mostrarModal(cliente) {
-        // Actualizar avatar
         document.getElementById('modalAvatar').textContent = cliente.nombre.charAt(0).toUpperCase() + cliente.apellido.charAt(0).toUpperCase();
         document.getElementById('modalNombreCompleto').textContent = `${cliente.nombre} ${cliente.apellido}`;
         document.getElementById('modalCedula').textContent = `C.I: ${cliente.cedula}`;
-        
-        // Información personal
         document.getElementById('modalNombre').textContent = `${cliente.nombre} ${cliente.apellido}`;
         document.getElementById('modalCedulaValue').textContent = cliente.cedula;
         document.getElementById('modalTelefono').textContent = cliente.telefono || 'No especificado';
         document.getElementById('modalDireccion').textContent = cliente.direccion || 'No especificada';
         
-        // Estado del cliente
         let interesClass = 'badge-secondary';
-        let interesText = cliente.get_interesado_display || cliente.interesado;
-        
-        if (cliente.interesado === 'SI') {
-            interesClass = 'badge-success';
-        } else if (cliente.interesado === 'TAL_VEZ') {
-            interesClass = 'badge-warning';
-        } else if (cliente.interesado === 'NO') {
-            interesClass = 'badge-danger';
-        }
-        
-        document.getElementById('modalInteres').innerHTML = `<span class="badge ${interesClass}">${interesText}</span>`;
+        if (cliente.interesado === 'SI') interesClass = 'badge-success';
+        else if (cliente.interesado === 'TAL_VEZ') interesClass = 'badge-warning';
+        else if (cliente.interesado === 'NO') interesClass = 'badge-danger';
+        document.getElementById('modalInteres').innerHTML = `<span class="badge ${interesClass}">${cliente.get_interesado_display || cliente.interesado}</span>`;
         
         let internetClass = cliente.posee_internet ? 'badge-info' : 'badge-secondary';
-        let internetText = cliente.posee_internet ? 'Sí' : 'No';
-        document.getElementById('modalInternet').innerHTML = `<span class="badge ${internetClass}">${internetText}</span>`;
+        document.getElementById('modalInternet').innerHTML = `<span class="badge ${internetClass}">${cliente.posee_internet ? 'Sí' : 'No'}</span>`;
         
-        // Información de registro
         document.getElementById('modalFechaRegistro').textContent = cliente.fecha_registro;
         document.getElementById('modalCreadoPor').textContent = cliente.creado_por || 'Sistema';
         document.getElementById('modalDias').textContent = cliente.dias_desde_registro ? `${cliente.dias_desde_registro} días` : '0 días';
         
-        // Observación
-        if (cliente.observacion && cliente.observacion.trim() !== '') {
+        if (cliente.observacion && cliente.observacion.trim()) {
             document.getElementById('modalObservacion').textContent = cliente.observacion;
             document.getElementById('modalObservacionSection').style.display = 'block';
         } else {
             document.getElementById('modalObservacionSection').style.display = 'none';
         }
         
-        // Configurar botón de editar
-        document.getElementById('modalEditarBtn').onclick = function() {
-            window.location.href = `/cliente/${cliente.id}/editar/`;
-        };
-        
-        // Mostrar modal
+        document.getElementById('modalEditarBtn').onclick = () => window.location.href = `/cliente/${cliente.id}/editar/`;
         document.getElementById('clienteModal').style.display = 'flex';
     }
 
@@ -1384,31 +1333,14 @@
         document.getElementById('clienteModal').style.display = 'none';
     }
 
-    // Cerrar modal con tecla ESC
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            cerrarModal();
-        }
-    });
-
-    // Cerrar modal haciendo clic fuera
-    document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
-
-    // Funciones de acción
     function editarCliente(id) {
         window.location.href = `/cliente/${id}/editar/`;
     }
 
-    // Mostrar indicador de filtros activos al cargar la página
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+    document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
+
     document.addEventListener('DOMContentLoaded', function() {
-        const modal = document.getElementById('clienteModal');
-        if (!modal) {
-            console.error('Error: No se encontró el modal en el DOM');
-        } else {
-            console.log('Modal encontrado correctamente');
-        }
-        
-        // Verificar filtros activos
         const urlParams = new URLSearchParams(window.location.search);
         const busqueda = urlParams.get('busqueda');
         const interes = urlParams.get('interes');
@@ -1416,17 +1348,14 @@
         const vendedor = urlParams.get('vendedor');
         
         if (busqueda || interes || internet || vendedor) {
-            const filtrosActivosDiv = document.getElementById('filtrosActivos');
-            const filtrosLista = document.getElementById('filtrosLista');
             const filtrosArray = [];
-            
             if (busqueda) filtrosArray.push(`"${busqueda}"`);
             if (interes) filtrosArray.push(`interés: ${interes === 'SI' ? 'Sí' : interes === 'TAL_VEZ' ? 'Tal vez' : 'No'}`);
             if (internet) filtrosArray.push(`internet: ${internet === 'si' ? 'Sí' : 'No'}`);
             if (vendedor) filtrosArray.push(`vendedor: ${vendedor}`);
             
-            filtrosLista.textContent = filtrosArray.join(' • ');
-            filtrosActivosDiv.style.display = 'flex';
+            document.getElementById('filtrosLista').textContent = filtrosArray.join(' • ');
+            document.getElementById('filtrosActivos').style.display = 'flex';
         }
     });
 </script>

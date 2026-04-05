@@ -1,0 +1,1197 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Crear Soporte Técnico{% endblock %}
+
+{% block page_title %}Crear Nuevo Soporte{% endblock %}
+{% block page_subtitle %}Seleccione el tipo de soporte y busque al cliente{% endblock %}
+
+{% block content %}
+<div class="crear-soporte-container">
+    <div class="form-card">
+        <div class="form-header">
+            <div class="step-indicator">
+                <div class="step {% if not mostrar_formulario %}active{% endif %}">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Tipo y Cliente</span>
+                </div>
+                <div class="step-line {% if mostrar_formulario %}active{% endif %}"></div>
+                <div class="step {% if mostrar_formulario %}active{% endif %}">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Detalles del Soporte</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-body">
+            <!-- PASO 1: Selección de tipo y búsqueda -->
+            <div id="paso1" {% if mostrar_formulario %}style="display: none;"{% endif %}>
+                <form method="post" id="formBusqueda">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="tipo_soporte">📌 Tipo de Soporte *</label>
+                        <select name="tipo_soporte" id="tipo_soporte" class="form-control" required>
+                            <option value="">Seleccione un tipo de soporte</option>
+                            {% for value, label in tipos_soporte %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="busqueda">🔍 Buscar Cliente *</label>
+                        <div class="search-input-group">
+                            <input type="text" 
+                                   name="busqueda" 
+                                   id="busqueda" 
+                                   class="form-control" 
+                                   placeholder="Customer ID o Número de Orden (ODS)"
+                                   autocomplete="off"
+                                   required>
+                            <button type="submit" name="buscar_cliente" class="btn-primary">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"/>
+                                    <path d="M21 21l-4.35-4.35"/>
+                                </svg>
+                                Buscar
+                            </button>
+                        </div>
+                        <small class="help-text">Ingrese el Customer ID o Número de Orden de servicio</small>
+                    </div>
+                </form>
+                
+                {% if error_busqueda %}
+                <div class="alert-error">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    {{ error_busqueda }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- PASO 2: Formulario completo del soporte -->
+            <div id="paso2" {% if not mostrar_formulario %}style="display: none;"{% endif %}>
+                {% if cliente %}
+                <!-- Tarjeta de Información del Cliente -->
+                <div class="cliente-info-card">
+                    <h3>📋 Información del Cliente</h3>
+                    <div class="cliente-info-grid">
+                        <div class="info-item">
+                            <span class="label">👤 Nombre:</span>
+                            <span class="value">{{ cliente.nombre }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">🆔 Cédula:</span>
+                            <span class="value">{{ cliente.cedula }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">📞 Teléfono:</span>
+                            <span class="value">{{ cliente.telefono }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">📍 Dirección:</span>
+                            <span class="value">{{ cliente.direccion|truncatechars:50 }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">📋 Plan:</span>
+                            <span class="value">{{ cliente.plan }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">🆔 Customer ID:</span>
+                            <span class="value">{{ cliente.customer_id|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">🔧 ATR:</span>
+                            <span class="value">{{ cliente.atr }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tarjeta de Información de la Instalación Original -->
+                <div class="instalacion-info-card">
+                    <h3>🔧 Información de la Instalación Original</h3>
+                    <div class="instalacion-info-grid">
+                        <div class="info-item">
+                            <span class="label">📅 Fecha Instalación:</span>
+                            <span class="value">{{ instalacion.fecha_instalacion|date:"d/m/Y H:i"|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">👥 Instaladores:</span>
+                            <span class="value">
+                                {% for inst in instalacion.instaladores.all %}
+                                    {{ inst.get_full_name|default:inst.username }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}
+                                    N/A
+                                {% endfor %}
+                            </span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">📍 FEEDER:</span>
+                            <span class="value">{{ instalacion.feeder|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">📦 CAJA:</span>
+                            <span class="value">{{ instalacion.caja|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">🔌 Puerto Utilizado:</span>
+                            <span class="value">{{ instalacion.puerto_utilizado|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">📡 Modelo Módem:</span>
+                            <span class="value">{{ instalacion.modelo_modem.nombre|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">🔢 Serial (SN):</span>
+                            <span class="value">{{ instalacion.sn_modem|default:"N/A" }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">🌐 MAC Address:</span>
+                            <span class="value">{{ instalacion.mac_modem|default:"N/A" }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <form method="post" enctype="multipart/form-data" id="formSoporte">
+                    {% csrf_token %}
+                    <input type="hidden" name="guardar_soporte" value="1">
+                    <input type="hidden" name="instalacion_id" value="{{ instalacion.id }}">
+                    <input type="hidden" name="tipo_soporte" value="{{ form.tipo.value }}">
+                    
+                    <!-- Fecha y Hora del Servicio -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">📅</span>
+                            <h3 class="section-title">Fecha y Hora del Servicio</h3>
+                        </div>
+                        <div class="form-group">
+                            <input type="datetime-local" name="fecha_hora_servicio" id="id_fecha_hora_servicio" class="form-control" required>
+                            <small class="help-text">Se ha cargado la fecha y hora actual. Puedes modificarla si es necesario.</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Falla y Solución -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">⚠️</span>
+                            <h3 class="section-title">Falla y Solución</h3>
+                        </div>
+                        <div class="form-group">
+                            <label>Falla Encontrada *</label>
+                            <textarea name="falla_encontrada" id="id_falla_encontrada" class="form-control" rows="3" placeholder="Describa brevemente la falla que presenta el servicio..." required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Solución Aplicada *</label>
+                            <textarea name="solucion" id="id_solucion" class="form-control" rows="3" placeholder="Describa la solución que aplicó para corregir la falla..." required></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Nuevo Equipo Módem (si se cambia) -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">🔄</span>
+                            <h3 class="section-title">Nuevo Equipo Módem (Si aplica)</h3>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Modelo del Módem</label>
+                                <select name="modelo_modem" id="id_modelo_modem" class="form-control">
+                                    <option value="">Seleccione un modelo</option>
+                                    {% for modem in modelos_modem %}
+                                    <option value="{{ modem.id }}">{{ modem.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Serial (SN)</label>
+                                <input type="text" name="sn_modem" id="id_sn_modem" class="form-control" placeholder="Número de serie del nuevo equipo">
+                            </div>
+                            <div class="form-group">
+                                <label>MAC Address</label>
+                                <input type="text" name="mac_modem" id="id_mac_modem" class="form-control" placeholder="XX:XX:XX:XX:XX:XX">
+                                <small class="help-text">Formato: XX:XX:XX:XX:XX:XX</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Materiales Utilizados (Fibra) -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">🔧</span>
+                            <h3 class="section-title">Materiales Utilizados - Fibra Óptica</h3>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>📏 INICIO (metros con los que salió)</label>
+                                <input type="number" name="inicio_fibra" id="id_inicio_fibra" class="form-control" placeholder="Ej: 100" value="0">
+                                <small class="help-text">Metros de fibra con los que salió el instalador</small>
+                            </div>
+                            <div class="form-group">
+                                <label>📏 FINAL (metros que quedaron)</label>
+                                <input type="number" name="final_fibra" id="id_final_fibra" class="form-control" placeholder="Ej: 70" value="0">
+                                <small class="help-text">Metros de fibra que le quedaron al final</small>
+                            </div>
+                            <div class="form-group">
+                                <label>✅ Metros Utilizados</label>
+                                <input type="text" id="metros_utilizados" class="form-control" readonly placeholder="Se calcula automáticamente" style="background: #e8f0fe; font-weight: bold;">
+                                <small class="help-text">INICIO - FINAL = Metros utilizados</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Materiales Utilizados (Accesorios) -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">🔧</span>
+                            <h3 class="section-title">Materiales Utilizados - Accesorios</h3>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>🔌 Conectores</label>
+                                <input type="number" name="conectores" id="id_conectores" class="form-control" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label>🔘 Rosetas</label>
+                                <input type="number" name="rosetas" id="id_rosetas" class="form-control" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label>📀 Patch Cord</label>
+                                <input type="number" name="patch_cord" id="id_patch_cord" class="form-control" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label>⚙️ Tensores</label>
+                                <input type="number" name="tensores" id="id_tensores" class="form-control" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label>❌ Conectores Malos</label>
+                                <input type="number" name="conectores_malos" id="id_conectores_malos" class="form-control" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Datos NAP -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">📡</span>
+                            <h3 class="section-title">Datos de Conexión NAP</h3>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Caja NAP Utilizada *</label>
+                                <input type="text" name="caja_nap_utilizada" id="id_caja_nap_utilizada" class="form-control" placeholder="Nombre o código de la caja NAP">
+                            </div>
+                            <div class="form-group">
+                                <label>Puerto en Caja NAP Utilizado *</label>
+                                <input type="text" name="puerto_nap_utilizado" id="id_puerto_nap_utilizado" class="form-control" placeholder="Ej: P1, P2, P3...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Ubicación del Servicio - Campos en línea con botón -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">📍</span>
+                            <h3 class="section-title">Ubicación del Servicio (PIN)</h3>
+                        </div>
+                        
+                        <div class="ubicacion-linea">
+                            <div class="ubicacion-campos">
+                                <div class="campo-coordenada">
+                                    <label>Latitud</label>
+                                    <input type="text" name="pin_ubicacion_lat" id="id_pin_ubicacion_lat" class="form-control" placeholder="Ej: 10.123456" step="any">
+                                </div>
+                                <div class="campo-coordenada">
+                                    <label>Longitud</label>
+                                    <input type="text" name="pin_ubicacion_lng" id="id_pin_ubicacion_lng" class="form-control" placeholder="Ej: -66.123456" step="any">
+                                </div>
+                            </div>
+                            <button type="button" class="btn-capture" onclick="capturarUbicacion()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M12 8v4l3 3"/>
+                                </svg>
+                                Capturar ubicación actual
+                            </button>
+                        </div>
+                        <small class="help-text">Párese en la ubicación del servicio y presione el botón</small>
+                    </div>
+                    
+                    <!-- Fotos del Soporte -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">📸</span>
+                            <h3 class="section-title">Soporte Fotográfico</h3>
+                        </div>
+                        <p class="help-text">* Obligatorio: Fotos de equipos, material, falla, solución y speed test</p>
+                        
+                        <div class="file-upload-area" onclick="document.getElementById('id_fotos_upload').click()">
+                            <div class="upload-placeholder">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="1.5">
+                                    <path d="M12 4v16M4 12h16"/>
+                                </svg>
+                                <p>Haz clic para seleccionar fotos</p>
+                                <small>Puedes seleccionar múltiples imágenes (JPG, PNG - Máx. 5MB cada una)</small>
+                            </div>
+                        </div>
+                        <input type="file" id="id_fotos_upload" name="fotos_upload" multiple accept="image/*" style="display: none;">
+                        
+                        <div class="galeria-fotos" id="galeria-fotos"></div>
+                        <div class="upload-preview" id="uploadPreview" style="display: none;">
+                            <h4>📷 Vista previa de nuevas fotos</h4>
+                            <div class="preview-grid" id="previewGrid"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <span class="section-icon">📝</span>
+                            <h3 class="section-title">Observaciones</h3>
+                        </div>
+                        <div class="form-group">
+                            <textarea name="observaciones" id="id_observaciones" class="form-control" rows="3" placeholder="Información adicional relevante sobre el soporte..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumen de materiales -->
+                    <div class="resumen-card">
+                        <div class="resumen-item">
+                            <span class="resumen-label">📡 METROS</span>
+                            <span class="resumen-value" id="resumen-metros">0</span>
+                        </div>
+                        <div class="resumen-item">
+                            <span class="resumen-label">🔌 CONECTORES</span>
+                            <span class="resumen-value" id="resumen-conectores">0</span>
+                        </div>
+                        <div class="resumen-item">
+                            <span class="resumen-label">🔘 ROSETAS</span>
+                            <span class="resumen-value" id="resumen-rosetas">0</span>
+                        </div>
+                        <div class="resumen-item">
+                            <span class="resumen-label">📀 PATCH CORD</span>
+                            <span class="resumen-value" id="resumen-patch">0</span>
+                        </div>
+                        <div class="resumen-item">
+                            <span class="resumen-label">⚙️ TENSORES</span>
+                            <span class="resumen-value" id="resumen-tensores">0</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones -->
+                    <div class="form-actions">
+                        <button type="button" class="btn-outline" onclick="volverPaso1()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 12H5M12 19l-7-7 7-7"/>
+                            </svg>
+                            Volver
+                        </button>
+                        <button type="submit" class="btn-primary">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 6L9 17l-5-5"/>
+                            </svg>
+                            Guardar Soporte
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .crear-soporte-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+    
+    .form-header {
+        padding: 28px;
+        background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+        color: white;
+    }
+    
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+    }
+    
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .step-number {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.25);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 18px;
+    }
+    
+    .step.active .step-number {
+        background: white;
+        color: #ff6b00;
+    }
+    
+    .step-label {
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .step-line {
+        width: 80px;
+        height: 2px;
+        background: rgba(255,255,255,0.25);
+    }
+    
+    .step-line.active {
+        background: white;
+    }
+    
+    .form-body {
+        padding: 32px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #333;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #ff6b00;
+        box-shadow: 0 0 0 3px rgba(255,107,0,0.1);
+    }
+    
+    select.form-control {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    .search-input-group {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .search-input-group .form-control {
+        flex: 1;
+    }
+    
+    .btn-primary {
+        padding: 12px 28px;
+        background: #ff6b00;
+        border: none;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255,107,0,0.3);
+    }
+    
+    .btn-outline {
+        padding: 12px 28px;
+        background: white;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 12px;
+        color: #666;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .cliente-info-card {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+    
+    .cliente-info-card h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #166534;
+    }
+    
+    .cliente-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+    
+    .instalacion-info-card {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 28px;
+    }
+    
+    .instalacion-info-card h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        color: #1e40af;
+    }
+    
+    .instalacion-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+    
+    .instalacion-info-card .info-item .label {
+        color: #1e40af;
+    }
+    
+    .instalacion-info-card .info-item .value {
+        color: #1e3a8a;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .info-item .label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+    
+    .info-item .value {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .form-section {
+        background: #f9fafb;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #ff6b00;
+    }
+    
+    .section-icon {
+        font-size: 22px;
+    }
+    
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+    
+    .form-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+    
+    .form-row .form-group {
+        flex: 1;
+        min-width: 150px;
+        margin-bottom: 0;
+    }
+    
+    .help-text {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        color: #888;
+    }
+    
+    .alert-error {
+        margin-top: 20px;
+        padding: 14px 18px;
+        background: #fee2e2;
+        border-left: 4px solid #ef4444;
+        border-radius: 12px;
+        color: #991b1b;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 14px;
+    }
+    
+    /* Ubicación en línea */
+    .ubicacion-linea {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    
+    .ubicacion-campos {
+        flex: 2;
+        display: flex;
+        gap: 16px;
+        min-width: 300px;
+    }
+    
+    .campo-coordenada {
+        flex: 1;
+    }
+    
+    .campo-coordenada label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #333;
+    }
+    
+    .btn-capture {
+        background: #ff6b00;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        height: 46px;
+        white-space: nowrap;
+    }
+    
+    .btn-capture:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255,107,0,0.3);
+    }
+    
+    /* Fotos */
+    .file-upload-area {
+        border: 2px dashed #e5e7eb;
+        border-radius: 16px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #fefce8;
+        margin-bottom: 20px;
+    }
+    
+    .file-upload-area:hover {
+        border-color: #ff6b00;
+        background: #fff2e6;
+    }
+    
+    .upload-placeholder svg {
+        margin-bottom: 12px;
+        color: #ff6b00;
+    }
+    
+    .upload-placeholder p {
+        margin: 8px 0;
+        font-size: 14px;
+        color: #333;
+    }
+    
+    .upload-placeholder small {
+        font-size: 11px;
+        color: #888;
+    }
+    
+    .galeria-fotos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    
+    .foto-item {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #e5e7eb;
+        background: #f5f5f5;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .foto-item:hover {
+        transform: scale(1.05);
+        border-color: #ff6b00;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .foto-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .foto-item .eliminar-foto {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        background: rgba(0,0,0,0.6);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+        font-size: 12px;
+    }
+    
+    .foto-item:hover .eliminar-foto {
+        opacity: 1;
+    }
+    
+    .foto-item .eliminar-foto:hover {
+        background: #ef4444;
+        transform: scale(1.1);
+    }
+    
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+    
+    .preview-item {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .preview-item img {
+        width: 100%;
+        height: 90px;
+        object-fit: cover;
+    }
+    
+    .preview-item .remove-photo {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        background: rgba(0,0,0,0.7);
+        border-radius: 50%;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    
+    .resumen-card {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 16px;
+        padding: 20px;
+        background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
+        border-radius: 16px;
+        border: 1px solid #ffede0;
+        margin: 20px 0;
+    }
+    
+    .resumen-item {
+        text-align: center;
+    }
+    
+    .resumen-label {
+        display: block;
+        font-size: 10px;
+        color: #888;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+    
+    .resumen-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: #ff6b00;
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 16px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+    }
+    
+    @media (max-width: 768px) {
+        .form-body {
+            padding: 20px;
+        }
+        
+        .search-input-group {
+            flex-direction: column;
+        }
+        
+        .form-row {
+            flex-direction: column;
+        }
+        
+        .form-row .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .step-line {
+            width: 40px;
+        }
+        
+        .ubicacion-linea {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .ubicacion-campos {
+            flex-direction: column;
+            min-width: auto;
+        }
+        
+        .btn-capture {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+        
+        .btn-primary, .btn-outline {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .cliente-info-grid, .instalacion-info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    // Fecha y hora por defecto
+    function setearFechaHoraDefecto() {
+        const fechaHoraInput = document.getElementById('id_fecha_hora_servicio');
+        if (fechaHoraInput && !fechaHoraInput.value) {
+            const ahora = new Date();
+            const año = ahora.getFullYear();
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            const horas = String(ahora.getHours()).padStart(2, '0');
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            fechaHoraInput.value = `${año}-${mes}-${dia}T${horas}:${minutos}`;
+        }
+    }
+    
+    // Calcular metros utilizados (INICIO - FINAL)
+    function calcularMetrosUtilizados() {
+        const inicioInput = document.getElementById('id_inicio_fibra');
+        const finalInput = document.getElementById('id_final_fibra');
+        const metrosUtilizados = document.getElementById('metros_utilizados');
+        const resumenMetros = document.getElementById('resumen-metros');
+        
+        if (inicioInput && finalInput && metrosUtilizados) {
+            const inicio = parseInt(inicioInput.value) || 0;
+            const final = parseInt(finalInput.value) || 0;
+            const utilizados = inicio - final;
+            
+            if (utilizados >= 0) {
+                metrosUtilizados.value = utilizados + ' metros';
+                if (resumenMetros) resumenMetros.textContent = utilizados;
+            } else {
+                metrosUtilizados.value = 'Error: FINAL no puede ser mayor que INICIO';
+                if (resumenMetros) resumenMetros.textContent = '0';
+            }
+        }
+    }
+    
+    // Capturar ubicación
+    function capturarUbicacion() {
+        if (!navigator.geolocation) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Tu navegador no soporta geolocalización. Por favor ingresa las coordenadas manualmente.',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Obteniendo ubicación...',
+            text: 'Por favor espera mientras obtenemos tu ubicación',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+        };
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                const latInput = document.getElementById('id_pin_ubicacion_lat');
+                const lngInput = document.getElementById('id_pin_ubicacion_lng');
+                
+                if (latInput && lngInput) {
+                    latInput.value = lat.toFixed(6);
+                    lngInput.value = lng.toFixed(6);
+                }
+                
+                Swal.close();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ubicación capturada',
+                    text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`,
+                    confirmButtonColor: '#ff6b00',
+                    timer: 2000
+                });
+            },
+            function(error) {
+                Swal.close();
+                let mensaje = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador.';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Ubicación no disponible. Verifica tu GPS.';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado. Intenta nuevamente.';
+                        break;
+                    default:
+                        mensaje = 'Error desconocido.';
+                }
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo capturar la ubicación',
+                    text: mensaje,
+                    confirmButtonColor: '#ff6b00'
+                });
+            },
+            options
+        );
+    }
+    
+    // Actualizar resumen de materiales
+    function actualizarResumen() {
+        const conectores = document.getElementById('id_conectores');
+        const rosetas = document.getElementById('id_rosetas');
+        const patchCord = document.getElementById('id_patch_cord');
+        const tensores = document.getElementById('id_tensores');
+        
+        const resumenConectores = document.getElementById('resumen-conectores');
+        const resumenRosetas = document.getElementById('resumen-rosetas');
+        const resumenPatch = document.getElementById('resumen-patch');
+        const resumenTensores = document.getElementById('resumen-tensores');
+        
+        if (conectores && resumenConectores) resumenConectores.textContent = conectores.value || 0;
+        if (rosetas && resumenRosetas) resumenRosetas.textContent = rosetas.value || 0;
+        if (patchCord && resumenPatch) resumenPatch.textContent = patchCord.value || 0;
+        if (tensores && resumenTensores) resumenTensores.textContent = tensores.value || 0;
+    }
+    
+    // Manejo de fotos - Acumulando correctamente
+    let fotosTemporales = [];
+    
+    const fotosInput = document.getElementById('id_fotos_upload');
+    const uploadPreview = document.getElementById('uploadPreview');
+    const previewGrid = document.getElementById('previewGrid');
+    
+    if (fotosInput) {
+        fotosInput.addEventListener('change', function(e) {
+            const nuevosArchivos = Array.from(e.target.files);
+            fotosTemporales = [...fotosTemporales, ...nuevosArchivos];
+            actualizarPreview();
+            
+            const latInput = document.getElementById('id_pin_ubicacion_lat');
+            const tieneUbicacion = latInput && latInput.value;
+            
+            if (nuevosArchivos.length > 0 && !tieneUbicacion) {
+                setTimeout(() => capturarUbicacion(), 500);
+            }
+            
+            // Limpiar el input para poder seleccionar los mismos archivos nuevamente
+            fotosInput.value = '';
+        });
+    }
+    
+    function actualizarPreview() {
+        if (previewGrid) {
+            previewGrid.innerHTML = '';
+            if (fotosTemporales.length > 0 && uploadPreview) {
+                uploadPreview.style.display = 'block';
+                fotosTemporales.forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const previewItem = document.createElement('div');
+                        previewItem.className = 'preview-item';
+                        previewItem.innerHTML = `
+                            <img src="${e.target.result}" alt="Preview">
+                            <div class="remove-photo" data-index="${index}">×</div>
+                        `;
+                        const removeBtn = previewItem.querySelector('.remove-photo');
+                        removeBtn.onclick = function() { removerFoto(index); };
+                        previewGrid.appendChild(previewItem);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            } else if (uploadPreview) {
+                uploadPreview.style.display = 'none';
+            }
+        }
+    }
+    
+    function removerFoto(index) {
+        fotosTemporales.splice(index, 1);
+        actualizarPreview();
+        
+        // Actualizar el input con los archivos restantes
+        const dataTransfer = new DataTransfer();
+        fotosTemporales.forEach(file => dataTransfer.items.add(file));
+        fotosInput.files = dataTransfer.files;
+    }
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        setearFechaHoraDefecto();
+        
+        const inicioFibra = document.getElementById('id_inicio_fibra');
+        const finalFibra = document.getElementById('id_final_fibra');
+        
+        if (inicioFibra) inicioFibra.addEventListener('input', calcularMetrosUtilizados);
+        if (finalFibra) finalFibra.addEventListener('input', calcularMetrosUtilizados);
+        
+        calcularMetrosUtilizados();
+        
+        const conectores = document.getElementById('id_conectores');
+        const rosetas = document.getElementById('id_rosetas');
+        const patchCord = document.getElementById('id_patch_cord');
+        const tensores = document.getElementById('id_tensores');
+        
+        if (conectores) conectores.addEventListener('input', actualizarResumen);
+        if (rosetas) rosetas.addEventListener('input', actualizarResumen);
+        if (patchCord) patchCord.addEventListener('input', actualizarResumen);
+        if (tensores) tensores.addEventListener('input', actualizarResumen);
+        
+        actualizarResumen();
+    });
+    
+    function volverPaso1() {
+        document.getElementById('paso1').style.display = 'block';
+        document.getElementById('paso2').style.display = 'none';
+    }
+    
+    // Validación antes de enviar
+    document.getElementById('formSoporte')?.addEventListener('submit', function(e) {
+        if (!document.getElementById('id_fecha_hora_servicio')?.value) {
+            e.preventDefault();
+            Swal.fire('Error', 'Debe ingresar la fecha y hora del servicio', 'error');
+            return false;
+        }
+        if (!document.getElementById('id_falla_encontrada')?.value) {
+            e.preventDefault();
+            Swal.fire('Error', 'Debe describir la falla encontrada', 'error');
+            return false;
+        }
+        if (!document.getElementById('id_solucion')?.value) {
+            e.preventDefault();
+            Swal.fire('Error', 'Debe describir la solución aplicada', 'error');
+            return false;
+        }
+    });
+</script>
+{% endblock %}

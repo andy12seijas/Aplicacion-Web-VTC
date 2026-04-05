@@ -16,102 +16,105 @@
 {% endblock %}
 
 {% block content %}
-<!-- Estadísticas generales - Horizontal y compactas -->
-<div class="stats-horizontal">
-    <div class="stat-item">
-        <div class="stat-icon-small">👥</div>
-        <div class="stat-content">
-            <span class="stat-number">{{ total_cuadrillas }}</span>
-            <span class="stat-name">Total</span>
+<div class="cuadrillas-container">
+    <!-- Estadísticas generales - Horizontal y compactas -->
+    <div class="stats-horizontal">
+        <div class="stat-item">
+            <div class="stat-icon-small">👥</div>
+            <div class="stat-content">
+                <span class="stat-number">{{ total_cuadrillas }}</span>
+                <span class="stat-name">Total</span>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-icon-small">✅</div>
+            <div class="stat-content">
+                <span class="stat-number">{{ cuadrillas_disponibles }}</span>
+                <span class="stat-name">Disponibles</span>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-icon-small">🔧</div>
+            <div class="stat-content">
+                <span class="stat-number">{{ cuadrillas_ocupadas }}</span>
+                <span class="stat-name">Ocupadas</span>
+            </div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-icon-small">😴</div>
+            <div class="stat-content">
+                <span class="stat-number">{{ cuadrillas_descanso }}</span>
+                <span class="stat-name">Descanso</span>
+            </div>
         </div>
     </div>
-    <div class="stat-item">
-        <div class="stat-icon-small">✅</div>
-        <div class="stat-content">
-            <span class="stat-number">{{ cuadrillas_disponibles }}</span>
-            <span class="stat-name">Disponibles</span>
-        </div>
-    </div>
-    <div class="stat-item">
-        <div class="stat-icon-small">🔧</div>
-        <div class="stat-content">
-            <span class="stat-number">{{ cuadrillas_ocupadas }}</span>
-            <span class="stat-name">Ocupadas</span>
-        </div>
-    </div>
-    <div class="stat-item">
-        <div class="stat-icon-small">😴</div>
-        <div class="stat-content">
-            <span class="stat-number">{{ cuadrillas_descanso }}</span>
-            <span class="stat-name">Descanso</span>
-        </div>
-    </div>
-</div>
 
-<!-- Grid de cuadrillas -->
-<div class="cuadrillas-grid">
-    {% for cuadrilla in cuadrillas %}
-    <div class="cuadrilla-card">
-        <!-- Header con código y nombre -->
-        <div class="cuadrilla-header">
-            <div class="cuadrilla-info">
-                <div class="cuadrilla-codigo">{{ cuadrilla.codigo }}</div>
-                <h3>{{ cuadrilla.nombre }}</h3>
-            </div>
-            <div class="cuadrilla-estado">
-                <span class="badge-estado 
-                    {% if cuadrilla.estado == 'DISPONIBLE' %}estado-disponible
-                    {% elif cuadrilla.estado == 'OCUPADO' %}estado-ocupado
-                    {% elif cuadrilla.estado == 'DESCANSO' %}estado-descanso
-                    {% else %}estado-inactivo{% endif %}">
-                    <i class="fas 
-                        {% if cuadrilla.estado == 'DISPONIBLE' %}fa-check-circle
-                        {% elif cuadrilla.estado == 'OCUPADO' %}fa-tools
-                        {% elif cuadrilla.estado == 'DESCANSO' %}fa-coffee
-                        {% else %}fa-clock{% endif %}"></i>
-                    {{ cuadrilla.estado_display }}
-                </span>
-            </div>
-        </div>
-        
-        <div class="cuadrilla-body">
-            <!-- Instaladores -->
-            <div class="info-row">
-                <div class="info-icon">👷</div>
-                <div class="info-content">
-                    <strong>Instaladores</strong>
-                    <div class="instaladores-list">
-                        {% for inst in cuadrilla.instaladores %}
-                            <span class="instalador-tag">
-                                <i class="fas fa-user"></i> {{ inst }}
-                            </span>
-                        {% empty %}
-                            <span class="text-muted">Sin instaladores asignados</span>
-                        {% endfor %}
+    <!-- Grid de cuadrillas con scroll -->
+    <div class="cuadrillas-scroll-wrapper">
+        <div class="cuadrillas-grid">
+            {% for cuadrilla in cuadrillas %}
+            <div class="cuadrilla-card">
+                <!-- Header con código y nombre -->
+                <div class="cuadrilla-header">
+                    <div class="cuadrilla-info">
+                        <div class="cuadrilla-codigo">{{ cuadrilla.codigo }}</div>
+                        <h3>{{ cuadrilla.nombre }}</h3>
+                    </div>
+                    <div class="cuadrilla-estado">
+                        <span class="badge-estado 
+                            {% if cuadrilla.estado == 'DISPONIBLE' %}estado-disponible
+                            {% elif cuadrilla.estado == 'OCUPADO' %}estado-ocupado
+                            {% elif cuadrilla.estado == 'DESCANSO' %}estado-descanso
+                            {% else %}estado-inactivo{% endif %}">
+                            <i class="fas 
+                                {% if cuadrilla.estado == 'DISPONIBLE' %}fa-check-circle
+                                {% elif cuadrilla.estado == 'OCUPADO' %}fa-tools
+                                {% elif cuadrilla.estado == 'DESCANSO' %}fa-coffee
+                                {% else %}fa-clock{% endif %}"></i>
+                            {{ cuadrilla.estado_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="cuadrilla-body">
+                    <!-- Instaladores -->
+                    <div class="info-row">
+                        <div class="info-icon">👷</div>
+                        <div class="info-content">
+                            <strong>Instaladores</strong>
+                            <div class="instaladores-list">
+                                {% for inst in cuadrilla.instaladores %}
+                                    <span class="instalador-tag">
+                                        {{ inst }}
+                                    </span>
+                                {% empty %}
+                                    <span class="text-muted">Sin instaladores</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Estadísticas de instalaciones -->
+                    <div class="info-row">
+                        <div class="info-icon">📋</div>
+                        <div class="info-content">
+                            <strong>Instalaciones Pendientes</strong>
+                            <div class="instalaciones-pendientes">
+                                <span class="numero-pendientes">{{ cuadrilla.instalaciones_pendientes }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            
-            <!-- Estadísticas de instalaciones -->
-            <div class="info-row">
-                <div class="info-icon">📋</div>
-                <div class="info-content">
-                    <strong>Instalaciones Pendientes</strong>
-                    <div class="instalaciones-pendientes">
-                        <span class="numero-pendientes">{{ cuadrilla.instalaciones_pendientes }}</span>
-                        <span class="pendientes-texto">instalaciones</span>
-                    </div>
-                </div>
+            {% empty %}
+            <div class="empty-state">
+                <div class="empty-icon">🚧</div>
+                <p>No hay cuadrillas activas registradas</p>
+                <small>Las cuadrillas aparecerán aquí cuando sean creadas</small>
             </div>
+            {% endfor %}
         </div>
     </div>
-    {% empty %}
-    <div class="empty-state">
-        <div class="empty-icon">🚧</div>
-        <p>No hay cuadrillas activas registradas</p>
-        <small>Las cuadrillas aparecerán aquí cuando sean creadas</small>
-    </div>
-    {% endfor %}
 </div>
 
 <style>
@@ -134,25 +137,33 @@
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
+    /* ===== CONTENEDOR PRINCIPAL CON ALTURA CONTROLADA ===== */
+    .cuadrillas-container {
+        height: calc(100vh - 120px); /* Ajusta según la altura de tu header */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
     /* ===== ESTADÍSTICAS HORIZONTALES ===== */
     .stats-horizontal {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
-        margin-bottom: 24px;
-        justify-content: space-between;
+        margin-bottom: 20px;
+        flex-shrink: 0; /* Evita que las estadísticas se encojan */
     }
     
     .stat-item {
         background: white;
-        border-radius: 16px;
+        border-radius: 14px;
         border: 1px solid var(--gray-border);
-        padding: 12px 16px;
+        padding: 10px 14px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         flex: 1;
-        min-width: 100px;
+        min-width: 90px;
         transition: var(--transition);
         box-shadow: var(--shadow-sm);
     }
@@ -164,11 +175,11 @@
     }
     
     .stat-icon-small {
-        font-size: 24px;
-        width: 40px;
-        height: 40px;
+        font-size: 22px;
+        width: 36px;
+        height: 36px;
         background: var(--orange-light);
-        border-radius: 12px;
+        border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -180,7 +191,7 @@
     }
     
     .stat-number {
-        font-size: 22px;
+        font-size: 20px;
         font-weight: 700;
         color: var(--orange);
         display: block;
@@ -188,35 +199,64 @@
     }
     
     .stat-name {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--gray-text);
         display: block;
-        margin-top: 4px;
+        margin-top: 3px;
         font-weight: 500;
+    }
+    
+    /* ===== WRAPPER CON SCROLL ===== */
+    .cuadrillas-scroll-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        margin-right: -4px;
+    }
+    
+    /* Scrollbar personalizada */
+    .cuadrillas-scroll-wrapper::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .cuadrillas-scroll-wrapper::-webkit-scrollbar-track {
+        background: var(--gray-border);
+        border-radius: 10px;
+    }
+    
+    .cuadrillas-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: var(--orange);
+        border-radius: 10px;
+    }
+    
+    .cuadrillas-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+        background: #e05f00;
     }
     
     /* ===== GRID DE CUADRILLAS ===== */
     .cuadrillas-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 20px;
-        margin-top: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        padding-bottom: 8px;
     }
     
     /* ===== TARJETA DE CUADRILLA ===== */
     .cuadrilla-card {
         background: white;
-        border-radius: 20px;
+        border-radius: 16px;
         border: 1px solid var(--gray-border);
         overflow: hidden;
         transition: var(--transition);
         box-shadow: var(--shadow-sm);
         display: flex;
         flex-direction: column;
+        height: fit-content;
     }
     
     .cuadrilla-card:hover {
-        transform: translateY(-4px);
+        transform: translateY(-2px);
         box-shadow: var(--shadow-md);
         border-color: var(--orange);
     }
@@ -225,11 +265,11 @@
     .cuadrilla-header {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        padding: 16px 20px;
+        align-items: center;
+        padding: 12px 14px;
         background: linear-gradient(135deg, #fafbfc 0%, #ffffff 100%);
         border-bottom: 1px solid var(--gray-border);
-        gap: 12px;
+        gap: 10px;
     }
     
     .cuadrilla-info {
@@ -238,16 +278,16 @@
     }
     
     .cuadrilla-codigo {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--orange);
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 4px;
+        letter-spacing: 0.8px;
+        margin-bottom: 3px;
     }
     
     .cuadrilla-info h3 {
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--dark-text);
         margin: 0;
@@ -258,17 +298,17 @@
     .badge-estado {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
+        gap: 5px;
+        padding: 4px 10px;
         border-radius: 30px;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         white-space: nowrap;
         flex-shrink: 0;
     }
     
     .badge-estado i {
-        font-size: 11px;
+        font-size: 10px;
     }
     
     .estado-disponible {
@@ -293,28 +333,24 @@
     
     /* Body */
     .cuadrilla-body {
-        padding: 16px 20px;
+        padding: 12px 14px;
         flex: 1;
     }
     
     .info-row {
         display: flex;
         align-items: flex-start;
-        gap: 12px;
-        margin-bottom: 16px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid #f0f0f0;
+        gap: 10px;
+        margin-bottom: 12px;
     }
     
     .info-row:last-child {
-        border-bottom: none;
         margin-bottom: 0;
-        padding-bottom: 0;
     }
     
     .info-icon {
-        font-size: 24px;
-        width: 32px;
+        font-size: 20px;
+        width: 28px;
         text-align: center;
         flex-shrink: 0;
     }
@@ -326,9 +362,9 @@
     
     .info-content strong {
         display: block;
-        font-size: 11px;
+        font-size: 10px;
         color: var(--gray-text);
-        margin-bottom: 6px;
+        margin-bottom: 5px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         font-weight: 600;
@@ -337,25 +373,21 @@
     .instaladores-list {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 5px;
     }
     
     .instalador-tag {
         background: var(--orange-light);
         color: var(--orange);
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 16px;
+        font-size: 10px;
         font-weight: 500;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 4px;
         transition: var(--transition);
         word-break: keep-all;
-    }
-    
-    .instalador-tag i {
-        font-size: 10px;
     }
     
     .instalador-tag:hover {
@@ -367,21 +399,15 @@
     .instalaciones-pendientes {
         display: flex;
         align-items: baseline;
-        gap: 6px;
+        gap: 5px;
         flex-wrap: wrap;
     }
     
     .numero-pendientes {
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 800;
         color: var(--orange);
         line-height: 1;
-    }
-    
-    .pendientes-texto {
-        font-size: 12px;
-        color: var(--gray-text);
-        font-weight: 500;
     }
     
     /* Empty state */
@@ -389,14 +415,14 @@
         text-align: center;
         padding: 40px 20px;
         background: white;
-        border-radius: 20px;
+        border-radius: 16px;
         border: 1px solid var(--gray-border);
         grid-column: 1 / -1;
     }
     
     .empty-icon {
-        font-size: 48px;
-        margin-bottom: 12px;
+        font-size: 40px;
+        margin-bottom: 10px;
         opacity: 0.5;
     }
     
@@ -404,17 +430,17 @@
         color: var(--dark-text);
         font-size: 14px;
         font-weight: 500;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
     }
     
     .empty-state small {
         color: var(--gray-text);
-        font-size: 12px;
+        font-size: 11px;
     }
     
     .text-muted {
         color: var(--gray-text);
-        font-size: 12px;
+        font-size: 11px;
     }
     
     /* Botón secundario */
@@ -444,43 +470,17 @@
     
     /* Tablet (768px - 1024px) */
     @media screen and (max-width: 1024px) {
+        .cuadrillas-container {
+            height: calc(100vh - 100px);
+        }
+        
         .stats-horizontal {
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-item {
-            padding: 10px 12px;
-        }
-        
-        .stat-icon-small {
-            width: 36px;
-            height: 36px;
-            font-size: 20px;
-        }
-        
-        .stat-number {
-            font-size: 20px;
-        }
-        
-        .cuadrillas-grid {
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 16px;
-        }
-    }
-    
-    /* Móvil (hasta 768px) */
-    @media screen and (max-width: 768px) {
-        .stats-horizontal {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
             margin-bottom: 16px;
         }
         
         .stat-item {
-            padding: 10px;
-            min-width: auto;
+            padding: 8px 12px;
         }
         
         .stat-icon-small {
@@ -493,81 +493,121 @@
             font-size: 18px;
         }
         
-        .stat-name {
-            font-size: 10px;
-        }
-        
         .cuadrillas-grid {
-            grid-template-columns: 1fr;
-            gap: 12px;
-            margin-top: 16px;
-        }
-        
-        .cuadrilla-header {
-            padding: 12px 14px;
-        }
-        
-        .cuadrilla-info h3 {
-            font-size: 15px;
-        }
-        
-        .badge-estado {
-            padding: 4px 10px;
-            font-size: 10px;
-        }
-        
-        .cuadrilla-body {
-            padding: 12px 14px;
-        }
-        
-        .info-row {
-            gap: 10px;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
-        }
-        
-        .info-icon {
-            font-size: 20px;
-            width: 28px;
-        }
-        
-        .info-content strong {
-            font-size: 10px;
-            margin-bottom: 5px;
-        }
-        
-        .instalador-tag {
-            padding: 3px 8px;
-            font-size: 10px;
-        }
-        
-        .numero-pendientes {
-            font-size: 24px;
-        }
-        
-        .pendientes-texto {
-            font-size: 11px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
         }
     }
     
-    /* Móvil pequeño (hasta 480px) */
-    @media screen and (max-width: 480px) {
+    /* Móvil (hasta 768px) */
+    @media screen and (max-width: 768px) {
+        .cuadrillas-container {
+            height: calc(100vh - 80px);
+        }
+        
         .stats-horizontal {
-            gap: 8px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
         }
         
         .stat-item {
-            padding: 8px;
+            padding: 8px 10px;
+            min-width: auto;
         }
         
         .stat-icon-small {
-            width: 28px;
-            height: 28px;
+            width: 30px;
+            height: 30px;
             font-size: 16px;
         }
         
         .stat-number {
             font-size: 16px;
+        }
+        
+        .stat-name {
+            font-size: 9px;
+        }
+        
+        .cuadrillas-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        
+        .cuadrilla-header {
+            padding: 10px 12px;
+        }
+        
+        .cuadrilla-info h3 {
+            font-size: 14px;
+        }
+        
+        .badge-estado {
+            padding: 3px 8px;
+            font-size: 9px;
+        }
+        
+        .cuadrilla-body {
+            padding: 10px 12px;
+        }
+        
+        .info-row {
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .info-icon {
+            font-size: 18px;
+            width: 26px;
+        }
+        
+        .info-content strong {
+            font-size: 9px;
+            margin-bottom: 4px;
+        }
+        
+        .instalador-tag {
+            padding: 2px 6px;
+            font-size: 9px;
+        }
+        
+        .numero-pendientes {
+            font-size: 22px;
+        }
+        
+        .empty-state {
+            padding: 30px 16px;
+        }
+        
+        .empty-icon {
+            font-size: 36px;
+        }
+    }
+    
+    /* Móvil pequeño (hasta 480px) */
+    @media screen and (max-width: 480px) {
+        .cuadrillas-container {
+            height: calc(100vh - 70px);
+        }
+        
+        .stats-horizontal {
+            gap: 8px;
+        }
+        
+        .stat-item {
+            padding: 6px 8px;
+        }
+        
+        .stat-icon-small {
+            width: 28px;
+            height: 28px;
+            font-size: 14px;
+        }
+        
+        .stat-number {
+            font-size: 14px;
         }
         
         .cuadrilla-header {
@@ -581,22 +621,26 @@
         }
         
         .badge-estado {
-            padding: 3px 8px;
+            padding: 2px 8px;
             font-size: 9px;
         }
         
         .instalador-tag {
-            padding: 2px 6px;
-            font-size: 9px;
+            padding: 2px 5px;
+            font-size: 8px;
         }
         
         .numero-pendientes {
-            font-size: 22px;
+            font-size: 20px;
         }
     }
     
     /* Landscape en móvil */
     @media screen and (max-width: 768px) and (orientation: landscape) {
+        .cuadrillas-container {
+            height: calc(100vh - 60px);
+        }
+        
         .stats-horizontal {
             grid-template-columns: repeat(4, 1fr);
         }
@@ -619,7 +663,7 @@
     @keyframes fadeInUp {
         from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(15px);
         }
         to {
             opacity: 1;

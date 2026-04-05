@@ -44,12 +44,28 @@ def instalaciones_pendientes(request):
             Prefetch('instalacion', queryset=Instalacion.objects.all())
         ).order_by('fecha_asignacion')
     else:
-        # Si es instalador, solo ve las de su cuadrilla
+        # Si es instalador: SOLO ve las instalaciones donde participó o está asignado
+        # Esto es clave para que cuando lo saquen de una cuadrilla, siga viendo sus instalaciones
+        
+        # Opción 1: Ver instalaciones donde participó (históricas)
+        instalaciones_del_instalador = Instalacion.objects.filter(
+            instaladores=request.user
+        ).values_list('asignacion_id', flat=True)
+        
+        # Opción 2: También ver instalaciones pendientes de su cuadrilla actual
         perfil = request.user.perfil
         cuadrillas_ids = perfil.cuadrillas.filter(activo=True).values_list('id', flat=True)
         
-        asignaciones = AsignacionContrato.objects.filter(
+        asignaciones_de_su_cuadrilla = AsignacionContrato.objects.filter(
             cuadrilla_id__in=cuadrillas_ids,
+            activo=True
+        ).values_list('id', flat=True)
+        
+        # Combinar ambas: instalaciones donde participó + asignaciones de su cuadrilla actual
+        asignaciones_ids = set(list(instalaciones_del_instalador) + list(asignaciones_de_su_cuadrilla))
+        
+        asignaciones = AsignacionContrato.objects.filter(
+            id__in=asignaciones_ids,
             activo=True
         ).select_related(
             'contrato__cliente_potencial',
@@ -101,6 +117,12 @@ def instalaciones_pendientes(request):
     for asignacion in asignaciones:
         try:
             instalacion = asignacion.instalacion
+            # Para instaladores no-admin, verificar si realmente participaron en la instalación completada
+            if not es_admin and instalacion.completada:
+                # Solo mostrar si el instalador participó en esta instalación
+                if request.user not in instalacion.instaladores.all():
+                    continue
+            
             if instalacion.completada:
                 instalaciones_completadas.append(instalacion)
             else:
@@ -197,14 +219,17 @@ def realizar_instalacion(request, instalacion_id):
         messages.error(request, 'Esta instalación ya fue completada.')
         return redirect('instalaciones_pendientes')
     
-    # Obtener ubicación de la cuadrilla (promedio de instaladores)
+    # Obtener la cuadrilla asignada
     cuadrilla = instalacion.asignacion.cuadrilla
+    
+    # Obtener ubicación de la cuadrilla (promedio de instaladores)
     ubicacion_cuadrilla = None
     if cuadrilla.instaladores.exists():
         ubicaciones = []
-        for inst in cuadrilla.instaladores.all():
+        for perfil_instalador in cuadrilla.instaladores.all():
             try:
-                ub = UbicacionUsuario.objects.get(usuario=inst.usuario)
+                # Obtener ubicación del usuario (User, no PerfilUsuario)
+                ub = UbicacionUsuario.objects.get(usuario=perfil_instalador.usuario)
                 ubicaciones.append((ub.latitud, ub.longitud))
             except UbicacionUsuario.DoesNotExist:
                 pass
@@ -213,6 +238,10 @@ def realizar_instalacion(request, instalacion_id):
             lat_promedio = sum(lat for lat, lng in ubicaciones) / len(ubicaciones)
             lng_promedio = sum(lng for lat, lng in ubicaciones) / len(ubicaciones)
             ubicacion_cuadrilla = {'lat': lat_promedio, 'lng': lng_promedio}
+    
+    # Obtener los instaladores de la cuadrilla (para mostrar en el template)
+    # Convertir PerfilUsuario a User para mostrar
+    instaladores_de_cuadrilla = [perfil.usuario for perfil in cuadrilla.instaladores.all()]
     
     # Verificar si es una petición AJAX
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -251,6 +280,20 @@ def realizar_instalacion(request, instalacion_id):
             fotos_actuales.extend(fotos_urls)
             instalacion.fotos = fotos_actuales
             
+            # Guardar la instalación primero
+            instalacion.save()
+            
+            # ========== NUEVO: GUARDAR TODOS LOS INSTALADORES DE LA CUADRILLA ==========
+            # Obtener todos los usuarios de los perfiles de la cuadrilla
+            usuarios_instaladores = [perfil.usuario for perfil in cuadrilla.instaladores.all()]
+            
+            # Asignar todos los instaladores de la cuadrilla a esta instalación
+            if usuarios_instaladores:
+                instalacion.instaladores.set(usuarios_instaladores)
+            else:
+                # Si por alguna razón no hay instaladores, al menos guardar al usuario actual
+                instalacion.instaladores.add(request.user)
+            
             # Marcar como completada
             instalacion.completada = True
             instalacion.fecha_instalacion = timezone.now()
@@ -258,8 +301,9 @@ def realizar_instalacion(request, instalacion_id):
             
             # Actualizar estado del contrato a COMPLETADO
             contrato = instalacion.asignacion.contrato
-            contrato.estado = 'COMPLETADO'
-            contrato.save()
+            if contrato:
+                contrato.estado = 'COMPLETADO'
+                contrato.save()
             
             # ========== ACTUALIZAR ESTADO DE LA CUADRILLA ==========
             # Verificar si la cuadrilla tiene instalaciones pendientes
@@ -316,6 +360,9 @@ def realizar_instalacion(request, instalacion_id):
     # Convertir fotos existentes a JSON para el template
     fotos_existentes = json.dumps(instalacion.fotos or [])
     
+    # Obtener instaladores que ya están asignados (para mostrar en el template como seleccionados)
+    instaladores_seleccionados = list(instalacion.instaladores.values_list('id', flat=True))
+    
     context = {
         'form': form,
         'instalacion': instalacion,
@@ -323,6 +370,8 @@ def realizar_instalacion(request, instalacion_id):
         'ubicacion_cuadrilla': ubicacion_cuadrilla,
         'fotos_existentes': fotos_existentes,
         'es_admin': es_admin,
+        'instaladores_disponibles': instaladores_de_cuadrilla,  # Para mostrar en el template
+        'instaladores_seleccionados': instaladores_seleccionados,  # Para marcar los que ya están
     }
     return render(request, 'Instaladores/realizar_instalaciones.html', context)
 
@@ -357,4 +406,86 @@ def capturar_ubicacion_instalador(request):
     
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
+
+
+@login_required
+def obtener_detalle_instalacion(request, instalacion_id):
+    """API para obtener los detalles completos de una instalación"""
+    
+    try:
+        instalacion = get_object_or_404(Instalacion, id=instalacion_id)
+        
+        # Verificar permisos
+        es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+        es_instalador = request.user.groups.filter(name='Instalador').exists()
+        
+        if not (es_admin or es_instalador):
+            return JsonResponse({'error': 'No tienes permisos para ver esta instalación.'}, status=403)
+        
+        # Si es instalador, verificar que participó en la instalación
+        if es_instalador and not es_admin:
+            if request.user not in instalacion.instaladores.all():
+                return JsonResponse({'error': 'No tienes permiso para ver esta instalación.'}, status=403)
+        
+        # Construir datos de la instalación
+        datos = {
+            'id': instalacion.id,
+            'orden_servicio': instalacion.orden_servicio,
+            'nombre_cliente': instalacion.nombre_cliente,
+            'cedula_cliente': instalacion.cedula_cliente,
+            'telefono': instalacion.asignacion.telefono_cliente if hasattr(instalacion.asignacion, 'telefono_cliente') else 'No disponible',
+            'plan': instalacion.plan,
+            'cuadrilla': instalacion.asignacion.cuadrilla.nombre,
+            'estado': 'Completada' if instalacion.completada else 'Pendiente',
+            'fecha_instalacion': instalacion.fecha_instalacion.strftime('%d/%m/%Y %H:%M') if instalacion.fecha_instalacion else 'No registrada',
+            'fecha_asignacion': instalacion.asignacion.fecha_asignacion.strftime('%d/%m/%Y %H:%M'),
+            'fecha_creacion': instalacion.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+            
+            # Datos técnicos
+            'latitud': instalacion.latitud,
+            'longitud': instalacion.longitud,
+            'feeder': instalacion.feeder or 'No registrado',
+            'caja': instalacion.caja or 'No registrado',
+            'puerto_utilizado': instalacion.puerto_utilizado or 'No registrado',
+            
+            # Datos del equipo
+            'modelo_modem': instalacion.modelo_modem.nombre if instalacion.modelo_modem else 'No registrado',
+            'sn_modem': instalacion.sn_modem or 'No registrado',
+            'mac_modem': instalacion.mac_modem or 'No registrado',
+            
+            # Materiales
+            'inicio_fibra': instalacion.inicio_fibra or 0,
+            'final_fibra': instalacion.final_fibra or 0,
+            'metros_utilizados': instalacion.metros_utilizados,
+            'conectores': instalacion.conectores or 0,
+            'rosetas': instalacion.rosetas or 0,
+            'patch_cord': instalacion.patch_cord or 0,
+            'tensores': instalacion.tensores or 0,
+            'conectores_malos': instalacion.conectores_malos or 0,
+            
+            # Observaciones y fotos
+            'observacion': instalacion.observacion or 'Sin observaciones',
+            'fotos': instalacion.fotos or [],
+            
+            # Instaladores que participaron
+            'instaladores': [
+                {
+                    'id': inst.id,
+                    'nombre': inst.get_full_name() or inst.username,
+                    'username': inst.username
+                }
+                for inst in instalacion.instaladores.all()
+            ],
+            
+            # Información de origen
+            'tipo': 'Contrato' if instalacion.asignacion.contrato else 'Venta Directa',
+            'creado_por': instalacion.creado_por.get_full_name() or instalacion.creado_por.username if instalacion.creado_por else 'Sistema',
+            'customer_id': instalacion.customer_id,
+            'atr': instalacion.atr,
+        }
+        
+        return JsonResponse({'success': True, 'data': datos})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 

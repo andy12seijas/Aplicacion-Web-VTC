@@ -379,6 +379,7 @@ def gestionar_contratos(request):
     busqueda = request.GET.get('busqueda', '')
     vendedor_id = request.GET.get('vendedor', '')
     estado = request.GET.get('estado', '')
+    tab_activa = request.GET.get('tab', 'pendientes')
     
     # Base querysets
     contratos_pendientes = ContratoCliente.objects.filter(
@@ -418,19 +419,33 @@ def gestionar_contratos(request):
     contratos_pendientes = contratos_pendientes.order_by('-fecha_creacion')
     contratos_completados = contratos_completados.order_by('-fecha_creacion')
     
+    # ===== PAGINACIÓN =====
+    
+    
+    # Paginación para contratos pendientes
+    paginator_pendientes = Paginator(contratos_pendientes, 5)  # 10 por página
+    page_pendientes = request.GET.get('page_pendientes', 1)
+    contratos_pendientes_page = paginator_pendientes.get_page(page_pendientes)
+    
+    # Paginación para contratos completados
+    paginator_completados = Paginator(contratos_completados, 5)  # 10 por página
+    page_completados = request.GET.get('page_completados', 1)
+    contratos_completados_page = paginator_completados.get_page(page_completados)
+    
     # Obtener lista de vendedores para el filtro
     from django.contrib.auth.models import User
     vendedores = User.objects.filter(is_active=True, groups__name='Vendedor').order_by('username')
     
     context = {
-        'contratos_pendientes': contratos_pendientes,
+        'contratos_pendientes': contratos_pendientes_page,
         'contratos_pendientes_count': contratos_pendientes.count(),
-        'contratos_completados': contratos_completados,
+        'contratos_completados': contratos_completados_page,
         'contratos_completados_count': contratos_completados.count(),
         'vendedores': vendedores,
         'busqueda': busqueda,
         'filtro_vendedor': vendedor_id,
         'filtro_estado': estado,
+        'tab_activa': tab_activa,
     }
     
     return render(request, 'Admin/gestionar_contratos.html', context)
@@ -456,8 +471,7 @@ def completar_contrato(request, contrato_id):
         # Obtener datos del formulario
         customer_id = request.POST.get('customer_id')
         ods = request.POST.get('ods')
-        numero_pago_movil = request.POST.get('numero_pago_movil')
-        foto_pago = request.FILES.get('foto_pago')
+       
         
         if not customer_id or not ods:
             return JsonResponse({'error': 'Customer ID y ODS son requeridos'}, status=400)
@@ -470,8 +484,6 @@ def completar_contrato(request, contrato_id):
         # Actualizar el contrato
         contrato.customer_id = customer_id
         contrato.ods = ods
-        contrato.numero_pago_movil = numero_pago_movil
-        contrato.foto_pago = foto_pago
         contrato.save()
         
         return JsonResponse({'success': True})
