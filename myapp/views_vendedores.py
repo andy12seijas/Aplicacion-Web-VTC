@@ -576,42 +576,32 @@ def lista_contratos(request):
     return render(request, 'Vendedores/lista_contratos.html', context)
 
 
+import traceback
+import sys
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+
 @login_required
 def datos_contrato(request, contrato_id):
-    """API para obtener datos de un contrato en formato JSON"""
+    """API para obtener datos de un contrato - CON CAPTURA DE ERRORES DETALLADA"""
     
     try:
-        contrato = get_object_or_404(
-            ContratoCliente.objects.select_related(
-                'cliente_potencial', 'plan_contratado', 'modalidad_equipo',
-                'tipo_vivienda', 'red', 'creado_por'
-            ),
-            id=contrato_id
-        )
+        from myapp.models import ContratoCliente
+        
+        print("=== INICIO DE datos_contrato ===")
+        print(f"Contrato ID: {contrato_id}")
+        print(f"Usuario: {request.user}")
+        
+        contrato = get_object_or_404(ContratoCliente, id=contrato_id)
+        print("✅ Contrato encontrado")
         
         # Verificar permisos
         es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
         if not (es_admin or contrato.creado_por == request.user):
             return JsonResponse({'error': 'No autorizado'}, status=403)
         
-        # CONSTRUIR URL DE LA FOTO (VERSIÓN SIMPLIFICADA)
-        foto_url = None
-        if contrato.foto_pago:
-            try:
-                # Usar el método url de Django
-                foto_url = contrato.foto_pago.url
-                print(f"✅ URL generada por Django: {foto_url}")
-                print(f"📁 Ruta del archivo: {contrato.foto_pago.path}")
-            except Exception as e:
-                print(f"❌ Error con foto_pago.url: {e}")
-                # Fallback manual
-                nombre_archivo = str(contrato.foto_pago)
-                if nombre_archivo.startswith('pagos/'):
-                    nombre_archivo = nombre_archivo.replace('pagos/', '')
-                foto_url = f'/pagos/{nombre_archivo}'
-                print(f"⚠️ URL manual: {foto_url}")
-        
-        # Preparar datos para el JSON
+        # Datos básicos del cliente
         data = {
             'id': contrato.id,
             'cliente': {
@@ -635,7 +625,7 @@ def datos_contrato(request, contrato_id):
             'tipo_vivienda': contrato.tipo_vivienda.nombre if contrato.tipo_vivienda else '',
             'numero_casa': contrato.numero_casa or '',
             'numero_pago_movil': contrato.numero_pago_movil or '',
-            'foto_pago': foto_url,
+            'foto_pago': None,  # Temporalmente deshabilitado para diagnosticar
             'red': contrato.red.nombre if contrato.red else '',
             'ods': contrato.ods or '',
             'customer_id': contrato.customer_id or '',
@@ -646,14 +636,19 @@ def datos_contrato(request, contrato_id):
             'fecha_actualizacion': contrato.fecha_actualizacion.strftime('%d/%m/%Y %H:%M'),
         }
         
-        print(f"📤 Enviando datos. Foto URL: {foto_url}")
+        print("✅ Datos preparados correctamente")
         return JsonResponse(data)
         
     except Exception as e:
-        print(f"❌ Error en datos_contrato: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'error': str(e)}, status=500)
+        # Capturar el error y devolverlo como JSON
+        error_details = {
+            'error': str(e),
+            'tipo_error': type(e).__name__,
+            'traceback': traceback.format_exc(),
+            'mensaje_amigable': f'Error al cargar el contrato: {str(e)}'
+        }
+        print(f"❌ ERROR: {error_details}")
+        return JsonResponse(error_details, status=500)
     
     
     
