@@ -2074,63 +2074,68 @@
     }
     
     // Enviar formulario de pago
-    document.getElementById('formCompletarPago')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const contratoId = document.getElementById('contratoId').value;
-        
-        // Mostrar loading
-        Swal.fire({
-            title: 'Guardando...',
-            text: 'Por favor espera',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        fetch(`/contrato/${contratoId}/completar-pago/`, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            Swal.close();
-            
-            if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Éxito!',
-                    text: data.message,
-                    confirmButtonColor: '#ff6b00'
-                }).then(() => {
-                    cerrarModalPago();
-                    location.reload(); // Recargar para actualizar los botones
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.error || 'Error al guardar la información',
-                    confirmButtonColor: '#ff6b00'
-                });
-            }
-        })
-        .catch(error => {
-            Swal.close();
-            console.error('Error:', error);
+    // Enviar formulario de pago
+document.getElementById('formCompletarPago')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const contratoId = document.getElementById('contratoId').value;
+    const numeroPagoMovil = document.getElementById('numero_pago_movil').value;
+    const fotoPago = document.getElementById('foto_pago').files[0];
+    
+    // Crear FormData manualmente
+    const formData = new FormData();
+    formData.append('numero_pago_movil', numeroPagoMovil);
+    if (fotoPago) {
+        formData.append('foto_pago', fotoPago);
+    }
+    
+    Swal.fire({
+        title: 'Guardando...',
+        text: 'Por favor espera',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+    
+    fetch(`/contrato/${contratoId}/completar-pago/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        Swal.close();
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: data.message,
+                confirmButtonColor: '#ff6b00'
+            }).then(() => {
+                cerrarModalPago();
+                location.reload();
+            });
+        } else {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Error de conexión al servidor',
+                text: data.error || 'Error al guardar la información',
                 confirmButtonColor: '#ff6b00'
             });
+        }
+    })
+    .catch(error => {
+        Swal.close();
+        console.error('Error:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de conexión',
+            text: 'No se pudo conectar con el servidor. Verifica tu conexión.',
+            confirmButtonColor: '#ff6b00'
         });
     });
+});
     
     // Mostrar indicador de filtros activos al cargar la página
     document.addEventListener('DOMContentLoaded', function() {

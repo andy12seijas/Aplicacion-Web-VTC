@@ -790,6 +790,13 @@ def estado_cuadrillas(request):
 @csrf_exempt
 def completar_pago(request, contrato_id):
     """API para completar el pago del contrato"""
+    if request.method == 'GET':
+        return JsonResponse({
+            'status': 'debug', 
+            'message': 'La vista funciona, el problema es el método POST',
+            'contrato_id': contrato_id
+        })
+    
     if request.method != 'POST':
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
