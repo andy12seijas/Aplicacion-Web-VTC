@@ -582,73 +582,156 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 
+import traceback
+import json
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.decorators import login_required
+
 @login_required
 def datos_contrato(request, contrato_id):
-    """API para obtener datos de un contrato - CON CAPTURA DE ERRORES DETALLADA"""
+    """API para obtener datos de un contrato - Versión ultra robusta"""
+    
+    response_data = {}
+    status_code = 200
     
     try:
         from myapp.models import ContratoCliente
         
-        print("=== INICIO DE datos_contrato ===")
-        print(f"Contrato ID: {contrato_id}")
-        print(f"Usuario: {request.user}")
+        print(f"=== INICIO datos_contrato ID: {contrato_id} ===")
         
+        # 1. Obtener contrato
         contrato = get_object_or_404(ContratoCliente, id=contrato_id)
-        print("✅ Contrato encontrado")
         
-        # Verificar permisos
+        # 2. Verificar permisos
         es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
         if not (es_admin or contrato.creado_por == request.user):
             return JsonResponse({'error': 'No autorizado'}, status=403)
         
-        # Datos básicos del cliente
-        data = {
-            'id': contrato.id,
-            'cliente': {
-                'id': contrato.cliente_potencial.id,
-                'nombre': contrato.cliente_potencial.nombre,
-                'apellido': contrato.cliente_potencial.apellido,
-                'cedula': contrato.cliente_potencial.cedula,
-                'telefono': contrato.cliente_potencial.telefono,
-            },
-            'otro_telefono': contrato.otro_telefono or '',
-            'correo_electronico': contrato.correo_electronico or '',
-            'direccion_detallada': contrato.direccion_detallada or '',
-            'fecha_nacimiento': contrato.fecha_nacimiento.strftime('%d/%m/%Y') if contrato.fecha_nacimiento else '',
-            'plan': {
-                'id': contrato.plan_contratado.id,
-                'nombre': contrato.plan_contratado.nombre,
-            },
-            'simple_plus': contrato.get_simple_plus_display(),
-            'modalidad_equipo': contrato.modalidad_equipo.nombre if contrato.modalidad_equipo else '',
-            'punto_referencia': contrato.punto_referencia or '',
-            'tipo_vivienda': contrato.tipo_vivienda.nombre if contrato.tipo_vivienda else '',
-            'numero_casa': contrato.numero_casa or '',
-            'numero_pago_movil': contrato.numero_pago_movil or '',
-            'foto_pago': None,  # Temporalmente deshabilitado para diagnosticar
-            'red': contrato.red.nombre if contrato.red else '',
-            'ods': contrato.ods or '',
-            'customer_id': contrato.customer_id or '',
-            'atr': contrato.atr or '',
-            'estado': contrato.get_estado_display(),
-            'creado_por': contrato.creado_por.get_full_name() or contrato.creado_por.username if contrato.creado_por else 'Sistema',
-            'fecha_creacion': contrato.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
-            'fecha_actualizacion': contrato.fecha_actualizacion.strftime('%d/%m/%Y %H:%M'),
-        }
+        # 3. Construir data con manejo de errores por campo
+        data = {}
         
-        print("✅ Datos preparados correctamente")
-        return JsonResponse(data)
+        # ID
+        data['id'] = contrato.id
+        
+        # Cliente (con try individual)
+        try:
+            data['cliente'] = {
+                'id': contrato.cliente_potencial.id,
+                'nombre': str(contrato.cliente_potencial.nombre or ''),
+                'apellido': str(contrato.cliente_potencial.apellido or ''),
+                'cedula': str(contrato.cliente_potencial.cedula or ''),
+                'telefono': str(contrato.cliente_potencial.telefono or ''),
+            }
+        except Exception as e:
+            data['cliente'] = {'error': f'Error en cliente: {str(e)}'}
+        
+        # Campos simples
+        campos_simples = [
+            'otro_telefono', 'correo_electronico', 'direccion_detallada',
+            'punto_referencia', 'numero_casa', 'numero_pago_movil',
+            'ods', 'customer_id', 'atr'
+        ]
+        for campo in campos_simples:
+            try:
+                valor = getattr(contrato, campo, '')
+                data[campo] = str(valor) if valor else ''
+            except:
+                data[campo] = ''
+        
+        # Fecha nacimiento
+        try:
+            data['fecha_nacimiento'] = contrato.fecha_nacimiento.strftime('%d/%m/%Y') if contrato.fecha_nacimiento else ''
+        except:
+            data['fecha_nacimiento'] = ''
+        
+        # Plan
+        try:
+            data['plan'] = {
+                'id': contrato.plan_contratado.id,
+                'nombre': str(contrato.plan_contratado.nombre or '')
+            }
+        except:
+            data['plan'] = {'id': 0, 'nombre': 'Error'}
+        
+        # Simple plus
+        try:
+            data['simple_plus'] = contrato.get_simple_plus_display() or ''
+        except:
+            data['simple_plus'] = ''
+        
+        # Modalidad equipo
+        try:
+            data['modalidad_equipo'] = str(contrato.modalidad_equipo.nombre) if contrato.modalidad_equipo else ''
+        except:
+            data['modalidad_equipo'] = ''
+        
+        # Tipo vivienda
+        try:
+            data['tipo_vivienda'] = str(contrato.tipo_vivienda.nombre) if contrato.tipo_vivienda else ''
+        except:
+            data['tipo_vivienda'] = ''
+        
+        # Red
+        try:
+            data['red'] = str(contrato.red.nombre) if contrato.red else ''
+        except:
+            data['red'] = ''
+        
+        # Foto (importante: NO intentar acceder a .url si no existe)
+        try:
+            if contrato.foto_pago and hasattr(contrato.foto_pago, 'url'):
+                data['foto_pago'] = contrato.foto_pago.url
+            else:
+                data['foto_pago'] = None
+        except:
+            data['foto_pago'] = None
+        
+        # Estado
+        try:
+            data['estado'] = contrato.get_estado_display() or ''
+        except:
+            data['estado'] = ''
+        
+        # Creado por
+        try:
+            if contrato.creado_por:
+                data['creado_por'] = contrato.creado_por.get_full_name() or contrato.creado_por.username
+            else:
+                data['creado_por'] = 'Sistema'
+        except:
+            data['creado_por'] = 'Desconocido'
+        
+        # Fechas
+        try:
+            data['fecha_creacion'] = contrato.fecha_creacion.strftime('%d/%m/%Y %H:%M')
+        except:
+            data['fecha_creacion'] = ''
+        
+        try:
+            data['fecha_actualizacion'] = contrato.fecha_actualizacion.strftime('%d/%m/%Y %H:%M')
+        except:
+            data['fecha_actualizacion'] = ''
+        
+        response_data = data
         
     except Exception as e:
-        # Capturar el error y devolverlo como JSON
-        error_details = {
+        status_code = 500
+        response_data = {
             'error': str(e),
             'tipo_error': type(e).__name__,
-            'traceback': traceback.format_exc(),
-            'mensaje_amigable': f'Error al cargar el contrato: {str(e)}'
+            'mensaje': f'Error al cargar el contrato {contrato_id}: {str(e)}'
         }
-        print(f"❌ ERROR: {error_details}")
-        return JsonResponse(error_details, status=500)
+        print(f"ERROR: {traceback.format_exc()}")
+    
+    # Asegurarnos de que SIEMPRE devolvemos JSON
+    try:
+        return JsonResponse(response_data, status=status_code)
+    except Exception as json_error:
+        return JsonResponse({
+            'error': 'Error al serializar respuesta',
+            'detalle': str(json_error)
+        }, status=500)
     
     
     

@@ -7,8 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-s9z!fs@p1efs3ypgnetd7c5pi$5=--9@9_^w1z6mwtqb(vysu7'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True # ⬅️ CAMBIADO a False para producción
+DEBUG = True
 
 # ⬅️ AGREGADO vtconexiones.com
 ALLOWED_HOSTS = [
