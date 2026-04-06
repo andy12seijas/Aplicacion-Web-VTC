@@ -24,5 +24,7 @@ urlpatterns = [
     path('', include('myapp.urls')),
     
 ]
-if settings.DEBUG:
-    urlpatterns += static('/pagos/', document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    
+    
+    

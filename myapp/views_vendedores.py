@@ -594,22 +594,35 @@ def datos_contrato(request, contrato_id):
         if not (es_admin or contrato.creado_por == request.user):
             return JsonResponse({'error': 'No autorizado'}, status=403)
         
-        # CONSTRUIR URL DE LA FOTO (VERSIÓN SIMPLIFICADA)
+        # =========================================================
+        # 🔥 CORRECCIÓN DE LA RUTA DE LA FOTO
+        # =========================================================
         foto_url = None
         if contrato.foto_pago:
             try:
-                # Usar el método url de Django
-                foto_url = contrato.foto_pago.url
-                print(f"✅ URL generada por Django: {foto_url}")
-                print(f"📁 Ruta del archivo: {contrato.foto_pago.path}")
+                # Obtener el nombre del archivo
+                nombre_archivo = str(contrato.foto_pago.name)
+                print(f"📁 Nombre del archivo en BD: {nombre_archivo}")
+                
+                # La foto está en la subcarpeta 'pagos/' dentro de MEDIA_ROOT
+                # Estructura: miapp/pagos/pagos/nombre_foto.jpg
+                # MEDIA_URL = '/pagos/'
+                # Entonces la URL pública debe ser: /pagos/pagos/nombre_foto.jpg
+                
+                # Extraer solo el nombre del archivo (sin la carpeta)
+                if '/' in nombre_archivo:
+                    nombre_solo = nombre_archivo.split('/')[-1]
+                else:
+                    nombre_solo = nombre_archivo
+                
+                # Construir la URL correcta con la subcarpeta 'pagos/'
+                foto_url = f'/pagos/pagos/{nombre_solo}'
+                
+                print(f"✅ URL generada: {foto_url}")
+                
             except Exception as e:
-                print(f"❌ Error con foto_pago.url: {e}")
-                # Fallback manual
-                nombre_archivo = str(contrato.foto_pago)
-                if nombre_archivo.startswith('pagos/'):
-                    nombre_archivo = nombre_archivo.replace('pagos/', '')
-                foto_url = f'/pagos/{nombre_archivo}'
-                print(f"⚠️ URL manual: {foto_url}")
+                print(f"❌ Error al procesar la foto: {e}")
+                foto_url = None
         
         # Preparar datos para el JSON
         data = {
@@ -635,7 +648,7 @@ def datos_contrato(request, contrato_id):
             'tipo_vivienda': contrato.tipo_vivienda.nombre if contrato.tipo_vivienda else '',
             'numero_casa': contrato.numero_casa or '',
             'numero_pago_movil': contrato.numero_pago_movil or '',
-            'foto_pago': foto_url,
+            'foto_pago': foto_url,  # ✅ URL corregida
             'red': contrato.red.nombre if contrato.red else '',
             'ods': contrato.ods or '',
             'customer_id': contrato.customer_id or '',
@@ -813,7 +826,10 @@ def completar_pago(request, contrato_id):
         # Guardar foto del pago
         if foto_pago:
             # Validar tipo de archivo
-           
+            extension = os.path.splitext(foto_pago.name)[1].lower()
+            if extension not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                return JsonResponse({'error': 'Formato de imagen no válido. Usa JPG, PNG, GIF o WEBP'}, status=400)
+            
             # Validar tamaño (máximo 5MB)
             if foto_pago.size > 5 * 1024 * 1024:
                 return JsonResponse({'error': 'La imagen no debe superar los 5MB'}, status=400)
