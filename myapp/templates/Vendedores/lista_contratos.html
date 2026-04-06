@@ -1798,6 +1798,7 @@
     });
     
     // Función para ver detalle del contrato
+    // Función para ver detalle del contrato CON ERROR DETALLADO
     function verContrato(id) {
         const modal = document.getElementById('contratoModal');
         
@@ -1820,7 +1821,10 @@
         fetch(url)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    // Intentar obtener el error del servidor
+                    return response.text().then(text => {
+                        throw new Error(`HTTP ${response.status}: ${text.substring(0, 500)}`);
+                    });
                 }
                 return response.json();
             })
@@ -1828,11 +1832,18 @@
                 Swal.close();
                 
                 if (data.error) {
+                    // Mostrar error detallado
+                    let errorMsg = data.error;
+                    if (data.detalle) errorMsg += '\n\nDetalle: ' + data.detalle;
+                    if (data.tipo_error) errorMsg += '\n\nTipo: ' + data.tipo_error;
+                    if (data.traceback) errorMsg += '\n\nTraceback:\n' + data.traceback;
+                    
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error',
-                        text: data.error,
-                        confirmButtonColor: '#ff6b00'
+                        title: 'Error del Servidor',
+                        text: errorMsg,
+                        confirmButtonColor: '#ff6b00',
+                        width: '800px'
                     });
                     return;
                 }
@@ -1846,9 +1857,14 @@
                 Swal.close();
                 Swal.fire({
                     icon: 'error',
-                    title: 'Error',
-                    text: 'No se pudo cargar la información del contrato',
-                    confirmButtonColor: '#ff6b00'
+                    title: 'Error de Conexión',
+                    html: `<div style="text-align: left;">
+                        <p><strong>Mensaje:</strong> ${error.message}</p>
+                        <p><strong>URL:</strong> ${url}</p>
+                        <p><strong>Sugerencia:</strong> Revisa los logs del servidor</p>
+                    </div>`,
+                    confirmButtonColor: '#ff6b00',
+                    width: '800px'
                 });
             });
     }
