@@ -9,13 +9,13 @@ from .models import *
 
 
 class UsuarioForm(forms.ModelForm):
-    """Formulario para crear y editar usuarios con cédula y teléfono"""
+    """Formulario para crear y editar usuarios con cedula y telefono"""
     
     # ===== CAMPOS EN EL MISMO ORDEN QUE LA TEMPLATE =====
     
-    # 1. Cédula (primero en la template)
+    # 1. Cedula (primero en la template)
     cedula = forms.IntegerField(
-        label='Cédula de Identidad',
+        label='Cedula de Identidad',
         widget=forms.NumberInput(attrs={
             'class': 'form-input',
             'placeholder': 'Ej: 12345678',
@@ -68,9 +68,9 @@ class UsuarioForm(forms.ModelForm):
         required=True
     )
     
-    # 6. Teléfono (sexto en la template)
+    # 6. Telefono (sexto en la template)
     telefono = forms.CharField(
-        label='Teléfono',
+        label='Telefono',
         widget=forms.TextInput(attrs={
             'class': 'form-input',
             'placeholder': 'Ej: 0412-1234567',
@@ -80,7 +80,7 @@ class UsuarioForm(forms.ModelForm):
         help_text="Ej: 0412-1234567"
     )
     
-    # 7. Rol (después en la template)
+    # 7. Rol (despues en la template)
     rol = forms.ChoiceField(
         choices=[
             ('', 'Seleccionar rol'),
@@ -95,23 +95,23 @@ class UsuarioForm(forms.ModelForm):
         })
     )
     
-    # 8. Contraseña (campos al final)
+    # 8. Contrasena (campos al final)
     password1 = forms.CharField(
-        label='Contraseña',
+        label='Contrasena',
         widget=forms.PasswordInput(attrs={
             'class': 'form-input',
-            'placeholder': 'Contraseña',
+            'placeholder': 'Contrasena',
             'id': 'id_password1'
         }),
         required=False
     )
     
-    # 9. Confirmar contraseña
+    # 9. Confirmar contrasena
     password2 = forms.CharField(
-        label='Confirmar contraseña',
+        label='Confirmar contrasena',
         widget=forms.PasswordInput(attrs={
             'class': 'form-input',
-            'placeholder': 'Confirmar contraseña',
+            'placeholder': 'Confirmar contrasena',
             'id': 'id_password2'
         }),
         required=False
@@ -119,28 +119,28 @@ class UsuarioForm(forms.ModelForm):
     
     class Meta:
         model = User
-        # Especificamos explícitamente los campos en el orden correcto
+        # Especificamos explicitamente los campos en el orden correcto
         fields = ['username', 'email', 'first_name', 'last_name']
     
     def __init__(self, *args, **kwargs):
         self.es_creacion = kwargs.pop('es_creacion', True)
         super().__init__(*args, **kwargs)
         
-        # DEBUG: Ver qué campos tiene el formulario
-        print(f"📋 CAMPOS DEL FORMULARIO: {list(self.fields.keys())}")
+        # DEBUG: Ver que campos tiene el formulario (SIN EMOJIS)
+        print(f"DEBUG: CAMPOS DEL FORMULARIO: {list(self.fields.keys())}")
         
         # Reordenar los campos para que coincidan con la template
         field_order = ['cedula', 'username', 'first_name', 'last_name', 'email', 'telefono', 'rol', 'password1', 'password2']
         self.order_fields(field_order)
         
-        # Si es edición, cargar datos del perfil
+        # Si es edicion, cargar datos del perfil
         if not self.es_creacion and self.instance.pk:
             # Cargar rol actual
             grupos = self.instance.groups.all()
             if grupos:
                 self.fields['rol'].initial = grupos[0].name
             
-            # Cargar cédula y teléfono del perfil
+            # Cargar cedula y telefono del perfil
             try:
                 perfil = self.instance.perfil
                 self.fields['cedula'].initial = perfil.cedula
@@ -148,28 +148,28 @@ class UsuarioForm(forms.ModelForm):
                 
                 self.fields['cedula'].widget.attrs['readonly'] = True
                 self.fields['cedula'].widget.attrs['class'] = 'form-input readonly-field'
-                self.fields['cedula'].help_text = 'La cédula no se puede modificar'
+                self.fields['cedula'].help_text = 'La cedula no se puede modificar'
             except PerfilUsuario.DoesNotExist:
                 # Si no existe perfil, lo creamos
                 PerfilUsuario.objects.create(usuario=self.instance)
         
-        # Configurar campos de contraseña según sea creación o edición
+        # Configurar campos de contrasena segun sea creacion o edicion
         if not self.es_creacion:
             self.fields['password1'].required = False
             self.fields['password2'].required = False
-            self.fields['password1'].help_text = 'Dejar en blanco para mantener la contraseña actual'
+            self.fields['password1'].help_text = 'Dejar en blanco para mantener la contrasena actual'
     
     def clean_cedula(self):
         cedula = self.cleaned_data.get('cedula')
         
         if self.es_creacion:
-            # En creación, verificar que la cédula no exista
+            # En creacion, verificar que la cedula no exista
             if PerfilUsuario.objects.filter(cedula=cedula).exists():
-                raise forms.ValidationError('Esta cédula ya está registrada.')
+                raise forms.ValidationError('Esta cedula ya esta registrada.')
         else:
-            # En edición, verificar que la cédula no exista en OTRO usuario
+            # En edicion, verificar que la cedula no exista en OTRO usuario
             if PerfilUsuario.objects.filter(cedula=cedula).exclude(usuario=self.instance).exists():
-                raise forms.ValidationError('Esta cédula ya está registrada por otro usuario.')
+                raise forms.ValidationError('Esta cedula ya esta registrada por otro usuario.')
         
         return cedula
     
@@ -185,14 +185,14 @@ class UsuarioForm(forms.ModelForm):
             if not password2:
                 self.add_error('password2', 'Este campo es requerido.')
             if password1 and password2 and password1 != password2:
-                self.add_error('password2', 'Las contraseñas no coinciden.')
+                self.add_error('password2', 'Las contrasenas no coinciden.')
         else:
             password1 = cleaned_data.get('password1')
             password2 = cleaned_data.get('password2')
             
             if password1 or password2:
                 if password1 != password2:
-                    self.add_error('password2', 'Las contraseñas no coinciden.')
+                    self.add_error('password2', 'Las contrasenas no coinciden.')
         
         return cleaned_data
     
@@ -200,7 +200,7 @@ class UsuarioForm(forms.ModelForm):
         # Guardar el usuario primero
         user = super().save(commit=False)
         
-        # Establecer contraseña si es creación o se proporcionó una nueva
+        # Establecer contrasena si es creacion o se proporciono una nueva
         if self.es_creacion or self.cleaned_data.get('password1'):
             user.set_password(self.cleaned_data['password1'])
         
@@ -213,8 +213,8 @@ class UsuarioForm(forms.ModelForm):
             perfil.telefono = self.cleaned_data['telefono']
             perfil.save()
             
-            # LOG PARA VERIFICAR
-            print(f"✅ Perfil guardado: Usuario={user.username}, Cédula={perfil.cedula}, Teléfono={perfil.telefono}")
+            # LOG PARA VERIFICAR (SIN EMOJIS)
+            print(f"INFO: Perfil guardado - Usuario={user.username}, Cedula={perfil.cedula}, Telefono={perfil.telefono}")
             # ===================================
             
             # Manejar grupos (roles)
@@ -224,12 +224,12 @@ class UsuarioForm(forms.ModelForm):
                 try:
                     group = Group.objects.get(name=rol)
                     user.groups.add(group)
-                    print(f"✅ Rol '{rol}' asignado a {user.username}")
+                    print(f"INFO: Rol '{rol}' asignado a {user.username}")
                 except Group.DoesNotExist:
-                    print(f"❌ Grupo '{rol}' no existe")
+                    print(f"ERROR: Grupo '{rol}' no existe")
                     pass
             
-            # Configurar is_staff según el rol
+            # Configurar is_staff segun el rol
             if not user.is_superuser:
                 user.is_staff = (rol == 'Administrador')
                 user.save()
