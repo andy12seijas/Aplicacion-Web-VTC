@@ -11,6 +11,7 @@ from myapp.views_reporte import *
 from myapp.views_panel_estadisticas import *
 from myapp.views_nomina import *
 from myapp.views_soporte import *
+from myapp.views_dashboard import *
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
 
@@ -19,6 +20,9 @@ urlpatterns = [
     path('', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('dashboard/', dashboard, name='dashboard'),
+    
+    # API para datos en tiempo real (AJAX)
+    path('dashboard/datos-api/', dashboard_datos_api, name='dashboard_api'),
     #URLS DE ADMINISTRACION
     path('lista_usuarios/', lista_usuarios, name='lista_usuarios'),
     path('crear_usuario/', crear_usuario, name='crear_usuario'),
@@ -50,6 +54,7 @@ urlpatterns = [
     path('contrato/crear/', crear_contrato, name='crear_contrato'),
     path('lista_contratos/', lista_contratos, name='lista_contratos'),
     path('datos-contrato/<int:contrato_id>/', datos_contrato, name='datos_contrato'),
+    
     path('contrato/crear/error/', crear_contrato_error, name='crear_contrato_error'),
     path('capturar-ubicacion-vendedor/', capturar_ubicacion_vendedor, name='capturar_ubicacion_vendedor'),
     path('cuadrillas/estado/', estado_cuadrillas, name='estado_cuadrillas'),
@@ -75,6 +80,8 @@ urlpatterns = [
     #Soporte
     path('soportes/', lista_soportes, name='lista_soportes'),
     path('soporte/nuevo/', crear_soporte_unificado, name='crear_soporte_unificado'),
+    path('soporte/<int:soporte_id>/editar/', editar_soporte, name='editar_soporte'),
+    path('soporte/<int:soporte_id>/detalle-json/', detalle_soporte_json, name='detalle_soporte_json'),
 ]
 
 

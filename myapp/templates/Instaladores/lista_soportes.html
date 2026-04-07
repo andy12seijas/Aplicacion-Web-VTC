@@ -1,20 +1,18 @@
 {% extends 'Inicio_De_Sesion/base.html' %}
 {% load static %}
 
-{% block title %}Soportes Técnicos{% endblock %}
+{% block title %}Simple Fibra - Soportes Técnicos{% endblock %}
 
 {% block page_title %}Soportes Técnicos{% endblock %}
 {% block page_subtitle %}Gestión de mudanzas, retiros y recableados{% endblock %}
 
 {% block header_actions %}
-{% if not es_instalador %}
 <a href="{% url 'crear_soporte_unificado' %}" class="btn-orange">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 5v14M5 12h14"/>
     </svg>
     Nuevo Soporte
 </a>
-{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -23,7 +21,7 @@
     <div class="stats-grid">
         <div class="stat-card">
             <span class="stat-value">{{ total_soportes }}</span>
-            <span class="stat-label">Total</span>
+            <span class="stat-label">Total Soportes</span>
         </div>
         <div class="stat-card">
             <span class="stat-value">{{ pendientes }}</span>
@@ -43,35 +41,6 @@
         </div>
     </div>
 
-    <!-- Estadísticas por tipo -->
-    <div class="stats-tipo">
-        <div class="stat-tipo mudanza">
-            <span class="tipo-icon">🏠</span>
-            <span class="tipo-value">{{ mudanzas }}</span>
-            <span class="tipo-label">Mudanzas</span>
-        </div>
-        <div class="stat-tipo retiro">
-            <span class="tipo-icon">📤</span>
-            <span class="tipo-value">{{ retiros }}</span>
-            <span class="tipo-label">Retiros</span>
-        </div>
-        <div class="stat-tipo recableado">
-            <span class="tipo-icon">🔧</span>
-            <span class="tipo-value">{{ recableados }}</span>
-            <span class="tipo-label">Recableados</span>
-        </div>
-        <div class="stat-tipo hoy">
-            <span class="tipo-icon">📅</span>
-            <span class="tipo-value">{{ soportes_hoy }}</span>
-            <span class="tipo-label">Hoy</span>
-        </div>
-        <div class="stat-tipo semana">
-            <span class="tipo-icon">📊</span>
-            <span class="tipo-value">{{ soportes_semana }}</span>
-            <span class="tipo-label">Última semana</span>
-        </div>
-    </div>
-
     <!-- Filtros -->
     <div class="filters-container">
         <div class="filters-grid">
@@ -88,26 +57,22 @@
             <!-- Filtro por tipo -->
             <select id="filterTipo" class="filter-select">
                 <option value="">Todos los tipos</option>
-                <option value="MUDANZA" {% if tipo_seleccionado == 'MUDANZA' %}selected{% endif %}>🏠 Mudanza</option>
-                <option value="RETIRO" {% if tipo_seleccionado == 'RETIRO' %}selected{% endif %}>📤 Retiro</option>
-                <option value="RECABLEADO" {% if tipo_seleccionado == 'RECABLEADO' %}selected{% endif %}>🔧 Recableado</option>
+                <option value="MUDANZA" {% if tipo_seleccionado == 'MUDANZA' %}selected{% endif %}>Mudanza</option>
+                <option value="RETIRO" {% if tipo_seleccionado == 'RETIRO' %}selected{% endif %}>Retiro</option>
+                <option value="RECABLEADO" {% if tipo_seleccionado == 'RECABLEADO' %}selected{% endif %}>Recableado</option>
             </select>
             
             <!-- Filtro por estado -->
             <select id="filterEstado" class="filter-select">
                 <option value="">Todos los estados</option>
-                <option value="PENDIENTE" {% if estado_seleccionado == 'PENDIENTE' %}selected{% endif %}>⏳ Pendiente</option>
-                <option value="EN_PROCESO" {% if estado_seleccionado == 'EN_PROCESO' %}selected{% endif %}>🔄 En Proceso</option>
-                <option value="COMPLETADO" {% if estado_seleccionado == 'COMPLETADO' %}selected{% endif %}>✅ Completado</option>
-                <option value="INCOMPLETO" {% if estado_seleccionado == 'INCOMPLETO' %}selected{% endif %}>⚠️ Incompleto</option>
-                <option value="CANCELADO" {% if estado_seleccionado == 'CANCELADO' %}selected{% endif %}>❌ Cancelado</option>
+                <option value="PENDIENTE" {% if estado_seleccionado == 'PENDIENTE' %}selected{% endif %}>Pendiente</option>
+                <option value="EN_PROCESO" {% if estado_seleccionado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
+                <option value="COMPLETADO" {% if estado_seleccionado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+                <option value="INCOMPLETO" {% if estado_seleccionado == 'INCOMPLETO' %}selected{% endif %}>No Completado</option>
+                <option value="CANCELADO" {% if estado_seleccionado == 'CANCELADO' %}selected{% endif %}>Cancelado</option>
             </select>
             
-            <!-- Filtro por fecha -->
-            <input type="date" id="fechaDesde" class="filter-date" value="{{ fecha_desde }}" placeholder="Fecha desde">
-            <input type="date" id="fechaHasta" class="filter-date" value="{{ fecha_hasta }}" placeholder="Fecha hasta">
-            
-            <!-- Filtro por instalador (solo admin) -->
+            <!-- FILTRO POR INSTALADOR (solo para administradores) -->
             {% if es_admin %}
             <select id="filterInstalador" class="filter-select">
                 <option value="">Todos los instaladores</option>
@@ -119,234 +84,433 @@
             </select>
             {% endif %}
         </div>
-        
-        <!-- Botón limpiar filtros -->
-        <div class="filters-actions">
-            <button class="btn-clear-filters" onclick="limpiarFiltros()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-                Limpiar filtros
-            </button>
-        </div>
     </div>
 
-    <!-- Tabla de Soportes -->
-    <div class="soportes-table-wrapper">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Cliente</th>
-                        <th>Tipo</th>
-                        <th>Estado</th>
-                        <th>Fecha Servicio</th>
-                        <th>Instaladores</th>
-                        <th>Materiales</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for soporte in page_obj %}
-                    <tr>
-                        <td class="soporte-id">#{{ soporte.id }}</td>
-                        <td>
-                            <div class="cliente-info">
-                                <strong>{{ soporte.nombre_cliente }}</strong>
-                                <small>{{ soporte.cedula_cliente }}</small>
-                            </div>
-                        </td>
-                        <td>
+    <!-- Indicador de filtros activos -->
+    <div id="filtrosActivos" class="filtros-activos" style="display: none;">
+        <span class="filtros-label">📌 Filtros activos:</span>
+        <span class="filtros-lista" id="filtrosLista"></span>
+        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
+    </div>
+
+    <!-- Contenedor con scroll (SOLO para la tabla/cards) -->
+    <div class="soportes-scroll-wrapper">
+        <!-- Vista Desktop: Tabla -->
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Cédula</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Fecha Servicio</th>
+                            <th>Instaladores</th>
+                            <th>Materiales</th>
+                            {% if es_admin %}
+                            <th>Instalador</th>
+                            {% endif %}
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for soporte in page_obj %}
+                        <tr>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ soporte.nombre_cliente }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="cedula-cell">{{ soporte.cedula_cliente }}</td>
+                            <td>
+                                <span class="tipo-badge {{ soporte.tipo|lower }}">
+                                    {% if soporte.tipo == 'MUDANZA' %}Mudanza
+                                    {% elif soporte.tipo == 'RETIRO' %}Retiro
+                                    {% else %}Recableado{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if soporte.estado == 'PENDIENTE' %}
+                                <span class="badge proceso">Pendiente</span>
+                                {% elif soporte.estado == 'EN_PROCESO' %}
+                                <span class="badge en-proceso">En Proceso</span>
+                                {% elif soporte.estado == 'COMPLETADO' %}
+                                <span class="badge completado">Completado</span>
+                                {% elif soporte.estado == 'INCOMPLETO' %}
+                                <span class="badge no-completado">Incompleto</span>
+                                {% else %}
+                                <span class="badge cancelado">Cancelado</span>
+                                {% endif %}
+                            </td>
+                            <td class="date-cell">
+                                {{ soporte.fecha_hora_servicio|date:"d/m/y" }}
+                                <small>{{ soporte.fecha_hora_servicio|date:"H:i" }}</small>
+                            </td>
+                            <td>
+                                <div class="instaladores-list">
+                                    {% for instalador in soporte.instaladores.all|slice:":2" %}
+                                    <span class="instalador-tag">{{ instalador.get_full_name|default:instalador.username|truncatechars:12 }}</span>
+                                    {% endfor %}
+                                    {% if soporte.instaladores.count > 2 %}
+                                    <span class="instalador-tag more">+{{ soporte.instaladores.count|add:"-2" }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="materiales-resumen">
+                                    {% if soporte.metros_utilizados > 0 %}
+                                    <span class="material-tag">📡 {{ soporte.metros_utilizados }}m</span>
+                                    {% endif %}
+                                    {% if soporte.conectores > 0 %}
+                                    <span class="material-tag">🔌 {{ soporte.conectores }}</span>
+                                    {% endif %}
+                                    {% if soporte.rosetas > 0 %}
+                                    <span class="material-tag">🔘 {{ soporte.rosetas }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            
+                            <!-- Columna Instalador (solo para admin) -->
+                            {% if es_admin %}
+                            <td>
+                                <span class="vendedor-badge">
+                                    {% for inst in soporte.instaladores.all|slice:":1" %}
+                                        {{ inst.get_full_name|default:inst.username|truncatechars:15 }}
+                                    {% endfor %}
+                                </span>
+                            </td>
+                            {% endif %}
+                            
+                            <td>
+                                <div class="actions">
+                                    <button class="action-btn" onclick="verSoporte({{ soporte.id }})" title="Ver detalles">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                        </svg>
+                                    </button>
+                                    
+                                    {% if soporte.estado != 'COMPLETADO' and soporte.estado != 'CANCELADO' %}
+                                    <button class="action-btn" onclick="editarSoporte({{ soporte.id }})" title="Editar">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    {% if es_admin and soporte.estado != 'COMPLETADO' %}
+                                    <button class="action-btn" onclick="cambiarEstado({{ soporte.id }}, 'COMPLETADO')" title="Marcar como completado">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{% if es_admin %}9{% else %}8{% endif %}" class="empty">No hay soportes registrados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Vista Mobile: Cards -->
+        <div class="mobile-view">
+            {% for soporte in page_obj %}
+            <div class="soporte-card">
+                <div class="card-header">
+                    <div class="card-cliente">
+                        <span class="card-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
+                        <div>
+                            <div class="card-name">{{ soporte.nombre_cliente }}</div>
+                            <div class="card-detail">C.I: {{ soporte.cedula_cliente }}</div>
+                        </div>
+                    </div>
+                    <span class="status-dot {% if soporte.estado == 'PENDIENTE' %}pendiente{% elif soporte.estado == 'EN_PROCESO' %}en-proceso{% elif soporte.estado == 'COMPLETADO' %}completado{% else %}no-completado{% endif %}"></span>
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-row">
+                        <span class="card-label">📌 Tipo:</span>
+                        <span class="card-value">
                             <span class="tipo-badge {{ soporte.tipo|lower }}">
-                                {% if soporte.tipo == 'MUDANZA' %}🏠 Mudanza
-                                {% elif soporte.tipo == 'RETIRO' %}📤 Retiro
-                                {% else %}🔧 Recableado{% endif %}
+                                {% if soporte.tipo == 'MUDANZA' %}Mudanza
+                                {% elif soporte.tipo == 'RETIRO' %}Retiro
+                                {% else %}Recableado{% endif %}
                             </span>
-                        </td>
-                        <td>
-                            <span class="estado-badge {{ soporte.estado|lower }}">
-                                {% if soporte.estado == 'PENDIENTE' %}⏳ Pendiente
-                                {% elif soporte.estado == 'EN_PROCESO' %}🔄 En Proceso
-                                {% elif soporte.estado == 'COMPLETADO' %}✅ Completado
-                                {% elif soporte.estado == 'INCOMPLETO' %}⚠️ Incompleto
-                                {% else %}❌ Cancelado{% endif %}
-                            </span>
-                        </td>
-                        <td class="fecha-cell">
-                            {{ soporte.fecha_hora_servicio|date:"d/m/Y" }}
-                            <small>{{ soporte.fecha_hora_servicio|date:"H:i" }}</small>
-                        </td>
-                        <td>
-                            <div class="instaladores-list">
-                                {% for instalador in soporte.instaladores.all|slice:":2" %}
-                                <span class="instalador-tag">{{ instalador.get_full_name|default:instalador.username|truncatechars:15 }}</span>
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📅 Fecha:</span>
+                        <span class="card-value">{{ soporte.fecha_hora_servicio|date:"d/m/Y H:i" }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📌 Estado:</span>
+                        <span class="card-value">
+                            {% if soporte.estado == 'PENDIENTE' %}
+                            <span class="badge proceso">Pendiente</span>
+                            {% elif soporte.estado == 'EN_PROCESO' %}
+                            <span class="badge en-proceso">En Proceso</span>
+                            {% elif soporte.estado == 'COMPLETADO' %}
+                            <span class="badge completado">Completado</span>
+                            {% elif soporte.estado == 'INCOMPLETO' %}
+                            <span class="badge no-completado">Incompleto</span>
+                            {% else %}
+                            <span class="badge cancelado">Cancelado</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">🔧 Instaladores:</span>
+                        <span class="card-value">
+                            {% for inst in soporte.instaladores.all|slice:":2" %}
+                            <span class="instalador-tag">{{ inst.get_full_name|default:inst.username|truncatechars:12 }}</span>
+                            {% endfor %}
+                            {% if soporte.instaladores.count > 2 %}
+                            <span class="instalador-tag more">+{{ soporte.instaladores.count|add:"-2" }}</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📡 Materiales:</span>
+                        <span class="card-value">
+                            {% if soporte.metros_utilizados > 0 %}
+                            <span class="material-tag">{{ soporte.metros_utilizados }}m</span>
+                            {% endif %}
+                            {% if soporte.conectores > 0 %}
+                            <span class="material-tag">{{ soporte.conectores }}🔌</span>
+                            {% endif %}
+                            {% if soporte.rosetas > 0 %}
+                            <span class="material-tag">{{ soporte.rosetas }}🔘</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    <!-- Información del instalador (solo para admin) -->
+                    {% if es_admin %}
+                    <div class="card-row">
+                        <span class="card-label">👤 Instalador:</span>
+                        <span class="card-value">
+                            <span class="vendedor-badge">
+                                {% for inst in soporte.instaladores.all|slice:":1" %}
+                                    {{ inst.get_full_name|default:inst.username }}
                                 {% endfor %}
-                                {% if soporte.instaladores.count > 2 %}
-                                <span class="instalador-tag more">+{{ soporte.instaladores.count|add:"-2" }}</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="materiales-resumen">
-                                {% if soporte.metros_utilizados > 0 %}
-                                <span class="material-tag">📡 {{ soporte.metros_utilizados }}m</span>
-                                {% endif %}
-                                {% if soporte.conectores > 0 %}
-                                <span class="material-tag">🔌 {{ soporte.conectores }}</span>
-                                {% endif %}
-                                {% if soporte.rosetas > 0 %}
-                                <span class="material-tag">🔘 {{ soporte.rosetas }}</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            <div class="actions">
-                                <button class="action-btn view" onclick="verSoporte({{ soporte.id }})" title="Ver detalles">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="3"/>
-                                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                                    </svg>
-                                </button>
-                                
-                                {% if soporte.estado != 'COMPLETADO' and soporte.estado != 'CANCELADO' %}
-                                <button class="action-btn edit" onclick="editarSoporte({{ soporte.id }})" title="Editar">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                    </svg>
-                                </button>
-                                {% endif %}
-                                
-                                {% if es_admin and soporte.estado != 'COMPLETADO' %}
-                                <button class="action-btn complete" onclick="cambiarEstado({{ soporte.id }}, 'COMPLETADO')" title="Marcar como completado">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <polyline points="20 6 9 17 4 12"/>
-                                    </svg>
-                                </button>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="empty">
-                            <div class="empty-state">
-                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1">
-                                    <path d="M20 12v8H4v-8M12 2v10m0 0l-3-3m3 3l3-3"/>
-                                </svg>
-                                <p>No hay soportes registrados</p>
-                                <small>Los soportes aparecerán aquí cuando se creen</small>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </span>
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="card-actions">
+                    <button class="card-action" onclick="verSoporte({{ soporte.id }})" title="Ver detalles">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                        </svg>
+                    </button>
+                    
+                    {% if soporte.estado != 'COMPLETADO' and soporte.estado != 'CANCELADO' %}
+                    <button class="card-action" onclick="editarSoporte({{ soporte.id }})" title="Editar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    
+                    {% if es_admin and soporte.estado != 'COMPLETADO' %}
+                    <button class="card-action" onclick="cambiarEstado({{ soporte.id }}, 'COMPLETADO')" title="Marcar como completado">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-mobile">No hay soportes registrados</div>
+            {% endfor %}
         </div>
     </div>
 
-    <!-- Paginación -->
+    <!-- PAGINACIÓN - FUERA DEL SCROLL, SIEMPRE VISIBLE -->
     {% if page_obj.has_other_pages %}
     <div class="pagination-container">
         <div class="pagination-info">
             Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} soportes
         </div>
+        
         <div class="pagination-controls">
             {% if page_obj.has_previous %}
-            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}" class="page-link">««</a>
-            <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}" class="page-link">«</a>
+            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}" class="page-link" title="Primera página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}" class="page-link" title="Página anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </span>
             {% endif %}
-            
-            <span class="page-current">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
-            
+
+            <div class="page-numbers">
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <span class="page-current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}" class="page-num">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
             {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}" class="page-link">»</a>
-            <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}" class="page-link">»»</a>
+            <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}" class="page-link" title="Página siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if estado_seleccionado %}&estado={{ estado_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}" class="page-link" title="Última página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </span>
             {% endif %}
+        </div>
+
+        <!-- Selector de página para móvil (dropdown) -->
+        <div class="page-selector-mobile">
+            <span>Ir a página</span>
+            <select id="pageSelect" class="page-select">
+                {% for num in page_obj.paginator.page_range %}
+                <option value="{{ num }}" {% if num == page_obj.number %}selected{% endif %}>
+                    {{ num }}
+                </option>
+                {% endfor %}
+            </select>
         </div>
     </div>
     {% endif %}
 </div>
 
-<!-- Modal de detalle -->
+<!-- Modal para detalle de soporte -->
 <div id="soporteModal" class="modal" style="display: none;">
     <div class="modal-overlay" onclick="cerrarModal()"></div>
     <div class="modal-container modal-lg">
         <div class="modal-header">
-            <h2>Detalle del Soporte</h2>
-            <button class="modal-close" onclick="cerrarModal()">×</button>
+            <div class="modal-header-info">
+                <div class="modal-avatar" id="modalAvatar">📋</div>
+                <div>
+                    <h2 id="modalTitulo">Detalle del Soporte</h2>
+                    <p id="modalSubtitulo">Cargando...</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
         </div>
-        <div class="modal-body" id="modalContent">
-            <!-- Contenido cargado via AJAX -->
-            <div class="loading">Cargando...</div>
+        
+        <div class="modal-body">
+            <div id="modalContent">
+                <div class="loading">Cargando información...</div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
+            <button class="btn-primary" id="modalEditarBtn" style="display: none;" onclick="editarSoporteDesdeModal()">Editar Soporte</button>
         </div>
     </div>
 </div>
 
 <style>
-    /* ===== ESTADÍSTICAS POR TIPO ===== */
-    .stats-tipo {
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    .soportes-container {
+        height: calc(100vh - 120px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* ===== STATS ===== */
+    .stats-grid {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 20px;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-shrink: 0;
     }
     
-    .stat-tipo {
-        flex: 1;
-        min-width: 100px;
+    .stat-card {
         background: white;
-        padding: 12px 16px;
-        border-radius: 12px;
-        display: flex;
+        padding: 6px 14px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border, #e5e7eb);
+        display: inline-flex;
         align-items: center;
-        gap: 12px;
-        border: 1px solid #e5e7eb;
+        gap: 8px;
+        font-size: 12px;
         transition: all 0.2s;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
     
-    .stat-tipo:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    .stat-card:hover {
+        border-color: #ff6b00;
+        transform: translateY(-1px);
     }
     
-    .tipo-icon {
-        font-size: 24px;
-    }
-    
-    .tipo-value {
-        font-size: 24px;
+    .stat-value {
         font-weight: 700;
         color: #ff6b00;
+        font-size: 14px;
     }
     
-    .tipo-label {
+    .stat-label {
+        color: #6b7280;
         font-size: 11px;
-        color: #666;
-        display: block;
-        margin-top: 2px;
     }
-    
-    .stat-tipo.mudanza { border-left: 4px solid #3b82f6; }
-    .stat-tipo.retiro { border-left: 4px solid #ef4444; }
-    .stat-tipo.recableado { border-left: 4px solid #10b981; }
-    .stat-tipo.hoy { border-left: 4px solid #f59e0b; }
-    .stat-tipo.semana { border-left: 4px solid #8b5cf6; }
     
     /* ===== FILTROS ===== */
     .filters-container {
-        background: white;
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 20px;
-        border: 1px solid #e5e7eb;
+        margin-bottom: 12px;
+        flex-shrink: 0;
     }
     
     .filters-grid {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
-        margin-bottom: 12px;
     }
     
     .search-box {
@@ -355,7 +519,7 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        background: #f9fafb;
+        background: white;
         padding: 0 12px;
         border: 1px solid #e5e7eb;
         border-radius: 30px;
@@ -364,79 +528,123 @@
     
     .search-box:focus-within {
         border-color: #ff6b00;
-        background: white;
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
     
     .search-box input {
         border: none;
-        padding: 10px 0;
+        padding: 9px 0;
         width: 100%;
         outline: none;
         font-size: 13px;
         background: transparent;
     }
     
-    .filter-select, .filter-date {
-        padding: 10px 12px;
+    .filter-select {
+        flex: 1;
+        min-width: 140px;
+        padding: 9px 12px;
         border: 1px solid #e5e7eb;
         border-radius: 30px;
-        background: #f9fafb;
+        background: white;
         font-size: 13px;
         outline: none;
         cursor: pointer;
         transition: all 0.2s;
     }
     
-    .filter-select:hover, .filter-date:hover,
-    .filter-select:focus, .filter-date:focus {
+    .filter-select:hover,
+    .filter-select:focus {
         border-color: #ff6b00;
-        background: white;
     }
     
-    .filters-actions {
+    /* ===== FILTROS ACTIVOS ===== */
+    .filtros-activos {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
         display: flex;
-        justify-content: flex-end;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 12px;
+        flex-shrink: 0;
     }
     
-    .btn-clear-filters {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
-        background: #f3f4f6;
-        border: 1px solid #e5e7eb;
+    .filtros-label {
+        font-weight: 600;
+        color: #1565c0;
+    }
+    
+    .filtros-lista {
+        color: #555;
+        flex: 1;
+        font-size: 11px;
+    }
+    
+    .btn-limpiar-filtros {
+        background: white;
+        border: 1px solid #2196f3;
+        color: #2196f3;
+        padding: 4px 10px;
         border-radius: 20px;
         font-size: 11px;
         cursor: pointer;
         transition: all 0.2s;
     }
     
-    .btn-clear-filters:hover {
+    /* ===== WRAPPER CON SCROLL ===== */
+    .soportes-scroll-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        margin-right: -4px;
+        min-height: 0;
+    }
+    
+    .soportes-scroll-wrapper::-webkit-scrollbar {
+        width: 5px;
+    }
+    
+    .soportes-scroll-wrapper::-webkit-scrollbar-track {
+        background: #e5e7eb;
+        border-radius: 10px;
+    }
+    
+    .soportes-scroll-wrapper::-webkit-scrollbar-thumb {
         background: #ff6b00;
-        border-color: #ff6b00;
-        color: white;
+        border-radius: 10px;
     }
     
     /* ===== TABLA ===== */
-    .soportes-table-wrapper {
+    .desktop-view {
+        display: block;
         background: white;
         border-radius: 16px;
         border: 1px solid #e5e7eb;
         overflow: auto;
+        margin-bottom: 12px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
     }
     
     .table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 12px;
         min-width: 1000px;
     }
     
     .table th {
         text-align: left;
-        padding: 14px 12px;
+        padding: 12px 12px;
         font-weight: 600;
-        color: #666;
+        color: #6b7280;
         background: #f9fafb;
         border-bottom: 1px solid #e5e7eb;
         font-size: 11px;
@@ -444,66 +652,119 @@
     }
     
     .table td {
-        padding: 12px;
+        padding: 10px 12px;
         border-bottom: 1px solid #e5e7eb;
-        color: #333;
+        color: #111827;
     }
     
     .table tbody tr:hover {
         background: #f9fafb;
     }
     
-    .soporte-id {
+    .cedula-cell,
+    .date-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 11px;
+    }
+    
+    .date-cell small {
+        font-size: 10px;
+        color: #6b7280;
+        display: block;
+    }
+    
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .user-avatar {
+        width: 28px;
+        height: 28px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-weight: 600;
-        color: #ff6b00;
-        font-family: monospace;
+        font-size: 11px;
     }
     
-    .cliente-info {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .cliente-info strong {
-        font-size: 13px;
-    }
-    
-    .cliente-info small {
-        font-size: 10px;
-        color: #666;
-    }
-    
-    .fecha-cell {
-        display: flex;
-        flex-direction: column;
-        font-family: monospace;
-    }
-    
-    .fecha-cell small {
-        font-size: 10px;
-        color: #666;
+    .user-name {
+        font-weight: 500;
+        font-size: 12px;
     }
     
     /* Badges */
-    .tipo-badge, .estado-badge {
+    .badge {
         display: inline-block;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
         font-weight: 500;
     }
     
-    .tipo-badge.mudanza { background: #dbeafe; color: #1e40af; }
-    .tipo-badge.retiro { background: #fee2e2; color: #991b1b; }
-    .tipo-badge.recableado { background: #d1fae5; color: #065f46; }
+    .badge.proceso,
+    .badge.pendiente {
+        background: #fed7aa;
+        color: #9b2c1d;
+    }
     
-    .estado-badge.pendiente { background: #fef3c7; color: #92400e; }
-    .estado-badge.en_proceso { background: #dbeafe; color: #1e40af; }
-    .estado-badge.completado { background: #d1fae5; color: #065f46; }
-    .estado-badge.incompleto { background: #fee2e2; color: #991b1b; }
-    .estado-badge.cancelado { background: #f3f4f6; color: #4b5563; }
+    .badge.en-proceso {
+        background: #dbeafe;
+        color: #1e40af;
+    }
     
-    /* Instaladores */
+    .badge.completado {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .badge.no-completado,
+    .badge.incompleto {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .badge.cancelado {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+    
+    .tipo-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    
+    .tipo-badge.mudanza {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .tipo-badge.retiro {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .tipo-badge.recableado {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .vendedor-badge {
+        display: inline-block;
+        padding: 3px 6px;
+        background: #f3f4f6;
+        border-radius: 20px;
+        font-size: 10px;
+        color: #4b5563;
+    }
+    
     .instaladores-list {
         display: flex;
         flex-wrap: wrap;
@@ -523,7 +784,6 @@
         background: #e5e7eb;
     }
     
-    /* Materiales */
     .materiales-resumen {
         display: flex;
         flex-wrap: wrap;
@@ -539,18 +799,18 @@
         color: #92400e;
     }
     
-    /* Acciones */
     .actions {
         display: flex;
-        gap: 6px;
+        gap: 5px;
     }
     
     .action-btn {
-        width: 30px;
-        height: 30px;
+        width: 28px;
+        height: 28px;
         border: 1px solid #e5e7eb;
         background: white;
         border-radius: 6px;
+        color: #6b7280;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -558,84 +818,259 @@
         transition: all 0.2s;
     }
     
-    .action-btn.view:hover { border-color: #3b82f6; color: #3b82f6; }
-    .action-btn.edit:hover { border-color: #f59e0b; color: #f59e0b; }
-    .action-btn.complete:hover { border-color: #10b981; color: #10b981; }
+    .action-btn:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fff2e6;
+    }
     
-    /* Paginación */
-    .pagination-container {
-        margin-top: 20px;
+    /* ===== MOBILE CARDS ===== */
+    .mobile-view {
+        display: none;
+    }
+    
+    .soporte-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    
+    .soporte-card .card-header {
+        padding: 12px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        flex-wrap: wrap;
-        gap: 12px;
+        justify-content: space-between;
+    }
+    
+    .card-cliente {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card-avatar {
+        width: 40px;
+        height: 40px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    
+    .card-name {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .card-detail {
+        font-size: 10px;
+        color: #6b7280;
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .status-dot.pendiente { background: #f59e0b; }
+    .status-dot.en-proceso { background: #3b82f6; }
+    .status-dot.completado { background: #10b981; }
+    .status-dot.no-completado { background: #ef4444; }
+    
+    .soporte-card .card-body {
+        padding: 12px;
+    }
+    
+    .card-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+    
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .card-label {
+        width: 90px;
+        color: #6b7280;
+        flex-shrink: 0;
+        font-size: 11px;
+    }
+    
+    .card-value {
+        color: #111827;
+        font-weight: 500;
+        flex: 1;
+        font-size: 12px;
+        word-break: break-word;
+    }
+    
+    .soporte-card .card-actions {
+        display: flex;
+        gap: 8px;
+        padding: 10px 12px;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+        justify-content: flex-end;
+    }
+    
+    .card-action {
+        width: 32px;
+        height: 32px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    /* ===== PAGINACIÓN ===== */
+    .pagination-container {
+        flex-shrink: 0;
+        background: white;
+        border-radius: 14px;
+        border: 1px solid #e5e7eb;
+        padding: 12px;
+        margin-top: 8px;
     }
     
     .pagination-info {
-        font-size: 12px;
-        color: #666;
+        text-align: center;
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 10px;
     }
     
     .pagination-controls {
         display: flex;
-        gap: 8px;
         align-items: center;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
     }
     
     .page-link {
-        padding: 6px 12px;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         border: 1px solid #e5e7eb;
-        border-radius: 6px;
+        border-radius: 8px;
+        color: #6b7280;
         text-decoration: none;
-        color: #666;
-        font-size: 12px;
         transition: all 0.2s;
+        background: white;
     }
     
-    .page-link:hover {
+    .page-link:hover:not(.disabled) {
         border-color: #ff6b00;
         color: #ff6b00;
+        background: #fff2e6;
+    }
+    
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f5f5f5;
+    }
+    
+    .page-numbers {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .page-num {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 13px;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .page-num:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fff2e6;
     }
     
     .page-current {
-        padding: 6px 12px;
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         background: #ff6b00;
         color: white;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13px;
     }
     
-    .empty-state {
+    .page-selector-mobile {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #e5e7eb;
+        font-size: 12px;
+        color: #6b7280;
+    }
+    
+    .page-select {
+        padding: 6px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
+    .empty, .empty-mobile {
         text-align: center;
-        padding: 40px;
+        padding: 40px !important;
+        color: #6b7280;
     }
     
-    .empty-state svg {
-        margin-bottom: 16px;
-    }
-    
-    .empty-state p {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 8px;
-    }
-    
-    .empty-state small {
-        font-size: 12px;
-        color: #999;
-    }
-    
-    /* Modal */
+    /* ===== MODAL ===== */
     .modal {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 1000;
-        display: flex;
+        z-index: 2000;
+        display: none;
         align-items: center;
         justify-content: center;
     }
@@ -646,37 +1081,63 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
     }
     
     .modal-container {
         position: relative;
+        width: 90%;
+        max-width: 1000px;
+        max-height: 85vh;
+        overflow-y: auto;
         background: white;
         border-radius: 20px;
-        width: 90%;
-        max-width: 800px;
-        max-height: 85vh;
-        overflow: auto;
-        z-index: 1001;
-    }
-    
-    .modal-container.modal-lg {
-        max-width: 1000px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        z-index: 2001;
     }
     
     .modal-header {
         padding: 16px 20px;
         border-bottom: 1px solid #e5e7eb;
+        background: #f9fafb;
+        border-radius: 20px 20px 0 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        background: #f9fafb;
-        border-radius: 20px 20px 0 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
     
-    .modal-header h2 {
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+    }
+    
+    .modal-header-info h2 {
         font-size: 18px;
         font-weight: 600;
+        margin-bottom: 2px;
+    }
+    
+    .modal-header-info p {
+        font-size: 12px;
+        color: #6b7280;
     }
     
     .modal-close {
@@ -686,55 +1147,377 @@
         background: white;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
     }
     
     .modal-body {
         padding: 20px;
     }
     
-    @media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
+    .modal-footer {
+        padding: 12px 20px;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+        border-radius: 0 0 20px 20px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+    }
+    
+    .btn-primary {
+        padding: 8px 16px;
+        background: #ff6b00;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline {
+        padding: 8px 16px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #ff6b00;
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(255, 107, 0, 0.3);
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #6b7280;
+    }
+    
+    .error-message {
+        background: #fee2e2;
+        border-left: 4px solid #dc3545;
+        padding: 15px;
+        border-radius: 8px;
+        color: #991b1b;
+        text-align: center;
+    }
+    
+    /* Estilos para el contenido del modal */
+    .detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    
+    .detalle-seccion {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .detalle-seccion h4 {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0 0 12px 0;
+        color: #ff6b00;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 8px;
+    }
+    
+    .detalle-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+    }
+    
+    .detalle-item:last-child {
+        border-bottom: none;
+    }
+    
+    .detalle-label {
+        font-weight: 600;
+        color: #6b7280;
+        min-width: 120px;
+    }
+    
+    .detalle-value {
+        color: #111827;
+        text-align: right;
+        word-break: break-word;
+        max-width: 60%;
+    }
+    
+    .info-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .info-row-item {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .info-row-label {
+        font-size: 11px;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+    
+    .info-row-value {
+        font-size: 14px;
+        font-weight: 500;
+        color: #111827;
+    }
+    
+    .instalador-tag-modal {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #e5e7eb;
+        border-radius: 20px;
+        font-size: 12px;
+        color: #4b5563;
+        margin: 2px;
+    }
+    
+    .fotos-grid-modal {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+    }
+    
+    .foto-thumb-modal {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.2s;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .foto-thumb-modal:hover {
+        transform: scale(1.05);
+    }
+    
+    .map-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #ff6b00;
+        text-decoration: none;
+        font-size: 12px;
+    }
+    
+    .map-link:hover {
+        text-decoration: underline;
+    }
+    
+    .estado-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    
+    .estado-pendiente { background: #fed7aa; color: #9b2c1d; }
+    .estado-en_proceso { background: #dbeafe; color: #1e40af; }
+    .estado-completado { background: #d1fae5; color: #065f46; }
+    .estado-incompleto { background: #fee2e2; color: #991b1b; }
+    .estado-cancelado { background: #f3f4f6; color: #4b5563; }
+    
+    /* ===== RESPONSIVE ===== */
+    @media screen and (max-width: 768px) {
+        .soportes-container {
+            height: calc(100vh - 80px);
         }
         
-        .stats-tipo {
-            grid-template-columns: repeat(2, 1fr);
+        .desktop-view {
+            display: none;
+        }
+        
+        .mobile-view {
+            display: block;
         }
         
         .filters-grid {
             flex-direction: column;
         }
         
-        .filter-select, .filter-date, .search-box {
+        .search-box,
+        .filter-select {
             width: 100%;
         }
         
-        .pagination-container {
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        
+        .stat-card {
+            justify-content: center;
+        }
+        
+        .page-numbers {
+            display: none;
+        }
+        
+        .page-selector-mobile {
+            display: flex;
+        }
+        
+        .filtros-activos {
             flex-direction: column;
-            text-align: center;
+            align-items: flex-start;
+        }
+        
+        .btn-limpiar-filtros {
+            align-self: flex-start;
+        }
+        
+        .card-label {
+            width: 85px;
+        }
+        
+        .detalle-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+        }
+        
+        .detalle-value {
+            text-align: left;
+            max-width: 100%;
+        }
+        
+        .info-row {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .modal-container {
+            width: 95%;
+            max-height: 90vh;
+        }
+    }
+    
+    @media screen and (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .stat-card {
+            padding: 5px 10px;
+        }
+        
+        .stat-value {
+            font-size: 13px;
+        }
+        
+        .card-avatar {
+            width: 36px;
+            height: 36px;
+            font-size: 14px;
+        }
+        
+        .card-name {
+            font-size: 13px;
+        }
+        
+        .card-label {
+            width: 75px;
+            font-size: 10px;
+        }
+        
+        .card-value {
+            font-size: 11px;
+        }
+        
+        .pagination-info {
+            font-size: 10px;
+        }
+        
+        .page-link {
+            width: 30px;
+            height: 30px;
         }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    // Variables globales
     let searchTimeout;
+    let currentSoporteId = null;
     
-    // Aplicar filtros
+    // Función para aplicar filtros con recarga de página
     function aplicarFiltros() {
         const url = new URL(window.location.href);
         const busqueda = document.getElementById('searchInput')?.value || '';
         const tipo = document.getElementById('filterTipo')?.value || '';
         const estado = document.getElementById('filterEstado')?.value || '';
-        const fechaDesde = document.getElementById('fechaDesde')?.value || '';
-        const fechaHasta = document.getElementById('fechaHasta')?.value || '';
-        {% if es_admin %}
-        const instalador = document.getElementById('filterInstalador')?.value || '';
-        {% endif %}
         
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
@@ -745,13 +1528,8 @@
         if (estado) url.searchParams.set('estado', estado);
         else url.searchParams.delete('estado');
         
-        if (fechaDesde) url.searchParams.set('fecha_desde', fechaDesde);
-        else url.searchParams.delete('fecha_desde');
-        
-        if (fechaHasta) url.searchParams.set('fecha_hasta', fechaHasta);
-        else url.searchParams.delete('fecha_hasta');
-        
         {% if es_admin %}
+        const instalador = document.getElementById('filterInstalador')?.value || '';
         if (instalador) url.searchParams.set('instalador', instalador);
         else url.searchParams.delete('instalador');
         {% endif %}
@@ -771,20 +1549,16 @@
     // Eventos de filtros
     document.getElementById('filterTipo')?.addEventListener('change', aplicarFiltros);
     document.getElementById('filterEstado')?.addEventListener('change', aplicarFiltros);
-    document.getElementById('fechaDesde')?.addEventListener('change', aplicarFiltros);
-    document.getElementById('fechaHasta')?.addEventListener('change', aplicarFiltros);
     {% if es_admin %}
     document.getElementById('filterInstalador')?.addEventListener('change', aplicarFiltros);
     {% endif %}
     
-    // Limpiar filtros
+    // Función para limpiar todos los filtros
     function limpiarFiltros() {
         const url = new URL(window.location.href);
         url.searchParams.delete('busqueda');
         url.searchParams.delete('tipo');
         url.searchParams.delete('estado');
-        url.searchParams.delete('fecha_desde');
-        url.searchParams.delete('fecha_hasta');
         {% if es_admin %}
         url.searchParams.delete('instalador');
         {% endif %}
@@ -792,111 +1566,282 @@
         window.location.href = url.toString();
     }
     
+    // Selector de página para móvil
+    document.getElementById('pageSelect')?.addEventListener('change', function() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', this.value);
+        window.location.href = url.toString();
+    });
+    
     // Ver detalle del soporte
     function verSoporte(id) {
+        currentSoporteId = id;
         const modal = document.getElementById('soporteModal');
         const modalContent = document.getElementById('modalContent');
+        const modalEditarBtn = document.getElementById('modalEditarBtn');
         
         modal.style.display = 'flex';
-        modalContent.innerHTML = '<div class="loading" style="text-align:center; padding:40px;">Cargando...</div>';
+        modalContent.innerHTML = '<div class="loading">Cargando información...</div>';
+        modalEditarBtn.style.display = 'none';
         
         fetch(`/soporte/${id}/detalle-json/`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    modalContent.innerHTML = `<div class="error">${data.error}</div>`;
+                    modalContent.innerHTML = `<div class="error-message">❌ ${data.error}</div>`;
                     return;
                 }
                 
+                // Actualizar header del modal
+                document.getElementById('modalAvatar').innerHTML = data.tipo_display.charAt(0);
+                document.getElementById('modalTitulo').textContent = data.tipo_display;
+                document.getElementById('modalSubtitulo').innerHTML = `${data.cliente_nombre} • ${data.fecha_hora_servicio} • <span class="estado-badge estado-${data.estado.toLowerCase()}">${data.estado_display}</span>`;
+                
+                // Construir contenido del modal
                 modalContent.innerHTML = `
-                    <div class="detalle-soporte">
-                        <div class="info-group">
-                            <h3>Información General</h3>
-                            <div class="info-grid">
-                                <div><strong>Tipo:</strong> ${data.tipo_display}</div>
-                                <div><strong>Estado:</strong> <span class="estado-badge ${data.estado.toLowerCase()}">${data.estado_display}</span></div>
-                                <div><strong>Fecha Servicio:</strong> ${data.fecha_hora_servicio}</div>
-                                <div><strong>Cliente:</strong> ${data.cliente_nombre}</div>
-                                <div><strong>Cédula:</strong> ${data.cliente_cedula}</div>
-                                <div><strong>Dirección:</strong> ${data.direccion || 'N/A'}</div>
-                                <div><strong>Customer ID:</strong> ${data.customer_id || 'N/A'}</div>
-                                <div><strong>Plan:</strong> ${data.plan || 'N/A'}</div>
-                                <div><strong>ATR:</strong> ${data.atr || 'N/A'}</div>
+                    <div class="detalle-grid">
+                        <!-- Columna Izquierda -->
+                        <div>
+                            <!-- Información del Cliente -->
+                            <div class="detalle-seccion">
+                                <h4>👤 Información del Cliente</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Nombre:</span>
+                                    <span class="detalle-value">${data.cliente_nombre}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Cédula:</span>
+                                    <span class="detalle-value">${data.cliente_cedula}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Dirección:</span>
+                                    <span class="detalle-value">${data.direccion || 'N/A'}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Customer ID:</span>
+                                    <span class="detalle-value">${data.customer_id || 'N/A'}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Plan:</span>
+                                    <span class="detalle-value">${data.plan || 'N/A'}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">ATR:</span>
+                                    <span class="detalle-value">${data.atr || 'N/A'}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Instalación Original -->
+                            <div class="detalle-seccion">
+                                <h4>📡 Instalación Original</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">ID Instalación:</span>
+                                    <span class="detalle-value">#${data.instalacion_id}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Módem Instalado:</span>
+                                    <span class="detalle-value">${data.modelo_modem_original}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Serial Módem:</span>
+                                    <span class="detalle-value">${data.sn_modem_original}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Materiales Utilizados -->
+                            <div class="detalle-seccion">
+                                <h4>🔧 Materiales Utilizados</h4>
+                                ${data.metros_utilizados > 0 ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Fibra Óptica:</span>
+                                    <span class="detalle-value">${data.metros_utilizados} metros</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">INICIO → FINAL:</span>
+                                    <span class="detalle-value">${data.inicio_fibra}m → ${data.final_fibra}m</span>
+                                </div>
+                                ` : ''}
+                                ${data.conectores > 0 ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Conectores:</span>
+                                    <span class="detalle-value">${data.conectores} unidades</span>
+                                </div>
+                                ` : ''}
+                                ${data.rosetas > 0 ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Rosetas:</span>
+                                    <span class="detalle-value">${data.rosetas} unidades</span>
+                                </div>
+                                ` : ''}
+                                ${data.patch_cord > 0 ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Patch Cord:</span>
+                                    <span class="detalle-value">${data.patch_cord} unidades</span>
+                                </div>
+                                ` : ''}
+                                ${data.tensores > 0 ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Tensores:</span>
+                                    <span class="detalle-value">${data.tensores} unidades</span>
+                                </div>
+                                ` : ''}
+                                ${data.conectores_malos > 0 ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Conectores Malos:</span>
+                                    <span class="detalle-value">${data.conectores_malos} unidades</span>
+                                </div>
+                                ` : ''}
+                                ${data.metros_utilizados === 0 && data.conectores === 0 && data.rosetas === 0 && data.patch_cord === 0 && data.tensores === 0 ? '<div class="detalle-item"><span class="detalle-value">No se registraron materiales</span></div>' : ''}
                             </div>
                         </div>
                         
-                        <div class="info-group">
-                            <h3>Falla y Solución</h3>
-                            <div><strong>Falla encontrada:</strong></div>
-                            <p>${data.falla_encontrada || 'N/A'}</p>
-                            <div><strong>Solución aplicada:</strong></div>
-                            <p>${data.solucion || 'N/A'}</p>
-                        </div>
-                        
-                        <div class="info-group">
-                            <h3>Materiales Utilizados</h3>
-                            <div class="info-grid">
-                                ${data.metros_utilizados > 0 ? `<div><strong>Metros fibra:</strong> ${data.metros_utilizados}m</div>` : ''}
-                                ${data.conectores > 0 ? `<div><strong>Conectores:</strong> ${data.conectores}</div>` : ''}
-                                ${data.rosetas > 0 ? `<div><strong>Rosetas:</strong> ${data.rosetas}</div>` : ''}
-                                ${data.patch_cord > 0 ? `<div><strong>Patch Cord:</strong> ${data.patch_cord}</div>` : ''}
-                                ${data.tensores > 0 ? `<div><strong>Tensores:</strong> ${data.tensores}</div>` : ''}
-                                ${data.conectores_malos > 0 ? `<div><strong>Conectores malos:</strong> ${data.conectores_malos}</div>` : ''}
+                        <!-- Columna Derecha -->
+                        <div>
+                            <!-- Falla y Solución -->
+                            <div class="detalle-seccion">
+                                <h4>⚠️ Falla y Solución</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Falla encontrada:</span>
+                                    <span class="detalle-value">${data.falla_encontrada || 'N/A'}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Solución aplicada:</span>
+                                    <span class="detalle-value">${data.solucion || 'N/A'}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Nuevo Módem (si aplica) -->
+                            ${data.modelo_modem !== 'No se cambió' ? `
+                            <div class="detalle-seccion">
+                                <h4>🖥️ Nuevo Módem Instalado</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Modelo:</span>
+                                    <span class="detalle-value">${data.modelo_modem}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Serial:</span>
+                                    <span class="detalle-value">${data.sn_modem}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">MAC:</span>
+                                    <span class="detalle-value">${data.mac_modem}</span>
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- Datos NAP -->
+                            <div class="detalle-seccion">
+                                <h4>🔌 Datos de Conexión NAP</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Caja NAP:</span>
+                                    <span class="detalle-value">${data.caja_nap_utilizada}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Puerto NAP:</span>
+                                    <span class="detalle-value">${data.puerto_nap_utilizado}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Ubicación -->
+                            <div class="detalle-seccion">
+                                <h4>📍 Ubicación del Servicio</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Latitud:</span>
+                                    <span class="detalle-value">${data.pin_ubicacion_lat || 'N/A'}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Longitud:</span>
+                                    <span class="detalle-value">${data.pin_ubicacion_lng || 'N/A'}</span>
+                                </div>
+                                ${data.pin_ubicacion_url ? `
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Ver mapa:</span>
+                                    <span class="detalle-value"><a href="${data.pin_ubicacion_url}" target="_blank" class="map-link">📍 Ver en Google Maps</a></span>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <!-- Instaladores -->
+                            <div class="detalle-seccion">
+                                <h4>👥 Instaladores</h4>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Instaladores:</span>
+                                    <span class="detalle-value">${data.instaladores.map(inst => `<span class="instalador-tag-modal">${inst}</span>`).join('')}</span>
+                                </div>
+                                <div class="detalle-item">
+                                    <span class="detalle-label">Cuadrilla:</span>
+                                    <span class="detalle-value">${data.cuadrilla}</span>
+                                </div>
                             </div>
                         </div>
-                        
-                        <div class="info-group">
-                            <h3>Datos NAP</h3>
-                            <div class="info-grid">
-                                <div><strong>Caja NAP:</strong> ${data.caja_nap_utilizada || 'N/A'}</div>
-                                <div><strong>Puerto NAP:</strong> ${data.puerto_nap_utilizado || 'N/A'}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-group">
-                            <h3>Ubicación</h3>
-                            <div class="info-grid">
-                                <div><strong>Latitud:</strong> ${data.pin_ubicacion_lat || 'N/A'}</div>
-                                <div><strong>Longitud:</strong> ${data.pin_ubicacion_lng || 'N/A'}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="info-group">
-                            <h3>Instaladores</h3>
-                            <div class="instaladores-list">
-                                ${data.instaladores.map(inst => `<span class="instalador-tag">${inst}</span>`).join('')}
-                            </div>
-                        </div>
-                        
-                        ${data.fotos && data.fotos.length > 0 ? `
-                        <div class="info-group">
-                            <h3>Fotos del Soporte</h3>
-                            <div class="fotos-grid">
-                                ${data.fotos.map(foto => `<img src="${foto}" alt="Foto soporte" class="foto-thumb" onclick="window.open('${foto}')">`).join('')}
-                            </div>
-                        </div>
-                        ` : ''}
-                        
-                        ${data.observaciones ? `
-                        <div class="info-group">
-                            <h3>Observaciones</h3>
-                            <p>${data.observaciones}</p>
-                        </div>
-                        ` : ''}
                     </div>
+                    
+                    <!-- Fechas -->
+                    <div class="detalle-seccion">
+                        <h4>📅 Información de Registro</h4>
+                        <div class="info-row">
+                            <div class="info-row-item">
+                                <div class="info-row-label">Fecha del Servicio</div>
+                                <div class="info-row-value">${data.fecha_hora_servicio}</div>
+                            </div>
+                            <div class="info-row-item">
+                                <div class="info-row-label">Fecha de Creación</div>
+                                <div class="info-row-value">${data.fecha_creacion}</div>
+                            </div>
+                            <div class="info-row-item">
+                                <div class="info-row-label">Última Actualización</div>
+                                <div class="info-row-value">${data.fecha_actualizacion}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones -->
+                    ${data.observaciones ? `
+                    <div class="detalle-seccion">
+                        <h4>📝 Observaciones</h4>
+                        <div class="detalle-item">
+                            <span class="detalle-value">${data.observaciones}</span>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <!-- Fotos -->
+                    ${data.fotos && data.fotos.length > 0 ? `
+                    <div class="detalle-seccion">
+                        <h4>📷 Soporte Fotográfico (${data.fotos.length} fotos)</h4>
+                        <div class="fotos-grid-modal">
+                            ${data.fotos.map(foto => `<img src="${foto}" alt="Foto soporte" class="foto-thumb-modal" onclick="window.open('${foto}', '_blank')">`).join('')}
+                        </div>
+                    </div>
+                    ` : '<div class="detalle-seccion"><h4>📷 Soporte Fotográfico</h4><div class="detalle-item"><span class="detalle-value">No hay fotos registradas</span></div></div>'}
                 `;
+                
+                // Mostrar botón de editar si corresponde
+                if (data.puede_editar) {
+                    modalEditarBtn.style.display = 'inline-flex';
+                } else {
+                    modalEditarBtn.style.display = 'none';
+                }
             })
             .catch(error => {
-                modalContent.innerHTML = '<div class="error">Error al cargar los datos</div>';
+                console.error('Error:', error);
+                modalContent.innerHTML = '<div class="error-message">❌ Error al cargar los datos del soporte</div>';
             });
     }
     
     function cerrarModal() {
         document.getElementById('soporteModal').style.display = 'none';
+        currentSoporteId = null;
     }
     
     function editarSoporte(id) {
         window.location.href = `/soporte/${id}/editar/`;
+    }
+    
+    function editarSoporteDesdeModal() {
+        if (currentSoporteId) {
+            window.location.href = `/soporte/${currentSoporteId}/editar/`;
+        }
     }
     
     function cambiarEstado(id, estado) {
@@ -935,16 +1880,52 @@
         });
     }
     
+    // Mostrar indicador de filtros activos
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const busqueda = urlParams.get('busqueda');
+        const tipo = urlParams.get('tipo');
+        const estado = urlParams.get('estado');
+        const instalador = urlParams.get('instalador');
+        
+        if (busqueda || tipo || estado || instalador) {
+            const filtrosActivosDiv = document.getElementById('filtrosActivos');
+            const filtrosLista = document.getElementById('filtrosLista');
+            const filtrosArray = [];
+            
+            if (busqueda) filtrosArray.push(`"${busqueda}"`);
+            if (tipo) {
+                let tipoTexto = '';
+                if (tipo === 'MUDANZA') tipoTexto = 'Mudanza';
+                else if (tipo === 'RETIRO') tipoTexto = 'Retiro';
+                else if (tipo === 'RECABLEADO') tipoTexto = 'Recableado';
+                filtrosArray.push(`tipo: ${tipoTexto}`);
+            }
+            if (estado) {
+                let estadoTexto = '';
+                if (estado === 'PENDIENTE') estadoTexto = 'Pendiente';
+                else if (estado === 'EN_PROCESO') estadoTexto = 'En Proceso';
+                else if (estado === 'COMPLETADO') estadoTexto = 'Completado';
+                else if (estado === 'INCOMPLETO') estadoTexto = 'Incompleto';
+                else if (estado === 'CANCELADO') estadoTexto = 'Cancelado';
+                filtrosArray.push(`estado: ${estadoTexto}`);
+            }
+            if (instalador) {
+                const instaladorSelect = document.getElementById('filterInstalador');
+                const instaladorTexto = instaladorSelect?.options[instaladorSelect.selectedIndex]?.text || instalador;
+                filtrosArray.push(`instalador: ${instaladorTexto}`);
+            }
+            
+            filtrosLista.textContent = filtrosArray.join(' • ');
+            filtrosActivosDiv.style.display = 'flex';
+        }
+    });
+    
     // Cerrar modal con ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cerrarModal();
         }
-    });
-    
-    // Cerrar modal al hacer clic fuera
-    document.querySelectorAll('.modal-overlay').forEach(overlay => {
-        overlay.addEventListener('click', cerrarModal);
     });
 </script>
 {% endblock %}

@@ -1,17 +1,1590 @@
 {% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
 
-<div class="main-content">
-    <!-- Header con bloques -->
-    <div class="content-header">
-        <div class="page-title">
-            <h1>{% block page_title %}Dashboard{% endblock %}</h1>
-            <p>{% block page_subtitle %}{{ current_date|default:"7 mar 2026" }} · Bienvenido de vuelta{% endblock %}</p>
-        </div>
-        <div class="header-actions">
-            {% block header_actions %}
-            <div class="notification-badge">
-                <span>🔔 3</span>
+{% block title %}Simple Fibra - Dashboard{% endblock %}
+
+{% block page_title %}
+    {% if rol == 'vendedor' %}
+        Mi Dashboard de Ventas
+    {% elif rol == 'instalador' %}
+        Mi Dashboard de Instalaciones
+    {% elif rol == 'administrador' %}
+        Panel de Control Administrativo
+    {% else %}
+        Dashboard
+    {% endif %}
+{% endblock %}
+
+{% block page_subtitle %}
+    {% if rol == 'vendedor' %}
+        Resumen de tus ventas y rendimiento
+    {% elif rol == 'instalador' %}
+        Resumen de tus instalaciones y actividades
+    {% elif rol == 'administrador' %}
+        Visión general del negocio
+    {% else %}
+        Bienvenido al sistema
+    {% endif %}
+{% endblock %}
+
+{% block header_actions %}
+    {% if rol == 'administrador' %}
+    <div class="header-actions">
+        <button class="btn-outline-header" onclick="window.location.reload()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Actualizar
+        </button>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    
+    <!-- ==================== DASHBOARD VENDEDOR ==================== -->
+    {% if rol == 'vendedor' %}
+    
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
             </div>
-            {% endblock %}
+            <div class="stat-info">
+                <span class="stat-value">{{ total_contratos }}</span>
+                <span class="stat-label">Total Contratos</span>
+            </div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ contratos_completados }}</span>
+                <span class="stat-label">Completados</span>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ contratos_proceso }}</span>
+                <span class="stat-label">En Proceso</span>
+            </div>
+        </div>
+        <div class="stat-card stat-danger">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ contratos_no_completados }}</span>
+                <span class="stat-label">No Completados</span>
+            </div>
         </div>
     </div>
+    
+    <!-- Progreso y Gráfico -->
+    <div class="dashboard-row">
+        <div class="dashboard-card progress-card">
+            <div class="card-header">
+                <h3>Progreso de Ventas</h3>
+                <span class="card-badge">Meta: 10 contratos/mes</span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-circle" data-progress="{{ porcentaje_completado }}">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke-dasharray="{{ porcentaje_completado }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage">{{ porcentaje_completado|floatformat:0 }}%</text>
+                    </svg>
+                </div>
+                <div class="progress-info">
+                    <div class="info-item">
+                        <span class="info-label">Contratos esta semana:</span>
+                        <span class="info-value highlight">{{ contratos_semana }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Clientes potenciales:</span>
+                        <span class="info-value">{{ clientes_potenciales_count }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Comisión estimada:</span>
+                        <span class="info-value">${{ nomina_semana.total_usd|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card chart-card">
+            <div class="card-header">
+                <h3>Contratos por Mes</h3>
+                <span class="card-badge">Últimos 6 meses</span>
+            </div>
+            <canvas id="contratosChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Contratos Recientes -->
+    <div class="dashboard-card full-width">
+        <div class="card-header">
+            <h3>📋 Contratos Recientes</h3>
+            <a href="{% url 'lista_contratos' %}" class="link-view">Ver todos →</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dashboard">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in contratos_recientes %}
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar-sm">{{ contrato.nombre|first|upper }}{{ contrato.apellido|first|upper }}</span>
+                                {{ contrato.nombre_completo }}
+                            </div>
+                        </td>
+                        <td>{{ contrato.plan_contratado.nombre }}</td>
+                        <td>
+                            <span class="badge {% if contrato.estado == 'COMPLETADO' %}badge-success{% elif contrato.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-danger{% endif %}">
+                                {{ contrato.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/Y" }}</td>
+                        <td>
+                            <button class="action-btn" onclick="verContrato({{ contrato.id }})">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty">No hay contratos registrados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Planes Populares -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>🏆 Planes Más Vendidos</h3>
+        </div>
+        <div class="plans-list">
+            {% for plan in planes_populares %}
+            <div class="plan-item">
+                <div class="plan-name">{{ plan.plan_contratado__nombre }}</div>
+                <div class="plan-bar">
+                    <div class="plan-bar-fill" style="width: {% widthratio plan.total contratos_por_mes|first 100 %}%"></div>
+                </div>
+                <div class="plan-count">{{ plan.total }} contratos</div>
+            </div>
+            {% empty %}
+            <p class="empty-text">Sin datos de planes</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    
+    <!-- ==================== DASHBOARD INSTALADOR ==================== -->
+    {% elif rol == 'instalador' %}
+    
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_asignaciones }}</span>
+                <span class="stat-label">Total Asignaciones</span>
+            </div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ instalaciones_completadas }}</span>
+                <span class="stat-label">Completadas</span>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ instalaciones_pendientes }}</span>
+                <span class="stat-label">Pendientes</span>
+            </div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ soportes_realizados_count }}</span>
+                <span class="stat-label">Soportes Realizados</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ranking y Progreso -->
+    <div class="dashboard-row">
+        <div class="dashboard-card progress-card">
+            <div class="card-header">
+                <h3>Mi Rendimiento</h3>
+                {% if ranking_posicion %}
+                <span class="card-badge">#{{ ranking_posicion }} de {{ ranking_total }}</span>
+                {% endif %}
+            </div>
+            <div class="progress-container">
+                <div class="progress-circle" data-progress="{{ porcentaje_completado }}">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke-dasharray="{{ porcentaje_completado }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage">{{ porcentaje_completado|floatformat:0 }}%</text>
+                    </svg>
+                </div>
+                <div class="progress-info">
+                    <div class="info-item">
+                        <span class="info-label">Instalaciones completadas:</span>
+                        <span class="info-value highlight">{{ instalaciones_completadas }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Soportes realizados:</span>
+                        <span class="info-value">{{ soportes_realizados_count }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card chart-card">
+            <div class="card-header">
+                <h3>Instalaciones por Mes</h3>
+                <span class="card-badge">Últimos 6 meses</span>
+            </div>
+            <canvas id="instalacionesChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Asignaciones Pendientes -->
+    <div class="dashboard-card full-width">
+        <div class="card-header">
+            <h3>📍 Próximas Asignaciones</h3>
+            <span class="card-badge">{{ asignaciones_pendientes|length }} pendientes</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dashboard">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Dirección</th>
+                        <th>Plan</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for asignacion in asignaciones_pendientes %}
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar-sm">{{ asignacion.cliente_nombre|slice:":2"|upper }}</span>
+                                {{ asignacion.cliente_nombre }}
+                            </div>
+                        </td>
+                        <td>{{ asignacion.telefono_cliente }}</td>
+                        <td class="direccion-cell">{{ asignacion.direccion|truncatechars:40 }}</td>
+                        <td><span class="badge badge-info">{{ asignacion.plan }}</span></td>
+                        <td>
+                            <button class="action-btn" onclick="iniciarInstalacion({{ asignacion.id }})">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="5 3 19 12 5 21 5 3"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty">No hay asignaciones pendientes 🎉</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Últimas Instalaciones y Materiales -->
+    <div class="dashboard-row">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>📦 Materiales Utilizados (Promedio)</h3>
+            </div>
+            <div class="materials-grid">
+                <div class="material-item">
+                    <span class="material-value">{{ materiales.avg_conectores|floatformat:0|default:"0" }}</span>
+                    <span class="material-label">Conectores</span>
+                </div>
+                <div class="material-item">
+                    <span class="material-value">{{ materiales.avg_rosetas|floatformat:0|default:"0" }}</span>
+                    <span class="material-label">Rosetas</span>
+                </div>
+                <div class="material-item">
+                    <span class="material-value">{{ materiales.avg_patch_cord|floatformat:0|default:"0" }}</span>
+                    <span class="material-label">Patch Cord</span>
+                </div>
+                <div class="material-item">
+                    <span class="material-value">{{ materiales.avg_metros|floatformat:0|default:"0" }}</span>
+                    <span class="material-label">Metros Fibra</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>🛠️ Últimos Soportes</h3>
+            </div>
+            <div class="soportes-list">
+                {% for soporte in soportes_recientes %}
+                <div class="soporte-item">
+                    <div class="soporte-header">
+                        <span class="soporte-tipo">{{ soporte.get_tipo_display }}</span>
+                        <span class="soporte-fecha">{{ soporte.fecha_creacion|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="soporte-cliente">{{ soporte.nombre_cliente }}</div>
+                    <div class="soporte-estado">
+                        <span class="badge {% if soporte.estado == 'COMPLETADO' %}badge-success{% elif soporte.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-secondary{% endif %}">
+                            {{ soporte.get_estado_display }}
+                        </span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="empty-text">No hay soportes registrados</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    
+    <!-- ==================== DASHBOARD ADMINISTRADOR ==================== -->
+    {% elif rol == 'administrador' %}
+    
+    <!-- Stats Cards Principales -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_clientes_potenciales }}</span>
+                <span class="stat-label">Clientes Potenciales</span>
+            </div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_contratos }}</span>
+                <span class="stat-label">Contratos Totales</span>
+            </div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_ventas_directas }}</span>
+                <span class="stat-label">Ventas Directas</span>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_instalaciones }}</span>
+                <span class="stat-label">Instalaciones</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Segunda fila de stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ contratos_proceso }}</span>
+                <span class="stat-label">En Proceso</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ contratos_completados }}</span>
+                <span class="stat-label">Completados</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ contratos_no_completados }}</span>
+                <span class="stat-label">No Completados</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ instalaciones_completadas }}/{{ total_instalaciones }}</span>
+                <span class="stat-label">Instalaciones OK</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ soportes_pendientes }}</span>
+                <span class="stat-label">Soportes Pendientes</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a10 10 0 0 0 0 20 10 10 0 0 0 0-20z"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ asignaciones_pendientes }}</span>
+                <span class="stat-label">Asignaciones Pendientes</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos Principales -->
+    <div class="dashboard-row">
+        <div class="dashboard-card chart-card">
+            <div class="card-header">
+                <h3>📊 Contratos vs Ventas Directas</h3>
+                <span class="card-badge">Últimos 6 meses</span>
+            </div>
+            <canvas id="comparativoChart" width="400" height="200"></canvas>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>🏆 Top Vendedores</h3>
+                <a  class="link-view">Ver nómina →</a>
+            </div>
+            <div class="ranking-list">
+                {% for vendedor in ranking_vendedores %}
+                <div class="ranking-item">
+                    <div class="ranking-position">#{{ forloop.counter }}</div>
+                    <div class="ranking-name">{{ vendedor.get_full_name|default:vendedor.username }}</div>
+                    <div class="ranking-count">{{ vendedor.total_contratos }} contratos</div>
+                </div>
+                {% empty %}
+                <p class="empty-text">Sin datos de vendedores</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Cuadrillas y Planes -->
+    <div class="dashboard-row">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>👷 Top Cuadrillas</h3>
+            </div>
+            <div class="ranking-list">
+                {% for cuadrilla in ranking_cuadrillas %}
+                <div class="ranking-item">
+                    <div class="ranking-position">#{{ forloop.counter }}</div>
+                    <div class="ranking-name">{{ cuadrilla.nombre }}</div>
+                    <div class="ranking-count">{{ cuadrilla.total_instalaciones }} instalaciones</div>
+                </div>
+                {% empty %}
+                <p class="empty-text">Sin datos de cuadrillas</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>📡 Planes Más Vendidos</h3>
+            </div>
+            <div class="plans-list">
+                {% for plan in planes_populares %}
+                <div class="plan-item">
+                    <div class="plan-name">{{ plan.nombre }}</div>
+                    <div class="plan-bar">
+                        {% with total=plan.total_contratos|add:plan.total_ventas_directas %}
+                        <div class="plan-bar-fill" style="width: {% widthratio total contratos_por_mes|first 100 %}%"></div>
+                        {% endwith %}
+                    </div>
+                    <div class="plan-count">{{ plan.total_contratos|add:plan.total_ventas_directas }} ventas</div>
+                </div>
+                {% empty %}
+                <p class="empty-text">Sin datos de planes</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Soportes por Tipo y Nómina Semanal -->
+    <div class="dashboard-row">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>🛠️ Soportes por Tipo</h3>
+            </div>
+            <div class="soportes-tipo-grid">
+                <div class="tipo-item mudanza">
+                    <span class="tipo-value">{{ soportes_mudanza }}</span>
+                    <span class="tipo-label">Mudanza</span>
+                </div>
+                <div class="tipo-item retiro">
+                    <span class="tipo-value">{{ soportes_retiro }}</span>
+                    <span class="tipo-label">Retiro</span>
+                </div>
+                <div class="tipo-item recableado">
+                    <span class="tipo-value">{{ soportes_recableado }}</span>
+                    <span class="tipo-label">Recableado</span>
+                </div>
+            </div>
+            <div class="soportes-estado">
+                <div class="estado-item">
+                    <span class="estado-dot pendiente"></span>
+                    <span>Pendientes: {{ soportes_estado.pendientes }}</span>
+                </div>
+                <div class="estado-item">
+                    <span class="estado-dot proceso"></span>
+                    <span>En Proceso: {{ soportes_estado.proceso }}</span>
+                </div>
+                <div class="estado-item">
+                    <span class="estado-dot completado"></span>
+                    <span>Completados: {{ soportes_estado.completados }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>💰 Nómina Semanal</h3>
+                <span class="card-badge">Total: ${{ total_nomina_usd|floatformat:2 }}</span>
+            </div>
+            <div class="nomina-list">
+                {% for nomina in nominas_semana|slice:":5" %}
+                <div class="nomina-item">
+                    <div class="nomina-vendedor">{{ nomina.vendedor.get_full_name|default:nomina.vendedor.username }}</div>
+                    <div class="nomina-info">
+                        <span class="nomina-contratos">{{ nomina.total_contratos }} contratos</span>
+                        <span class="nomina-total">${{ nomina.total_usd|floatformat:2 }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="empty-text">No hay nómina registrada esta semana</p>
+                {% endfor %}
+            </div>
+            <div class="card-footer">
+                <a  class="link-view">Ver nómina completa →</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Últimos Contratos -->
+    <div class="dashboard-card full-width">
+        <div class="card-header">
+            <h3>📋 Últimos Contratos Registrados</h3>
+            <a href="{% url 'lista_contratos' %}" class="link-view">Ver todos →</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dashboard">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Plan</th>
+                        <th>Vendedor</th>
+                        <th>Estado</th>
+                        <th>Fecha</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contrato in ultimos_contratos %}
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar-sm">{{ contrato.nombre|first|upper }}{{ contrato.apellido|first|upper }}</span>
+                                {{ contrato.nombre_completo }}
+                            </div>
+                        </td>
+                        <td>{{ contrato.plan_contratado.nombre }}</td>
+                        <td>{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</td>
+                        <td>
+                            <span class="badge {% if contrato.estado == 'COMPLETADO' %}badge-success{% elif contrato.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-danger{% endif %}">
+                                {{ contrato.get_estado_display }}
+                            </span>
+                        </td>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty">No hay contratos registrados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    
+    <!-- ==================== DASHBOARD GENERAL ==================== -->
+    {% else %}
+    
+    <div class="welcome-card">
+        <div class="welcome-icon">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.5">
+                <path d="M12 2a10 10 0 0 0 0 20 10 10 0 0 0 0-20z"/>
+                <path d="M12 6v6l4 2"/>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="9" r="2"/>
+            </svg>
+        </div>
+        <h2>¡Bienvenido al Sistema!</h2>
+        <p>{{ mensaje }}</p>
+        <div class="welcome-actions">
+            <a href="{% url 'lista_clientes' %}" class="btn-orange">Ver Clientes</a>
+            <a href="{% url 'crear_contrato' %}" class="btn-outline">Crear Contrato</a>
+        </div>
+    </div>
+    
+    {% endif %}
+    
+</div>
+
+<style>
+    /* ===== VARIABLES ===== */
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --orange-dark: #e06000;
+        --gray-bg: #f9fafb;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fed7aa;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
+        --info: #3b82f6;
+        --info-light: #dbeafe;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* ===== DASHBOARD CONTAINER ===== */
+    .dashboard-container {
+        padding: 4px 0;
+    }
+    
+    /* ===== STATS CARDS ===== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border: 1px solid var(--gray-border);
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--orange);
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        background: var(--orange-light);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--orange);
+    }
+    
+    .stat-icon.small {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .stat-info {
+        flex: 1;
+    }
+    
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--dark-text);
+        display: block;
+        line-height: 1.2;
+    }
+    
+    .stat-value-sm {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--dark-text);
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    .stat-card.stat-primary .stat-icon { background: var(--orange-light); color: var(--orange); }
+    .stat-card.stat-success .stat-icon { background: var(--success-light); color: var(--success); }
+    .stat-card.stat-warning .stat-icon { background: var(--warning-light); color: var(--warning); }
+    .stat-card.stat-danger .stat-icon { background: var(--danger-light); color: var(--danger); }
+    .stat-card.stat-info .stat-icon { background: var(--info-light); color: var(--info); }
+    
+    /* ===== DASHBOARD ROW ===== */
+    .dashboard-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    
+    /* ===== DASHBOARD CARDS ===== */
+    .dashboard-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .dashboard-card.full-width {
+        grid-column: span 2;
+        margin-bottom: 24px;
+    }
+    
+    .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--gray-bg);
+    }
+    
+    .card-header h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0;
+        color: var(--dark-text);
+    }
+    
+    .card-badge {
+        font-size: 11px;
+        padding: 4px 10px;
+        background: white;
+        border-radius: 20px;
+        color: var(--gray-text);
+        border: 1px solid var(--gray-border);
+    }
+    
+    .link-view {
+        font-size: 12px;
+        color: var(--orange);
+        text-decoration: none;
+    }
+    
+    .link-view:hover {
+        text-decoration: underline;
+    }
+    
+    .card-footer {
+        padding: 12px 20px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+    
+    /* ===== PROGRESS CARD ===== */
+    .progress-container {
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 32px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .progress-circle {
+        width: 140px;
+        height: 140px;
+    }
+    
+    .circular-chart {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .circle-bg {
+        fill: none;
+        stroke: var(--gray-border);
+        stroke-width: 3;
+    }
+    
+    .circle {
+        fill: none;
+        stroke: var(--orange);
+        stroke-width: 3;
+        stroke-linecap: round;
+        transition: stroke-dasharray 0.5s ease;
+    }
+    
+    .percentage {
+        fill: var(--dark-text);
+        font-size: 8px;
+        text-anchor: middle;
+        font-weight: 600;
+    }
+    
+    .progress-info {
+        flex: 1;
+        min-width: 180px;
+    }
+    
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    .info-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dark-text);
+    }
+    
+    .info-value.highlight {
+        color: var(--orange);
+        font-size: 18px;
+    }
+    
+    /* ===== TABLES ===== */
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .table-dashboard {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    
+    .table-dashboard th {
+        text-align: left;
+        padding: 12px 16px;
+        font-weight: 600;
+        color: var(--gray-text);
+        background: #fafafa;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+    
+    .table-dashboard td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+    }
+    
+    .table-dashboard tr:hover {
+        background: var(--gray-bg);
+    }
+    
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .user-avatar-sm {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 12px;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .badge-success { background: var(--success-light); color: #065f46; }
+    .badge-warning { background: var(--warning-light); color: #9b2c1d; }
+    .badge-danger { background: var(--danger-light); color: #991b1b; }
+    .badge-info { background: var(--info-light); color: #1e40af; }
+    .badge-secondary { background: #f3f4f6; color: #4b5563; }
+    
+    .action-btn {
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+    
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .direccion-cell {
+        max-width: 250px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* ===== RANKING LIST ===== */
+    .ranking-list {
+        padding: 8px 0;
+    }
+    
+    .ranking-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .ranking-item:last-child {
+        border-bottom: none;
+    }
+    
+    .ranking-position {
+        width: 36px;
+        height: 36px;
+        background: var(--gray-bg);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+        color: var(--orange);
+    }
+    
+    .ranking-name {
+        flex: 1;
+        font-weight: 500;
+        font-size: 13px;
+    }
+    
+    .ranking-count {
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    /* ===== PLANS LIST ===== */
+    .plans-list {
+        padding: 16px;
+    }
+    
+    .plan-item {
+        margin-bottom: 16px;
+    }
+    
+    .plan-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .plan-name {
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 6px;
+    }
+    
+    .plan-bar {
+        height: 6px;
+        background: var(--gray-border);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 6px;
+    }
+    
+    .plan-bar-fill {
+        height: 100%;
+        background: var(--orange);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+    
+    .plan-count {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+    
+    /* ===== MATERIALS GRID ===== */
+    .materials-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        padding: 20px;
+    }
+    
+    .material-item {
+        text-align: center;
+        padding: 16px;
+        background: var(--gray-bg);
+        border-radius: 12px;
+    }
+    
+    .material-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--orange);
+        display: block;
+    }
+    
+    .material-label {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+    
+    /* ===== SOPORTES LIST ===== */
+    .soportes-list {
+        padding: 8px 0;
+    }
+    
+    .soporte-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .soporte-item:last-child {
+        border-bottom: none;
+    }
+    
+    .soporte-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    
+    .soporte-tipo {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--orange);
+    }
+    
+    .soporte-fecha {
+        font-size: 10px;
+        color: var(--gray-text);
+    }
+    
+    .soporte-cliente {
+        font-size: 13px;
+        font-weight: 500;
+        margin-bottom: 6px;
+    }
+    
+    /* ===== SOPORTES TIPO GRID ===== */
+    .soportes-tipo-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .tipo-item {
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--gray-bg);
+    }
+    
+    .tipo-item.mudanza { background: #e0f2fe; }
+    .tipo-item.retiro { background: #fed7aa; }
+    .tipo-item.recableado { background: #d1fae5; }
+    
+    .tipo-value {
+        font-size: 24px;
+        font-weight: 700;
+        display: block;
+    }
+    
+    .tipo-label {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+    
+    .soportes-estado {
+        display: flex;
+        justify-content: space-around;
+        padding: 16px 20px;
+        border-top: 1px solid var(--gray-border);
+    }
+    
+    .estado-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+    
+    .estado-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+    
+    .estado-dot.pendiente { background: var(--warning); }
+    .estado-dot.proceso { background: var(--info); }
+    .estado-dot.completado { background: var(--success); }
+    
+    /* ===== NOMINA LIST ===== */
+    .nomina-list {
+        padding: 8px 0;
+    }
+    
+    .nomina-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .nomina-item:last-child {
+        border-bottom: none;
+    }
+    
+    .nomina-vendedor {
+        font-weight: 500;
+        font-size: 13px;
+    }
+    
+    .nomina-info {
+        display: flex;
+        gap: 16px;
+    }
+    
+    .nomina-contratos {
+        font-size: 11px;
+        color: var(--gray-text);
+    }
+    
+    .nomina-total {
+        font-weight: 600;
+        color: var(--success);
+    }
+    
+    /* ===== WELCOME CARD ===== */
+    .welcome-card {
+        background: white;
+        border-radius: 24px;
+        padding: 48px 32px;
+        text-align: center;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .welcome-icon {
+        margin-bottom: 24px;
+    }
+    
+    .welcome-card h2 {
+        font-size: 24px;
+        margin-bottom: 12px;
+    }
+    
+    .welcome-card p {
+        color: var(--gray-text);
+        margin-bottom: 24px;
+    }
+    
+    .welcome-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    
+    .btn-outline {
+        padding: 8px 20px;
+        border: 1px solid var(--orange);
+        background: white;
+        color: var(--orange);
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+    
+    .btn-outline:hover {
+        background: var(--orange-light);
+    }
+    
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+    
+    .btn-orange:hover {
+        background: var(--orange-dark);
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .btn-outline-header:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .empty, .empty-text {
+        text-align: center;
+        padding: 32px;
+        color: var(--gray-text);
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    /* ===== RESPONSIVE ===== */
+    @media screen and (max-width: 1024px) {
+        .dashboard-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .dashboard-card.full-width {
+            grid-column: span 1;
+        }
+    }
+    
+    @media screen and (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .stat-card {
+            padding: 12px;
+        }
+        
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .stat-value {
+            font-size: 22px;
+        }
+        
+        .progress-container {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .materials-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .soportes-tipo-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .welcome-actions {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .nomina-info {
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-end;
+        }
+    }
+    
+    @media screen and (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .card-header {
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Función para inicializar gráficos según el rol
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if rol == 'vendedor' %}
+            // Gráfico de contratos por mes
+            const ctx = document.getElementById('contratosChart')?.getContext('2d');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ meses|safe }},
+                        datasets: [{
+                            label: 'Contratos',
+                            data: {{ contratos_por_mes|safe }},
+                            backgroundColor: 'rgba(255, 107, 0, 0.7)',
+                            borderColor: '#ff6b00',
+                            borderWidth: 1,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+            
+        {% elif rol == 'instalador' %}
+            // Gráfico de instalaciones por mes
+            const ctxInst = document.getElementById('instalacionesChart')?.getContext('2d');
+            if (ctxInst) {
+                new Chart(ctxInst, {
+                    type: 'line',
+                    data: {
+                        labels: {{ meses|safe }},
+                        datasets: [{
+                            label: 'Instalaciones',
+                            data: {{ instalaciones_por_mes|safe }},
+                            borderColor: '#ff6b00',
+                            backgroundColor: 'rgba(255, 107, 0, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: '#ff6b00',
+                            pointBorderColor: 'white',
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'top' }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#e5e7eb' } }
+                        }
+                    }
+                });
+            }
+            
+        {% elif rol == 'administrador' %}
+            // Gráfico comparativo
+            const ctxComp = document.getElementById('comparativoChart')?.getContext('2d');
+            if (ctxComp) {
+                new Chart(ctxComp, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ meses|safe }},
+                        datasets: [
+                            {
+                                label: 'Contratos',
+                                data: {{ contratos_por_mes|safe }},
+                                backgroundColor: 'rgba(255, 107, 0, 0.7)',
+                                borderRadius: 8
+                            },
+                            {
+                                label: 'Ventas Directas',
+                                data: {{ ventas_por_mes|safe }},
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                borderRadius: 8
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+        {% endif %}
+    });
+    
+    // Funciones auxiliares
+    function verContrato(id) {
+        window.location.href = `/contrato/${id}/detalle/`;
+    }
+    
+    function iniciarInstalacion(id) {
+        window.location.href = `/instalacion/iniciar/${id}/`;
+    }
+    
+    // Auto-refresh cada 30 segundos (solo para admin)
+    {% if rol == 'administrador' %}
+    setInterval(function() {
+        fetch('/dashboard/datos-api/')
+            .then(response => response.json())
+            .then(data => {
+                // Actualizar stats dinámicamente
+                const statsElements = document.querySelectorAll('.stat-value, .stat-value-sm');
+                if (statsElements.length) {
+                    // Aquí podrías actualizar los valores
+                    console.log('Datos actualizados:', data);
+                }
+            })
+            .catch(err => console.log('Error refreshing data:', err));
+    }, 30000);
+    {% endif %}
+</script>
+{% endblock %}

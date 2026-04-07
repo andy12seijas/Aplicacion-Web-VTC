@@ -1,0 +1,1028 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Editar Soporte Técnico{% endblock %}
+
+{% block page_title %}Editar Soporte{% endblock %}
+{% block page_subtitle %}Modifique los datos del soporte #{{ soporte.id }} - {{ soporte.get_tipo_display }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'lista_soportes' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver a Soportes
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="editar-soporte-container">
+    <div class="form-card">
+        <div class="form-header">
+            <div class="form-header-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <div class="form-header-text">
+                <h2>Editar Soporte #{{ soporte.id }}</h2>
+                <p>Complete todos los campos para actualizar el soporte</p>
+            </div>
+        </div>
+        <input type="hidden" name="instalacion" value="{{ soporte.instalacion.id }}">
+        <input type="hidden" name="tipo" value="{{ soporte.tipo }}">
+        <!-- Información de la Instalación Original (solo lectura) -->
+        <div class="instalacion-info-card">
+            <div class="instalacion-info-header">
+                <h4>📡 Información de la Instalación Original</h4>
+                <span class="badge-verificado">✓ No editable</span>
+            </div>
+            <div class="instalacion-info-grid">
+                <div class="info-item">
+                    <span class="info-label">CLIENTE</span>
+                    <span class="info-value">{{ soporte.nombre_cliente }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CÉDULA</span>
+                    <span class="info-value">{{ soporte.cedula_cliente }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">DIRECCIÓN</span>
+                    <span class="info-value">{{ soporte.direccion|truncatechars:50 }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">PLAN</span>
+                    <span class="info-value">{{ soporte.plan }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CUSTOMER ID</span>
+                    <span class="info-value">{{ soporte.customer_id|default:"N/A" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ATR</span>
+                    <span class="info-value">{{ soporte.atr|default:"N/A" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">MÓDEM INSTALADO</span>
+                    <span class="info-value">{{ soporte.instalacion.modelo_modem.nombre|default:"N/A" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">SERIAL MÓDEM</span>
+                    <span class="info-value">{{ soporte.instalacion.sn_modem|default:"N/A" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mostrar errores del formulario -->
+        {% if form.errors %}
+        <div class="alert-error">
+            <strong>❌ Por favor corrige los siguientes errores:</strong>
+            <ul>
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li>{{ field|capfirst }}: {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <form method="post" class="edit-form" enctype="multipart/form-data" id="editSoporteForm">
+            {% csrf_token %}
+            
+            <!-- Tipo de Soporte (solo lectura en edición) -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    Tipo de Soporte
+                </h3>
+                <div class="form-group readonly-field">
+                    <label>Tipo de Soporte</label>
+                    <input type="text" class="form-control" value="{{ soporte.get_tipo_display }}" readonly disabled>
+                    <small class="help-text">El tipo de soporte no puede ser modificado</small>
+                </div>
+            </div>
+
+            <!-- Fecha y Hora del Servicio -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Fecha y Hora del Servicio
+                </h3>
+                <div class="form-group {% if form.fecha_hora_servicio.errors %}has-error{% endif %}">
+                    <label for="{{ form.fecha_hora_servicio.id_for_label }}">{{ form.fecha_hora_servicio.label }}</label>
+                    {{ form.fecha_hora_servicio }}
+                    {% if form.fecha_hora_servicio.errors %}
+                        <div class="error-message">{{ form.fecha_hora_servicio.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Falla y Solución -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    Falla y Solución
+                </h3>
+                <div class="form-group {% if form.falla_encontrada.errors %}has-error{% endif %}">
+                    <label for="{{ form.falla_encontrada.id_for_label }}">{{ form.falla_encontrada.label }}</label>
+                    {{ form.falla_encontrada }}
+                    {% if form.falla_encontrada.errors %}
+                        <div class="error-message">{{ form.falla_encontrada.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="form-group {% if form.solucion.errors %}has-error{% endif %}">
+                    <label for="{{ form.solucion.id_for_label }}">{{ form.solucion.label }}</label>
+                    {{ form.solucion }}
+                    {% if form.solucion.errors %}
+                        <div class="error-message">{{ form.solucion.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Equipo Módem (Nuevo que se instaló) -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    Equipo Módem (Si aplica)
+                </h3>
+                <div class="form-row">
+                    <div class="form-group {% if form.modelo_modem.errors %}has-error{% endif %}">
+                        <label for="{{ form.modelo_modem.id_for_label }}">{{ form.modelo_modem.label }}</label>
+                        {{ form.modelo_modem }}
+                        {% if form.modelo_modem.errors %}
+                            <div class="error-message">{{ form.modelo_modem.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group {% if form.sn_modem.errors %}has-error{% endif %}">
+                        <label for="{{ form.sn_modem.id_for_label }}">{{ form.sn_modem.label }}</label>
+                        {{ form.sn_modem }}
+                        {% if form.sn_modem.errors %}
+                            <div class="error-message">{{ form.sn_modem.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group {% if form.mac_modem.errors %}has-error{% endif %}">
+                        <label for="{{ form.mac_modem.id_for_label }}">{{ form.mac_modem.label }}</label>
+                        {{ form.mac_modem }}
+                        <small class="help-text">Formato: XX:XX:XX:XX:XX:XX</small>
+                        {% if form.mac_modem.errors %}
+                            <div class="error-message">{{ form.mac_modem.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materiales Utilizados (Fibra) -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="14" r="3"/>
+                    </svg>
+                    Materiales Utilizados - Fibra Óptica
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.inicio_fibra.id_for_label }}">{{ form.inicio_fibra.label }}</label>
+                        {{ form.inicio_fibra }}
+                        <small class="help-text">Metros de fibra con los que salió el instalador</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.final_fibra.id_for_label }}">{{ form.final_fibra.label }}</label>
+                        {{ form.final_fibra }}
+                        <small class="help-text">Metros de fibra que le quedaron al final</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Metros Utilizados</label>
+                        <input type="text" id="metros_utilizados" class="form-control" readonly placeholder="Se calcula automáticamente" style="background: #e8f0fe; font-weight: bold;">
+                        <small class="help-text">INICIO - FINAL = Metros utilizados</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materiales Utilizados (Accesorios) -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="14" r="3"/>
+                    </svg>
+                    Materiales Utilizados - Accesorios
+                </h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="{{ form.conectores.id_for_label }}">{{ form.conectores.label }}</label>
+                        {{ form.conectores }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.rosetas.id_for_label }}">{{ form.rosetas.label }}</label>
+                        {{ form.rosetas }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.patch_cord.id_for_label }}">{{ form.patch_cord.label }}</label>
+                        {{ form.patch_cord }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.tensores.id_for_label }}">{{ form.tensores.label }}</label>
+                        {{ form.tensores }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.conectores_malos.id_for_label }}">{{ form.conectores_malos.label }}</label>
+                        {{ form.conectores_malos }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos NAP -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M4 4L20 4M4 8L20 8M4 12L20 12M4 16L20 16M4 20L20 20"/>
+                        <rect x="2" y="2" width="20" height="20" rx="2"/>
+                    </svg>
+                    Datos de Conexión NAP
+                </h3>
+                <div class="form-row">
+                    <div class="form-group {% if form.caja_nap_utilizada.errors %}has-error{% endif %}">
+                        <label for="{{ form.caja_nap_utilizada.id_for_label }}">{{ form.caja_nap_utilizada.label }}</label>
+                        {{ form.caja_nap_utilizada }}
+                        {% if form.caja_nap_utilizada.errors %}
+                            <div class="error-message">{{ form.caja_nap_utilizada.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group {% if form.puerto_nap_utilizado.errors %}has-error{% endif %}">
+                        <label for="{{ form.puerto_nap_utilizado.id_for_label }}">{{ form.puerto_nap_utilizado.label }}</label>
+                        {{ form.puerto_nap_utilizado }}
+                        {% if form.puerto_nap_utilizado.errors %}
+                            <div class="error-message">{{ form.puerto_nap_utilizado.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ubicación del Servicio -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Ubicación del Servicio (PIN)
+                </h3>
+                
+                <div class="ubicacion-linea">
+                    <div class="ubicacion-campos">
+                        <div class="form-group {% if form.pin_ubicacion_lat.errors %}has-error{% endif %}">
+                            <label for="{{ form.pin_ubicacion_lat.id_for_label }}">{{ form.pin_ubicacion_lat.label }}</label>
+                            {{ form.pin_ubicacion_lat }}
+                            {% if form.pin_ubicacion_lat.errors %}
+                                <div class="error-message">{{ form.pin_ubicacion_lat.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="form-group {% if form.pin_ubicacion_lng.errors %}has-error{% endif %}">
+                            <label for="{{ form.pin_ubicacion_lng.id_for_label }}">{{ form.pin_ubicacion_lng.label }}</label>
+                            {{ form.pin_ubicacion_lng }}
+                            {% if form.pin_ubicacion_lng.errors %}
+                                <div class="error-message">{{ form.pin_ubicacion_lng.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="ubicacion-boton">
+                        <button type="button" class="btn-capture" onclick="capturarUbicacion()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 8v4l3 3"/>
+                            </svg>
+                            Capturar ubicación actual
+                        </button>
+                    </div>
+                </div>
+                <small class="help-text">Párese en la ubicación del servicio y presione el botón</small>
+            </div>
+
+            <!-- Fotos del Soporte -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-4-3 3-4-4-5 5"/>
+                    </svg>
+                    Soporte Fotográfico
+                </h3>
+                <p class="help-text">* Obligatorio: Fotos de equipos, material, falla, solución y speed test</p>
+                
+                <!-- Galería de fotos existentes -->
+                {% if soporte.fotos %}
+                <div class="existing-photos">
+                    <h4>📷 Fotos actuales</h4>
+                    <div class="fotos-grid" id="fotosExistentes">
+                        {% for foto in soporte.fotos %}
+                        <div class="foto-item" data-url="{{ foto }}">
+                            <img src="{{ foto }}" alt="Foto del soporte">
+                            <button type="button" class="eliminar-foto" onclick="eliminarFotoExistente('{{ foto|escapejs }}')">✕</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Input para nuevas fotos -->
+                <div class="file-upload-area" onclick="document.getElementById('id_fotos_upload').click()">
+                    <div class="upload-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="1.5">
+                            <path d="M12 4v16M4 12h16"/>
+                        </svg>
+                        <p>Haz clic para agregar más fotos</p>
+                        <small>Puedes seleccionar múltiples imágenes (JPG, PNG - Máx. 5MB cada una)</small>
+                    </div>
+                </div>
+                <input type="file" id="id_fotos_upload" name="fotos_upload" multiple accept="image/*" style="display: none;" onchange="previewNuevasFotos(this)">
+                
+                <!-- Vista previa de nuevas fotos -->
+                <div id="previewNuevasFotos" class="fotos-grid" style="margin-top: 20px;"></div>
+                
+                <!-- Campo oculto para fotos a eliminar -->
+                <input type="hidden" name="fotos_eliminar" id="fotos_eliminar" value="">
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                    Observaciones
+                </h3>
+                <div class="form-group">
+                    {{ form.observaciones }}
+                </div>
+            </div>
+
+            <!-- Resumen de materiales -->
+            <div class="resumen-card">
+                <div class="resumen-item">
+                    <span class="resumen-label">📡 METROS</span>
+                    <span class="resumen-value" id="resumen-metros">0</span>
+                </div>
+                <div class="resumen-item">
+                    <span class="resumen-label">🔌 CONECTORES</span>
+                    <span class="resumen-value" id="resumen-conectores">0</span>
+                </div>
+                <div class="resumen-item">
+                    <span class="resumen-label">🔘 ROSETAS</span>
+                    <span class="resumen-value" id="resumen-rosetas">0</span>
+                </div>
+                <div class="resumen-item">
+                    <span class="resumen-label">📀 PATCH CORD</span>
+                    <span class="resumen-value" id="resumen-patch">0</span>
+                </div>
+                <div class="resumen-item">
+                    <span class="resumen-label">⚙️ TENSORES</span>
+                    <span class="resumen-value" id="resumen-tensores">0</span>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'lista_soportes' %}" class="btn-outline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/>
+                        <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/>
+                    </svg>
+                    Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .editar-soporte-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .form-header {
+        background: linear-gradient(135deg, #fff7f0 0%, #fff 100%);
+        padding: 25px 30px;
+        border-bottom: 2px solid #ff6b00;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .form-header-icon {
+        width: 60px;
+        height: 60px;
+        background: #fff0e6;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .form-header-text h2 {
+        margin: 0;
+        color: #1a1a1a;
+        font-size: 24px;
+    }
+    
+    .form-header-text p {
+        margin: 5px 0 0;
+        color: #666;
+    }
+    
+    .instalacion-info-card {
+        background: #f8f9fa;
+        margin: 20px 30px;
+        padding: 20px;
+        border-radius: 8px;
+        border-left: 4px solid #ff6b00;
+    }
+    
+    .instalacion-info-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .instalacion-info-header h4 {
+        margin: 0;
+        color: #333;
+    }
+    
+    .badge-verificado {
+        background: #28a745;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    
+    .instalacion-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .info-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #888;
+        letter-spacing: 0.5px;
+    }
+    
+    .info-value {
+        font-size: 14px;
+        color: #333;
+        margin-top: 4px;
+        font-weight: 500;
+    }
+    
+    .alert-error {
+        background: #fee;
+        border-left: 4px solid #dc3545;
+        padding: 15px 20px;
+        margin: 0 30px 20px;
+        border-radius: 8px;
+        color: #721c24;
+    }
+    
+    .alert-error ul {
+        margin: 10px 0 0 20px;
+    }
+    
+    .form-section {
+        padding: 25px 30px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 20px 0;
+        font-size: 18px;
+        color: #333;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #ff6b00;
+        box-shadow: 0 0 0 3px rgba(255,107,0,0.1);
+    }
+    
+    .form-group.has-error input,
+    .form-group.has-error select,
+    .form-group.has-error textarea {
+        border-color: #dc3545;
+    }
+    
+    .error-message {
+        color: #dc3545;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+    
+    .help-text {
+        display: block;
+        font-size: 11px;
+        color: #888;
+        margin-top: 5px;
+    }
+    
+    .readonly-field input {
+        background: #f5f5f5;
+        cursor: not-allowed;
+    }
+    
+    .ubicacion-linea {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+    }
+    
+    .ubicacion-campos {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .ubicacion-boton {
+        margin-top: 28px;
+    }
+    
+    .btn-capture {
+        background: #ff6b00;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        transition: background 0.3s;
+    }
+    
+    .btn-capture:hover {
+        background: #e05d00;
+    }
+    
+    .fotos-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .foto-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .foto-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+    }
+    
+    .eliminar-foto {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(220,53,69,0.9);
+        color: white;
+        border: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: background 0.3s;
+    }
+    
+    .eliminar-foto:hover {
+        background: #dc3545;
+    }
+    
+    .file-upload-area {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 20px;
+    }
+    
+    .file-upload-area:hover {
+        border-color: #ff6b00;
+        background: #fff7f0;
+    }
+    
+    .upload-placeholder p {
+        margin: 10px 0 5px;
+        color: #666;
+    }
+    
+    .resumen-card {
+        background: linear-gradient(135deg, #ff6b00 0%, #ff8533 100%);
+        color: white;
+        padding: 20px;
+        margin: 0 30px 20px;
+        border-radius: 8px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 15px;
+    }
+    
+    .resumen-item {
+        text-align: center;
+    }
+    
+    .resumen-label {
+        display: block;
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+    
+    .resumen-value {
+        display: block;
+        font-size: 24px;
+        font-weight: bold;
+    }
+    
+    .form-actions {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+    }
+    
+    .btn-primary, .btn-outline {
+        padding: 10px 24px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        text-decoration: none;
+    }
+    
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+        border: none;
+    }
+    
+    .btn-primary:hover {
+        background: #e05d00;
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline {
+        background: white;
+        color: #666;
+        border: 1px solid #ddd;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 20px;
+        }
+        
+        .ubicacion-linea {
+            flex-direction: column;
+        }
+        
+        .ubicacion-boton {
+            margin-top: 0;
+        }
+        
+        .resumen-card {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Variables globales
+    let fotosAEliminar = [];
+    let nuevasFotosArchivos = [];
+    
+    // Calcular metros utilizados (INICIO - FINAL)
+    function calcularMetrosUtilizados() {
+        const inicioInput = document.getElementById('id_inicio_fibra');
+        const finalInput = document.getElementById('id_final_fibra');
+        const metrosUtilizados = document.getElementById('metros_utilizados');
+        const resumenMetros = document.getElementById('resumen-metros');
+        
+        if (inicioInput && finalInput && metrosUtilizados) {
+            const inicio = parseInt(inicioInput.value) || 0;
+            const final = parseInt(finalInput.value) || 0;
+            const utilizados = inicio - final;
+            
+            if (utilizados >= 0) {
+                metrosUtilizados.value = utilizados + ' metros';
+                if (resumenMetros) resumenMetros.textContent = utilizados;
+            } else {
+                metrosUtilizados.value = 'Error: Los metros finales no pueden ser mayores a los metros iniciales';
+                if (resumenMetros) resumenMetros.textContent = '0';
+            }
+        }
+    }
+    
+    // Capturar ubicación
+    function capturarUbicacion() {
+        if (!navigator.geolocation) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Tu navegador no soporta geolocalización.',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Obteniendo ubicación...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                document.getElementById('id_pin_ubicacion_lat').value = lat.toFixed(6);
+                document.getElementById('id_pin_ubicacion_lng').value = lng.toFixed(6);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Ubicación capturada',
+                    text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`,
+                    confirmButtonColor: '#ff6b00',
+                    timer: 2000
+                });
+            },
+            function(error) {
+                Swal.close();
+                let mensaje = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        mensaje = 'Permiso de ubicación denegado';
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        mensaje = 'Información de ubicación no disponible';
+                        break;
+                    case error.TIMEOUT:
+                        mensaje = 'Tiempo de espera agotado';
+                        break;
+                    default:
+                        mensaje = 'Error desconocido';
+                }
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo capturar la ubicación',
+                    text: mensaje,
+                    confirmButtonColor: '#ff6b00'
+                });
+            }
+        );
+    }
+    
+    // Actualizar resumen de materiales
+    function actualizarResumen() {
+        const conectores = document.getElementById('id_conectores');
+        const rosetas = document.getElementById('id_rosetas');
+        const patchCord = document.getElementById('id_patch_cord');
+        const tensores = document.getElementById('id_tensores');
+        
+        if (conectores) document.getElementById('resumen-conectores').textContent = conectores.value || 0;
+        if (rosetas) document.getElementById('resumen-rosetas').textContent = rosetas.value || 0;
+        if (patchCord) document.getElementById('resumen-patch').textContent = patchCord.value || 0;
+        if (tensores) document.getElementById('resumen-tensores').textContent = tensores.value || 0;
+    }
+    
+    // Eliminar foto existente
+    function eliminarFotoExistente(fotoUrl) {
+        Swal.fire({
+            title: '¿Eliminar foto?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const fotoElement = document.querySelector(`.foto-item[data-url="${fotoUrl}"]`);
+                if (fotoElement) fotoElement.remove();
+                fotosAEliminar.push(fotoUrl);
+                document.getElementById('fotos_eliminar').value = JSON.stringify(fotosAEliminar);
+                Swal.fire('Eliminada', 'Foto eliminada correctamente', 'success');
+            }
+        });
+    }
+    
+    // Vista previa de nuevas fotos
+    function previewNuevasFotos(input) {
+        const previewDiv = document.getElementById('previewNuevasFotos');
+        previewDiv.innerHTML = '';
+        
+        if (input.files) {
+            Array.from(input.files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const fotoDiv = document.createElement('div');
+                        fotoDiv.className = 'foto-item';
+                        fotoDiv.innerHTML = `
+                            <img src="${e.target.result}" alt="Vista previa">
+                            <button type="button" class="eliminar-foto" onclick="eliminarNuevaFoto(${index})">✕</button>
+                        `;
+                        previewDiv.appendChild(fotoDiv);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+    }
+    
+    // Eliminar nueva foto de la vista previa
+    function eliminarNuevaFoto(index) {
+        const input = document.getElementById('id_fotos_upload');
+        const dt = new DataTransfer();
+        const files = Array.from(input.files);
+        
+        files.splice(index, 1);
+        files.forEach(file => dt.items.add(file));
+        input.files = dt.files;
+        
+        previewNuevasFotos(input);
+    }
+    
+    // Validar formulario antes de enviar
+    document.getElementById('editSoporteForm').addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg> Guardando...';
+        
+        // Validar campos requeridos
+        const fechaHora = document.getElementById('id_fecha_hora_servicio').value;
+        const falla = document.getElementById('id_falla_encontrada').value.trim();
+        const solucion = document.getElementById('id_solucion').value.trim();
+        
+        if (!fechaHora) {
+            Swal.fire('Error', 'La fecha y hora del servicio es obligatoria', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg> Guardar Cambios</button>';
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!falla) {
+            Swal.fire('Error', 'La falla encontrada es obligatoria', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg> Guardar Cambios</button>';
+            e.preventDefault();
+            return false;
+        }
+        
+        if (!solucion) {
+            Swal.fire('Error', 'La solución es obligatoria', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/></svg> Guardar Cambios</button>';
+            e.preventDefault();
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const inicioFibra = document.getElementById('id_inicio_fibra');
+        const finalFibra = document.getElementById('id_final_fibra');
+        
+        if (inicioFibra) inicioFibra.addEventListener('input', calcularMetrosUtilizados);
+        if (finalFibra) finalFibra.addEventListener('input', calcularMetrosUtilizados);
+        
+        calcularMetrosUtilizados();
+        
+        const conectores = document.getElementById('id_conectores');
+        const rosetas = document.getElementById('id_rosetas');
+        const patchCord = document.getElementById('id_patch_cord');
+        const tensores = document.getElementById('id_tensores');
+        
+        if (conectores) conectores.addEventListener('input', actualizarResumen);
+        if (rosetas) rosetas.addEventListener('input', actualizarResumen);
+        if (patchCord) patchCord.addEventListener('input', actualizarResumen);
+        if (tensores) tensores.addEventListener('input', actualizarResumen);
+        
+        actualizarResumen();
+        
+        // Mostrar mensajes de Django messages
+        {% if messages %}
+            {% for message in messages %}
+                Swal.fire({
+                    icon: '{{ message.tags }}',
+                    title: '{% if message.tags == "success" %}Éxito{% elif message.tags == "error" %}Error{% else %}Información{% endif %}',
+                    text: '{{ message }}',
+                    confirmButtonColor: '#ff6b00'
+                });
+            {% endfor %}
+        {% endif %}
+    });
+</script>
+{% endblock %}

@@ -1,3 +1,4 @@
+import re
 from django import forms
 from django.contrib.auth.models import User, Group
 from django.contrib.auth.forms import UserCreationForm
@@ -943,8 +944,8 @@ class SoporteForm(forms.ModelForm):
         inicio_fibra = cleaned_data.get('inicio_fibra')
         final_fibra = cleaned_data.get('final_fibra')
         
-        if inicio_fibra and final_fibra and final_fibra <= inicio_fibra:
-            self.add_error('final_fibra', 'El valor FINAL debe ser mayor que INICIO')
+        if inicio_fibra and final_fibra and inicio_fibra <= final_fibra:
+            self.add_error('final_fibra', 'El valor FINAL debe ser menos que el  INICIO')
         
         # Validar que si se ingresa latitud, también se ingrese longitud
         pin_lat = cleaned_data.get('pin_ubicacion_lat')
@@ -996,3 +997,99 @@ class SoporteFotosForm(forms.Form):
         required=False,
         label="Agregar más fotos"
     )
+    
+    
+    
+class SoporteEditarForm(forms.ModelForm):
+    """Formulario específico para EDITAR soportes (estos campos no se modifican)"""
+    
+    # Campo para múltiples fotos NUEVAS (no afecta las existentes)
+    fotos_upload = MultipleFileField(
+        required=False,
+        label="Agregar más fotos",
+        help_text="Puedes seleccionar múltiples imágenes (JPG, PNG, GIF - Máx. 5MB cada una)"
+    )
+    
+    class Meta:
+        model = Soporte
+        # EXCLUIMOS los campos que NO deben modificarse en edición
+        exclude = [
+            'instalacion',      # No se puede cambiar la instalación original
+            'tipo',             # No se puede cambiar el tipo de soporte
+            'estado',           # El estado se maneja aparte
+            'instaladores',     # Los instaladores que realizaron el soporte
+            'fotos',            # Las fotos se manejan aparte (solo se agregan)
+            'creado_por',       # Quién lo creó
+            'fecha_creacion',   # Fecha de creación
+            'fecha_actualizacion' # Se actualiza automáticamente
+        ]
+        widgets = {
+            'fecha_hora_servicio': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'falla_encontrada': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la falla encontrada...'}),
+            'solucion': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la solución aplicada...'}),
+            'modelo_modem': forms.Select(attrs={'class': 'form-control'}),
+            'sn_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Serial del módem (Ej: ABC123XYZ)'}),
+            'mac_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'MAC Address (Ej: 00:1A:2B:3C:4D:5E)'}),
+            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 100'}),
+            'final_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 85'}),
+            'conectores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores usados'}),
+            'rosetas': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de rosetas usadas'}),
+            'patch_cord': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de patch cord usados'}),
+            'tensores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de tensores usados'}),
+            'conectores_malos': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores malos'}),
+            'pin_ubicacion_lat': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: 10.123456', 'id': 'id_pin_lat'}),
+            'pin_ubicacion_lng': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: -66.123456', 'id': 'id_pin_lng'}),
+            'puerto_nap_utilizado': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: P1, P2, P3...'}),
+            'caja_nap_utilizada': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CAJA-001, NAP-002...'}),
+            'observaciones': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Observaciones adicionales...'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Filtrar solo modelos activos
+        self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
+        self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
+    
+    def clean_mac_modem(self):
+        """Validar formato de MAC address"""
+        mac = self.cleaned_data.get('mac_modem')
+        if mac:
+            pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
+            if not re.match(pattern, mac):
+                raise forms.ValidationError('Formato de MAC inválido. Use formato XX:XX:XX:XX:XX:XX')
+            mac = mac.upper()
+        return mac
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        inicio_fibra = cleaned_data.get('inicio_fibra')
+        final_fibra = cleaned_data.get('final_fibra')
+        
+        if inicio_fibra is not None and final_fibra is not None:
+            # FINAL debe ser MENOR o IGUAL que INICIO
+            if final_fibra > inicio_fibra:
+                self.add_error('final_fibra', 'Los metros finales no pueden ser mayores que los metros iniciales')
+        
+        # Validar coordenadas
+        pin_lat = cleaned_data.get('pin_ubicacion_lat')
+        pin_lng = cleaned_data.get('pin_ubicacion_lng')
+        
+        if pin_lat and not pin_lng:
+            self.add_error('pin_ubicacion_lng', 'Debe ingresar la longitud junto con la latitud')
+        if pin_lng and not pin_lat:
+            self.add_error('pin_ubicacion_lat', 'Debe ingresar la latitud junto con la longitud')
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        """Guardar solo los campos editables, preservando los demás"""
+        soporte = super().save(commit=False)
+        
+        # NO modificamos: estado, instaladores, fotos (solo se agregan nuevas)
+        
+        if commit:
+            soporte.save()
+            self.save_m2m()
+        
+        return soporte    

@@ -39,7 +39,6 @@ def login_view(request):
 
 #Funcion para mostrar el dashboard despues de iniciar sesion
 
-def dashboard(request):
-    return render(request, 'Inicio_De_Sesion/dashboard.html')
+
 
 

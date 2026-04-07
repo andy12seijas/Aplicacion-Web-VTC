@@ -1128,7 +1128,7 @@ class Soporte(models.Model):
     def metros_utilizados(self):
         """Calcula los metros utilizados"""
         if self.final_fibra and self.inicio_fibra:
-            return self.final_fibra - self.inicio_fibra
+            return self.inicio_fibra  - self.final_fibra
         return 0
     
     # ===== UBICACIÓN (PIN) =====
