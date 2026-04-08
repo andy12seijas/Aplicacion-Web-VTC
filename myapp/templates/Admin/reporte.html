@@ -1,0 +1,1001 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Reportes{% endblock %}
+
+{% block page_title %}Reportes{% endblock %}
+{% block page_subtitle %}Generación de reportes de ventas, instalaciones y soportes{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-orange">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f9fafb;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fed7aa;
+        --danger: #ef4444;
+        --info: #3b82f6;
+        --info-light: #dbeafe;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .btn-orange {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    /* Filtros */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: var(--transition);
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .filter-select:hover {
+        border-color: var(--orange);
+    }
+
+    .date-filter {
+        flex: 1;
+        min-width: 130px;
+    }
+
+    .filter-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        transition: var(--transition);
+    }
+
+    .filter-input:focus {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .actions-wrapper {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-primary, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .btn-primary {
+        background: var(--orange);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: var(--gray-text);
+        border: 1px solid var(--gray-border);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    /* Estadísticas */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 10px 20px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border);
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        transition: var(--transition);
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+    }
+
+    .stat-card:hover {
+        border-color: var(--orange);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-value {
+        font-weight: 700;
+        color: var(--orange);
+        font-size: 20px;
+    }
+
+    .stat-label {
+        color: var(--gray-text);
+        font-size: 12px;
+    }
+
+    /* Pestañas principales */
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        flex-wrap: wrap;
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--gray-text);
+        cursor: pointer;
+        transition: var(--transition);
+        min-width: 120px;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        color: var(--orange);
+        border-bottom-color: var(--orange);
+        background: white;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        margin-left: 6px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange);
+        color: white;
+    }
+
+    /* Botones de tipo reporte */
+    .tipo-container {
+        padding: 16px 20px;
+        background: white;
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .tipo-buttons {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .tipo-btn {
+        padding: 8px 24px;
+        background: var(--gray-bg);
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--gray-text);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .tipo-btn.active {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: white;
+    }
+    
+    .tipo-btn:hover:not(.active) {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    /* Contenido de pestañas */
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Tabla */
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 12px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 12px 16px;
+        font-weight: 600;
+        color: var(--gray-text);
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .table td {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+        font-size: 12px;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    /* Badges */
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge-completado {
+        background: var(--success-light);
+        color: #065f46;
+    }
+
+    .badge-pendiente {
+        background: var(--warning-light);
+        color: #9b2c1d;
+    }
+
+    .badge-info {
+        background: var(--info-light);
+        color: #1e40af;
+    }
+
+    /* Botones de exportación */
+    .export-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid var(--gray-border);
+    }
+
+    .btn-excel, .btn-pdf {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        border: none;
+    }
+
+    .btn-excel {
+        background: var(--success);
+        color: white;
+    }
+
+    .btn-excel:hover {
+        background: #059669;
+        transform: translateY(-2px);
+    }
+
+    .btn-pdf {
+        background: var(--danger);
+        color: white;
+    }
+
+    .btn-pdf:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    /* Paginación */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        min-width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        color: var(--gray-text);
+        text-decoration: none;
+        transition: var(--transition);
+        background: white;
+        font-size: 13px;
+        padding: 0 8px;
+        cursor: pointer;
+    }
+
+    .page-link:hover:not(.active) {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-link.active {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: white;
+    }
+
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: var(--gray-bg);
+    }
+
+    .page-info {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin: 0 8px;
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text);
+    }
+
+    /* Loading */
+    .loading {
+        text-align: center;
+        padding: 40px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-border);
+        border-top-color: var(--orange);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 12px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filters-grid {
+            flex-direction: column;
+        }
+        
+        .search-box, .filter-select, .date-filter {
+            width: 100%;
+        }
+        
+        .actions-wrapper {
+            flex-direction: column;
+        }
+        
+        .btn-primary, .btn-clear {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .stats-grid {
+            flex-direction: column;
+        }
+        
+        .stat-card {
+            justify-content: flex-start;
+        }
+        
+        .tab-btn {
+            flex-direction: column;
+            padding: 10px;
+            font-size: 12px;
+        }
+
+        .tab-count {
+            margin-left: 0;
+        }
+        
+        .tipo-buttons {
+            flex-direction: column;
+        }
+        
+        .tipo-btn {
+            width: 100%;
+            text-align: center;
+        }
+        
+        .export-buttons {
+            flex-direction: column;
+        }
+        
+        .btn-excel, .btn-pdf {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .table th, .table td {
+            padding: 8px 12px;
+        }
+    }
+</style>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value" id="totalRegistros">0</span>
+        <span class="stat-label">Total Registros</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value" id="totalCompletados">0</span>
+        <span class="stat-label">Completados</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value" id="totalPendientes">0</span>
+        <span class="stat-label">Pendientes</span>
+    </div>
+</div>
+
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por cliente, cédula, customer ID..." id="searchInput">
+        </div>
+        
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for v in vendedores %}
+            <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
+            {% endfor %}
+        </select>
+        
+        <select id="filterPlan" class="filter-select">
+            <option value="">Todos los planes</option>
+            {% for p in planes %}
+            <option value="{{ p.id }}">{{ p.nombre }}</option>
+            {% endfor %}
+        </select>
+        
+        <div class="date-filter">
+            <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde">
+        </div>
+        
+        <div class="date-filter">
+            <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta">
+        </div>
+        
+        <div class="actions-wrapper">
+            <button onclick="aplicarFiltros()" class="btn-primary">Buscar</button>
+            <button onclick="limpiarFiltros()" class="btn-clear">Limpiar</button>
+        </div>
+    </div>
+</div>
+
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn active" onclick="cambiarTipoReporte('ventas')" id="tab-ventas-btn">
+            Reporte de Ventas
+            <span class="tab-count" id="ventas-count">0</span>
+        </button>
+        <button class="tab-btn" onclick="cambiarTipoReporte('instalaciones')" id="tab-instalaciones-btn">
+            Reporte de Instalaciones
+            <span class="tab-count" id="instalaciones-count">0</span>
+        </button>
+        <button class="tab-btn" onclick="cambiarTipoReporte('soportes')" id="tab-soportes-btn">
+            Reporte de Soportes
+            <span class="tab-count" id="soportes-count">0</span>
+        </button>
+    </div>
+
+    <div class="tipo-container">
+        <div class="tipo-buttons">
+            <button class="tipo-btn active" onclick="cambiarNivelReporte('simple')" id="tipo-simple-btn">Reporte Simple</button>
+            <button class="tipo-btn" onclick="cambiarNivelReporte('avanzado')" id="tipo-avanzado-btn">Reporte Avanzado</button>
+        </div>
+    </div>
+
+    <!-- Ventas -->
+    <div id="contenido-ventas" class="tab-content active">
+        <div class="table-wrapper">
+            <table class="table" id="tabla-ventas">
+                <thead id="thead-ventas">
+                    <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>
+                </thead>
+                <tbody id="tbody-ventas"><tr><td colspan="9" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination-ventas"></div>
+        <div class="export-buttons">
+            <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
+            <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
+        </div>
+    </div>
+
+    <!-- Instalaciones -->
+    <div id="contenido-instalaciones" class="tab-content">
+        <div class="table-wrapper">
+            <table class="table" id="tabla-instalaciones">
+                <thead id="thead-instalaciones">
+                    <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th></tr>
+                </thead>
+                <tbody id="tbody-instalaciones"><tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination-instalaciones"></div>
+        <div class="export-buttons">
+            <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
+            <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
+        </div>
+    </div>
+
+    <!-- Soportes -->
+    <div id="contenido-soportes" class="tab-content">
+        <div class="table-wrapper">
+            <table class="table" id="tabla-soportes">
+                <thead id="thead-soportes">
+                    <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th></tr>
+                </thead>
+                <tbody id="tbody-soportes"><tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination-soportes"></div>
+        <div class="export-buttons">
+            <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
+            <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let tipoActual = 'ventas';
+    let nivelActual = 'simple';
+    let datosActuales = [];
+    let paginaActual = 1;
+    let totalPaginas = 1;
+    let itemsPorPagina = 15;
+
+    function cambiarTipoReporte(tipo) {
+        tipoActual = tipo;
+        paginaActual = 1;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tab-${tipo}-btn`).classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`contenido-${tipo}`).classList.add('active');
+        
+        cargarReporte();
+    }
+
+    function cambiarNivelReporte(nivel) {
+        nivelActual = nivel;
+        paginaActual = 1;
+        
+        document.querySelectorAll('.tipo-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`tipo-${nivel}-btn`).classList.add('active');
+        
+        // Cambiar headers según el nivel
+        if (tipoActual === 'ventas') {
+            if (nivel === 'simple') {
+                document.getElementById('thead-ventas').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
+            } else {
+                document.getElementById('thead-ventas').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>ATR</th><th>Estado</th></tr>';
+            }
+        } else if (tipoActual === 'instalaciones') {
+            if (nivel === 'simple') {
+                document.getElementById('thead-instalaciones').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th></tr>';
+            } else {
+                document.getElementById('thead-instalaciones').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Plan</th><th>Origen</th><th>Customer ID</th><th>ODS</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th><th>Modelo</th><th>Serial</th><th>Metros</th></tr>';
+            }
+        } else {
+            if (nivel === 'simple') {
+                document.getElementById('thead-soportes').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th></tr>';
+            } else {
+                document.getElementById('thead-soportes').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
+            }
+        }
+        
+        cargarReporte();
+    }
+
+    function aplicarFiltros() { 
+        paginaActual = 1;
+        cargarReporte(); 
+    }
+    
+    function limpiarFiltros() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterVendedor').value = '';
+        document.getElementById('filterPlan').value = '';
+        document.getElementById('fecha_desde').value = '';
+        document.getElementById('fecha_hasta').value = '';
+        paginaActual = 1;
+        cargarReporte();
+    }
+
+    function cargarReporte() {
+        const busqueda = document.getElementById('searchInput')?.value || '';
+        const vendedor = document.getElementById('filterVendedor')?.value || '';
+        const plan = document.getElementById('filterPlan')?.value || '';
+        const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+        const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
+        
+        let url = `/api/reporte-${tipoActual}/?tipo=${nivelActual}&page=${paginaActual}&per_page=${itemsPorPagina}`;
+        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (vendedor) url += `&vendedor=${vendedor}`;
+        if (plan) url += `&plan=${plan}`;
+        if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+        if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+        
+        const tbody = document.getElementById(`tbody-${tipoActual}`);
+        tbody.innerHTML = '<td><td colspan="20" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                datosActuales = data.data || [];
+                totalPaginas = data.total_paginas || 1;
+                paginaActual = data.pagina_actual || 1;
+                
+                actualizarEstadisticas(data.estadisticas);
+                document.getElementById(`${tipoActual}-count`).textContent = data.total_registros || 0;
+                actualizarTabla();
+                actualizarPaginacion();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tbody.innerHTML = '<tr><td colspan="20" class="empty">Error al cargar los datos</td></tr>';
+            });
+    }
+
+    function actualizarTabla() {
+        const tbody = document.getElementById(`tbody-${tipoActual}`);
+        
+        if (!datosActuales || datosActuales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="20" class="empty">No hay datos disponibles</td></tr>';
+            return;
+        }
+        
+        if (tipoActual === 'ventas') {
+            if (nivelActual === 'simple') {
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.plan}</td>
+                        <td>${item.fecha}</td>
+                        <td>${item.vendedor}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ods}</td>
+                        <td><span class="badge badge-completado">${item.estado}</span></td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.telefono || 'N/A'}</td>
+                        <td>${item.correo || 'N/A'}</td>
+                        <td>${item.plan}</td>
+                        <td>${item.fecha_creacion || item.fecha}</td>
+                        <td>${item.vendedor}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ods}</td>
+                        <td>${item.atr || 'N/A'}</td>
+                        <td><span class="badge badge-completado">${item.estado}</span></td>
+                    </tr>
+                `).join('');
+            }
+        } else if (tipoActual === 'instalaciones') {
+            if (nivelActual === 'simple') {
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.plan}</td>
+                        <td>${item.cuadrilla}</td>
+                        <td>${item.fecha}</td>
+                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.direccion || 'N/A'}</td>
+                        <td>${item.plan}</td>
+                        <td>${item.origen}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ods}</td>
+                        <td>${item.cuadrilla}</td>
+                        <td>${item.fecha_instalacion || item.fecha}</td>
+                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.modelo_modem || 'N/A'}</td>
+                        <td>${item.sn_modem || 'N/A'}</td>
+                        <td>${item.metros_utilizados || 0}m</td>
+                    </tr>
+                `).join('');
+            }
+        } else {
+            if (nivelActual === 'simple') {
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.tipo}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.fecha}</td>
+                        <td>${item.falla || 'N/A'}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.tipo}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.fecha_servicio || item.fecha}</td>
+                        <td>${item.falla_encontrada || 'N/A'}</td>
+                        <td>${item.solucion || 'N/A'}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+    }
+
+    function actualizarPaginacion() {
+        const paginationDiv = document.getElementById(`pagination-${tipoActual}`);
+        
+        if (totalPaginas <= 1) {
+            paginationDiv.innerHTML = '';
+            return;
+        }
+        
+        let html = '';
+        
+        // Anterior
+        if (paginaActual > 1) {
+            html += `<button class="page-link" onclick="irPagina(${paginaActual - 1})">‹</button>`;
+        } else {
+            html += `<span class="page-link disabled">‹</span>`;
+        }
+        
+        // Números de página
+        let inicio = Math.max(1, paginaActual - 2);
+        let fin = Math.min(totalPaginas, paginaActual + 2);
+        
+        if (inicio > 1) {
+            html += `<button class="page-link" onclick="irPagina(1)">1</button>`;
+            if (inicio > 2) html += `<span class="page-link disabled">...</span>`;
+        }
+        
+        for (let i = inicio; i <= fin; i++) {
+            if (i === paginaActual) {
+                html += `<span class="page-link active">${i}</span>`;
+            } else {
+                html += `<button class="page-link" onclick="irPagina(${i})">${i}</button>`;
+            }
+        }
+        
+        if (fin < totalPaginas) {
+            if (fin < totalPaginas - 1) html += `<span class="page-link disabled">...</span>`;
+            html += `<button class="page-link" onclick="irPagina(${totalPaginas})">${totalPaginas}</button>`;
+        }
+        
+        // Siguiente
+        if (paginaActual < totalPaginas) {
+            html += `<button class="page-link" onclick="irPagina(${paginaActual + 1})">›</button>`;
+        } else {
+            html += `<span class="page-link disabled">›</span>`;
+        }
+        
+        paginationDiv.innerHTML = html;
+    }
+
+    function irPagina(pagina) {
+        paginaActual = pagina;
+        cargarReporte();
+        document.getElementById(`contenido-${tipoActual}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function actualizarEstadisticas(stats) {
+        if (!stats) return;
+        if (tipoActual === 'ventas') {
+            document.getElementById('totalRegistros').textContent = stats.total_ventas || 0;
+        } else if (tipoActual === 'instalaciones') {
+            document.getElementById('totalRegistros').textContent = stats.total_instalaciones || 0;
+            document.getElementById('totalCompletados').textContent = stats.completadas || 0;
+            document.getElementById('totalPendientes').textContent = stats.pendientes || 0;
+        } else {
+            document.getElementById('totalRegistros').textContent = stats.total_soportes || 0;
+            document.getElementById('totalCompletados').textContent = stats.completados || 0;
+            document.getElementById('totalPendientes').textContent = stats.pendientes || 0;
+        }
+    }
+
+    function exportarReporte(formato) {
+        const busqueda = document.getElementById('searchInput')?.value || '';
+        const vendedor = document.getElementById('filterVendedor')?.value || '';
+        const plan = document.getElementById('filterPlan')?.value || '';
+        const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+        const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
+        
+        let url = `/exportar-${formato}/?tipo=${tipoActual}&reporte_tipo=${nivelActual}`;
+        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (vendedor) url += `&vendedor=${vendedor}`;
+        if (plan) url += `&plan=${plan}`;
+        if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+        if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+        
+        window.location.href = url;
+    }
+
+    // Event listeners
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') cargarReporte();
+    });
+    document.getElementById('filterVendedor')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterPlan')?.addEventListener('change', cargarReporte);
+    document.getElementById('fecha_desde')?.addEventListener('change', cargarReporte);
+    document.getElementById('fecha_hasta')?.addEventListener('change', cargarReporte);
+
+    // Cargar reporte inicial
+    cargarReporte();
+</script>
+{% endblock %}

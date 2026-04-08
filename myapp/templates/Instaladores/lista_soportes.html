@@ -1,7 +1,7 @@
 {% extends 'Inicio_De_Sesion/base.html' %}
 {% load static %}
 
-{% block title %}Simple Fibra - Soportes Técnicos{% endblock %}
+{% block title %}VTConexiones - Soportes Técnicos{% endblock %}
 
 {% block page_title %}Soportes Técnicos{% endblock %}
 {% block page_subtitle %}Gestión de mudanzas, retiros y recableados{% endblock %}
@@ -194,7 +194,7 @@
                                         </svg>
                                     </button>
                                     
-                                    {% if soporte.estado != 'COMPLETADO' and soporte.estado != 'CANCELADO' %}
+                                    {% if  es_admin and soporte.estado != 'COMPLETADO' and soporte.estado != 'CANCELADO' %}
                                     <button class="action-btn" onclick="editarSoporte({{ soporte.id }})" title="Editar">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
@@ -202,13 +202,7 @@
                                     </button>
                                     {% endif %}
                                     
-                                    {% if es_admin and soporte.estado != 'COMPLETADO' %}
-                                    <button class="action-btn" onclick="cambiarEstado({{ soporte.id }}, 'COMPLETADO')" title="Marcar como completado">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </button>
-                                    {% endif %}
+        
                                 </div>
                             </td>
                         </tr>

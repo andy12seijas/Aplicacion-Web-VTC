@@ -420,15 +420,15 @@ def gestionar_contratos(request):
     contratos_completados = contratos_completados.order_by('-fecha_creacion')
     
     # ===== PAGINACIÓN =====
-    
+    from django.core.paginator import Paginator
     
     # Paginación para contratos pendientes
-    paginator_pendientes = Paginator(contratos_pendientes, 5)  # 10 por página
+    paginator_pendientes = Paginator(contratos_pendientes, 10)
     page_pendientes = request.GET.get('page_pendientes', 1)
     contratos_pendientes_page = paginator_pendientes.get_page(page_pendientes)
     
     # Paginación para contratos completados
-    paginator_completados = Paginator(contratos_completados, 5)  # 10 por página
+    paginator_completados = Paginator(contratos_completados, 10)
     page_completados = request.GET.get('page_completados', 1)
     contratos_completados_page = paginator_completados.get_page(page_completados)
     
@@ -623,7 +623,7 @@ def lista_cuadrillas(request):
     page_obj = paginator.get_page(page)
     
     # Verificar si es admin
-    es_admin = request.user.is_superuser or (hasattr(request.user, 'perfil') and request.user.perfil.rol == 'ADMIN')
+    es_admin = request.user.is_superuser 
     
     context = {
         'page_obj': page_obj,
@@ -696,8 +696,7 @@ def crear_cuadrilla(request):
 
 def es_admin(user):
     """Función helper para verificar si es administrador"""
-    return user.is_superuser or (hasattr(user, 'perfil') and user.perfil.rol == 'ADMIN')
-
+    return user.is_superuser 
 @login_required
 def editar_cuadrilla(request, pk):
     """Vista para editar una cuadrilla existente"""

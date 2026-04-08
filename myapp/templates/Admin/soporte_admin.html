@@ -1,0 +1,1781 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - Soportes Técnicos{% endblock %}
+
+{% block page_title %}Soportes Técnicos{% endblock %}
+{% block page_subtitle %}Gestión de mudanzas, retiros y recableados{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'crear_soporte_unificado' %}" class="btn-orange">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Nuevo Soporte
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* Estilos adicionales */
+    .badge-info {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .badge-warning {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg, #f8f9fa);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange, #ff6b00);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text, #333);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .filter-select:hover {
+        border-color: var(--orange, #ff6b00);
+    }
+
+    .date-filter {
+        flex: 1;
+        min-width: 130px;
+    }
+
+    .filter-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 30px;
+        background: white;
+        font-size: 13px;
+        color: var(--dark-text, #333);
+        outline: none;
+    }
+
+    .filter-input:focus {
+        border-color: var(--orange, #ff6b00);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .actions-wrapper {
+        display: flex;
+        gap: 8px;
+    }
+
+    .btn-primary, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+
+    .btn-primary {
+        background: var(--orange, #ff6b00);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border, #e0e0e0);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange, #ff6b00);
+        color: var(--orange, #ff6b00);
+    }
+
+    /* ===== ESTADÍSTICAS ===== */
+    .stats-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 30px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        border-color: var(--orange, #ff6b00);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: var(--orange, #ff6b00);
+    }
+
+    .stat-label {
+        color: var(--gray-text, #666);
+    }
+
+    /* ===== PESTAÑAS ===== */
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        background: var(--gray-bg, #f8f9fa);
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--gray-text, #666);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange, #ff6b00);
+        background: var(--orange-light, #fff2e6);
+    }
+
+    .tab-btn.active {
+        color: var(--orange, #ff6b00);
+        border-bottom-color: var(--orange, #ff6b00);
+        background: white;
+    }
+
+    .tab-icon {
+        font-size: 18px;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange, #ff6b00);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* ===== TABLA ===== */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        min-width: 1000px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: var(--gray-text, #666);
+        background: var(--gray-bg, #f8f9fa);
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+        color: var(--dark-text, #333);
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg, #f8f9fa);
+    }
+
+    /* ===== BADGES ===== */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .badge.pendiente {
+        background: #fed7aa;
+        color: #9b2c1d;
+    }
+
+    .badge.en-proceso {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge.completado {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge.incompleto {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .badge.cancelado {
+        background: #f3f4f6;
+        color: #4b5563;
+    }
+
+    .tipo-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .tipo-badge.mudanza {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .tipo-badge.retiro {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .tipo-badge.recableado {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    /* ===== USER AVATAR ===== */
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange, #ff6b00);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .user-name {
+        font-weight: 500;
+        color: var(--dark-text, #333);
+        font-size: 13px;
+    }
+
+    /* ===== ACTION BUTTONS ===== */
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        background: white;
+        border-radius: 8px;
+        color: var(--gray-text, #666);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        margin-right: 5px;
+        text-decoration: none;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange, #ff6b00);
+        color: var(--orange, #ff6b00);
+        background: var(--orange-light, #fff2e6);
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: var(--gray-text, #666);
+        font-size: 14px;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange, #ff6b00);
+        color: var(--orange, #ff6b00);
+        background: var(--orange-light, #fff2e6);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: #666;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-container {
+        background: white;
+        border-radius: 24px;
+        width: 90%;
+        max-width: 900px;
+        max-height: 85vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: modalSlideIn 0.3s ease;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid #e0e0e0;
+        background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);
+    }
+    
+    .modal-header-content {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .modal-icon {
+        width: 48px;
+        height: 48px;
+        background: #fff2e6;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-header h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333;
+        margin: 0;
+    }
+    
+    .modal-header p {
+        font-size: 13px;
+        color: #666;
+        margin: 4px 0 0 0;
+    }
+    
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: white;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        color: #666;
+    }
+    
+    .modal-close:hover {
+        background: #f0f0f0;
+        color: #ff6b00;
+    }
+    
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+    }
+    
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+    
+    .btn-cerrar {
+        background: white;
+        border: 2px solid #e0e0e0;
+        padding: 10px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #666;
+    }
+    
+    .btn-cerrar:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    .btn-completar {
+        background: #10b981;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: white;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-completar:hover {
+        background: #059669;
+        transform: translateY(-1px);
+    }
+    
+    .detalle-section {
+        margin-bottom: 28px;
+        background: #f8f9fa;
+        border-radius: 16px;
+        padding: 16px 20px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .detalle-section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #ff6b00;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #ff6b00;
+    }
+    
+    .detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .detalle-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 8px 0;
+        border-bottom: 1px dashed #e0e0e0;
+    }
+    
+    .detalle-label {
+        font-size: 12px;
+        color: #999;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+    
+    .detalle-valor {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+        text-align: right;
+        word-break: break-word;
+        max-width: 60%;
+    }
+    
+    .materiales-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }
+    
+    .material-card {
+        background: white;
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        transition: all 0.2s;
+    }
+    
+    .material-card:hover {
+        border-color: #ff6b00;
+        transform: translateY(-2px);
+    }
+    
+    .material-numero {
+        font-size: 24px;
+        font-weight: 700;
+        color: #ff6b00;
+        display: block;
+    }
+    
+    .material-label {
+        font-size: 11px;
+        color: #999;
+        text-transform: uppercase;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    .instaladores-detalle {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .instalador-detalle-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        background: white;
+        border-radius: 30px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.2s;
+    }
+    
+    .instalador-detalle-card:hover {
+        border-color: #ff6b00;
+        background: #fff2e6;
+    }
+    
+    .instalador-avatar {
+        width: 32px;
+        height: 32px;
+        background: #ff6b00;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    
+    .galeria-detalle {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+    }
+    
+    .foto-detalle {
+        width: 120px;
+        height: 120px;
+        border-radius: 12px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2px solid #e0e0e0;
+        transition: all 0.2s;
+    }
+    
+    .foto-detalle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .foto-detalle:hover {
+        border-color: #ff6b00;
+        transform: scale(1.05);
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f0f0f0;
+        border-top-color: #ff6b00;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .search-box,
+        .filter-select,
+        .date-filter {
+            width: 100%;
+        }
+        
+        .actions-wrapper {
+            flex-direction: column;
+        }
+        
+        .btn-primary, .btn-clear {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .tab-btn {
+            flex-direction: column;
+            font-size: 13px;
+            padding: 12px;
+        }
+
+        .tab-count {
+            margin-left: 0;
+        }
+
+        .table th, .table td {
+            padding: 10px;
+        }
+        
+        .table {
+            min-width: 800px;
+        }
+        
+        .pagination {
+            gap: 6px;
+        }
+        
+        .page-link {
+            width: 34px;
+            height: 34px;
+        }
+        
+        .detalle-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .materiales-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .detalle-item {
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .detalle-valor {
+            text-align: left;
+            max-width: 100%;
+        }
+        
+        .modal-container {
+            width: 95%;
+            max-height: 90vh;
+        }
+    }
+</style>
+
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_pendientes }}</span>
+        <span class="stat-label">Pendientes/En Proceso</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_completados }}</span>
+        <span class="stat-label">Completados</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por cliente, cédula..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <select id="filterTipo" class="filter-select">
+            <option value="">Todos los tipos</option>
+            <option value="MUDANZA" {% if tipo_seleccionado == 'MUDANZA' %}selected{% endif %}>Mudanza</option>
+            <option value="RETIRO" {% if tipo_seleccionado == 'RETIRO' %}selected{% endif %}>Retiro</option>
+            <option value="RECABLEADO" {% if tipo_seleccionado == 'RECABLEADO' %}selected{% endif %}>Recableado</option>
+        </select>
+        
+        {% if es_admin %}
+        <select id="filterInstalador" class="filter-select">
+            <option value="">Todos los instaladores</option>
+            {% for inst in instaladores %}
+            <option value="{{ inst.id }}" {% if instalador_seleccionado == inst.id|stringformat:"s" %}selected{% endif %}>
+                {{ inst.get_full_name|default:inst.username }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        
+        <div class="date-filter">
+            <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde" value="{{ fecha_desde }}">
+        </div>
+        
+        <div class="date-filter">
+            <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta" value="{{ fecha_hasta }}">
+        </div>
+        
+        <div class="actions-wrapper">
+            <button onclick="aplicarFiltros()" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                Buscar
+            </button>
+            <button onclick="limpiarFiltros()" class="btn-clear">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6m-9 4v6m4-6v6"/>
+                </svg>
+                Limpiar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}" onclick="cambiarTab('pendientes')">
+            <span class="tab-icon">⏳</span>
+            Soportes Pendientes/En Proceso
+            <span class="tab-count">{{ total_pendientes }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'completados' %}active{% endif %}" onclick="cambiarTab('completados')">
+            <span class="tab-icon">✅</span>
+            Soportes Completados
+            <span class="tab-count">{{ total_completados }}</span>
+        </button>
+    </div>
+
+    <!-- TAB: Soportes Pendientes/En Proceso -->
+    <div id="tab-pendientes" class="tab-content {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Dirección</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Fecha Servicio</th>
+                        <th>Instaladores</th>
+                        {% if es_admin %}
+                        <th>Cuadrilla</th>
+                        {% endif %}
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for soporte in soportes_pendientes %}
+                    <tr>
+                        <td>
+                            <span class="tipo-badge {{ soporte.tipo|lower }}">
+                                {{ soporte.get_tipo_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ soporte.nombre_cliente }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ soporte.cedula_cliente }}</td>
+                        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ soporte.direccion|truncatechars:30 }}
+                        </td>
+                        <td>{{ soporte.plan }}</td>
+                        <td>
+                            {% if soporte.estado == 'PENDIENTE' %}
+                            <span class="badge pendiente">Pendiente</span>
+                            {% elif soporte.estado == 'EN_PROCESO' %}
+                            <span class="badge en-proceso">En Proceso</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ soporte.fecha_hora_servicio|date:"d/m/y H:i" }}</td>
+                        <td>
+                            <div class="instaladores-lista" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                {% for inst in soporte.instaladores.all|slice:":2" %}
+                                <span class="instalador-badge" style="background: #e8eaf6; color: #3f51b5; padding: 2px 8px; border-radius: 12px; font-size: 10px;">
+                                    {{ inst.get_full_name|default:inst.username|truncatechars:12 }}
+                                </span>
+                                {% endfor %}
+                                {% if soporte.instaladores.count > 2 %}
+                                <span class="instalador-badge more" style="background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 10px;">
+                                    +{{ soporte.instaladores.count|add:"-2" }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% if es_admin %}
+                        <td>
+                            <span class="vendedor-badge" style="background: #f0f0f0; padding: 4px 8px; border-radius: 20px; font-size: 11px;">
+                                {{ soporte.cuadrilla.nombre|default:"No asignada" }}
+                            </span>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <div class="actions">
+                                <button class="action-btn" onclick="verDetalleSoporte({{ soporte.id }})" title="Revisar Soporte">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                    </svg>
+                                </button>
+                                {% if es_admin and soporte.estado != 'COMPLETADO' %}
+                                <button class="action-btn" onclick="marcarCompletado({{ soporte.id }})" title="Marcar como completado" style="background: #10b981; color: white;">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                </button>
+                                {% endif %}
+                                <button class="action-btn" onclick="editarSoporte({{ soporte.id }})" title="Editar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                                <line x1="8" y1="2" x2="8" y2="22"/>
+                                <line x1="16" y1="2" x2="16" y2="22"/>
+                            </svg>
+                            <br>
+                            No hay soportes pendientes o en proceso
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación pendientes -->
+        {% if soportes_pendientes.has_other_pages %}
+        <div class="pagination">
+            {% if soportes_pendientes.has_previous %}
+            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page_pendientes={{ soportes_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ soportes_pendientes.number }} de {{ soportes_pendientes.paginator.num_pages }}
+            </span>
+            
+            {% if soportes_pendientes.has_next %}
+            <a href="?page_pendientes={{ soportes_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page_pendientes={{ soportes_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB: Soportes Completados -->
+    <div id="tab-completados" class="tab-content {% if tab_activa == 'completados' %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Dirección</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Fecha Servicio</th>
+                        <th>Instaladores</th>
+                        {% if es_admin %}
+                        <th>Cuadrilla</th>
+                        {% endif %}
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for soporte in soportes_completados %}
+                    <tr>
+                        <td>
+                            <span class="tipo-badge {{ soporte.tipo|lower }}">
+                                {{ soporte.get_tipo_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ soporte.nombre_cliente }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ soporte.cedula_cliente }}</td>
+                        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ soporte.direccion|truncatechars:30 }}
+                        </td>
+                        <td>{{ soporte.plan }}</td>
+                        <td><span class="badge completado">Completado</span></td>
+                        <td>{{ soporte.fecha_hora_servicio|date:"d/m/y H:i" }}</td>
+                        <td>
+                            <div class="instaladores-lista" style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                {% for inst in soporte.instaladores.all|slice:":2" %}
+                                <span class="instalador-badge" style="background: #e8eaf6; color: #3f51b5; padding: 2px 8px; border-radius: 12px; font-size: 10px;">
+                                    {{ inst.get_full_name|default:inst.username|truncatechars:12 }}
+                                </span>
+                                {% endfor %}
+                                {% if soporte.instaladores.count > 2 %}
+                                <span class="instalador-badge more" style="background: #e0e0e0; padding: 2px 8px; border-radius: 12px; font-size: 10px;">
+                                    +{{ soporte.instaladores.count|add:"-2" }}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% if es_admin %}
+                        <td>
+                            <span class="vendedor-badge" style="background: #f0f0f0; padding: 4px 8px; border-radius: 20px; font-size: 11px;">
+                                {{ soporte.cuadrilla.nombre|default:"No asignada" }}
+                            </span>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <div class="actions">
+                                <button class="action-btn" onclick="verDetalleSoporte({{ soporte.id }})" title="Ver detalles">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="3"/>
+                                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                    </svg>
+                                </button>
+                                
+                                <button class="action-btn" onclick="editarSoporte({{ soporte.id }})" title="Editar">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                    </svg>
+                                </button>
+                              
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            <br>
+                            No hay soportes completados
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación completados -->
+        {% if soportes_completados.has_other_pages %}
+        <div class="pagination">
+            {% if soportes_completados.has_previous %}
+            <a href="?page_completados=1&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page_completados={{ soportes_completados.previous_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ soportes_completados.number }} de {{ soportes_completados.paginator.num_pages }}
+            </span>
+            
+            {% if soportes_completados.has_next %}
+            <a href="?page_completados={{ soportes_completados.next_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page_completados={{ soportes_completados.paginator.num_pages }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_seleccionado %}&tipo={{ tipo_seleccionado }}{% endif %}{% if instalador_seleccionado %}&instalador={{ instalador_seleccionado }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Detalle de Soporte -->
+<div id="modalDetalleSoporte" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-content">
+                <div class="modal-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 id="modalTitulo">Detalle del Soporte</h3>
+                    <p id="modalSubtitulo">Información completa del soporte técnico</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalDetalle()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="loading-detalle" id="loadingDetalle" style="text-align: center; padding: 40px;">
+                <div class="spinner"></div>
+                <p>Cargando detalles...</p>
+            </div>
+            
+            <div id="contenidoDetalle" style="display: none;">
+                <!-- Información General -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Información del Cliente
+                    </h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item">
+                            <span class="detalle-label">Cliente:</span>
+                            <span class="detalle-valor" id="detalleCliente">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Cédula:</span>
+                            <span class="detalle-valor" id="detalleCedula">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Dirección:</span>
+                            <span class="detalle-valor" id="detalleDireccion">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Plan:</span>
+                            <span class="detalle-valor" id="detallePlan">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Customer ID:</span>
+                            <span class="detalle-valor" id="detalleCustomerId">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">ATR:</span>
+                            <span class="detalle-valor" id="detalleAtr">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Falla y Solución -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        Falla y Solución
+                    </h4>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Falla encontrada:</span>
+                        <span class="detalle-valor" id="detalleFalla">-</span>
+                    </div>
+                    <div class="detalle-item">
+                        <span class="detalle-label">Solución aplicada:</span>
+                        <span class="detalle-valor" id="detalleSolucion">-</span>
+                    </div>
+                </div>
+                
+                <!-- Equipo Instalado -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                            <path d="M7 2v20M17 2v20M2 12h20"/>
+                        </svg>
+                        Equipo Instalado
+                    </h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item">
+                            <span class="detalle-label">Modelo Módem:</span>
+                            <span class="detalle-valor" id="detalleModelo">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Serial:</span>
+                            <span class="detalle-valor" id="detalleSerial">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">MAC:</span>
+                            <span class="detalle-valor" id="detalleMac">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Materiales Utilizados -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                            <circle cx="12" cy="14" r="3"/>
+                        </svg>
+                        Materiales Utilizados
+                    </h4>
+                    <div class="materiales-grid">
+                        <div class="material-card">
+                            <span class="material-numero" id="detalleMetros">0</span>
+                            <span class="material-label">Metros de Fibra</span>
+                        </div>
+                        <div class="material-card">
+                            <span class="material-numero" id="detalleConectores">0</span>
+                            <span class="material-label">Conectores</span>
+                        </div>
+                        <div class="material-card">
+                            <span class="material-numero" id="detalleRosetas">0</span>
+                            <span class="material-label">Rosetas</span>
+                        </div>
+                        <div class="material-card">
+                            <span class="material-numero" id="detallePatch">0</span>
+                            <span class="material-label">Patch Cord</span>
+                        </div>
+                        <div class="material-card">
+                            <span class="material-numero" id="detalleTensores">0</span>
+                            <span class="material-label">Tensores</span>
+                        </div>
+                        <div class="material-card">
+                            <span class="material-numero" id="detalleConectoresMalos">0</span>
+                            <span class="material-label">Conectores Malos</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Datos NAP -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 4L20 4M4 8L20 8M4 12L20 12M4 16L20 16M4 20L20 20"/>
+                            <rect x="2" y="2" width="20" height="20" rx="2"/>
+                        </svg>
+                        Datos de Conexión NAP
+                    </h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item">
+                            <span class="detalle-label">Caja NAP:</span>
+                            <span class="detalle-valor" id="detalleCajaNAP">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Puerto NAP:</span>
+                            <span class="detalle-valor" id="detallePuertoNAP">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Ubicación -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                            <circle cx="12" cy="10" r="3"/>
+                        </svg>
+                        Ubicación del Servicio
+                    </h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item">
+                            <span class="detalle-label">Latitud:</span>
+                            <span class="detalle-valor" id="detalleLatitud">-</span>
+                        </div>
+                        <div class="detalle-item">
+                            <span class="detalle-label">Longitud:</span>
+                            <span class="detalle-valor" id="detalleLongitud">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Instaladores -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
+                        </svg>
+                        Instaladores que realizaron el soporte
+                    </h4>
+                    <div id="detalleInstaladores" class="instaladores-detalle"></div>
+                </div>
+                
+                <!-- Observaciones -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                        </svg>
+                        Observaciones
+                    </h4>
+                    <div class="observacion-card" id="detalleObservacion" style="background: white; border-radius: 12px; padding: 16px;"></div>
+                </div>
+                
+                <!-- Fotos -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <path d="M21 15l-5-4-3 3-4-4-5 5"/>
+                        </svg>
+                        Fotos del Soporte
+                    </h4>
+                    <div id="detalleFotos" class="galeria-detalle"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-cerrar" onclick="cerrarModalDetalle()">Cerrar</button>
+            <button class="btn-completar" id="btnCompletarSoporte" style="display: none;" onclick="completarSoporteDesdeModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Marcar como Completado
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let currentSoporteId = null;
+    let currentSoporteEstado = null;
+    
+    // Función para cambiar entre pestañas
+    function cambiarTab(tab) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        
+        const busqueda = document.getElementById('searchInput')?.value;
+        const tipo = document.getElementById('filterTipo')?.value;
+        const fecha_desde = document.getElementById('fecha_desde')?.value;
+        const fecha_hasta = document.getElementById('fecha_hasta')?.value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        if (tipo) url.searchParams.set('tipo', tipo);
+        else url.searchParams.delete('tipo');
+        
+        if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
+        else url.searchParams.delete('fecha_desde');
+        
+        if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
+        else url.searchParams.delete('fecha_hasta');
+        
+        {% if es_admin %}
+        const instalador = document.getElementById('filterInstalador')?.value;
+        if (instalador) url.searchParams.set('instalador', instalador);
+        else url.searchParams.delete('instalador');
+        {% endif %}
+        
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completados');
+        
+        window.location.href = url.toString();
+    }
+
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const busqueda = document.getElementById('searchInput').value;
+        const tipo = document.getElementById('filterTipo').value;
+        const fecha_desde = document.getElementById('fecha_desde').value;
+        const fecha_hasta = document.getElementById('fecha_hasta').value;
+        const tab = document.querySelector('.tab-btn.active')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'pendientes';
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        if (tipo) url.searchParams.set('tipo', tipo);
+        else url.searchParams.delete('tipo');
+        
+        if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
+        else url.searchParams.delete('fecha_desde');
+        
+        if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
+        else url.searchParams.delete('fecha_hasta');
+        
+        url.searchParams.set('tab', tab);
+        
+        {% if es_admin %}
+        const instalador = document.getElementById('filterInstalador').value;
+        if (instalador) url.searchParams.set('instalador', instalador);
+        else url.searchParams.delete('instalador');
+        {% endif %}
+        
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completados');
+        
+        window.location.href = url.toString();
+    }
+    
+    function limpiarFiltros() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('filterTipo').value = '';
+        document.getElementById('fecha_desde').value = '';
+        document.getElementById('fecha_hasta').value = '';
+        {% if es_admin %}
+        document.getElementById('filterInstalador').value = '';
+        {% endif %}
+        
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('tipo');
+        url.searchParams.delete('fecha_desde');
+        url.searchParams.delete('fecha_hasta');
+        url.searchParams.delete('instalador');
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completados');
+        
+        const tabActual = document.querySelector('.tab-btn.active')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'pendientes';
+        url.searchParams.set('tab', tabActual);
+        
+        window.location.href = url.toString();
+    }
+    
+    // Event listeners
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') aplicarFiltros();
+    });
+    
+    document.getElementById('filterTipo')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('fecha_desde')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('fecha_hasta')?.addEventListener('change', aplicarFiltros);
+    {% if es_admin %}
+    document.getElementById('filterInstalador')?.addEventListener('change', aplicarFiltros);
+    {% endif %}
+
+    // Ver detalle del soporte
+    function verDetalleSoporte(id) {
+        currentSoporteId = id;
+        const modal = document.getElementById('modalDetalleSoporte');
+        const loading = document.getElementById('loadingDetalle');
+        const contenido = document.getElementById('contenidoDetalle');
+        const btnCompletar = document.getElementById('btnCompletarSoporte');
+        
+        modal.style.display = 'flex';
+        loading.style.display = 'block';
+        contenido.style.display = 'none';
+        btnCompletar.style.display = 'none';
+        
+        fetch(`/soporte/${id}/detalle-json/`)
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (!data.error) {
+                    currentSoporteEstado = data.estado;
+                    mostrarDatosEnModal(data);
+                    contenido.style.display = 'block';
+                    
+                    // Mostrar botón de completar solo si es admin y el soporte no está completado
+                    {% if es_admin %}
+                    if (data.estado !== 'COMPLETADO' && data.estado !== 'CANCELADO') {
+                        btnCompletar.style.display = 'inline-flex';
+                    }
+                    {% endif %}
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.error || 'No se pudieron cargar los detalles',
+                        confirmButtonColor: '#ff6b00'
+                    });
+                    cerrarModalDetalle();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error al cargar los detalles del soporte',
+                    confirmButtonColor: '#ff6b00'
+                });
+                cerrarModalDetalle();
+            });
+    }
+    
+    function mostrarDatosEnModal(data) {
+        // Información del Cliente
+        document.getElementById('detalleCliente').textContent = data.cliente_nombre;
+        document.getElementById('detalleCedula').textContent = data.cliente_cedula;
+        document.getElementById('detalleDireccion').textContent = data.direccion || 'N/A';
+        document.getElementById('detallePlan').textContent = data.plan || 'N/A';
+        document.getElementById('detalleCustomerId').textContent = data.customer_id || 'N/A';
+        document.getElementById('detalleAtr').textContent = data.atr || 'N/A';
+        
+        // Falla y Solución
+        document.getElementById('detalleFalla').textContent = data.falla_encontrada || 'N/A';
+        document.getElementById('detalleSolucion').textContent = data.solucion || 'N/A';
+        
+        // Equipo
+        document.getElementById('detalleModelo').textContent = data.modelo_modem || 'No se cambió';
+        document.getElementById('detalleSerial').textContent = data.sn_modem || 'No se cambió';
+        document.getElementById('detalleMac').textContent = data.mac_modem || 'No se cambió';
+        
+        // Materiales
+        document.getElementById('detalleMetros').textContent = data.metros_utilizados || 0;
+        document.getElementById('detalleConectores').textContent = data.conectores || 0;
+        document.getElementById('detalleRosetas').textContent = data.rosetas || 0;
+        document.getElementById('detallePatch').textContent = data.patch_cord || 0;
+        document.getElementById('detalleTensores').textContent = data.tensores || 0;
+        document.getElementById('detalleConectoresMalos').textContent = data.conectores_malos || 0;
+        
+        // Datos NAP
+        document.getElementById('detalleCajaNAP').textContent = data.caja_nap_utilizada || 'N/A';
+        document.getElementById('detallePuertoNAP').textContent = data.puerto_nap_utilizado || 'N/A';
+        
+        // Ubicación
+        document.getElementById('detalleLatitud').textContent = data.pin_ubicacion_lat ? data.pin_ubicacion_lat.toFixed(6) : 'No registrada';
+        document.getElementById('detalleLongitud').textContent = data.pin_ubicacion_lng ? data.pin_ubicacion_lng.toFixed(6) : 'No registrada';
+        
+        // Instaladores
+        const instaladoresDiv = document.getElementById('detalleInstaladores');
+        instaladoresDiv.innerHTML = '';
+        if (data.instaladores && data.instaladores.length > 0) {
+            data.instaladores.forEach(inst => {
+                const inicial = inst.charAt(0).toUpperCase();
+                instaladoresDiv.innerHTML += `
+                    <div class="instalador-detalle-card">
+                        <div class="instalador-avatar">${inicial}</div>
+                        <div class="instalador-info">
+                            <div class="instalador-nombre-detalle">${inst}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            instaladoresDiv.innerHTML = '<p class="sin-instaladores">No hay instaladores registrados para este soporte</p>';
+        }
+        
+        // Observaciones
+        document.getElementById('detalleObservacion').innerHTML = data.observaciones || 'Sin observaciones registradas';
+        
+        // Fotos
+        const fotosDiv = document.getElementById('detalleFotos');
+        fotosDiv.innerHTML = '';
+        if (data.fotos && data.fotos.length > 0) {
+            data.fotos.forEach(foto => {
+                fotosDiv.innerHTML += `
+                    <div class="foto-detalle" onclick="verFotoAmpliada('${foto}')">
+                        <img src="${foto}" alt="Foto del soporte">
+                    </div>
+                `;
+            });
+        } else {
+            fotosDiv.innerHTML = '<p class="sin-instaladores">No hay fotos registradas para este soporte</p>';
+        }
+        
+        // Actualizar título del modal
+        document.getElementById('modalTitulo').textContent = `${data.tipo_display} - ${data.cliente_nombre}`;
+        document.getElementById('modalSubtitulo').innerHTML = `Fecha: ${data.fecha_hora_servicio} • Estado: <span class="badge ${data.estado === 'COMPLETADO' ? 'completado' : (data.estado === 'PENDIENTE' ? 'pendiente' : 'en-proceso')}">${data.estado_display}</span>`;
+    }
+    
+    function cerrarModalDetalle() {
+        document.getElementById('modalDetalleSoporte').style.display = 'none';
+        currentSoporteId = null;
+        currentSoporteEstado = null;
+    }
+    
+    function verFotoAmpliada(url) {
+        Swal.fire({
+            imageUrl: url,
+            imageAlt: 'Foto del soporte',
+            imageWidth: '90%',
+            confirmButtonColor: '#ff6b00',
+            confirmButtonText: 'Cerrar',
+            width: '800px'
+        });
+    }
+    
+    function marcarCompletado(id) {
+        Swal.fire({
+            title: '¿Completar soporte?',
+            text: '¿Estás seguro de que deseas marcar este soporte como completado?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, completar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/soporte/${id}/cambiar-estado/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ estado: 'COMPLETADO' })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire('¡Completado!', 'El soporte ha sido marcado como completado', 'success');
+                        location.reload();
+                    } else {
+                        Swal.fire('Error', data.error || 'Error al completar el soporte', 'error');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire('Error', 'Error de conexión', 'error');
+                });
+            }
+        });
+    }
+    
+    function completarSoporteDesdeModal() {
+        if (currentSoporteId) {
+            marcarCompletado(currentSoporteId);
+        }
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('modalDetalleSoporte')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            cerrarModalDetalle();
+        }
+    });
+    
+    // Cerrar modal con tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            cerrarModalDetalle();
+        }
+    });
+    function editarSoporte(id) {
+        window.location.href = `/soporte/${id}/editar/`;
+    }
+</script>
+{% endblock %}

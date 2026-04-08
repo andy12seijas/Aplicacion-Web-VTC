@@ -1092,4 +1092,51 @@ class SoporteEditarForm(forms.ModelForm):
             soporte.save()
             self.save_m2m()
         
-        return soporte    
+        return soporte
+    
+    
+    
+class InstalacionEditForm(forms.ModelForm):
+    """Formulario para editar instalaciones"""
+    
+    fotos_upload = MultipleFileField(
+        required=False,
+        label="Agregar más fotos",
+        help_text="Puedes seleccionar múltiples imágenes (JPG, PNG, GIF - Máx. 5MB cada una)"
+    )
+    
+    class Meta:
+        model = Instalacion
+        fields = [
+            'latitud', 'longitud', 'feeder', 'caja', 'puerto_utilizado',
+            'modelo_modem', 'sn_modem', 'mac_modem',
+            'inicio_fibra', 'final_fibra',
+            'conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos',
+            'observacion', 'completada'
+        ]
+        widgets = {
+            'latitud': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: 10.123456'}),
+            'longitud': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: -66.123456'}),
+            'feeder': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: FEEDER-001'}),
+            'caja': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CAJA-001'}),
+            'puerto_utilizado': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: P1'}),
+            'modelo_modem': forms.Select(attrs={'class': 'form-control'}),
+            'sn_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Serial del módem'}),
+            'mac_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'MAC Address'}),
+            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Metros iniciales'}),
+            'final_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Metros finales'}),
+            'conectores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad'}),
+            'rosetas': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad'}),
+            'patch_cord': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad'}),
+            'tensores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad'}),
+            'conectores_malos': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad'}),
+            'observacion': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Observaciones...'}),
+            'completada': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
+        self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
+    
+           

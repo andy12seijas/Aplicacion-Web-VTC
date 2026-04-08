@@ -12,6 +12,9 @@ from myapp.views_panel_estadisticas import *
 from myapp.views_nomina import *
 from myapp.views_soporte import *
 from myapp.views_dashboard import *
+from myapp.views_soporte_admin import *
+from myapp.views_instalacion_admin import *
+from myapp.views_reportes_admin import * 
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
 
@@ -82,6 +85,29 @@ urlpatterns = [
     path('soporte/nuevo/', crear_soporte_unificado, name='crear_soporte_unificado'),
     path('soporte/<int:soporte_id>/editar/', editar_soporte, name='editar_soporte'),
     path('soporte/<int:soporte_id>/detalle-json/', detalle_soporte_json, name='detalle_soporte_json'),
+    #Soporte Admin
+    path('soporte/<int:soporte_id>/editar/', editar_soporte, name='editar_soporte'),
+    
+    # API: Obtener detalles de soporte en JSON (para el modal)
+    path('soporte/<int:soporte_id>/detalle-json/', detalle_soporte_admin, name='detalle_soporte_json'),
+    path('soportes/admin', lista_soportes_admin, name='lista_soportes_admin'),
+    # API: Cambiar estado del soporte
+    path('soporte/<int:soporte_id>/cambiar-estado/', cambiar_estado_admin, name='cambiar_estado_soporte'),
+    path('instalacion/<int:instalacion_id>/historial-soportes/', historial_soportes_instalacion, name='historial_soportes_instalacion'),
+    path('soporte/<int:soporte_id>/detalle-modal/', detalle_soporte_modal, name='detalle_soporte_modal'),
+    path('instalacion-por-contrato/<int:contrato_id>/', instalacion_por_contrato, name='instalacion_por_contrato'),
+    
+    #URLS ADMIN INSTALACION
+    path('instalaciones/listar/', lista_instalaciones_admin, name='lista_instalaciones'),
+    path('instalacion/<int:instalacion_id>/detalle-json/', detalle_instalacion_json, name='detalle_instalacion_json'),
+    path('instalacion/<int:instalacion_id>/editar/', editar_instalacion, name='editar_instalacion'),
+     # Reportes
+    path('reportes-admin/', reportes_view, name='reportes'),
+    path('api/reporte-ventas/', reporte_ventas_json, name='reporte_ventas_json'),
+    path('api/reporte-instalaciones/', reporte_instalaciones_json, name='reporte_instalaciones_json'),
+    path('api/reporte-soportes/', reporte_soportes_json, name='reporte_soportes_json'),
+    path('exportar-excel/', exportar_excel, name='exportar_excel'),
+    path('exportar-pdf/', exportar_pdf, name='exportar_pdf'),
 ]
 
 

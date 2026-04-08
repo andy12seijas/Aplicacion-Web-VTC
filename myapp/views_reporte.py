@@ -19,8 +19,9 @@ def reporte_vendedor(request):
     # Verificar que el usuario sea vendedor o administrador
     es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
     es_vendedor = request.user.groups.filter(name='Vendedor').exists()
+    es_instalador = request.user.groups.filter(name='Instalador').exists()
     
-    if not (es_admin or es_vendedor):
+    if not (es_admin or es_vendedor or es_instalador):
         messages.error(request, 'No tienes permisos para acceder a esta página.')
         return redirect('dashboard')
     

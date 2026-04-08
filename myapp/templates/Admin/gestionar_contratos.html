@@ -225,12 +225,19 @@
                                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                                 </svg>
                             </button>
+                            <button class="action-btn" onclick="verHistorialSoportes({{ contrato.id }})" title="Ver historial de soportes" style="background: #e3f2fd; color: #1976d2;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                            </button>
                             <button class="action-btn copy-btn" onclick="copiarInfoContrato({{ contrato.id }})" title="Copiar información del contrato">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                                 </svg>
                             </button>
+                            
                             <button class="action-btn payment-btn" onclick="verComprobantePago({{ contrato.id }})" title="Ver comprobante de pago">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -1548,6 +1555,32 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    function verHistorialSoportes(contratoId) {
+        // Primero obtener la instalación asociada al contrato
+        fetch(`/instalacion-por-contrato/${contratoId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.instalacion_id) {
+                    window.location.href = `/instalacion/${data.instalacion_id}/historial-soportes/`;
+                } else {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin instalación',
+                        text: 'Este contrato aún no tiene una instalación asociada',
+                        confirmButtonColor: '#ff6b00'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'No se pudo obtener la información de la instalación',
+                    confirmButtonColor: '#ff6b00'
+                });
+            });
+    }
     let datosContratoActual = null;
     let fotoUrlActual = null;
     
