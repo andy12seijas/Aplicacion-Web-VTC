@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block content %}
-<!-- Estadísticas responsive - Scroll horizontal en móvil -->
+<!-- Estadísticas responsive -->
 <div class="stats-container">
     <div class="stats-grid" id="stats-container">
         <div class="stat-card">
@@ -45,7 +45,7 @@
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                 </svg>
-                <input type="text" placeholder="Buscar..." id="searchInput" value="{{ buscar }}">
+                <input type="text" placeholder="Buscar por nombre, código o instalador..." id="searchInput" value="{{ buscar|default:'' }}">
                 {% if buscar %}
                 <button class="clear-input" onclick="limpiarBusqueda()" title="Limpiar">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
@@ -83,18 +83,18 @@
     </div>
 </div>
 
-<!-- Contenedor del mapa responsive -->
+<!-- Contenedor del mapa -->
 <div class="map-container">
     <div id="map" class="map"></div>
 </div>
 
-<!-- Leyenda responsive - CORREGIDA (no se desborda) -->
+<!-- Leyenda responsive -->
 <div class="leyenda-container">
     <div class="leyenda-titulo">📍 Puntos en el mapa</div>
     <div id="leyenda-usuarios" class="leyenda-grid"></div>
 </div>
 
-<!-- Datos de ubicaciones para JavaScript -->
+<!-- Datos de ubicaciones -->
 {{ ubicaciones|json_script:"ubicaciones-data" }}
 
 <!-- Leaflet CSS y JS -->
@@ -102,7 +102,6 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-    /* ===== VARIABLES ===== */
     :root {
         --orange: #ff6b00;
         --orange-light: #fff2e6;
@@ -114,7 +113,6 @@
         --dark-text: #333;
     }
 
-    /* ===== ESTADÍSTICAS RESPONSIVE ===== */
     .stats-container {
         width: 100%;
         margin-bottom: 12px;
@@ -162,7 +160,6 @@
         font-size: 11px;
     }
 
-    /* ===== FILTROS RESPONSIVE ===== */
     .filters-container {
         margin-bottom: 12px;
     }
@@ -274,7 +271,6 @@
         background: var(--orange-light);
     }
 
-    /* ===== MAPA RESPONSIVE ===== */
     .map-container {
         width: 100%;
         margin-bottom: 12px;
@@ -296,7 +292,7 @@
             min-height: 400px;
         }
     }
-    /* ===== LEYENDA RESPONSIVE - CORREGIDA DEFINITIVA ===== */
+
     .leyenda-container {
         background: white;
         padding: 10px;
@@ -316,7 +312,6 @@
         flex-shrink: 0;
     }
     
-    /* Leyenda con scroll vertical SIEMPRE */
     .leyenda-grid {
         display: flex;
         flex-direction: column;
@@ -327,7 +322,6 @@
         flex: 1;
     }
     
-    /* En tablet/desktop se pone horizontal pero con scroll */
     @media screen and (min-width: 768px) {
         .leyenda-container {
             max-height: 150px;
@@ -336,7 +330,6 @@
         .leyenda-grid {
             flex-direction: row;
             flex-wrap: wrap;
-            overflow-y: auto;
         }
         
         .leyenda-item {
@@ -411,8 +404,7 @@
         color: #4caf50;
         font-size: 9px;
     }
-    
-    /* Scrollbar */
+
     .leyenda-grid::-webkit-scrollbar {
         width: 3px;
     }
@@ -427,48 +419,15 @@
         border-radius: 3px;
     }
     
-    .timestamp {
-        font-size: 9px;
-        color: var(--gray-text);
-        font-family: monospace;
-    }
-    
-    .tipo-badge {
-        font-size: 9px;
-        padding: 2px 6px;
-        border-radius: 12px;
-        font-weight: 500;
-    }
-    
-    .tipo-badge.cuadrilla {
-        background: #fff2e6;
-        color: #ff6b00;
-    }
-    
-    .tipo-badge.vendedor {
-        background: #e3f2fd;
-        color: #2196f3;
-    }
-    
-    .activo-indicator {
-        color: #4caf50;
-        font-size: 9px;
-    }
-
-    /* ===== SCROLLBAR ===== */
-    .leyenda-grid::-webkit-scrollbar,
     .stats-container::-webkit-scrollbar {
-        width: 3px;
-        height: 3px;
+        height: 4px;
     }
     
-    .leyenda-grid::-webkit-scrollbar-track,
     .stats-container::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 3px;
     }
     
-    .leyenda-grid::-webkit-scrollbar-thumb,
     .stats-container::-webkit-scrollbar-thumb {
         background: #ccc;
         border-radius: 3px;
@@ -521,7 +480,6 @@
 </style>
 
 <script>
-    // Variables globales
     let map;
     let markers = [];
     let intervalAutoActualizacion;
@@ -532,10 +490,8 @@
     let mapaInicializado = false;
     let primeraCarga = true;
 
-    // ==================== INICIALIZACIÓN ====================
     document.addEventListener('DOMContentLoaded', function() {
         console.log('🚀 Inicializando mapa...');
-        
         restaurarFiltros();
         inicializarMapa();
         esperarMapaYcargarDatos();
@@ -561,7 +517,6 @@
         });
     });
 
-    // ==================== FUNCIONES DE FILTROS ====================
     function restaurarFiltros() {
         try {
             const filtrosGuardados = localStorage.getItem('mapa_filtros');
@@ -604,12 +559,26 @@
         const tipo = document.getElementById('filterTipo').value;
         const buscar = document.getElementById('searchInput').value;
         
+        console.log('Aplicando filtros:', { tipo, buscar });
+        
         filtrosActuales = { tipo, buscar };
         guardarFiltros();
-        window.location.reload();
+        
+        const url = new URL(window.location.href);
+        if (tipo && tipo !== 'todos') {
+            url.searchParams.set('tipo', tipo);
+        } else {
+            url.searchParams.delete('tipo');
+        }
+        if (buscar) {
+            url.searchParams.set('buscar', buscar);
+        } else {
+            url.searchParams.delete('buscar');
+        }
+        console.log('Redirigiendo a:', url.toString());
+        window.location.href = url.toString();
     }
 
-    // ==================== FUNCIONES DEL MAPA ====================
     function inicializarMapa() {
         if (map) {
             console.log('Mapa ya existe');
@@ -681,7 +650,12 @@
     function recargaSilenciosa() {
         const tipo = filtrosActuales.tipo;
         const buscar = filtrosActuales.buscar;
-        const url = window.location.pathname + `?tipo=${tipo}&buscar=${encodeURIComponent(buscar)}&_=${Date.now()}`;
+        let url = window.location.pathname;
+        const params = new URLSearchParams();
+        if (tipo && tipo !== 'todos') params.append('tipo', tipo);
+        if (buscar) params.append('buscar', buscar);
+        params.append('_', Date.now());
+        if (params.toString()) url += '?' + params.toString();
         
         fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -712,7 +686,6 @@
         .catch(error => console.error('Error en recarga:', error));
     }
 
-    // ==================== AGREGAR MARCADORES ====================
     function agregarMarcadoresAlMapa(ubicaciones) {
         if (!map || !ubicaciones || ubicaciones.length === 0) {
             mostrarMensajeSinUbicaciones();
@@ -769,33 +742,84 @@
             if (item.tipo === 'cuadrilla') {
                 const cuadrilla = item.cuadrilla || {};
                 const instaladores = cuadrilla.instaladores || [];
+                
+                let estadoIcono = '🟠';
+                let estadoTexto = cuadrilla.estado_display || 'Desconocido';
+                if (cuadrilla.estado === 'DISPONIBLE') {
+                    estadoIcono = '🟢';
+                    estadoTexto = 'Disponible';
+                } else if (cuadrilla.estado === 'OCUPADO') {
+                    estadoIcono = '🟡';
+                    estadoTexto = 'Ocupado';
+                } else if (cuadrilla.estado === 'DESCANSO') {
+                    estadoIcono = '🔵';
+                    estadoTexto = 'En Descanso';
+                } else if (cuadrilla.estado === 'INACTIVO') {
+                    estadoIcono = '⚪';
+                    estadoTexto = 'Inactivo';
+                }
+                
+                let pendientesHtml = '';
+                if (cuadrilla.instalaciones_pendientes > 0) {
+                    pendientesHtml = `
+                        <div style="margin-top: 8px; background: #fff3e0; padding: 8px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 12px;">📋 Instalaciones pendientes</strong>
+                            <div style="font-size: 24px; font-weight: bold; color: #FF9800;">${cuadrilla.instalaciones_pendientes}</div>
+                        </div>
+                    `;
+                } else {
+                    pendientesHtml = `
+                        <div style="margin-top: 8px; background: #e8f5e9; padding: 8px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 12px;">✅ Sin instalaciones pendientes</strong>
+                        </div>
+                    `;
+                }
+                
                 popupContent = `
-                    <div style="padding: 10px; min-width: 240px;">
+                    <div style="padding: 10px; min-width: 260px; max-width: 320px;">
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                            <div style="background: #FF6B00; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;">👥</div>
+                            <div style="background: ${color}; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;">${estadoIcono}</div>
                             <div>
                                 <h3 style="margin: 0; font-size: 14px; color: #FF6B00;">${escapeHtml(cuadrilla.nombre || 'Sin nombre')}</h3>
-                                <p style="margin: 2px 0 0; font-size: 11px; color: #666;">Código: ${escapeHtml(cuadrilla.codigo || 'N/A')}</p>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: #666;">Código: ${escapeHtml(cuadrilla.codigo || 'N/A')} | ${estadoTexto}</p>
                             </div>
                         </div>
-                        <div style="margin-bottom: 8px;">
-                            <strong style="font-size: 12px;">👷 Instaladores (${instaladores.length}):</strong>
-                            <div style="margin-top: 5px; max-height: 120px; overflow-y: auto;">
-                                ${instaladores.map(inst => `
-                                    <div style="display: flex; align-items: center; gap: 6px; padding: 4px; background: #f8f9fa; border-radius: 6px; margin-bottom: 3px; font-size: 11px;">
-                                        <span>${inst.activo ? '🟢' : '⚪'}</span>
-                                        <div>
-                                            <strong>${escapeHtml(inst.nombre || 'Sin nombre')}</strong>
-                                            <div style="font-size: 10px; color: #666;">${inst.telefono ? `📞 ${escapeHtml(inst.telefono)}` : ''}</div>
+                        
+                        ${pendientesHtml}
+                        
+                        <div style="margin-top: 8px;">
+                            <strong style="font-size: 11px;">👷 INSTALADORES (${instaladores.length}):</strong>
+                            <div style="margin-top: 5px; max-height: 200px; overflow-y: auto;">
+                                ${instaladores.map(inst => {
+                                    let estadoInstIcono = inst.ocupado ? '🟡' : '🟢';
+                                    let estadoInstTexto = inst.ocupado ? 'Ocupado' : 'Disponible';
+                                    let tareaTexto = inst.ocupado && inst.tarea_actual !== 'Sin asignación' ? ` | ${inst.tarea_actual}` : '';
+                                    let pendientesTexto = inst.instalaciones_pendientes > 0 ? ` | 📋 ${inst.instalaciones_pendientes} pendiente${inst.instalaciones_pendientes !== 1 ? 's' : ''}` : '';
+                                    
+                                    return `
+                                        <div style="display: flex; align-items: center; gap: 6px; padding: 6px; background: #f8f9fa; border-radius: 6px; margin-bottom: 4px; font-size: 10px;">
+                                            <span>${inst.activo ? '🟢' : '⚪'}</span>
+                                            <div style="flex: 1;">
+                                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                                    <strong>${escapeHtml(inst.nombre || 'Sin nombre')}</strong>
+                                                    <span style="font-size: 9px; padding: 2px 6px; border-radius: 10px; background: ${inst.ocupado ? '#fff3e0' : '#e8f5e9'}; color: ${inst.ocupado ? '#FF9800' : '#4CAF50'};">${estadoInstIcono} ${estadoInstTexto}</span>
+                                                </div>
+                                                <div style="font-size: 9px; color: #666; margin-top: 2px;">
+                                                    ${inst.telefono ? `📞 ${escapeHtml(inst.telefono)}` : ''}
+                                                    ${tareaTexto}
+                                                    ${pendientesTexto}
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
-                        <div style="background: #f5f5f5; padding: 6px; border-radius: 6px; font-size: 10px;">
+                        
+                        <div style="background: #f5f5f5; padding: 5px; border-radius: 6px; margin-top: 8px; font-size: 9px; text-align: center;">
                             📍 Última actualización: ${fechaStr}
                         </div>
-                        ${item.activo ? '<div style="color: #4CAF50; margin-top: 6px; text-align: center; font-size: 11px;">🟢 Activa</div>' : '<div style="color: #999; margin-top: 6px; text-align: center; font-size: 11px;">⚪ Inactiva</div>'}
+                        ${item.activo ? '<div style="color: #4CAF50; margin-top: 5px; text-align: center; font-size: 10px;">🟢 Cuadrilla activa</div>' : '<div style="color: #999; margin-top: 5px; text-align: center; font-size: 10px;">⚪ Cuadrilla inactiva</div>'}
                     </div>
                 `;
             } else {
@@ -807,32 +831,32 @@
                             <div style="background: #2196F3; width: 35px; height: 35px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px;">👤</div>
                             <div>
                                 <h3 style="margin: 0; font-size: 14px; color: #2196F3;">${escapeHtml(vendedor.first_name || '')} ${escapeHtml(vendedor.last_name || '')}</h3>
-                                <p style="margin: 2px 0 0; font-size: 11px; color: #666;">@${escapeHtml(vendedor.username || 'usuario')}</p>
+                                <p style="margin: 2px 0 0; font-size: 10px; color: #666;">@${escapeHtml(vendedor.username || 'usuario')}</p>
                             </div>
                         </div>
                         
                         <p style="margin: 4px 0; font-size: 11px;"><strong>📞 Teléfono:</strong> ${escapeHtml(vendedor.telefono || 'No registrado')}</p>
                         <p style="margin: 4px 0; font-size: 11px;"><strong>📊 Total clientes:</strong> ${vendedor.total_clientes || 0}</p>
                         
-                        <div style="margin-top: 8px; background: #f3e5f5; padding: 8px; border-radius: 6px; text-align: center;">
-                            <strong style="font-size: 12px;">🆕 Clientes Potenciales HOY</strong>
-                            <div style="font-size: 22px; font-weight: bold; color: #9C27B0; margin-top: 4px;">${vendedor.total_clientes_hoy || 0}</div>
+                        <div style="margin-top: 8px; background: #f3e5f5; padding: 6px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 11px;">🆕 Clientes HOY</strong>
+                            <div style="font-size: 20px; font-weight: bold; color: #9C27B0;">${vendedor.total_clientes_hoy || 0}</div>
                         </div>
                         
-                        <div style="margin-top: 6px; background: #fff3e0; padding: 8px; border-radius: 6px; text-align: center;">
-                            <strong style="font-size: 12px;">⏳ Contratos en Proceso</strong>
-                            <div style="font-size: 22px; font-weight: bold; color: #FF9800; margin-top: 4px;">${vendedor.total_contratos_proceso || 0}</div>
+                        <div style="margin-top: 6px; background: #fff3e0; padding: 6px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 11px;">⏳ En Proceso</strong>
+                            <div style="font-size: 20px; font-weight: bold; color: #FF9800;">${vendedor.total_contratos_proceso || 0}</div>
                         </div>
                         
-                        <div style="margin-top: 6px; background: #e8f5e9; padding: 8px; border-radius: 6px; text-align: center;">
-                            <strong style="font-size: 12px;">✅ Contratos Completados</strong>
-                            <div style="font-size: 22px; font-weight: bold; color: #4CAF50; margin-top: 4px;">${vendedor.total_contratos_completados || 0}</div>
+                        <div style="margin-top: 6px; background: #e8f5e9; padding: 6px; border-radius: 6px; text-align: center;">
+                            <strong style="font-size: 11px;">✅ Completados</strong>
+                            <div style="font-size: 20px; font-weight: bold; color: #4CAF50;">${vendedor.total_contratos_completados || 0}</div>
                         </div>
                         
-                        <div style="background: #f5f5f5; padding: 5px; border-radius: 6px; margin-top: 8px; font-size: 10px; text-align: center;">
+                        <div style="background: #f5f5f5; padding: 5px; border-radius: 6px; margin-top: 8px; font-size: 9px; text-align: center;">
                             📍 Última ubicación: ${fechaStr}
                         </div>
-                        ${item.activo ? '<div style="color: #4CAF50; margin-top: 6px; text-align: center; font-size: 11px;">🟢 Activo ahora</div>' : '<div style="color: #999; margin-top: 6px; text-align: center; font-size: 11px;">⚪ Inactivo</div>'}
+                        ${item.activo ? '<div style="color: #4CAF50; margin-top: 5px; text-align: center; font-size: 10px;">🟢 Activo ahora</div>' : '<div style="color: #999; margin-top: 5px; text-align: center; font-size: 10px;">⚪ Inactivo</div>'}
                     </div>
                 `;
             }
