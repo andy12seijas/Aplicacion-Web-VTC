@@ -141,7 +141,7 @@ def logout_view(request):
 
 @login_required
 def mapa_usuarios(request):
-    """Vista para administradores - Mapa con ubicación de CUADRILLAS (promedio de instaladores) y VENDEDORES individuales"""
+    """Vista para administradores - Mapa con ubicación de CUADRILLAS y VENDEDORES"""
     
     # Verificar permisos
     if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
@@ -151,13 +151,13 @@ def mapa_usuarios(request):
     # Obtener filtros de la URL
     tipo_usuario = request.GET.get('tipo', 'todos')
     buscar = request.GET.get('buscar', '')
+    hoy = timezone.now().date()
     
     # ============================================
     # 1. DATOS DE CUADRILLAS (promedio de instaladores)
     # ============================================
     cuadrillas = Cuadrilla.objects.filter(activo=True).prefetch_related('instaladores__usuario')
     
-    # Filtrar por búsqueda
     if buscar:
         cuadrillas = cuadrillas.filter(
             Q(nombre__icontains=buscar) |
@@ -168,7 +168,6 @@ def mapa_usuarios(request):
     
     datos_cuadrillas = []
     for cuadrilla in cuadrillas:
-        # Obtener ubicaciones de los instaladores de esta cuadrilla
         ubicaciones_instaladores = []
         instaladores_data = []
         
@@ -180,7 +179,6 @@ def mapa_usuarios(request):
                     'lng': ubicacion.longitud,
                     'ultima_actualizacion': ubicacion.ultima_actualizacion,
                     'activo': ubicacion.esta_activo,
-                    'instalador': instalador
                 })
                 instaladores_data.append({
                     'nombre': instalador.usuario.get_full_name() or instalador.usuario.username,
@@ -198,17 +196,11 @@ def mapa_usuarios(request):
                     'ultima_actualizacion': 'Sin ubicación'
                 })
         
-        # Si hay instaladores con ubicación, calcular punto central
         if ubicaciones_instaladores:
-            # Calcular promedio de latitud y longitud
             lat_promedio = sum(u['lat'] for u in ubicaciones_instaladores) / len(ubicaciones_instaladores)
             lng_promedio = sum(u['lng'] for u in ubicaciones_instaladores) / len(ubicaciones_instaladores)
-            
-            # Verificar si algún instalador está activo (última hora)
             hace_1hora = timezone.now() - timedelta(hours=1)
             activos = any(u['ultima_actualizacion'] > hace_1hora for u in ubicaciones_instaladores)
-            
-            # Obtener la última actualización más reciente
             ultima_actualizacion = max(u['ultima_actualizacion'] for u in ubicaciones_instaladores)
             
             datos_cuadrillas.append({
@@ -217,22 +209,20 @@ def mapa_usuarios(request):
                     'id': cuadrilla.id,
                     'nombre': cuadrilla.nombre,
                     'codigo': cuadrilla.codigo,
-                    'estado': cuadrilla.estado,
                     'estado_display': cuadrilla.get_estado_display(),
-                    'cantidad_instaladores': len(ubicaciones_instaladores),
                     'instaladores': instaladores_data
                 },
                 'latitud': lat_promedio,
                 'longitud': lng_promedio,
-                'ultima_actualizacion': ultima_actualizacion,
+                'ultima_actualizacion': ultima_actualizacion.isoformat() if hasattr(ultima_actualizacion, 'isoformat') else str(ultima_actualizacion),
                 'activo': activos,
-                'color': '#FF6B00',  # Naranja para cuadrillas
+                'color': '#FF6B00',
                 'icono': '👥',
                 'radius': 14,
             })
     
     # ============================================
-    # 2. DATOS DE VENDEDORES (individuales)
+    # 2. DATOS DE VENDEDORES (individuales) - MODIFICADO PARA INCLUIR CLIENTES Y CONTRATOS
     # ============================================
     vendedores = User.objects.filter(groups__name='Vendedor', is_active=True)
     
@@ -248,8 +238,39 @@ def mapa_usuarios(request):
         try:
             ubicacion = UbicacionUsuario.objects.get(usuario=vendedor)
             
-            # Total de clientes registrados por este vendedor
+            # ===== CLIENTES POTENCIALES DEL VENDEDOR =====
             total_clientes = ClientePotencial.objects.filter(creado_por=vendedor).count()
+            
+            # Clientes registrados HOY por este vendedor
+            clientes_hoy = ClientePotencial.objects.filter(creado_por=vendedor, fecha_registro=hoy)
+            clientes_hoy_lista = []
+            for cliente in clientes_hoy:
+                clientes_hoy_lista.append({
+                    'nombre': cliente.nombre_completo,
+                    'cedula': cliente.cedula,
+                    'telefono': cliente.telefono,
+                    'interesado': cliente.get_interesado_display(),
+                })
+            
+            # ===== CONTRATOS EN PROCESO de este vendedor =====
+            contratos_proceso = ContratoCliente.objects.filter(creado_por=vendedor, estado='EN_PROCESO')
+            contratos_proceso_lista = []
+            for contrato in contratos_proceso:
+                contratos_proceso_lista.append({
+                    'cliente': contrato.cliente_potencial.nombre_completo,
+                    'cedula': contrato.cliente_potencial.cedula,
+                    'plan': contrato.plan_contratado.nombre,
+                })
+            
+            # ===== CONTRATOS COMPLETADOS de este vendedor =====
+            contratos_completados = ContratoCliente.objects.filter(creado_por=vendedor, estado='COMPLETADO')
+            contratos_completados_lista = []
+            for contrato in contratos_completados:
+                contratos_completados_lista.append({
+                    'cliente': contrato.cliente_potencial.nombre_completo,
+                    'cedula': contrato.cliente_potencial.cedula,
+                    'plan': contrato.plan_contratado.nombre,
+                })
             
             datos_vendedores.append({
                 'tipo': 'vendedor',
@@ -260,55 +281,40 @@ def mapa_usuarios(request):
                     'last_name': vendedor.last_name,
                     'telefono': getattr(vendedor.perfil, 'telefono', 'No registrado') if hasattr(vendedor, 'perfil') else 'No registrado',
                     'total_clientes': total_clientes,
+                    # NUEVOS DATOS PARA EL POPUP
+                    'clientes_hoy': clientes_hoy_lista,
+                    'total_clientes_hoy': len(clientes_hoy_lista),
+                    'contratos_proceso': contratos_proceso_lista,
+                    'total_contratos_proceso': len(contratos_proceso_lista),
+                    'contratos_completados': contratos_completados_lista,
+                    'total_contratos_completados': len(contratos_completados_lista),
                 },
                 'latitud': ubicacion.latitud,
                 'longitud': ubicacion.longitud,
-                'ultima_actualizacion': ubicacion.ultima_actualizacion,
+                'ultima_actualizacion': ubicacion.ultima_actualizacion.isoformat(),
                 'activo': ubicacion.esta_activo,
-                'color': '#2196F3',  # Azul para vendedores
-                'icono': '👤',
-                'radius': 10,
-            })
-        except UbicacionUsuario.DoesNotExist:
-            # Vendedor sin ubicación
-            datos_vendedores.append({
-                'tipo': 'vendedor',
-                'vendedor': {
-                    'id': vendedor.id,
-                    'username': vendedor.username,
-                    'first_name': vendedor.first_name,
-                    'last_name': vendedor.last_name,
-                    'telefono': getattr(vendedor.perfil, 'telefono', 'No registrado') if hasattr(vendedor, 'perfil') else 'No registrado',
-                    'total_clientes': 0,
-                },
-                'latitud': None,
-                'longitud': None,
-                'ultima_actualizacion': None,
-                'activo': False,
                 'color': '#2196F3',
                 'icono': '👤',
                 'radius': 10,
             })
+        except UbicacionUsuario.DoesNotExist:
+            pass
     
     # ============================================
     # 3. COMBINAR Y FILTRAR DATOS
     # ============================================
     datos_mapa = datos_cuadrillas + datos_vendedores
     
-    # Filtrar por tipo
     if tipo_usuario == 'cuadrillas':
         datos_mapa = [d for d in datos_mapa if d['tipo'] == 'cuadrilla']
     elif tipo_usuario == 'vendedores':
         datos_mapa = [d for d in datos_mapa if d['tipo'] == 'vendedor']
     
-    # Filtrar solo los que tienen ubicación para el mapa
     datos_mapa_con_ubicacion = [d for d in datos_mapa if d.get('latitud') and d.get('longitud')]
     
-    # Estadísticas
     hace_1hora = timezone.now() - timedelta(hours=1)
     activos_ahora = sum(1 for d in datos_mapa_con_ubicacion if d.get('activo', False))
     
-    # Estadísticas por tipo
     stats_por_tipo = [
         {'nombre': 'Cuadrillas', 'cantidad': len([d for d in datos_mapa if d['tipo'] == 'cuadrilla'])},
         {'nombre': 'Vendedores', 'cantidad': len([d for d in datos_mapa if d['tipo'] == 'vendedor'])},
@@ -324,7 +330,6 @@ def mapa_usuarios(request):
     }
     
     return render(request, 'Admin/mapa_usuarios.html', context)
-
 
 
 @login_required

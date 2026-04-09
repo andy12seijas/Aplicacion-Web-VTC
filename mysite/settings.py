@@ -92,15 +92,17 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 }"""
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'vtcodcnb_miapp_db',           # El nombre de tu BD
-        'USER': 'vtcodcnb_admin',               # Tu usuario
-        'PASSWORD': 'Simple2021**',            # ⚠️ CÁMBIALA después
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'vtcodcnb_miapp_db',      # El nombre exacto con prefijo
+        'USER': 'vtcodcnb_admin',          # El usuario exacto con prefijo
+        'PASSWORD': 'Simple2026**',         # La contraseña que pusiste
+        'HOST': 'localhost',
+        'PORT': '3306',
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
-
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
