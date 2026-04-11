@@ -50,7 +50,7 @@
     </div>
 </div>
 
-<!-- Pestañas -->
+<!-- Pestañas - SOLO mostrar pestaña de instaladores si NO es Supervisor -->
 <div class="tabs-container">
     <div class="tabs-header">
         <button class="tab-btn {% if tab_activa == 'vendedores' %}active{% endif %}" onclick="cambiarTab('vendedores')" id="tab-vendedores-btn">
@@ -58,11 +58,15 @@
             Estadísticas de Vendedores
             <span class="tab-count">{{ total_vendedores }}</span>
         </button>
+        
+        <!-- SOLO mostrar pestaña de Instaladores si NO es Supervisor -->
+        {% if not es_supervisor %}
         <button class="tab-btn {% if tab_activa == 'instaladores' %}active{% endif %}" onclick="cambiarTab('instaladores')" id="tab-instaladores-btn">
             <span class="tab-icon">🔧</span>
             Estadísticas de Instaladores
             <span class="tab-count">{{ total_cuadrillas }}</span>
         </button>
+        {% endif %}
     </div>
 
     <!-- TAB: VENDEDORES -->
@@ -225,7 +229,8 @@
         </div>
     </div>
 
-    <!-- TAB: INSTALADORES -->
+    <!-- TAB: INSTALADORES - SOLO visible para Admin (NO para Supervisor) -->
+    {% if not es_supervisor %}
     <div id="tab-instaladores" class="tab-content {% if tab_activa == 'instaladores' %}active{% endif %}">
         <!-- Filtros específicos de instaladores -->
         <div class="sub-filters">
@@ -396,9 +401,11 @@
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 
 <style>
+    /* Tus estilos existentes se mantienen igual */
     .filters-container {
         margin-bottom: 24px;
     }
@@ -1416,46 +1423,85 @@
             }
         });
         
-        // ========== GRÁFICAS INSTALADORES ==========
-        
-        // 1. Instalaciones por Día
-        charts.instalacionesDiarias = new Chart(document.getElementById('instalacionesDiariasChart'), {
-            type: 'line',
-            data: {
-                labels: fechas,
-                datasets: [
-                    { label: 'Completadas', data: instalacionesCompletadasDiarias, borderColor: '#4caf50', backgroundColor: 'rgba(76, 175, 80, 0.1)', fill: true, tension: 0.4, pointRadius: window.innerWidth < 768 ? 3 : 4 },
-                    { label: 'Pendientes', data: instalacionesPendientesDiarias, borderColor: '#ff9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.4, pointRadius: window.innerWidth < 768 ? 3 : 4 }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { 
-                    legend: { 
-                        position: 'top',
-                        labels: { font: { size: window.innerWidth < 768 ? 10 : 12 } }
-                    } 
+        // ========== GRÁFICAS INSTALADORES (solo si existen los elementos) ==========
+        if (document.getElementById('instalacionesDiariasChart')) {
+            // 1. Instalaciones por Día
+            charts.instalacionesDiarias = new Chart(document.getElementById('instalacionesDiariasChart'), {
+                type: 'line',
+                data: {
+                    labels: fechas,
+                    datasets: [
+                        { label: 'Completadas', data: instalacionesCompletadasDiarias, borderColor: '#4caf50', backgroundColor: 'rgba(76, 175, 80, 0.1)', fill: true, tension: 0.4, pointRadius: window.innerWidth < 768 ? 3 : 4 },
+                        { label: 'Pendientes', data: instalacionesPendientesDiarias, borderColor: '#ff9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.4, pointRadius: window.innerWidth < 768 ? 3 : 4 }
+                    ]
                 },
-                scales: { 
-                    y: { 
-                        beginAtZero: true, 
-                        title: { display: true, text: 'Cantidad', font: { size: window.innerWidth < 768 ? 11 : 12 } } 
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { 
+                        legend: { 
+                            position: 'top',
+                            labels: { font: { size: window.innerWidth < 768 ? 10 : 12 } }
+                        } 
                     },
-                    x: {
-                        ticks: { maxRotation: 45, minRotation: 45, font: { size: window.innerWidth < 768 ? 9 : 11 } }
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            title: { display: true, text: 'Cantidad', font: { size: window.innerWidth < 768 ? 11 : 12 } } 
+                        },
+                        x: {
+                            ticks: { maxRotation: 45, minRotation: 45, font: { size: window.innerWidth < 768 ? 9 : 11 } }
+                        }
                     }
                 }
+            });
+            
+            // 2. Rendimiento por Cuadrilla
+            if (cuadrillasNombres.length > 0) {
+                charts.cuadrillas = new Chart(document.getElementById('cuadrillasChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: cuadrillasNombres,
+                        datasets: [{ label: 'Instalaciones Completadas', data: cuadrillasCompletadas, backgroundColor: '#4caf50', borderRadius: 8 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: { 
+                            y: { 
+                                beginAtZero: true, 
+                                title: { display: true, text: 'Instalaciones', font: { size: window.innerWidth < 768 ? 11 : 12 } } 
+                            },
+                            x: {
+                                ticks: { maxRotation: 45, minRotation: 45, font: { size: window.innerWidth < 768 ? 9 : 11 } }
+                            }
+                        }
+                    }
+                });
             }
-        });
-        
-        // 2. Rendimiento por Cuadrilla
-        if (cuadrillasNombres.length > 0) {
-            charts.cuadrillas = new Chart(document.getElementById('cuadrillasChart'), {
-                type: 'bar',
+            
+            // 3. Estado de Instalaciones
+            charts.estadoInstalaciones = new Chart(document.getElementById('estadoInstalacionesChart'), {
+                type: 'doughnut',
+                data: { labels: estadoInstalacionesLabels, datasets: [{ data: estadoInstalacionesValores, backgroundColor: estadoInstalacionesColores, borderWidth: 0 }] },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true, 
+                    plugins: { 
+                        legend: { 
+                            position: 'bottom',
+                            labels: { font: { size: window.innerWidth < 768 ? 10 : 12 } }
+                        } 
+                    } 
+                }
+            });
+            
+            // 4. Tasa de Completación
+            charts.tasaCompletacion = new Chart(document.getElementById('tasaCompletacionChart'), {
+                type: 'line',
                 data: {
-                    labels: cuadrillasNombres,
-                    datasets: [{ label: 'Instalaciones Completadas', data: cuadrillasCompletadas, backgroundColor: '#4caf50', borderRadius: 8 }]
+                    labels: fechas,
+                    datasets: [{ label: 'Tasa de Completación (%)', data: tasaCompletacionDiaria, borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', fill: true, tension: 0.4, pointRadius: window.innerWidth < 768 ? 3 : 4 }]
                 },
                 options: {
                     responsive: true,
@@ -1463,7 +1509,8 @@
                     scales: { 
                         y: { 
                             beginAtZero: true, 
-                            title: { display: true, text: 'Instalaciones', font: { size: window.innerWidth < 768 ? 11 : 12 } } 
+                            max: 100, 
+                            title: { display: true, text: 'Porcentaje (%)', font: { size: window.innerWidth < 768 ? 11 : 12 } } 
                         },
                         x: {
                             ticks: { maxRotation: 45, minRotation: 45, font: { size: window.innerWidth < 768 ? 9 : 11 } }
@@ -1472,45 +1519,6 @@
                 }
             });
         }
-        
-        // 3. Estado de Instalaciones
-        charts.estadoInstalaciones = new Chart(document.getElementById('estadoInstalacionesChart'), {
-            type: 'doughnut',
-            data: { labels: estadoInstalacionesLabels, datasets: [{ data: estadoInstalacionesValores, backgroundColor: estadoInstalacionesColores, borderWidth: 0 }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: true, 
-                plugins: { 
-                    legend: { 
-                        position: 'bottom',
-                        labels: { font: { size: window.innerWidth < 768 ? 10 : 12 } }
-                    } 
-                } 
-            }
-        });
-        
-        // 4. Tasa de Completación
-        charts.tasaCompletacion = new Chart(document.getElementById('tasaCompletacionChart'), {
-            type: 'line',
-            data: {
-                labels: fechas,
-                datasets: [{ label: 'Tasa de Completación (%)', data: tasaCompletacionDiaria, borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', fill: true, tension: 0.4, pointRadius: window.innerWidth < 768 ? 3 : 4 }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                scales: { 
-                    y: { 
-                        beginAtZero: true, 
-                        max: 100, 
-                        title: { display: true, text: 'Porcentaje (%)', font: { size: window.innerWidth < 768 ? 11 : 12 } } 
-                    },
-                    x: {
-                        ticks: { maxRotation: 45, minRotation: 45, font: { size: window.innerWidth < 768 ? 9 : 11 } }
-                    }
-                }
-            }
-        });
     });
     
     // Redimensionar gráficas al cambiar tamaño de ventana

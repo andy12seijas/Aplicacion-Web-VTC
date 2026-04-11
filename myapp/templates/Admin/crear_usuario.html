@@ -58,7 +58,7 @@
                 <h3 class="section-title">Información básica</h3>
                 <div class="form-grid">
                    
-                    <!-- Cédula - NUEVO CAMPO -->
+                    <!-- Cédula -->
                     <div class="form-group">
                         <label for="{{ form.cedula.id_for_label }}">
                             Cédula <span class="required">*</span>
@@ -73,6 +73,7 @@
                         {% endif %}
                         <small class="help-text">Ingrese solo números, sin puntos ni letras</small>
                     </div>
+                    
                     <div class="form-group">
                         <label for="{{ form.username.id_for_label }}">
                             Usuario <span class="required">*</span>
@@ -87,7 +88,6 @@
                         {% endif %}
                         <small class="help-text">Mínimo 3 caracteres. Letras, números y @/./+/-/_</small>
                     </div>
-                    
                     
                     <div class="form-group">
                         <label for="{{ form.first_name.id_for_label }}">Nombres</label>
@@ -112,6 +112,7 @@
                         </div>
                         {% endif %}
                     </div>
+                    
                     <div class="form-group">
                         <label for="{{ form.email.id_for_label }}">
                             Email <span class="required">*</span>
@@ -125,6 +126,7 @@
                         </div>
                         {% endif %}
                     </div>
+                    
                     <div class="form-group">
                         <label for="{{ form.telefono.id_for_label }}">
                             Teléfono <span class="required">*</span>
@@ -141,7 +143,6 @@
                     </div>
                 </div>
             </div>
-            
             
             <!-- Sección: Rol y permisos -->
             <div class="form-section">
@@ -184,6 +185,13 @@
                         <div class="role-text">
                             <strong>Instalador</strong>
                             <small>Gestión de instalaciones</small>
+                        </div>
+                    </div>
+                    <div class="role-badge" data-role="supervisor">
+                        <span class="role-icon">📊</span>
+                        <div class="role-text">
+                            <strong>Supervisor</strong>
+                            <small>Supervisión de instalaciones y vendedores</small>
                         </div>
                     </div>
                 </div>
@@ -272,6 +280,7 @@
         box-shadow: none;
         border-color: #ddd !important;
     }
+    
     .form-container {
         max-width: 900px;
         margin: 0 auto;
@@ -475,7 +484,7 @@
     /* Roles info */
     .roles-info {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 12px;
         margin-top: 16px;
     }
@@ -510,6 +519,11 @@
     .role-badge[data-role="instalador"].selected {
         border-color: #4caf50;
         background: #e8f5e9;
+    }
+
+    .role-badge[data-role="supervisor"].selected {
+        border-color: #9C27B0;
+        background: #F3E5F5;
     }
 
     .role-icon {
@@ -647,6 +661,8 @@
                 document.querySelector('.role-badge[data-role="vendedor"]').classList.add('selected');
             } else if (selected === 'Instalador') {
                 document.querySelector('.role-badge[data-role="instalador"]').classList.add('selected');
+            } else if (selected === 'Supervisor') {
+                document.querySelector('.role-badge[data-role="supervisor"]').classList.add('selected');
             }
         }
         

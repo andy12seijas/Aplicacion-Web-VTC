@@ -109,18 +109,23 @@
                             <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
                         </div>
                         <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</div>
-                        <td>
-                            <button class="action-btn" onclick="abrirModalCompletar({{ contrato.id }})" title="Completar contrato">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 6L9 17l-5-5"/>
-                                </svg>
-                            </button>
+                        <td class="actions-cell">
+                            <!-- Ver detalles - TODOS -->
                             <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="3"/>
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
+                            
+                            <!-- Completar contrato - ADMIN y SUPERVISOR -->
+                            {% if es_admin or es_supervisor %}
+                            <button class="action-btn" onclick="abrirModalCompletar({{ contrato.id }})" title="Completar contrato">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                </svg>
+                            </button>
+                            {% endif %}
                         </div>
                     </tr>
                     {% empty %}
@@ -213,24 +218,16 @@
                             <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
                         </div>
                         <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</div>
-                        <td>
+                        <td class="actions-cell">
+                            <!-- Ver detalles - TODOS -->
                             <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="3"/>
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
-                            <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar contrato">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                </svg>
-                            </button>
-                            <button class="action-btn" onclick="verHistorialSoportes({{ contrato.id }})" title="Ver historial de soportes" style="background: #e3f2fd; color: #1976d2;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/>
-                                    <polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                            </button>
+                            
+                            <!-- Copiar información - TODOS -->
                             <button class="action-btn copy-btn" onclick="copiarInfoContrato({{ contrato.id }})" title="Copiar información del contrato">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -238,6 +235,7 @@
                                 </svg>
                             </button>
                             
+                            <!-- Ver comprobante de pago - TODOS -->
                             <button class="action-btn payment-btn" onclick="verComprobantePago({{ contrato.id }})" title="Ver comprobante de pago">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -246,6 +244,25 @@
                                     <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
                                 </svg>
                             </button>
+                            
+                            <!-- Editar contrato - SOLO ADMIN -->
+                            {% if es_admin %}
+                            <button class="action-btn" onclick="editarContrato({{ contrato.id }})" title="Editar contrato">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                </svg>
+                            </button>
+                            {% endif %}
+                            
+                            <!-- Historial de soportes - SOLO ADMIN -->
+                            {% if es_admin %}
+                            <button class="action-btn" onclick="verHistorialSoportes({{ contrato.id }})" title="Ver historial de soportes" style="background: #e3f2fd; color: #1976d2;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                            </button>
+                            {% endif %}
                         </div>
                     </tr>
                     {% empty %}

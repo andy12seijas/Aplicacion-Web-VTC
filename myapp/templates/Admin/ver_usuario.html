@@ -39,6 +39,10 @@
         <span class="stat-label">Instal</span>
     </div>
     <div class="stat-card">
+        <span class="stat-value">{{ total_supervisores }}</span>
+        <span class="stat-label">Superv</span>
+    </div>
+    <div class="stat-card">
         <span class="stat-value">{{ usuarios_activos }}</span>
         <span class="stat-label">Activos</span>
     </div>
@@ -56,10 +60,11 @@
     
     <select id="filterRol" class="filter-select">
         <option value="">Todos</option>
-        <option value="superuser">Super</option>
-        <option value="administrador">Admin</option>
-        <option value="vendedor">Ventas</option>
-        <option value="instalador">Instal</option>
+        <option value="super">Super</option>
+        <option value="admin">Admin</option>
+        <option value="ventas">Ventas</option>
+        <option value="instal">Instal</option>
+        <option value="supervisor">Superv</option>
     </select>
     
     <select id="filterStatus" class="filter-select">
@@ -106,6 +111,8 @@
                             <span class="badge ventas">Ventas</span>
                             {% elif group.name == 'Instalador' %}
                             <span class="badge instal">Instal</span>
+                            {% elif group.name == 'Supervisor' %}
+                            <span class="badge supervisor">Superv</span>
                             {% endif %}
                         {% endfor %}
                     {% else %}
@@ -166,7 +173,14 @@
                 <span class="card-label">Rol:</span>
                 <span class="card-value">
                     {% if usuario.is_superuser %}Superusuario
-                    {% elif usuario.groups.all %}{% for g in usuario.groups.all %}{{ g.name }}{% endfor %}
+                    {% elif usuario.groups.all %}
+                        {% for group in usuario.groups.all %}
+                            {% if group.name == 'Administrador' %}Administrador
+                            {% elif group.name == 'Vendedor' %}Vendedor
+                            {% elif group.name == 'Instalador' %}Instalador
+                            {% elif group.name == 'Supervisor' %}Supervisor
+                            {% endif %}
+                        {% endfor %}
                     {% else %}—{% endif %}
                 </span>
             </div>
@@ -419,6 +433,7 @@
     .badge.admin { background: #fff2e6; color: var(--orange); }
     .badge.ventas { background: #e3f2fd; color: #2196f3; }
     .badge.instal { background: #e8f5e9; color: #4caf50; }
+    .badge.supervisor { background: #f3e5f5; color: #9c27b0; }
 
     /* Status */
     .status {

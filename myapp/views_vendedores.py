@@ -604,7 +604,7 @@ def datos_contrato(request, contrato_id):
         contrato = get_object_or_404(ContratoCliente, id=contrato_id)
         
         # 2. Verificar permisos
-        es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+        es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists() or request.user.groups.filter(name='Supervisor').exists()
         if not (es_admin or contrato.creado_por == request.user):
             return JsonResponse({'error': 'No autorizado'}, status=403)
         
@@ -745,8 +745,8 @@ def estado_cuadrillas(request):
     # Verificar que el usuario sea vendedor o administrador
     es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
     es_vendedor = request.user.groups.filter(name='Vendedor').exists()
-    
-    if not (es_admin or es_vendedor):
+    es_supervisor =request.user.groups.filter(name='Supervisor').exists()
+    if not (es_admin or es_vendedor or es_supervisor):
         messages.error(request, 'No tienes permisos para acceder a esta página.')
         return redirect('dashboard')
     

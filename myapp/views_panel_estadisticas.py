@@ -30,8 +30,10 @@ def panel_estadisticas(request):
     
     # Verificar permisos (solo administradores)
     es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_supervisor = request.user.groups.filter(name='Supervisor').exists()
     
-    if not es_admin:
+    # El panel es accesible para Admin y Supervisor
+    if not (es_admin or es_supervisor):
         messages.error(request, 'No tienes permisos para acceder a esta página.')
         return redirect('dashboard')
     
@@ -438,6 +440,7 @@ def panel_estadisticas(request):
         'tab_activa': tab_activa,
         'vendedor_seleccionado': vendedor_seleccionado,
         'cuadrilla_seleccionada': cuadrilla_seleccionada,
+        'es_supervisor': es_supervisor,
     }
     
     return render(request, 'Admin/panel_estadistica.html', context)

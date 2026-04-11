@@ -30,6 +30,8 @@ def dashboard(request):
         return dashboard_vendedor(request)
     elif user.groups.filter(name='Instalador').exists():
         return dashboard_instalador(request)
+    elif user.groups.filter(name='Supervisor').exists():
+        return dashboard_supervisor(request)
     else:
         # Perfil sin rol específico
         return dashboard_general(request)
@@ -385,3 +387,118 @@ def dashboard_datos_api(request):
         data = {'message': 'Sin datos disponibles'}
     
     return JsonResponse(data)
+
+
+def dashboard_supervisor(request):
+    """Dashboard para Supervisores - Solo estadísticas y rendimiento de vendedores"""
+    user = request.user
+    
+    # Fechas para filtros
+    hoy = timezone.now().date()
+    inicio_semana = hoy - timedelta(days=hoy.weekday())
+    fin_semana = inicio_semana + timedelta(days=6)
+    
+    # ==================== CONTRATOS ====================
+    contratos = ContratoCliente.objects.all()
+    
+    # Estadísticas generales de contratos
+    total_contratos = contratos.count()
+    contratos_completados = contratos.filter(estado=ContratoCliente.EstadoContrato.COMPLETADO).count()
+    contratos_proceso = contratos.filter(estado=ContratoCliente.EstadoContrato.EN_PROCESO).count()
+    contratos_no_completados = contratos.filter(estado=ContratoCliente.EstadoContrato.NO_COMPLETADO).count()
+    porcentaje_completado = (contratos_completados / total_contratos * 100) if total_contratos > 0 else 0
+    
+    # Contratos por mes (últimos 6 meses)
+    meses = []
+    contratos_por_mes = []
+    for i in range(5, -1, -1):
+        fecha_inicio = hoy.replace(day=1) - timedelta(days=30*i)
+        fecha_fin = (fecha_inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        
+        conteo = contratos.filter(fecha_creacion__date__gte=fecha_inicio, fecha_creacion__date__lte=fecha_fin).count()
+        meses.append(fecha_inicio.strftime('%b'))
+        contratos_por_mes.append(conteo)
+    
+    # Contratos de esta semana
+    contratos_semana = contratos.filter(
+        fecha_creacion__date__gte=inicio_semana,
+        fecha_creacion__date__lte=fin_semana
+    ).count()
+    
+    # ==================== RENDIMIENTO DE VENDEDORES ====================
+    from django.db.models import Count, Q
+    
+    vendedores = User.objects.filter(
+        groups__name='Vendedor',
+        is_active=True
+    ).annotate(
+        total_contratos=Count('contratos_creados'),
+        completados=Count('contratos_creados', filter=Q(contratos_creados__estado=ContratoCliente.EstadoContrato.COMPLETADO)),
+        en_proceso=Count('contratos_creados', filter=Q(contratos_creados__estado=ContratoCliente.EstadoContrato.EN_PROCESO)),
+        no_completados=Count('contratos_creados', filter=Q(contratos_creados__estado=ContratoCliente.EstadoContrato.NO_COMPLETADO))
+    ).order_by('-total_contratos')
+    
+    # Estadísticas de vendedores
+    total_vendedores = vendedores.count()
+    vendedores_con_contratos = vendedores.filter(total_contratos__gt=0).count()
+    vendedores_sin_contratos = total_vendedores - vendedores_con_contratos
+    
+    # Promedio de contratos por vendedor
+    promedio_contratos = sum(v.total_contratos for v in vendedores) / total_vendedores if total_vendedores > 0 else 0
+    
+    # Top 10 vendedores
+    top_vendedores = []
+    for v in vendedores[:10]:
+        eficiencia = (v.completados / v.total_contratos * 100) if v.total_contratos > 0 else 0
+        top_vendedores.append({
+            'nombre': v.get_full_name() or v.username,
+            'total_contratos': v.total_contratos,
+            'completados': v.completados,
+            'en_proceso': v.en_proceso,
+            'no_completados': v.no_completados,
+            'eficiencia': round(eficiencia, 1)
+        })
+    
+    # ==================== PLANES POPULARES ====================
+    planes_populares = Plan.objects.filter(activo=True).annotate(
+        total_contratos=Count('contratos')
+    ).order_by('-total_contratos')[:5]
+    
+    # ==================== DISTRIBUCIÓN DE ESTADOS (para el gráfico) ====================
+    distribucion_estados = [
+        {'estado': 'Completados', 'cantidad': contratos_completados, 'color': '#10b981'},
+        {'estado': 'En Proceso', 'cantidad': contratos_proceso, 'color': '#f59e0b'},
+        {'estado': 'No Completados', 'cantidad': contratos_no_completados, 'color': '#ef4444'},
+    ]
+    
+    # Preparar datos para el gráfico (JSON serializable)
+    distribucion_labels = [item['estado'] for item in distribucion_estados]
+    distribucion_data = [item['cantidad'] for item in distribucion_estados]
+    distribucion_colors = [item['color'] for item in distribucion_estados]
+    
+    context = {
+        'rol': 'supervisor',
+        # Estadísticas generales
+        'total_contratos': total_contratos,
+        'contratos_completados': contratos_completados,
+        'contratos_proceso': contratos_proceso,
+        'contratos_no_completados': contratos_no_completados,
+        'porcentaje_completado': porcentaje_completado,
+        'contratos_por_mes': contratos_por_mes,
+        'meses': meses,
+        'contratos_semana': contratos_semana,
+        # Estadísticas de vendedores
+        'total_vendedores': total_vendedores,
+        'vendedores_con_contratos': vendedores_con_contratos,
+        'vendedores_sin_contratos': vendedores_sin_contratos,
+        'promedio_contratos': round(promedio_contratos, 1),
+        'top_vendedores': top_vendedores,
+        # Planes
+        'planes_populares': planes_populares,
+        # Distribución para gráfico
+        'distribucion_labels': distribucion_labels,
+        'distribucion_data': distribucion_data,
+        'distribucion_colors': distribucion_colors,
+    }
+    
+    return render(request, 'Inicio_De_Sesion/dashboard.html', context)

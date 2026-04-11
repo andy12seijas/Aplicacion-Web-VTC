@@ -705,23 +705,279 @@
     </div>
     
     
-    <!-- ==================== DASHBOARD GENERAL ==================== -->
-    {% else %}
     
-    <div class="welcome-card">
-        <div class="welcome-icon">
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="1.5">
-                <path d="M12 2a10 10 0 0 0 0 20 10 10 0 0 0 0-20z"/>
-                <path d="M12 6v6l4 2"/>
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="9" r="2"/>
-            </svg>
+        <!-- ==================== DASHBOARD SUPERVISOR ==================== -->
+            <!-- ==================== DASHBOARD SUPERVISOR ==================== -->
+    {% elif rol == 'supervisor' %}
+    
+    <!-- Stats Cards Principales -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_contratos }}</span>
+                <span class="stat-label">Total Contratos</span>
+            </div>
         </div>
-        <h2>¡Bienvenido al Sistema!</h2>
-        <p>{{ mensaje }}</p>
-        <div class="welcome-actions">
-            <a href="{% url 'lista_clientes' %}" class="btn-orange">Ver Clientes</a>
-            <a href="{% url 'crear_contrato' %}" class="btn-outline">Crear Contrato</a>
+        <div class="stat-card stat-success">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ contratos_completados }}</span>
+                <span class="stat-label">Completados</span>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ contratos_proceso }}</span>
+                <span class="stat-label">En Proceso</span>
+            </div>
+        </div>
+        <div class="stat-card stat-danger">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ contratos_no_completados }}</span>
+                <span class="stat-label">No Completados</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Segunda fila de stats - Vendedores -->
+    <div class="stats-grid">
+        <div class="stat-card stat-info">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ total_vendedores }}</span>
+                <span class="stat-label">Total Vendedores</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ vendedores_con_contratos }}</span>
+                <span class="stat-label">Con Contratos</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ vendedores_sin_contratos }}</span>
+                <span class="stat-label">Sin Contratos</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon small">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value-sm">{{ promedio_contratos }}</span>
+                <span class="stat-label">Promedio x Vendedor</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Progreso y Gráfico -->
+    <div class="dashboard-row">
+        <div class="dashboard-card progress-card">
+            <div class="card-header">
+                <h3>📈 Progreso General</h3>
+                <span class="card-badge">Meta: 100%</span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-circle" data-progress="{{ porcentaje_completado }}">
+                    <svg viewBox="0 0 36 36" class="circular-chart">
+                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke-dasharray="{{ porcentaje_completado }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage">{{ porcentaje_completado|floatformat:0 }}%</text>
+                    </svg>
+                </div>
+                <div class="progress-info">
+                    <div class="info-item">
+                        <span class="info-label">Contratos Completados:</span>
+                        <span class="info-value highlight">{{ contratos_completados }}/{{ total_contratos }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Contratos esta semana:</span>
+                        <span class="info-value highlight">{{ contratos_semana }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Vendedores activos:</span>
+                        <span class="info-value">{{ vendedores_con_contratos }}/{{ total_vendedores }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card chart-card">
+            <div class="card-header">
+                <h3>📊 Contratos por Mes</h3>
+                <span class="card-badge">Últimos 6 meses</span>
+            </div>
+            <canvas id="contratosChartSupervisor" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <!-- Distribución de Estados -->
+    <div class="dashboard-row">
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>📊 Distribución de Contratos</h3>
+            </div>
+            <div class="distribucion-container">
+                <canvas id="distribucionChart" width="400" height="200"></canvas>
+                <div class="distribucion-leyenda">
+                    {% for estado in distribucion_estados %}
+                    <div class="leyenda-item">
+                        <span class="leyenda-color" style="background: {{ estado.color }}"></span>
+                        <span class="leyenda-label">{{ estado.estado }}</span>
+                        <span class="leyenda-valor">{{ estado.cantidad }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>🏆 Top 10 Vendedores</h3>
+                <span class="card-badge">Por cantidad de contratos</span>
+            </div>
+            <div class="ranking-list">
+                {% for vendedor in top_vendedores %}
+                <div class="ranking-item">
+                    <div class="ranking-position">#{{ forloop.counter }}</div>
+                    <div class="ranking-name">{{ vendedor.nombre }}</div>
+                    <div class="ranking-stats">
+                        <span class="stat-completados">{{ vendedor.completados }} ✅</span>
+                        <span class="stat-proceso">{{ vendedor.en_proceso }} ⏳</span>
+                        <span class="stat-total">{{ vendedor.total_contratos }} 📋</span>
+                    </div>
+                    <div class="ranking-eficiencia">
+                        <div class="mini-progress">
+                            <div class="mini-fill" style="width: {{ vendedor.eficiencia }}%"></div>
+                        </div>
+                        <span>{{ vendedor.eficiencia }}%</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="empty-text">Sin datos de vendedores</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabla de Rendimiento de Vendedores -->
+    <div class="dashboard-card full-width">
+        <div class="card-header">
+            <h3>📋 Rendimiento Detallado de Vendedores</h3>
+            <span class="card-badge">{{ total_vendedores }} vendedores</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dashboard">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Vendedor</th>
+                        <th>Total</th>
+                        <th>Completados</th>
+                        <th>En Proceso</th>
+                        <th>No Completados</th>
+                        <th>Eficiencia</th>
+                        <th>Rendimiento</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vendedor in top_vendedores %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar-sm">{{ vendedor.nombre|slice:":2"|upper }}</span>
+                                {{ vendedor.nombre }}
+                            </div>
+                        </td>
+                        <td><strong>{{ vendedor.total_contratos }}</strong></td>
+                        <td class="text-success">{{ vendedor.completados }}</td>
+                        <td class="text-warning">{{ vendedor.en_proceso }}</td>
+                        <td class="text-danger">{{ vendedor.no_completados }}</td>
+                        <td>
+                            <div class="progress-bar-mini">
+                                <div class="progress-fill" style="width: {{ vendedor.eficiencia }}%"></div>
+                                <span>{{ vendedor.eficiencia }}%</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if vendedor.eficiencia >= 80 %}
+                                <span class="badge-success">Excelente</span>
+                            {% elif vendedor.eficiencia >= 50 %}
+                                <span class="badge-warning">Bueno</span>
+                            {% else %}
+                                <span class="badge-danger">Regular</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty">No hay vendedores registrados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Planes Populares -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>📡 Planes Más Vendidos</h3>
+        </div>
+        <div class="plans-list">
+            {% for plan in planes_populares %}
+            <div class="plan-item">
+                <div class="plan-name">{{ plan.nombre }}</div>
+                <div class="plan-bar">
+                    <div class="plan-bar-fill" style="width: {% widthratio plan.total_contratos contratos_por_mes|first 100 %}%"></div>
+                </div>
+                <div class="plan-count">{{ plan.total_contratos }} contratos</div>
+            </div>
+            {% empty %}
+            <p class="empty-text">Sin datos de planes</p>
+            {% endfor %}
         </div>
     </div>
     
@@ -1449,6 +1705,93 @@
             align-items: flex-start;
         }
     }
+    /* Ranking stats */
+.ranking-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+}
+
+.stat-completados { color: #10b981; }
+.stat-proceso { color: #f59e0b; }
+.stat-total { color: #ff6b00; }
+
+.ranking-eficiencia {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 80px;
+}
+
+.mini-progress {
+    width: 50px;
+    height: 4px;
+    background: var(--gray-border);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.mini-fill {
+    height: 100%;
+    background: var(--orange);
+    border-radius: 2px;
+}
+
+/* Distribución */
+.distribucion-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.distribucion-leyenda {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.leyenda-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.leyenda-label {
+    color: var(--gray-text);
+}
+
+.leyenda-valor {
+    font-weight: 600;
+    color: var(--dark-text);
+}
+
+.text-success { color: #10b981; }
+.text-warning { color: #f59e0b; }
+.text-danger { color: #ef4444; }
+
+.progress-bar-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 80px;
+}
+
+.progress-bar-mini .progress-fill {
+    width: 60px;
+    height: 6px;
+    background: var(--orange);
+    border-radius: 3px;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1554,6 +1897,60 @@
                         scales: {
                             y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
                             x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+            {% elif rol == 'supervisor' %}
+            // Gráfico de contratos por mes
+            const ctxSup = document.getElementById('contratosChartSupervisor')?.getContext('2d');
+            if (ctxSup) {
+                new Chart(ctxSup, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ meses|safe }},
+                        datasets: [{
+                            label: 'Contratos',
+                            data: {{ contratos_por_mes|safe }},
+                            backgroundColor: 'rgba(255, 107, 0, 0.7)',
+                            borderColor: '#ff6b00',
+                            borderWidth: 1,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+            
+            // Gráfico de distribución de estados
+            const ctxDist = document.getElementById('distribucionChart')?.getContext('2d');
+            if (ctxDist) {
+                new Chart(ctxDist, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {{ distribucion_labels|safe }},
+                        datasets: [{
+                            data: {{ distribucion_data|safe }},
+                            backgroundColor: {{ distribucion_colors|safe }},
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: false }
                         }
                     }
                 });

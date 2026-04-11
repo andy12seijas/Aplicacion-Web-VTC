@@ -31,10 +31,12 @@ def lista_usuarios(request):
     admin_group = Group.objects.get(name='Administrador')
     vendedor_group = Group.objects.get(name='Vendedor')
     instalador_group = Group.objects.get(name='Instalador')
+    supervisor_group = Group.objects.get(name='Supervisor')  # 👈 NUEVO
     
     total_administradores = admin_group.user_set.count()
     total_vendedores = vendedor_group.user_set.count()
     total_instaladores = instalador_group.user_set.count()
+    total_supervisores = supervisor_group.user_set.count()  # 👈 NUEVO
     total_superusuarios = User.objects.filter(is_superuser=True).count()
     
     paginator = Paginator(usuarios, 5)
@@ -48,6 +50,7 @@ def lista_usuarios(request):
         'total_administradores': total_administradores,
         'total_vendedores': total_vendedores,
         'total_instaladores': total_instaladores,
+        'total_supervisores': total_supervisores,  # 👈 NUEVO
         'total_superusuarios': total_superusuarios,
     }
     
@@ -144,7 +147,7 @@ def mapa_usuarios(request):
     """Vista para administradores - Mapa con CUADRILLAS y VENDEDORES"""
     
     # Verificar permisos
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists() or request.user.groups.filter(name='Supervisor').exists()):
         messages.error(request, '⛔ Acceso denegado. Solo administradores.')
         return redirect('lista_clientes')
     
@@ -363,16 +366,20 @@ def mapa_usuarios(request):
 
 @login_required
 def panel_administrativo(request):
-    """Vista del panel administrativo con botones de acceso rápido"""
-    
-    # Verificar que solo administradores puedan acceder
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
-        messages.error(request, '⛔ Acceso denegado. Solo administradores.')
-        return redirect('dashboard')  # o donde quieras redirigir
+    """Vista del panel administrativo con botones de acceso rápido según el rol"""
     
     from django.contrib.auth.models import User, Group
     
-    # Estadísticas para mostrar
+    # Obtener el rol del usuario actual
+    es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_supervisor = request.user.groups.filter(name='Supervisor').exists()
+    
+    # Si no es admin ni supervisor, redirigir
+    if not (es_admin or es_supervisor):
+        messages.error(request, '⛔ Acceso denegado. No tienes permisos para acceder a esta página.')
+        return redirect('dashboard')
+    
+    # Estadísticas para mostrar (comunes)
     total_usuarios = User.objects.filter(is_active=True).count()
     
     try:
@@ -390,11 +397,23 @@ def panel_administrativo(request):
     except Group.DoesNotExist:
         total_administradores = 0
     
+    try:
+        total_supervisores = Group.objects.get(name='Supervisor').user_set.filter(is_active=True).count()
+    except Group.DoesNotExist:
+        total_supervisores = 0
+    
+    # Variables para controlar qué botones mostrar
+    mostrar_todos = es_admin  # Los administradores ven todo
+    es_supervisor_role = es_supervisor  # Los supervisores ven solo lo permitido
+    
     context = {
         'total_usuarios': total_usuarios,
         'total_vendedores': total_vendedores,
         'total_instaladores': total_instaladores,
         'total_administradores': total_administradores,
+        'total_supervisores': total_supervisores,
+        'mostrar_todos': mostrar_todos,
+        'es_supervisor': es_supervisor_role,
     }
     
     return render(request, 'Admin/panel_administrativo.html', context)
@@ -404,9 +423,12 @@ def panel_administrativo(request):
 def gestionar_contratos(request):
     """Vista para administrar contratos pendientes y completados"""
     
-    # Verificar que solo administradores puedan acceder
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
-        messages.error(request, '⛔ Acceso denegado. Solo administradores.')
+    # Verificar que solo administradores y supervisores puedan acceder
+    es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_supervisor = request.user.groups.filter(name='Supervisor').exists()
+    
+    if not (es_admin or es_supervisor):
+        messages.error(request, '⛔ Acceso denegado. No tienes permisos.')
         return redirect('dashboard')
     
     # Obtener parámetros de filtro
@@ -480,6 +502,8 @@ def gestionar_contratos(request):
         'filtro_vendedor': vendedor_id,
         'filtro_estado': estado,
         'tab_activa': tab_activa,
+        'es_admin': es_admin,  # 👈 Pasar esta variable a la template
+        'es_supervisor': es_supervisor,  # 👈 Pasar esta variable a la template
     }
     
     return render(request, 'Admin/gestionar_contratos.html', context)
@@ -496,7 +520,7 @@ def completar_contrato(request, contrato_id):
         return JsonResponse({'error': 'Método no permitido'}, status=405)
     
     # Verificar permisos
-    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()):
+    if not (request.user.is_superuser or request.user.groups.filter(name='Administrador').exists() or request.user.groups.filter(name='Supervisor').exists()):
         return JsonResponse({'error': 'No autorizado'}, status=403)
     
     try:

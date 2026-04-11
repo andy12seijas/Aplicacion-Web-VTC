@@ -88,6 +88,7 @@ class UsuarioForm(forms.ModelForm):
             ('Administrador', 'Administrador'),
             ('Vendedor', 'Vendedor'),
             ('Instalador', 'Instalador'),
+            ('Supervisor', 'Supervisor'),
         ],
         required=True,
         widget=forms.Select(attrs={

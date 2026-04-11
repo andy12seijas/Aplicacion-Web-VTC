@@ -671,13 +671,13 @@
                 <ul class="submenu" id="vendedorSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_clientes' %}'">Captura de Cliente</li>
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_contratos' %}'">Contrato de Cliente</li>
-                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' or user.groups.all.0.name == 'Vendedor' %}
+                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' or user.groups.all.0.name == 'Vendedor'%}
                     <li class="submenu-item" onclick="window.location.href='{% url 'estado_cuadrillas' %}'">Estados de las Cuadrillas</li>
                     {% endif %}
                     <li class="submenu-item" onclick="window.location.href='{% url 'reporte_vendedor' %}'">Reporte</li>
                 </ul>
 
-                <!-- SECCIÓN OPERACIONES - SOLO PARA INSTALADORES Y ADMIN -->
+                <!-- SECCIÓN OPERACIONES - SOLO PARA INSTALADORES Y ADMIN (NO para Supervisor) -->
                 {% if user.groups.all.0.name == 'Instalador' or user.groups.all.0.name == 'Administrador' or user.is_superuser %}
                 <div class="menu-section">OPERACIONES</div>
                 
@@ -693,8 +693,8 @@
                 </ul>
                 {% endif %}
                 
-                <!-- SECCIÓN ADMINISTRACIÓN - SOLO PARA ADMIN -->
-                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                <!-- SECCIÓN ADMINISTRACIÓN - PARA ADMIN Y SUPERVISOR -->
+                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' or user.groups.all.0.name == 'Supervisor' %}
                 <div class="menu-section">ADMINISTRACIÓN</div>
 
                 <div class="menu-item" onclick="window.location.href='{% url 'panel_administrativo' %}'">

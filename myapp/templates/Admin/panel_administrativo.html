@@ -15,7 +15,8 @@
     <h2 class="panel-title">¿Qué deseas hacer hoy?</h2>
     
     <div class="admin-buttons-grid">
-        <!-- Botón Ver Usuarios -->
+        <!-- Botón Ver Usuarios (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'lista_usuarios' %}" class="admin-button">
             <div class="button-icon">👥</div>
             <div class="button-content">
@@ -24,8 +25,9 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+        {% endif %}
         
-        <!-- Botón Mapa de Usuarios -->
+        <!-- Botón Mapa de Usuarios (ADMIN y SUPERVISOR) -->
         <a href="{% url 'mapa_usuarios' %}" class="admin-button">
             <div class="button-icon">🗺️</div>
             <div class="button-content">
@@ -35,6 +37,7 @@
             <div class="button-arrow">→</div>
         </a>
         
+        <!-- Botón Gestión de Contratos (ADMIN y SUPERVISOR) -->
         <a href="{% url 'gestionar_contratos' %}" class="admin-button">
             <div class="button-icon">📋</div>
             <div class="button-content">
@@ -44,6 +47,8 @@
             <div class="button-arrow">→</div>
         </a>
         
+        <!-- Botón Ver Cuadrillas (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'lista_cuadrillas' %}" class="admin-button">
             <div class="button-icon">🛠️</div>
             <div class="button-content">
@@ -52,6 +57,10 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+        {% endif %}
+        
+        <!-- Botón Asignar Contratos (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'lista_asignaciones' %}" class="admin-button">
             <div class="button-icon">📋</div>
             <div class="button-content">
@@ -60,6 +69,10 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+        {% endif %}
+        
+        <!-- Botón Ventas Directas (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'lista_ventas_directas' %}" class="admin-button">
             <div class="button-icon">📡</div>
             <div class="button-content">
@@ -68,6 +81,10 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+        {% endif %}
+        
+        <!-- Botón Panel Estadístico (SOLO ADMIN) -->
+       
         <a href="{% url 'panel_estadisticas' %}" class="admin-button">
             <div class="button-icon">📊</div>
             <div class="button-content">
@@ -76,6 +93,10 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+       
+        
+        <!-- Botón Gestión de Soportes (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'lista_soportes_admin' %}" class="admin-button">
             <div class="button-icon">🔧</div>
             <div class="button-content">
@@ -84,6 +105,10 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+        {% endif %}
+        
+        <!-- Botón Gestión de Instalaciones (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'lista_instalaciones' %}" class="admin-button">
             <div class="button-icon">🛠️</div>
             <div class="button-content">
@@ -92,7 +117,10 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
-        <!-- Opción 2: Documento/Informe -->
+        {% endif %}
+        
+        <!-- Botón Reportes (SOLO ADMIN) -->
+        {% if mostrar_todos %}
         <a href="{% url 'reportes' %}" class="admin-button">
             <div class="button-icon">📄</div>
             <div class="button-content">
@@ -101,9 +129,11 @@
             </div>
             <div class="button-arrow">→</div>
         </a>
+        {% endif %}
     </div>
     
-    <!-- Estadísticas rápidas (opcional) -->
+    <!-- Estadísticas rápidas (SOLO ADMIN) -->
+    {% if mostrar_todos %}
     <div class="quick-stats">
         <div class="stat-item">
             <span class="stat-number">{{ total_usuarios|default:"0" }}</span>
@@ -122,6 +152,9 @@
             <span class="stat-label">Administradores</span>
         </div>
     </div>
+    
+   
+    {% endif %}
 </div>
 
 <style>
@@ -225,29 +258,6 @@
         opacity: 1;
     }
     
-    /* Botones placeholder (próximamente) */
-    .admin-button.placeholder {
-        opacity: 0.6;
-        cursor: default;
-        background: #fafafa;
-    }
-    
-    .admin-button.placeholder:hover {
-        transform: none;
-        border-color: var(--gray-border);
-        box-shadow: none;
-    }
-    
-    .admin-button.placeholder .button-icon {
-        background: #f0f0f0;
-        color: #aaa;
-    }
-    
-    .admin-button.placeholder:hover .button-icon {
-        background: #f0f0f0;
-        color: #aaa;
-    }
-    
     /* Estadísticas rápidas */
     .quick-stats {
         display: grid;
@@ -284,6 +294,32 @@
         color: var(--gray-text);
         text-transform: uppercase;
         letter-spacing: 0.5px;
+    }
+    
+    /* Mensaje informativo para Supervisores */
+    .supervisor-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-top: 30px;
+    }
+    
+    .info-icon {
+        font-size: 28px;
+    }
+    
+    .info-text {
+        font-size: 14px;
+        color: #1565c0;
+        line-height: 1.5;
+    }
+    
+    .info-text strong {
+        font-size: 15px;
     }
     
     /* Responsive */
