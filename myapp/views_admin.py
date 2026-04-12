@@ -639,10 +639,7 @@ def lista_cuadrillas(request):
     print(f"DEBUG - Total cuadrillas: {cuadrillas.count()}")
     
     # Mostrar instaladores de cada cuadrilla para debug
-    for c in cuadrillas:
-        print(f"Cuadrilla {c.nombre}: {c.instaladores.count()} instaladores")
-        for i in c.instaladores.all():
-            print(f"  - {i.usuario.get_full_name()}")
+    
     
     # Aplicar filtros si existen
     if busqueda:

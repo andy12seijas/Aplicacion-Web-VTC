@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
+
 class PerfilUsuario(models.Model):
     """Modelo para extender la información del usuario"""
     
@@ -838,17 +839,7 @@ class VentaDirecta(models.Model):
         return f"{self.nombre} {self.apellido}".strip()
     
     
-@receiver(post_save, sender=User)
-def crear_perfil_usuario(sender, instance, created, **kwargs):
-    """Crea un perfil automáticamente cuando se crea un usuario"""
-    if created:
-        PerfilUsuario.objects.create(usuario=instance, activo=True)
-
-@receiver(post_save, sender=User)
-def guardar_perfil_usuario(sender, instance, **kwargs):
-    """Guarda el perfil cuando se guarda el usuario"""
-    if hasattr(instance, 'perfil'):
-        instance.perfil.save()            
+        
         
         
         

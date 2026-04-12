@@ -149,6 +149,40 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <!-- Paginación No Asignados -->
+{% if contratos_no_asignados.has_other_pages %}
+<div class="pagination">
+    {% if contratos_no_asignados.has_previous %}
+    <a href="?page_no_asignados=1&tab=no_asignados" class="page-link" title="Primera página">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+        </svg>
+    </a>
+    <a href="?page_no_asignados={{ contratos_no_asignados.previous_page_number }}&tab=no_asignados" class="page-link" title="Página anterior">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+        </svg>
+    </a>
+    {% endif %}
+    
+    <span class="page-info">
+        Página {{ contratos_no_asignados.number }} de {{ contratos_no_asignados.paginator.num_pages }}
+    </span>
+    
+            {% if contratos_no_asignados.has_next %}
+            <a href="?page_no_asignados={{ contratos_no_asignados.next_page_number }}&tab=no_asignados" class="page-link" title="Página siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page_no_asignados={{ contratos_no_asignados.paginator.num_pages }}&tab=no_asignados" class="page-link" title="Última página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
                 </table>
             </div>
         </div>
@@ -309,6 +343,40 @@
                         </tr>
                         {% endfor %}
                     </tbody>
+                    <!-- Paginación Asignados -->
+                    {% if contratos_asignados.has_other_pages %}
+                    <div class="pagination">
+                        {% if contratos_asignados.has_previous %}
+                        <a href="?page_asignados=1&tab=asignados" class="page-link" title="Primera página">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                            </svg>
+                        </a>
+                        <a href="?page_asignados={{ contratos_asignados.previous_page_number }}&tab=asignados" class="page-link" title="Página anterior">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M15 18l-6-6 6-6"/>
+                            </svg>
+                        </a>
+                        {% endif %}
+                        
+                        <span class="page-info">
+                            Página {{ contratos_asignados.number }} de {{ contratos_asignados.paginator.num_pages }}
+                        </span>
+                        
+                        {% if contratos_asignados.has_next %}
+                        <a href="?page_asignados={{ contratos_asignados.next_page_number }}&tab=asignados" class="page-link" title="Página siguiente">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 18l6-6-6-6"/>
+                            </svg>
+                        </a>
+                        <a href="?page_asignados={{ contratos_asignados.paginator.num_pages }}&tab=asignados" class="page-link" title="Última página">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                            </svg>
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </table>
             </div>
         </div>

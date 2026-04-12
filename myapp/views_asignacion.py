@@ -18,14 +18,17 @@ def lista_asignaciones(request):
     
     from .models import AsignacionContrato, VentaDirecta
     
+    # Obtener parámetros de la URL
+    tab_activa = request.GET.get('tab', 'no_asignados')  # 'no_asignados' o 'asignados'
+    page_no_asignados = request.GET.get('page_no_asignados', 1)
+    page_asignados = request.GET.get('page_asignados', 1)
+    
     # ========== CONTRATOS DE VENDEDOR ==========
-    # Obtener IDs de contratos que ya tienen asignación activa
     contratos_asignados_ids = AsignacionContrato.objects.filter(
         activo=True,
         contrato__isnull=False
     ).values_list('contrato_id', flat=True)
     
-    # Contratos NO ASIGNADOS: Completados (con customer_id y ods) y SIN asignación activa
     contratos_no_asignados = ContratoCliente.objects.filter(
         customer_id__isnull=False,
         ods__isnull=False
@@ -40,13 +43,11 @@ def lista_asignaciones(request):
     ).order_by('-fecha_creacion')
     
     # ========== VENTAS DIRECTAS ==========
-    # Obtener IDs de ventas directas que ya tienen asignación activa
     ventas_asignadas_ids = AsignacionContrato.objects.filter(
         activo=True,
         venta_directa__isnull=False
     ).values_list('venta_directa_id', flat=True)
     
-    # Ventas Directas NO ASIGNADAS
     ventas_no_asignadas = VentaDirecta.objects.filter(
         estado='EN_PROCESO'
     ).exclude(
@@ -56,10 +57,8 @@ def lista_asignaciones(request):
     ).order_by('-fecha_creacion')
     
     # ========== CONTENEDOR UNIFICADO DE "NO ASIGNADOS" ==========
-    # Crear una lista unificada con un campo 'tipo' para identificar el origen
     no_asignados = []
     
-    # Agregar contratos de vendedor
     for contrato in contratos_no_asignados:
         no_asignados.append({
             'tipo': 'contrato',
@@ -74,7 +73,6 @@ def lista_asignaciones(request):
             'objeto': contrato
         })
     
-    # Agregar ventas directas
     for venta in ventas_no_asignadas:
         no_asignados.append({
             'tipo': 'venta_directa',
@@ -89,7 +87,6 @@ def lista_asignaciones(request):
             'objeto': venta
         })
     
-    # Ordenar por fecha (los más recientes primero)
     no_asignados.sort(key=lambda x: x['objeto'].fecha_creacion, reverse=True)
     
     # ========== ASIGNADOS (UNIFICADOS) ==========
@@ -102,11 +99,9 @@ def lista_asignaciones(request):
         'cuadrilla'
     ).order_by('-fecha_asignacion')
     
-    # Crear lista unificada de asignados
     asignados = []
     for asignacion in asignaciones:
         if asignacion.contrato:
-            # Es un contrato de vendedor
             asignados.append({
                 'tipo': 'contrato',
                 'id': asignacion.id,
@@ -123,7 +118,6 @@ def lista_asignaciones(request):
                 'fecha_asignacion': asignacion.fecha_asignacion
             })
         else:
-            # Es una venta directa
             asignados.append({
                 'tipo': 'venta_directa',
                 'id': asignacion.id,
@@ -140,56 +134,37 @@ def lista_asignaciones(request):
                 'fecha_asignacion': asignacion.fecha_asignacion
             })
     
-    # ========== OBTENER CUADRILLAS (EXCLUYENDO INACTIVAS) ==========
-    # 🔥 MODIFICACIÓN IMPORTANTE: Solo cuadrillas que NO estén INACTIVAS
-    # Esto incluye: DISPONIBLE, OCUPADO, DESCANSO
+    # ========== OBTENER CUADRILLAS ==========
     cuadrillas = Cuadrilla.objects.filter(
         activo=True
     ).exclude(
         estado='INACTIVO'
     ).order_by('nombre')
     
-    # Parámetros de búsqueda
-    busqueda_no_asignados = request.GET.get('busqueda_no_asignados', '')
-    busqueda_asignados = request.GET.get('busqueda_asignados', '')
+    # ========== PAGINACIÓN ==========
+    paginator_no_asignados = Paginator(no_asignados, 10)
+    paginator_asignados = Paginator(asignados, 10)
     
-    # Filtrar no asignados por búsqueda
-    if busqueda_no_asignados:
-        no_asignados = [item for item in no_asignados if (
-            busqueda_no_asignados.lower() in item['cliente_nombre'].lower() or
-            busqueda_no_asignados.lower() in item['cedula'].lower() or
-            busqueda_no_asignados.lower() in item['customer_id'].lower() or
-            busqueda_no_asignados.lower() in item['plan'].lower()
-        )]
-    
-    # Filtrar asignados por búsqueda
-    if busqueda_asignados:
-        asignados = [item for item in asignados if (
-            busqueda_asignados.lower() in item['cliente_nombre'].lower() or
-            busqueda_asignados.lower() in item['cedula'].lower() or
-            busqueda_asignados.lower() in item['customer_id'].lower() or
-            busqueda_asignados.lower() in item['plan'].lower() or
-            busqueda_asignados.lower() in item['cuadrilla'].nombre.lower()
-        )]
-    
-    # Paginación
-    paginator_no_asignados = Paginator(no_asignados, 5)
     page_no_asignados = request.GET.get('page_no_asignados', 1)
-    page_obj_no_asignados = paginator_no_asignados.get_page(page_no_asignados)
-    
-    paginator_asignados = Paginator(asignados, 5)
     page_asignados = request.GET.get('page_asignados', 1)
-    page_obj_asignados = paginator_asignados.get_page(page_asignados)
+    
+    # Obtener la página correcta según la pestaña activa
+    if tab_activa == 'no_asignados':
+        page_obj_no_asignados = paginator_no_asignados.get_page(page_no_asignados)
+        page_obj_asignados = paginator_asignados.get_page(1)
+    else:
+        page_obj_no_asignados = paginator_no_asignados.get_page(1)
+        page_obj_asignados = paginator_asignados.get_page(page_asignados)
     
     context = {
         'contratos_no_asignados': page_obj_no_asignados,
         'contratos_asignados': page_obj_asignados,
         'cuadrillas': cuadrillas,
-        'busqueda_no_asignados': busqueda_no_asignados,
-        'busqueda_asignados': busqueda_asignados,
         'total_no_asignados': len(no_asignados),
         'total_asignados': len(asignados),
+        'tab_activa': tab_activa,  # 👈 Pasar la pestaña activa
     }
+    
     return render(request, 'Admin/asignacion/asignacion_contrato.html', context)
 
 
