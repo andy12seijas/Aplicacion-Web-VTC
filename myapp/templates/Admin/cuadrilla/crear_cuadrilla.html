@@ -100,7 +100,7 @@
                 </div>
             </div>
             
-            <!-- Instaladores -->
+            <!-- Instaladores - NUEVO DISEÑO CON CHECKBOX CARDS -->
             <div class="form-section">
                 <h3 class="section-title">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
@@ -110,32 +110,60 @@
                     Instaladores
                 </h3>
                 
-                <div class="form-group">
-                    <label for="{{ form.instaladores.id_for_label }}">
-                        {{ form.instaladores.label }}
+                <!-- Barra de búsqueda -->
+                <div class="search-instaladores">
+                    <input type="text" id="searchInstalador" placeholder="🔍 Buscar instalador por nombre o cédula..." class="search-input">
+                </div>
+                
+                <!-- Botones de selección rápida -->
+                <div class="quick-select-buttons">
+                    <button type="button" class="btn-quick" onclick="seleccionarTodos()">✓ Seleccionar todos</button>
+                    <button type="button" class="btn-quick" onclick="deseleccionarTodos()">✗ Deseleccionar todos</button>
+                </div>
+                
+                <!-- Grid de instaladores con checkbox cards -->
+                <div class="instaladores-grid" id="instaladoresGrid">
+                    {% for instalador in instaladores %}
+                    <label class="instalador-card" data-nombre="{{ instalador.usuario.get_full_name|default:instalador.usuario.username|lower }}" data-cedula="{{ instalador.cedula }}">
+                        <input type="checkbox" name="instaladores" value="{{ instalador.id }}" class="instalador-checkbox">
+                        <div class="instalador-card-content">
+                            <div class="instalador-avatar">
+                                {{ instalador.usuario.get_full_name|default:instalador.usuario.username|first|upper }}
+                            </div>
+                            <div class="instalador-info">
+                                <div class="instalador-nombre">{{ instalador.usuario.get_full_name|default:instalador.usuario.username }}</div>
+                                <div class="instalador-detalle">
+                                    <span class="instalador-cedula">📄 {{ instalador.cedula|default:"Sin cédula" }}</span>
+                                    <span class="instalador-telefono">📞 {{ instalador.telefono|default:"Sin teléfono" }}</span>
+                                </div>
+                            </div>
+                            <div class="instalador-check-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </div>
                     </label>
-                    {{ form.instaladores }}
-                    {% if form.instaladores.errors %}
-                    <div class="field-error">
-                        {% for error in form.instaladores.errors %}
-                        <small>⚠ {{ error }}</small>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    <small class="help-text">Seleccione los instaladores que pertenecen a esta cuadrilla (solo se muestran instaladores disponibles)</small>
-                    
-                    <!-- Contador de seleccionados -->
-                    <div class="seleccionados-info" id="instaladores-count">
-                        0 instaladores seleccionados
-                    </div>
-                    
-                    <!-- Mensaje si no hay instaladores disponibles -->
-                    {% if form.instaladores.queryset.count == 0 %}
+                    {% empty %}
                     <div class="alert-warning">
                         ⚠ No hay instaladores disponibles. Todos los instaladores ya están asignados a otras cuadrillas.
                     </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
+                
+                <!-- Contador de seleccionados -->
+                <div class="seleccionados-info" id="instaladores-count">
+                    0 instaladores seleccionados
+                </div>
+                
+                {% if form.instaladores.errors %}
+                <div class="field-error">
+                    {% for error in form.instaladores.errors %}
+                    <small>⚠ {{ error }}</small>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <small class="help-text">Seleccione los instaladores que pertenecen a esta cuadrilla</small>
             </div>
             
             <!-- Estado y Configuración -->
@@ -232,7 +260,7 @@
 
 <style>
     .form-container {
-        max-width: 900px;
+        max-width: 1000px;
         margin: 0 auto;
     }
     
@@ -348,34 +376,155 @@
         box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
     }
     
-    .instaladores-select {
-        min-height: 200px;
-        padding: 8px;
+    /* NUEVO DISEÑO PARA INSTALADORES */
+    .search-instaladores {
+        margin-bottom: 15px;
     }
     
-    .instaladores-select option {
-        padding: 10px 12px;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 13px;
+    .search-input {
+        width: 100%;
+        padding: 10px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
     }
     
-    .instaladores-select option:hover {
+    .search-input:focus {
+        outline: none;
+        border-color: #ff6b00;
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    .quick-select-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .btn-quick {
+        padding: 6px 12px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-quick:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
         background: #fff2e6;
     }
     
-    .instaladores-select option:checked {
-        background: #ff6b00 linear-gradient(0deg, #ff6b00 0%, #ff6b00 100%);
+    .instaladores-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 5px;
+        margin-bottom: 15px;
+    }
+    
+    .instalador-card {
+        display: block;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .instalador-card input {
+        display: none;
+    }
+    
+    .instalador-card-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        transition: all 0.2s;
+    }
+    
+    .instalador-card:hover .instalador-card-content {
+        border-color: #ff6b00;
+        transform: translateX(4px);
+    }
+    
+    .instalador-card input:checked + .instalador-card-content {
+        background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
+        border-color: #ff6b00;
+        box-shadow: 0 2px 8px rgba(255, 107, 0, 0.15);
+    }
+    
+    .instalador-card input:checked + .instalador-card-content .instalador-check-icon {
+        opacity: 1;
+        color: #ff6b00;
+    }
+    
+    .instalador-avatar {
+        width: 48px;
+        height: 48px;
+        background: #ff6b00;
         color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+    
+    .instalador-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .instalador-nombre {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+    
+    .instalador-detalle {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 11px;
+        color: #666;
+    }
+    
+    .instalador-cedula, .instalador-telefono {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+    
+    .instalador-check-icon {
+        opacity: 0;
+        transition: all 0.2s;
+        color: #999;
+        flex-shrink: 0;
+    }
+    
+    .instalador-card input:checked + .instalador-card-content .instalador-check-icon {
+        opacity: 1;
     }
     
     .seleccionados-info {
         margin-top: 10px;
-        padding: 8px 12px;
+        padding: 10px 12px;
         background: #e3f2fd;
         border-radius: 8px;
         color: #1976d2;
         font-size: 13px;
         font-weight: 500;
+        text-align: center;
     }
     
     .alert-warning {
@@ -541,6 +690,25 @@
         color: #ff6b00;
     }
     
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .form-card {
@@ -550,6 +718,10 @@
         .grid-2 {
             grid-template-columns: 1fr;
             gap: 15px;
+        }
+        
+        .instaladores-grid {
+            grid-template-columns: 1fr;
         }
         
         .form-actions {
@@ -568,6 +740,11 @@
         .resumen-card {
             grid-template-columns: 1fr;
         }
+        
+        .instalador-detalle {
+            flex-direction: column;
+            gap: 2px;
+        }
     }
     
     @media (max-width: 480px) {
@@ -583,45 +760,97 @@
         .form-header-text h2 {
             font-size: 20px;
         }
-    }
-    .btn-secondary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: white;
-        color: #666;
-        border: 1px solid var(--gray-border);
-        border-radius: 8px;
-        font-size: 13px;
-        text-decoration: none;
-        transition: all 0.2s;
-    }
-    
-    .btn-secondary:hover {
-        border-color: var(--orange);
-        color: var(--orange);
+        
+        .instalador-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 14px;
+        }
+        
+        .quick-select-buttons {
+            flex-direction: column;
+        }
+        
+        .btn-quick {
+            width: 100%;
+        }
     }
 </style>
 
 <script>
-    // Actualizar contador de instaladores seleccionados
-    const selectInstaladores = document.getElementById('{{ form.instaladores.id_for_label }}');
-    const contadorSpan = document.getElementById('instaladores-count');
-    
+    // Función para actualizar contador de instaladores seleccionados
     function actualizarContador() {
-        if (selectInstaladores) {
-            const seleccionados = selectInstaladores.selectedOptions.length;
-            contadorSpan.textContent = `${seleccionados} instalador${seleccionados !== 1 ? 'es' : ''} seleccionado${seleccionados !== 1 ? 's' : ''}`;
+        const checkboxes = document.querySelectorAll('.instalador-checkbox:checked');
+        const count = checkboxes.length;
+        const contadorSpan = document.getElementById('instaladores-count');
+        const resumenInstaladores = document.getElementById('resumen-instaladores');
+        
+        if (contadorSpan) {
+            contadorSpan.textContent = `${count} instalador${count !== 1 ? 'es' : ''} seleccionado${count !== 1 ? 's' : ''}`;
+        }
+        if (resumenInstaladores) {
+            resumenInstaladores.textContent = count;
+        }
+        
+        // Sincronizar con el select original (para que el formulario funcione)
+        sincronizarSelectOriginal();
+    }
+    
+    // Sincronizar checkboxes con el select multiple original
+    function sincronizarSelectOriginal() {
+        const selectOriginal = document.getElementById('{{ form.instaladores.id_for_label }}');
+        if (selectOriginal) {
+            // Limpiar selección actual
+            for (let i = 0; i < selectOriginal.options.length; i++) {
+                selectOriginal.options[i].selected = false;
+            }
             
-            // Actualizar resumen
-            document.getElementById('resumen-instaladores').textContent = seleccionados;
+            // Marcar los checkboxes seleccionados
+            const checkboxes = document.querySelectorAll('.instalador-checkbox:checked');
+            checkboxes.forEach(checkbox => {
+                for (let i = 0; i < selectOriginal.options.length; i++) {
+                    if (selectOriginal.options[i].value == checkbox.value) {
+                        selectOriginal.options[i].selected = true;
+                        break;
+                    }
+                }
+            });
         }
     }
     
-    if (selectInstaladores) {
-        selectInstaladores.addEventListener('change', actualizarContador);
+    // Función para seleccionar todos los instaladores
+    function seleccionarTodos() {
+        const checkboxes = document.querySelectorAll('.instalador-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
         actualizarContador();
+    }
+    
+    // Función para deseleccionar todos los instaladores
+    function deseleccionarTodos() {
+        const checkboxes = document.querySelectorAll('.instalador-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        actualizarContador();
+    }
+    
+    // Función para buscar instaladores
+    function buscarInstaladores() {
+        const searchTerm = document.getElementById('searchInstalador').value.toLowerCase();
+        const cards = document.querySelectorAll('.instalador-card');
+        
+        cards.forEach(card => {
+            const nombre = card.getAttribute('data-nombre') || '';
+            const cedula = card.getAttribute('data-cedula') || '';
+            
+            if (nombre.includes(searchTerm) || cedula.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
     }
     
     // Actualizar resumen en tiempo real
@@ -633,33 +862,49 @@
         if (codigoInput) document.getElementById('resumen-codigo').textContent = codigoInput.value || '—';
         if (nombreInput) document.getElementById('resumen-nombre').textContent = nombreInput.value || '—';
         
-        // Estado
         if (estadoSelect) {
             const estadoText = estadoSelect.options[estadoSelect.selectedIndex]?.text || 'Disponible';
             document.getElementById('resumen-estado').textContent = estadoText;
         }
     }
     
-    if (codigoInput) codigoInput.addEventListener('input', actualizarResumen);
-    if (nombreInput) nombreInput.addEventListener('input', actualizarResumen);
-    if (estadoSelect) estadoSelect.addEventListener('change', actualizarResumen);
-    
-    // Validar código (solo mayúsculas y números)
-    if (codigoInput) {
-        codigoInput.addEventListener('input', function() {
-            this.value = this.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        // Contador inicial
+        actualizarContador();
+        
+        // Eventos para checkboxes
+        const checkboxes = document.querySelectorAll('.instalador-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', actualizarContador);
         });
-    }
+        
+        // Eventos para inputs de resumen
+        if (codigoInput) codigoInput.addEventListener('input', actualizarResumen);
+        if (nombreInput) nombreInput.addEventListener('input', actualizarResumen);
+        if (estadoSelect) estadoSelect.addEventListener('change', actualizarResumen);
+        
+        // Validar código (solo mayúsculas y números)
+        if (codigoInput) {
+            codigoInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            });
+        }
+        
+        // Búsqueda
+        const searchInput = document.getElementById('searchInstalador');
+        if (searchInput) {
+            searchInput.addEventListener('keyup', buscarInstaladores);
+        }
+    });
     
     // Confirmación antes de enviar
     document.getElementById('crearCuadrillaForm')?.addEventListener('submit', function(e) {
-        if (selectInstaladores) {
-            const instaladores = selectInstaladores.selectedOptions.length;
-            
-            if (instaladores === 0) {
-                if (!confirm('¿Está seguro de crear una cuadrilla sin instaladores? Puede agregarlos después.')) {
-                    e.preventDefault();
-                }
+        const seleccionados = document.querySelectorAll('.instalador-checkbox:checked').length;
+        
+        if (seleccionados === 0) {
+            if (!confirm('¿Está seguro de crear una cuadrilla sin instaladores? Puede agregarlos después.')) {
+                e.preventDefault();
             }
         }
     });

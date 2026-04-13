@@ -174,7 +174,7 @@ def dashboard_instalador(request):
         avg_conectores=Avg('conectores'),
         avg_rosetas=Avg('rosetas'),
         avg_patch_cord=Avg('patch_cord'),
-        avg_metros=Avg(F('final_fibra') - F('inicio_fibra'))
+        avg_metros=Avg(F('inicio_fibra') - F('final_fibra'))
     )
     
     # Posición en el ranking de instaladores (si hay más de uno)

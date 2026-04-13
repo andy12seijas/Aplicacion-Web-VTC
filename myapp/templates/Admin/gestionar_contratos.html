@@ -1720,19 +1720,13 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
     
     let contratoSeleccionado = null;
 
-    // Búsqueda en tiempo real
+    // Búsqueda en tiempo real con recarga de página
+    let searchTimeout;
     document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        const searchText = this.value.toLowerCase();
-        
-        document.querySelectorAll('#tab-pendientes tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
-        });
-        
-        document.querySelectorAll('#tab-completados tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
-        });
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            aplicarFiltrosConRecarga();
+        }, 500);
     });
 
     document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltrosConRecarga);
@@ -1744,6 +1738,10 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         const estado = document.getElementById('filterEstado').value;
         const busqueda = document.getElementById('searchInput').value;
         
+        // Obtener la pestaña activa actual
+        const tabActiva = document.querySelector('.tab-content.active')?.id || 'tab-pendientes';
+        const tab = tabActiva === 'tab-pendientes' ? 'pendientes' : 'completados';
+        
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
         
@@ -1753,8 +1751,16 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
         
-        url.searchParams.delete('page_pendientes');
-        url.searchParams.delete('page_completados');
+        url.searchParams.set('tab', tab);
+        
+        // Ir a la primera página
+        if (tab === 'pendientes') {
+            url.searchParams.delete('page_completados');
+            url.searchParams.set('page_pendientes', 1);
+        } else {
+            url.searchParams.delete('page_pendientes');
+            url.searchParams.set('page_completados', 1);
+        }
         
         window.location.href = url.toString();
     }
@@ -1762,19 +1768,29 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
     function cambiarTab(tab) {
         const url = new URL(window.location.href);
         url.searchParams.set('tab', tab);
-        url.searchParams.delete('page_pendientes');
-        url.searchParams.delete('page_completados');
         
+        // Mantener los filtros actuales
         const busqueda = document.getElementById('searchInput')?.value;
         const vendedor = document.getElementById('filterVendedor')?.value;
         const estado = document.getElementById('filterEstado')?.value;
         
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
+        
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
+        
         if (estado) url.searchParams.set('estado', estado);
         else url.searchParams.delete('estado');
+        
+        // Ir a la primera página de la nueva pestaña
+        if (tab === 'pendientes') {
+            url.searchParams.delete('page_completados');
+            url.searchParams.set('page_pendientes', 1);
+        } else {
+            url.searchParams.delete('page_pendientes');
+            url.searchParams.set('page_completados', 1);
+        }
         
         window.location.href = url.toString();
     }

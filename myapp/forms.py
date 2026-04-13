@@ -459,6 +459,7 @@ from django.contrib.auth.models import Group, User
 from .models import Cuadrilla, PerfilUsuario
 
 class CuadrillaForm(forms.ModelForm):
+    
     class Meta:
         model = Cuadrilla
         fields = [
@@ -473,9 +474,9 @@ class CuadrillaForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': 'Ej: C001'
             }),
-            'instaladores': forms.SelectMultiple(attrs={
-                'class': 'form-select instaladores-select',
-                'style': 'width: 100%; min-height: 200px;'
+            # CAMBIAR SelectMultiple por CheckboxSelectMultiple
+            'instaladores': forms.CheckboxSelectMultiple(attrs={
+                'class': 'instaladores-checkbox'
             }),
             'estado': forms.Select(attrs={
                 'class': 'form-select'
@@ -518,7 +519,7 @@ class CuadrillaForm(forms.ModelForm):
         except Group.DoesNotExist:
             self.fields['instaladores'].queryset = PerfilUsuario.objects.none()
         
-        # Personalizar etiquetas
+        # Personalizar etiquetas para CheckboxSelectMultiple
         self.fields['instaladores'].label_from_instance = self.instalador_label
         
         # Hacer campos obligatorios
@@ -528,7 +529,9 @@ class CuadrillaForm(forms.ModelForm):
     def instalador_label(self, obj):
         """Formato personalizado para mostrar instaladores"""
         nombre_completo = obj.usuario.get_full_name() or obj.usuario.username
-        return f"{nombre_completo} - {obj.cedula or 'Sin cédula'} - {obj.telefono or 'Sin teléfono'}"
+        cedula = obj.cedula or 'Sin cédula'
+        telefono = obj.telefono or 'Sin teléfono'
+        return f"{nombre_completo} - {cedula} - {telefono}"
     
     def clean_codigo(self):
         codigo = self.cleaned_data.get('codigo')
@@ -654,14 +657,14 @@ class InstalacionForm(forms.ModelForm):
                 'class': 'form-input', 
                 'step': '0.000001', 
                 'placeholder': '10.126830',
-                'readonly': 'readonly',
+                
                 'id': 'id_latitud'
             }),
             'longitud': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'step': '0.000001', 
                 'placeholder': '-68.009860',
-                'readonly': 'readonly',
+                
                 'id': 'id_longitud'
             }),
             'feeder': forms.TextInput(attrs={

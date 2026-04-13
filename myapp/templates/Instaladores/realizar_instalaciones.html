@@ -123,7 +123,7 @@
             <!-- Campo oculto para enviar los IDs de los instaladores automáticamente -->
             <input type="hidden" name="instaladores" id="instaladoresHidden" value="">
 
-            <!-- Ubicación de la Instalación (CLIENTE) -->
+            <!-- Ubicación de la Instalación (CLIENTE) - Campos desbloqueados -->
             <div class="form-section">
                 <h3 class="section-title">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
@@ -134,13 +134,12 @@
                 </h3>
                 
                 <div class="ubicacion-container">
-                    <!-- Campos de latitud y longitud -->
                     <div class="ubicacion-campos">
                         <div class="grid-2">
                             <div class="form-group">
                                 <label for="{{ form.latitud.id_for_label }}">{{ form.latitud.label }}</label>
                                 {{ form.latitud }}
-                                <small class="help-text">Coordenadas de la casa del cliente</small>
+                                <small class="help-text">Coordenadas de la casa del cliente (puede ingresarlas manualmente)</small>
                             </div>
                             <div class="form-group">
                                 <label for="{{ form.longitud.id_for_label }}">{{ form.longitud.label }}</label>
@@ -149,7 +148,6 @@
                         </div>
                     </div>
                     
-                    <!-- Botón de capturar ubicación del cliente -->
                     <div class="ubicacion-boton">
                         <button type="button" class="btn-capture" id="capturarUbicacionBtn" onclick="capturarUbicacionCliente()">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -162,7 +160,6 @@
                     </div>
                 </div>
                 
-                <!-- Mostrar ubicación actual de la cuadrilla -->
                 {% if ubicacion_cuadrilla %}
                 <div class="cuadrilla-ubicacion-info">
                     <p><strong>📍 Ubicación actual de tu cuadrilla:</strong></p>
@@ -288,12 +285,13 @@
                     
                     <div class="agregar-foto-btn" id="agregarFotoBtn" onclick="abrirSelectorFoto()">
                         <div class="plus-icon">+</div>
-                        <span>Agregar foto</span>
+                        <span>Agregar fotos</span>
                     </div>
                 </div>
                 
-                <input type="file" id="inputFoto" accept="image/*" style="display: none;" onchange="procesarFoto(this)">
-                <small class="help-text">Haz clic en el botón + para agregar fotos de la instalación</small>
+                <!-- Input file para múltiples selecciones -->
+                <input type="file" id="inputFoto" accept="image/*" multiple style="display: none;" onchange="procesarMultiplesFotos(this)">
+                <small class="help-text">Haz clic en el botón + para seleccionar múltiples fotos (Ctrl+Click o Shift+Click para seleccionar varias)</small>
             </div>
 
             <!-- Observaciones -->
@@ -442,13 +440,11 @@
         flex-wrap: wrap;
     }
 
-    /* Campos de latitud y longitud */
     .ubicacion-campos {
         flex: 2;
         min-width: 250px;
     }
 
-    /* Botón de capturar ubicación */
     .ubicacion-boton {
         flex: 1;
         min-width: 180px;
@@ -950,7 +946,6 @@
                 
                 console.log(`📍 Ubicación obtenida: ${lat}, ${lng}`);
                 
-                // Enviar la ubicación al servidor para guardar en UbicacionUsuario
                 fetch('/capturar-ubicacion-instalador/', {
                     method: 'POST',
                     headers: {
@@ -1067,7 +1062,7 @@
     }
     
     // ============================================================
-    // 4. MANEJO DE FOTOS CON BOTÓN +
+    // 4. MANEJO DE FOTOS - MÚLTIPLES FOTOS A LA VEZ
     // ============================================================
     let fotosTemporales = [];
     let fotosAEliminar = [];
@@ -1088,48 +1083,59 @@
         document.getElementById('inputFoto').click();
     }
     
-    function procesarFoto(input) {
-        const file = input.files[0];
-        if (!file) return;
+    // Procesar múltiples fotos a la vez (SIN capturar ubicación automática)
+    function procesarMultiplesFotos(input) {
+        const files = Array.from(input.files);
+        if (files.length === 0) return;
         
-        if (!file.type.startsWith('image/')) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Archivo inválido',
-                text: 'Por favor seleccione un archivo de imagen válido (JPG, PNG)',
-                confirmButtonColor: '#ff6b00'
-            });
-            input.value = '';
-            return;
-        }
+        let archivosValidos = [];
+        let errores = [];
         
-        if (file.size > 5 * 1024 * 1024) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Archivo demasiado grande',
-                text: 'El archivo no debe superar los 5MB',
-                confirmButtonColor: '#ff6b00'
-            });
-            input.value = '';
-            return;
-        }
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const fotoUrl = e.target.result;
-            
-            agregarFotoAGaleria(fotoUrl, false, file);
-            fotosTemporales.push(file);
-            
-            // SI ES LA PRIMERA FOTO, CAPTURAR UBICACIÓN AUTOMÁTICAMENTE
-            const totalFotosActuales = document.querySelectorAll('.foto-item:not(.cargando)').length;
-            if (totalFotosActuales === 0 && fotosTemporales.length === 1) {
-                console.log('📸 Primera foto agregada - Capturando ubicación...');
-                capturarUbicacionPorPrimeraFoto();
+        files.forEach(file => {
+            if (!file.type.startsWith('image/')) {
+                errores.push(`${file.name}: No es una imagen válida`);
+                return;
             }
-        };
-        reader.readAsDataURL(file);
+            
+            if (file.size > 5 * 1024 * 1024) {
+                errores.push(`${file.name}: Excede el tamaño máximo de 5MB`);
+                return;
+            }
+            
+            archivosValidos.push(file);
+        });
+        
+        if (errores.length > 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Algunos archivos no se pudieron agregar',
+                html: errores.join('<br>'),
+                confirmButtonColor: '#ff6b00'
+            });
+        }
+        
+        if (archivosValidos.length === 0) {
+            input.value = '';
+            return;
+        }
+        
+        // Procesar cada archivo válido (SIN capturar ubicación automática)
+        archivosValidos.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                agregarFotoAGaleria(e.target.result, false, file);
+                fotosTemporales.push(file);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Limpiar el input para poder seleccionar más fotos después
         input.value = '';
+        
+        // Mostrar mensaje de éxito
+        if (archivosValidos.length > 0) {
+            mostrarToast(`✅ ${archivosValidos.length} foto(s) agregada(s)`, 'success');
+        }
     }
     
     function agregarFotoAGaleria(url, esExistente = false, archivo = null) {
@@ -1146,7 +1152,16 @@
         btnEliminar.innerHTML = '✕';
         btnEliminar.onclick = function(e) {
             e.stopPropagation();
-            eliminarFoto(fotoDiv, url, esExistente, archivo);
+            // Eliminación directa SIN CONFIRMACIÓN
+            fotoDiv.remove();
+            
+            if (esExistente) {
+                fotosAEliminar.push(url);
+            } else if (archivo) {
+                const index = fotosTemporales.indexOf(archivo);
+                if (index > -1) fotosTemporales.splice(index, 1);
+            }
+            mostrarToast('✅ Foto eliminada', 'success');
         };
         
         fotoDiv.appendChild(img);
@@ -1157,30 +1172,6 @@
         };
         
         galeria.appendChild(fotoDiv);
-    }
-    
-    function eliminarFoto(fotoDiv, url, esExistente, archivo) {
-        Swal.fire({
-            title: '¿Eliminar foto?',
-            text: 'Esta acción no se puede deshacer',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ff6b00',
-            cancelButtonColor: '#666',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fotoDiv.remove();
-                
-                if (esExistente) {
-                    fotosAEliminar.push(url);
-                } else if (archivo) {
-                    const index = fotosTemporales.indexOf(archivo);
-                    if (index > -1) fotosTemporales.splice(index, 1);
-                }
-            }
-        });
     }
     
     function verFotoGrande(url) {
@@ -1195,94 +1186,6 @@
         });
     }
     
-    // Capturar ubicación cuando se agrega la primera foto
-    function capturarUbicacionPorPrimeraFoto() {
-        if (!navigator.geolocation) {
-            console.log('⚠️ Geolocalización no soportada');
-            return;
-        }
-        
-        Swal.fire({
-            title: 'Capturando ubicación...',
-            text: 'Se registrará la ubicación de la instalación',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-        
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                
-                document.getElementById('id_latitud').value = lat.toFixed(6);
-                document.getElementById('id_longitud').value = lng.toFixed(6);
-                
-                fetch('/capturar-ubicacion-instalador/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({
-                        latitud: lat,
-                        longitud: lng
-                    })
-                })
-                .then(async response => {
-                    const data = await response.json();
-                    if (data.success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Ubicación registrada',
-                            text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`,
-                            confirmButtonColor: '#ff6b00',
-                            timer: 2000
-                        });
-                        mostrarToast('📍 Ubicación registrada automáticamente', 'success');
-                    }
-                    return data;
-                })
-                .catch(error => {
-                    console.error('Error al guardar ubicación:', error);
-                });
-            },
-            function(error) {
-                Swal.close();
-                let mensaje = '';
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador.';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        mensaje = 'Ubicación no disponible.';
-                        break;
-                    case error.TIMEOUT:
-                        mensaje = 'Tiempo de espera agotado.';
-                        break;
-                    default:
-                        mensaje = 'Error desconocido.';
-                }
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'No se pudo capturar ubicación',
-                    text: mensaje,
-                    confirmButtonColor: '#ff6b00'
-                });
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    }
-    
-    // ============================================================
-    // 5. FUNCIONES AUXILIARES
-    // ============================================================
     function mostrarToast(mensaje, tipo) {
         const color = tipo === 'success' ? '#4caf50' : '#ff9800';
         const toast = document.createElement('div');
@@ -1296,6 +1199,10 @@
             toast.remove();
         }, 3000);
     }
+    
+    // ============================================================
+    // 5. FUNCIONES AUXILIARES
+    // ============================================================
     
     // Actualizar resumen de materiales en tiempo real
     document.addEventListener('DOMContentLoaded', function() {

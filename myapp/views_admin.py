@@ -454,13 +454,17 @@ def gestionar_contratos(request):
             Q(cliente_potencial__nombre__icontains=busqueda) |
             Q(cliente_potencial__apellido__icontains=busqueda) |
             Q(cliente_potencial__cedula__icontains=busqueda) |
-            Q(correo_electronico__icontains=busqueda)
+            Q(correo_electronico__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda) |           # 👈 NUEVO
+            Q(ods__icontains=busqueda)
         )
         contratos_completados = contratos_completados.filter(
             Q(cliente_potencial__nombre__icontains=busqueda) |
             Q(cliente_potencial__apellido__icontains=busqueda) |
             Q(cliente_potencial__cedula__icontains=busqueda) |
-            Q(correo_electronico__icontains=busqueda)
+            Q(correo_electronico__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda) |           # 👈 NUEVO
+            Q(ods__icontains=busqueda)
         )
     
     if vendedor_id:
@@ -714,7 +718,6 @@ def crear_cuadrilla(request):
     try:
         grupo_instalador = Group.objects.get(name='Instalador')
     except Group.DoesNotExist:
-        # Crear el grupo si no existe
         grupo_instalador = Group.objects.create(name='Instalador')
         messages.info(request, 'Se creó automáticamente el grupo "Instalador".')
     
@@ -733,15 +736,28 @@ def crear_cuadrilla(request):
     else:
         form = CuadrillaForm()
     
-    # Obtener instaladores disponibles (los que están en el grupo Instalador)
+    # Obtener instaladores disponibles para mostrar en el template (con toda la información)
     instaladores_disponibles = PerfilUsuario.objects.filter(
         usuario__groups=grupo_instalador,
         usuario__is_active=True
+    ).exclude(
+        cuadrillas__isnull=False  # Excluir los que ya están en alguna cuadrilla
     ).select_related('usuario').order_by('usuario__first_name')
+    
+    # Crear una lista con los datos formateados para el template
+    instaladores_data = []
+    for inst in instaladores_disponibles:
+        instaladores_data.append({
+            'id': inst.id,
+            'nombre': inst.usuario.get_full_name() or inst.usuario.username,
+            'cedula': inst.cedula or 'Sin cédula',
+            'telefono': inst.telefono or 'Sin teléfono',
+        })
     
     context = {
         'form': form,
         'instaladores': instaladores_disponibles,
+        'instaladores_data': instaladores_data,
         'accion': 'Crear',
         'total_instaladores': instaladores_disponibles.count()
     }

@@ -578,9 +578,9 @@ class Instalacion(models.Model):
     
     @property
     def metros_utilizados(self):
-        """Calcula los metros utilizados"""
-        if self.final_fibra and self.inicio_fibra:
-            return self.final_fibra - self.inicio_fibra
+        """Calcula los metros utilizados (valor absoluto de la diferencia)"""
+        if self.inicio_fibra is not None and self.final_fibra is not None:
+            return abs(self.inicio_fibra - self.final_fibra)  # ← Usar abs() para valor absoluto
         return 0
     
     conectores = models.PositiveIntegerField(
@@ -1117,9 +1117,9 @@ class Soporte(models.Model):
     
     @property
     def metros_utilizados(self):
-        """Calcula los metros utilizados"""
-        if self.final_fibra and self.inicio_fibra:
-            return self.inicio_fibra  - self.final_fibra
+        """Calcula los metros utilizados (valor absoluto de la diferencia)"""
+        if self.inicio_fibra is not None and self.final_fibra is not None:
+            return abs(self.inicio_fibra - self.final_fibra)  # ← Usar abs() para valor absoluto
         return 0
     
     # ===== UBICACIÓN (PIN) =====

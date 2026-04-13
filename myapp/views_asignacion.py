@@ -18,10 +18,12 @@ def lista_asignaciones(request):
     
     from .models import AsignacionContrato, VentaDirecta
     
-    # Obtener parámetros de la URL
-    tab_activa = request.GET.get('tab', 'no_asignados')  # 'no_asignados' o 'asignados'
-    page_no_asignados = request.GET.get('page_no_asignados', 1)
-    page_asignados = request.GET.get('page_asignados', 1)
+    # Obtener parámetros de filtro de la URL
+    tab_activa = request.GET.get('tab', 'no_asignados')
+    busqueda = request.GET.get('busqueda', '')
+    filtro_cuadrilla = request.GET.get('cuadrilla', '')
+    filtro_estado = request.GET.get('estado', '')
+    filtro_contrato_estado = request.GET.get('contrato_estado', '')
     
     # ========== CONTRATOS DE VENDEDOR ==========
     contratos_asignados_ids = AsignacionContrato.objects.filter(
@@ -70,6 +72,7 @@ def lista_asignaciones(request):
             'ods': contrato.ods,
             'vendedor': contrato.creado_por.get_full_name() or contrato.creado_por.username if contrato.creado_por else 'Sistema',
             'plan': contrato.plan_contratado.nombre,
+            'estado': contrato.estado,
             'objeto': contrato
         })
     
@@ -84,6 +87,7 @@ def lista_asignaciones(request):
             'ods': venta.nro_orden,
             'vendedor': venta.creado_por.get_full_name() or venta.creado_por.username if venta.creado_por else 'Sistema',
             'plan': venta.plan.nombre,
+            'estado': venta.estado,
             'objeto': venta
         })
     
@@ -98,6 +102,17 @@ def lista_asignaciones(request):
         'venta_directa',
         'cuadrilla'
     ).order_by('-fecha_asignacion')
+    
+    # Aplicar filtro de cuadrilla a las asignaciones
+    if filtro_cuadrilla:
+        asignaciones = asignaciones.filter(cuadrilla_id=filtro_cuadrilla)
+    
+    # Aplicar filtro de estado del contrato a las asignaciones
+    if filtro_contrato_estado:
+        asignaciones = asignaciones.filter(
+            Q(contrato__estado=filtro_contrato_estado) |
+            Q(venta_directa__estado=filtro_contrato_estado)
+        )
     
     asignados = []
     for asignacion in asignaciones:
@@ -134,6 +149,36 @@ def lista_asignaciones(request):
                 'fecha_asignacion': asignacion.fecha_asignacion
             })
     
+    # ===== APLICAR FILTRO DE BÚSQUEDA A NO ASIGNADOS =====
+    if busqueda:
+        busqueda_lower = busqueda.lower()
+        no_asignados = [item for item in no_asignados if (
+            busqueda_lower in item['cliente_nombre'].lower() or
+            busqueda_lower in item['cedula'].lower() or
+            busqueda_lower in item['customer_id'].lower() or
+            busqueda_lower in item['ods'].lower() or
+            busqueda_lower in item['vendedor'].lower() or
+            busqueda_lower in item['plan'].lower()
+        )]
+    
+    # ===== APLICAR FILTRO DE ESTADO A NO ASIGNADOS =====
+    # (solo si se selecciona un estado específico)
+    if filtro_contrato_estado and filtro_estado == 'no_asignado':
+        no_asignados = [item for item in no_asignados if item.get('estado') == filtro_contrato_estado]
+    
+    # ===== APLICAR FILTRO DE BÚSQUEDA A ASIGNADOS =====
+    if busqueda:
+        busqueda_lower = busqueda.lower()
+        asignados = [item for item in asignados if (
+            busqueda_lower in item['cliente_nombre'].lower() or
+            busqueda_lower in item['cedula'].lower() or
+            busqueda_lower in item['customer_id'].lower() or
+            busqueda_lower in item['ods'].lower() or
+            busqueda_lower in item['vendedor'].lower() or
+            busqueda_lower in item['plan'].lower() or
+            busqueda_lower in item['cuadrilla'].nombre.lower()
+        )]
+    
     # ========== OBTENER CUADRILLAS ==========
     cuadrillas = Cuadrilla.objects.filter(
         activo=True
@@ -162,7 +207,12 @@ def lista_asignaciones(request):
         'cuadrillas': cuadrillas,
         'total_no_asignados': len(no_asignados),
         'total_asignados': len(asignados),
-        'tab_activa': tab_activa,  # 👈 Pasar la pestaña activa
+        'tab_activa': tab_activa,
+        # Filtros para mantener en la paginación
+        'busqueda': busqueda,
+        'filtro_cuadrilla': filtro_cuadrilla,
+        'filtro_estado': filtro_estado,
+        'filtro_contrato_estado': filtro_contrato_estado,
     }
     
     return render(request, 'Admin/asignacion/asignacion_contrato.html', context)
