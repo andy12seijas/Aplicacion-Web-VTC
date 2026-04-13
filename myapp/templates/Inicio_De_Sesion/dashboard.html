@@ -183,8 +183,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay contratos registrados</td></tr>
-                    {% endfor %}
+                    <tr><td colspan="5" class="empty">No hay contratos registrados</td>{% endfor %}
                 </tbody>
             </table>
         </div>
@@ -330,20 +329,19 @@
                                 {{ asignacion.cliente_nombre }}
                             </div>
                         </td>
-                        <td>{{ asignacion.telefono_cliente }}</td>
-                        <td class="direccion-cell">{{ asignacion.direccion|truncatechars:40 }}</td>
-                        <td><span class="badge badge-info">{{ asignacion.plan }}</span></td>
+                        <td>{{ asignacion.telefono_cliente }}</div>
+                        <td class="direccion-cell">{{ asignacion.direccion|truncatechars:40 }}</div>
+                        <td><span class="badge badge-info">{{ asignacion.plan }}</span></div>
                         <td>
                             <button class="action-btn" onclick="iniciarInstalacion({{ asignacion.id }})">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polygon points="5 3 19 12 5 21 5 3"/>
                                 </svg>
                             </button>
-                        </td>
+                        </div>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay asignaciones pendientes 🎉</td></tr>
-                    {% endfor %}
+                    <tr><td colspan="5" class="empty">No hay asignaciones pendientes 🎉</td>{% endfor %}
                 </tbody>
             </table>
         </div>
@@ -367,10 +365,6 @@
                 <div class="material-item">
                     <span class="material-value">{{ materiales.avg_patch_cord|floatformat:0|default:"0" }}</span>
                     <span class="material-label">Patch Cord</span>
-                </div>
-                <div class="material-item">
-                    <span class="material-value">{{ materiales.avg_metros|floatformat:0|default:"0" }}</span>
-                    <span class="material-label">Metros Fibra</span>
                 </div>
             </div>
         </div>
@@ -406,7 +400,7 @@
     
     <!-- Stats Cards Principales -->
     <div class="stats-grid">
-        <div class="stat-card stat-primary">
+        <div class="stat-card">
             <div class="stat-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -418,7 +412,7 @@
                 <span class="stat-label">Clientes Potenciales</span>
             </div>
         </div>
-        <div class="stat-card stat-success">
+        <div class="stat-card">
             <div class="stat-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -427,23 +421,10 @@
             </div>
             <div class="stat-info">
                 <span class="stat-value">{{ total_contratos }}</span>
-                <span class="stat-label">Contratos Totales</span>
+                <span class="stat-label">Total Contratos</span>
             </div>
         </div>
-        <div class="stat-card stat-info">
-            <div class="stat-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                    <line x1="8" y1="21" x2="16" y2="21"/>
-                    <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-            </div>
-            <div class="stat-info">
-                <span class="stat-value">{{ total_ventas_directas }}</span>
-                <span class="stat-label">Ventas Directas</span>
-            </div>
-        </div>
-        <div class="stat-card stat-warning">
+        <div class="stat-card">
             <div class="stat-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -453,6 +434,19 @@
             <div class="stat-info">
                 <span class="stat-value">{{ total_instalaciones }}</span>
                 <span class="stat-label">Instalaciones</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </div>
+            <div class="stat-info">
+                <span class="stat-value">{{ total_soportes }}</span>
+                <span class="stat-label">Soportes</span>
             </div>
         </div>
     </div>
@@ -497,7 +491,7 @@
         <div class="stat-card">
             <div class="stat-icon small">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
                 </svg>
             </div>
             <div class="stat-info">
@@ -531,133 +525,71 @@
         </div>
     </div>
     
-    <!-- Gráficos Principales -->
+    <!-- Gráficas en torta -->
     <div class="dashboard-row">
-        <div class="dashboard-card chart-card">
-            <div class="card-header">
-                <h3>📊 Contratos vs Ventas Directas</h3>
-                <span class="card-badge">Últimos 6 meses</span>
-            </div>
-            <canvas id="comparativoChart" width="400" height="200"></canvas>
-        </div>
-        
+        <!-- Gráfica de Interés de Clientes -->
         <div class="dashboard-card">
             <div class="card-header">
-                <h3>🏆 Top Vendedores</h3>
-                <a  class="link-view">Ver nómina →</a>
+                <h3>📊 Interés de Clientes</h3>
+                <span class="card-badge">{{ total_clientes_potenciales }} clientes</span>
             </div>
-            <div class="ranking-list">
-                {% for vendedor in ranking_vendedores %}
-                <div class="ranking-item">
-                    <div class="ranking-position">#{{ forloop.counter }}</div>
-                    <div class="ranking-name">{{ vendedor.get_full_name|default:vendedor.username }}</div>
-                    <div class="ranking-count">{{ vendedor.total_contratos }} contratos</div>
-                </div>
-                {% empty %}
-                <p class="empty-text">Sin datos de vendedores</p>
-                {% endfor %}
+            <div class="chart-container">
+                <canvas id="interesClientesChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Gráfica de Estado de Contratos -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3>📋 Estado de Contratos</h3>
+                <span class="card-badge">{{ total_contratos }} contratos</span>
+            </div>
+            <div class="chart-container">
+                <canvas id="estadoContratosChart"></canvas>
             </div>
         </div>
     </div>
     
-    <!-- Top Cuadrillas y Planes -->
     <div class="dashboard-row">
+        <!-- Gráfica de Instalaciones -->
         <div class="dashboard-card">
             <div class="card-header">
-                <h3>👷 Top Cuadrillas</h3>
+                <h3>🔧 Instalaciones</h3>
+                <span class="card-badge">{{ instalaciones_completadas }}/{{ total_instalaciones }} completadas</span>
             </div>
-            <div class="ranking-list">
-                {% for cuadrilla in ranking_cuadrillas %}
-                <div class="ranking-item">
-                    <div class="ranking-position">#{{ forloop.counter }}</div>
-                    <div class="ranking-name">{{ cuadrilla.nombre }}</div>
-                    <div class="ranking-count">{{ cuadrilla.total_instalaciones }} instalaciones</div>
-                </div>
-                {% empty %}
-                <p class="empty-text">Sin datos de cuadrillas</p>
-                {% endfor %}
+            <div class="chart-container">
+                <canvas id="instalacionesChart"></canvas>
             </div>
         </div>
         
-        <div class="dashboard-card">
-            <div class="card-header">
-                <h3>📡 Planes Más Vendidos</h3>
-            </div>
-            <div class="plans-list">
-                {% for plan in planes_populares %}
-                <div class="plan-item">
-                    <div class="plan-name">{{ plan.nombre }}</div>
-                    <div class="plan-bar">
-                        {% with total=plan.total_contratos|add:plan.total_ventas_directas %}
-                        <div class="plan-bar-fill" style="width: {% widthratio total contratos_por_mes|first 100 %}%"></div>
-                        {% endwith %}
-                    </div>
-                    <div class="plan-count">{{ plan.total_contratos|add:plan.total_ventas_directas }} ventas</div>
-                </div>
-                {% empty %}
-                <p class="empty-text">Sin datos de planes</p>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Soportes por Tipo y Nómina Semanal -->
-    <div class="dashboard-row">
+        <!-- Gráfica de Soportes por Tipo -->
         <div class="dashboard-card">
             <div class="card-header">
                 <h3>🛠️ Soportes por Tipo</h3>
+                <span class="card-badge">{{ total_soportes }} soportes</span>
             </div>
-            <div class="soportes-tipo-grid">
-                <div class="tipo-item mudanza">
-                    <span class="tipo-value">{{ soportes_mudanza }}</span>
-                    <span class="tipo-label">Mudanza</span>
-                </div>
-                <div class="tipo-item retiro">
-                    <span class="tipo-value">{{ soportes_retiro }}</span>
-                    <span class="tipo-label">Retiro</span>
-                </div>
-                <div class="tipo-item recableado">
-                    <span class="tipo-value">{{ soportes_recableado }}</span>
-                    <span class="tipo-label">Recableado</span>
-                </div>
-            </div>
-            <div class="soportes-estado">
-                <div class="estado-item">
-                    <span class="estado-dot pendiente"></span>
-                    <span>Pendientes: {{ soportes_estado.pendientes }}</span>
-                </div>
-                <div class="estado-item">
-                    <span class="estado-dot proceso"></span>
-                    <span>En Proceso: {{ soportes_estado.proceso }}</span>
-                </div>
-                <div class="estado-item">
-                    <span class="estado-dot completado"></span>
-                    <span>Completados: {{ soportes_estado.completados }}</span>
-                </div>
+            <div class="chart-container">
+                <canvas id="soportesTipoChart"></canvas>
             </div>
         </div>
-        
-        <div class="dashboard-card">
-            <div class="card-header">
-                <h3>💰 Nómina Semanal</h3>
-                <span class="card-badge">Total: ${{ total_nomina_usd|floatformat:2 }}</span>
+    </div>
+    
+    <!-- Top 5 Vendedores -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>🏆 Top 5 Vendedores</h3>
+            <span class="card-badge">Por contratos completados</span>
+        </div>
+        <div class="ranking-list">
+            {% for vendedor in top_vendedores %}
+            <div class="ranking-item">
+                <div class="ranking-position">#{{ forloop.counter }}</div>
+                <div class="ranking-name">{{ vendedor.get_full_name|default:vendedor.username }}</div>
+                <div class="ranking-count">{{ vendedor.total_contratos }} contratos</div>
             </div>
-            <div class="nomina-list">
-                {% for nomina in nominas_semana|slice:":5" %}
-                <div class="nomina-item">
-                    <div class="nomina-vendedor">{{ nomina.vendedor.get_full_name|default:nomina.vendedor.username }}</div>
-                    <div class="nomina-info">
-                        <span class="nomina-contratos">{{ nomina.total_contratos }} contratos</span>
-                        <span class="nomina-total">${{ nomina.total_usd|floatformat:2 }}</span>
-                    </div>
-                </div>
-                {% empty %}
-                <p class="empty-text">No hay nómina registrada esta semana</p>
-                {% endfor %}
-            </div>
-            <div class="card-footer">
-                <a  class="link-view">Ver nómina completa →</a>
-            </div>
+            {% empty %}
+            <p class="empty-text">Sin datos de vendedores</p>
+            {% endfor %}
         </div>
     </div>
     
@@ -686,28 +618,25 @@
                                 <span class="user-avatar-sm">{{ contrato.nombre|first|upper }}{{ contrato.apellido|first|upper }}</span>
                                 {{ contrato.nombre_completo }}
                             </div>
-                        </td>
-                        <td>{{ contrato.plan_contratado.nombre }}</td>
-                        <td>{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</td>
+                        </div>
+                        <td>{{ contrato.plan_contratado.nombre }}</div>
+                        <td>{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</div>
                         <td>
                             <span class="badge {% if contrato.estado == 'COMPLETADO' %}badge-success{% elif contrato.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-danger{% endif %}">
                                 {{ contrato.get_estado_display }}
                             </span>
-                        </td>
-                        <td>{{ contrato.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        </div>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/Y H:i" }}</div>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay contratos registrados</td></tr>
-                    {% endfor %}
+                    <tr><td colspan="5" class="empty">No hay contratos registrados</td>{% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
     
     
-    
-        <!-- ==================== DASHBOARD SUPERVISOR ==================== -->
-            <!-- ==================== DASHBOARD SUPERVISOR ==================== -->
+    <!-- ==================== DASHBOARD SUPERVISOR ==================== -->
     {% elif rol == 'supervisor' %}
     
     <!-- Stats Cards Principales -->
@@ -924,23 +853,23 @@
                 <tbody>
                     {% for vendedor in top_vendedores %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
+                        <td>{{ forloop.counter }}</div>
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar-sm">{{ vendedor.nombre|slice:":2"|upper }}</span>
                                 {{ vendedor.nombre }}
                             </div>
-                        </td>
-                        <td><strong>{{ vendedor.total_contratos }}</strong></td>
-                        <td class="text-success">{{ vendedor.completados }}</td>
-                        <td class="text-warning">{{ vendedor.en_proceso }}</td>
-                        <td class="text-danger">{{ vendedor.no_completados }}</td>
+                        </div>
+                        <td><strong>{{ vendedor.total_contratos }}</strong></div>
+                        <td class="text-success">{{ vendedor.completados }}</div>
+                        <td class="text-warning">{{ vendedor.en_proceso }}</div>
+                        <td class="text-danger">{{ vendedor.no_completados }}</div>
                         <td>
                             <div class="progress-bar-mini">
                                 <div class="progress-fill" style="width: {{ vendedor.eficiencia }}%"></div>
                                 <span>{{ vendedor.eficiencia }}%</span>
                             </div>
-                        </td>
+                        </div>
                         <td>
                             {% if vendedor.eficiencia >= 80 %}
                                 <span class="badge-success">Excelente</span>
@@ -949,11 +878,11 @@
                             {% else %}
                                 <span class="badge-danger">Regular</span>
                             {% endif %}
-                        </td>
+                        </div>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="empty">No hay vendedores registrados</td>
+                        <td colspan="8" class="empty">No hay vendedores registrados</div>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1865,43 +1794,99 @@
             }
             
         {% elif rol == 'administrador' %}
-            // Gráfico comparativo
-            const ctxComp = document.getElementById('comparativoChart')?.getContext('2d');
-            if (ctxComp) {
-                new Chart(ctxComp, {
-                    type: 'bar',
+            // Gráfica de Interés de Clientes
+            const interesCtx = document.getElementById('interesClientesChart')?.getContext('2d');
+            if (interesCtx) {
+                new Chart(interesCtx, {
+                    type: 'pie',
                     data: {
-                        labels: {{ meses|safe }},
-                        datasets: [
-                            {
-                                label: 'Contratos',
-                                data: {{ contratos_por_mes|safe }},
-                                backgroundColor: 'rgba(255, 107, 0, 0.7)',
-                                borderRadius: 8
-                            },
-                            {
-                                label: 'Ventas Directas',
-                                data: {{ ventas_por_mes|safe }},
-                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                                borderRadius: 8
-                            }
-                        ]
+                        labels: {{ interes_labels|safe }},
+                        datasets: [{
+                            data: {{ interes_values|safe }},
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                            borderWidth: 0
+                        }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: {
-                            legend: { position: 'top' },
-                            tooltip: { mode: 'index', intersect: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
-                            x: { grid: { display: false } }
+                            legend: { position: 'bottom', labels: { font: { size: 11 } } }
                         }
                     }
                 });
             }
-            {% elif rol == 'supervisor' %}
+            
+            // Gráfica de Estado de Contratos
+            const contratosCtx = document.getElementById('estadoContratosChart')?.getContext('2d');
+            if (contratosCtx) {
+                new Chart(contratosCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {{ contratos_estado_labels|safe }},
+                        datasets: [{
+                            data: {{ contratos_estado_values|safe }},
+                            backgroundColor: {{ contratos_estado_colors|safe }},
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { size: 11 } } }
+                        }
+                    }
+                });
+            }
+            
+            // Gráfica de Instalaciones
+            const instalacionesCtx = document.getElementById('instalacionesChartAdmin')?.getContext('2d');
+            if (instalacionesCtx) {
+                new Chart(instalacionesCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {{ instalaciones_labels|safe }},
+                        datasets: [{
+                            data: {{ instalaciones_values|safe }},
+                            backgroundColor: {{ instalaciones_colors|safe }},
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { size: 11 } } }
+                        }
+                    }
+                });
+            }
+            
+            // Gráfica de Soportes por Tipo
+            const soportesCtx = document.getElementById('soportesTipoChart')?.getContext('2d');
+            if (soportesCtx) {
+                new Chart(soportesCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: {{ soportes_tipo_labels|safe }},
+                        datasets: [{
+                            data: {{ soportes_tipo_values|safe }},
+                            backgroundColor: {{ soportes_tipo_colors|safe }},
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { font: { size: 11 } } }
+                        }
+                    }
+                });
+            }
+            
+        {% elif rol == 'supervisor' %}
             // Gráfico de contratos por mes
             const ctxSup = document.getElementById('contratosChartSupervisor')?.getContext('2d');
             if (ctxSup) {

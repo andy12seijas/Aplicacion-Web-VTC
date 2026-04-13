@@ -16,13 +16,13 @@
 {% endblock %}
 
 {% block content %}
-<!-- Filtros -->
+<!-- Filtros - SOLO PARA GRÁFICAS -->
 <div class="filters-container">
     <div class="filters-grid">
         {% if es_admin %}
         <div class="filter-group">
             <label class="filter-label">Vendedor</label>
-            <select id="filterVendedor" class="filter-select">
+            <select id="filterVendedor" class="filter-select" onchange="aplicarFiltrosGraficas()">
                 <option value="">Todos los vendedores</option>
                 {% for vendedor in vendedores %}
                 <option value="{{ vendedor.id }}" {% if vendedor_seleccionado == vendedor.id|stringformat:"s" %}selected{% endif %}>
@@ -34,40 +34,32 @@
         {% endif %}
         
         <div class="filter-group">
-            <label class="filter-label">Período</label>
-            <select id="filterPeriodo" class="filter-select">
-                <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Último mes</option>
-                <option value="trimestre" {% if periodo == 'trimestre' %}selected{% endif %}>Último trimestre</option>
-                <option value="año" {% if periodo == 'año' %}selected{% endif %}>Último año</option>
-                <option value="personalizado" {% if fecha_desde %}selected{% endif %}>Personalizado</option>
-            </select>
+            <label class="filter-label">Fecha Desde</label>
+            <input type="date" id="fecha_desde" class="filter-input" value="{{ fecha_desde|default:'' }}">
         </div>
         
-        <div class="date-range" id="dateRange" style="display: {% if fecha_desde %}flex{% else %}none{% endif %};">
-            <div class="filter-group">
-                <label class="filter-label">Desde</label>
-                <input type="date" id="fecha_desde" class="filter-input" value="{{ fecha_desde }}" placeholder="Desde">
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Hasta</label>
-                <input type="date" id="fecha_hasta" class="filter-input" value="{{ fecha_hasta }}" placeholder="Hasta">
-            </div>
+        <div class="filter-group">
+            <label class="filter-label">Fecha Hasta</label>
+            <input type="date" id="fecha_hasta" class="filter-input" value="{{ fecha_hasta|default:'' }}">
         </div>
         
         <div class="filter-actions">
-            <button onclick="aplicarFiltros()" class="btn-primary">
+            <button onclick="aplicarFiltrosGraficas()" class="btn-primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                 </svg>
-                Aplicar
+                Aplicar a gráficas
             </button>
-            <button onclick="limpiarFiltros()" class="btn-clear">Limpiar</button>
+            <button onclick="limpiarFiltrosGraficas()" class="btn-clear">Limpiar</button>
         </div>
+    </div>
+    <div class="filtro-nota">
+        <small>📌 Los filtros de fecha solo afectan a las gráficas. El acumulativo semanal es independiente.</small>
     </div>
 </div>
 
-<!-- Tarjetas de KPIs -->
+<!-- Tarjetas de KPIs (SIN FILTROS) -->
 <div class="kpi-grid">
     <div class="kpi-card">
         <div class="kpi-icon" style="background: #e3f2fd;">
@@ -76,7 +68,6 @@
         <div class="kpi-info">
             <span class="kpi-value">{{ total_clientes }}</span>
             <span class="kpi-label">Total Clientes</span>
-            <span class="kpi-trend positive">+{{ clientes_mes }} este mes</span>
         </div>
     </div>
     
@@ -87,7 +78,6 @@
         <div class="kpi-info">
             <span class="kpi-value">{{ total_contratos }}</span>
             <span class="kpi-label">Total Contratos</span>
-            <span class="kpi-trend">{{ contratos_completados }} completados</span>
         </div>
     </div>
     
@@ -98,7 +88,6 @@
         <div class="kpi-info">
             <span class="kpi-value">{{ tasa_conversion }}%</span>
             <span class="kpi-label">Tasa de Conversión</span>
-            <span class="kpi-trend">{{ clientes_con_contrato }} clientes convertidos</span>
         </div>
     </div>
     
@@ -109,132 +98,96 @@
         <div class="kpi-info">
             <span class="kpi-value">{{ contratos_proceso }}</span>
             <span class="kpi-label">En Proceso</span>
-            <span class="kpi-trend">{{ contratos_no_completados }} no completados</span>
         </div>
     </div>
 </div>
 
-<!-- Gráficas principales -->
-<div class="charts-grid">
-    <!-- Gráfica de interés -->
-    <div class="chart-card">
-        <h3 class="chart-title">
-            <i class="fas fa-chart-pie"></i>
-            Distribución por Interés
+<!-- ========== ACUMULATIVO SEMANAL NAVEGABLE (INDEPENDIENTE) ========== -->
+<div class="acumulativo-semanal">
+    <div class="acumulativo-header">
+        <h3 class="section-title">
+            <i class="fas fa-calendar-week"></i>
+            Acumulativo Semanal (Viernes a Jueves)
         </h3>
-        <div class="chart-container">
-            <canvas id="interesChart"></canvas>
-        </div>
-    </div>
-    
-    <!-- Gráfica de contratos mensuales -->
-    <div class="chart-card">
-        <h3 class="chart-title">
-            <i class="fas fa-chart-line"></i>
-            Contratos por Mes
-        </h3>
-        <div class="chart-container">
-            <canvas id="contratosChart"></canvas>
-        </div>
-    </div>
-    
-    <!-- Gráfica de clientes mensuales -->
-    <div class="chart-card">
-        <h3 class="chart-title">
-            <i class="fas fa-chart-bar"></i>
-            Nuevos Clientes por Mes
-        </h3>
-        <div class="chart-container">
-            <canvas id="clientesChart"></canvas>
-        </div>
-    </div>
-    
-    <!-- Gráfica de internet -->
-    <div class="chart-card">
-        <h3 class="chart-title">
-            <i class="fas fa-wifi"></i>
-            Distribución de Internet
-        </h3>
-        <div class="chart-container">
-            <canvas id="internetChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Top Vendedores (solo admin) -->
-{% if es_admin and top_vendedores %}
-<div class="top-vendedores">
-    <h3 class="section-title">
-        <i class="fas fa-trophy"></i>
-        Top 5 Vendedores
-    </h3>
-    <div class="ranking-list">
-        {% for vendedor in top_vendedores %}
-        <div class="ranking-item">
-            <div class="ranking-position">#{{ forloop.counter }}</div>
-            <div class="ranking-info">
-                <strong>{{ vendedor.nombre }}</strong>
-                <div class="ranking-stats">
-                    <span><i class="fas fa-users"></i> {{ vendedor.clientes }}</span>
-                    <span><i class="fas fa-file-signature"></i> {{ vendedor.contratos }}</span>
-                    <span class="success"><i class="fas fa-check-circle"></i> {{ vendedor.completados }}</span>
-                </div>
+        
+        <div class="semana-navegacion">
+            <!-- Flecha IZQUIERDA: Semana ANTERIOR -->
+            <a href="{% url 'reporte_vendedor' %}?{% if vendedor_seleccionado %}vendedor={{ vendedor_seleccionado }}&{% endif %}semana_offset={{ semana_offset|add:1 }}" class="nav-btn" title="Semana anterior">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            
+            <div class="semana-fecha">
+                <span class="fecha-rango">
+                    📅 {{ semana_actual.inicio|date:"d/m/Y" }} - {{ semana_actual.fin|date:"d/m/Y" }}
+                </span>
+                <span class="semana-mes">{{ semana_actual.inicio|date:"F Y" }}</span>
             </div>
-            <div class="ranking-progress">
-                <div class="progress-bar" style="width: {% widthratio vendedor.completados vendedor.contratos|default:1 100 %}%"></div>
+            
+            <!-- Flecha DERECHA: Semana SIGUIENTE -->
+            {% if semana_offset > 0 %}
+            <a href="{% url 'reporte_vendedor' %}?{% if vendedor_seleccionado %}vendedor={{ vendedor_seleccionado }}&{% endif %}semana_offset={{ semana_offset|add:-1 }}" class="nav-btn" title="Semana siguiente">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="nav-btn disabled" title="Semana siguiente (semana actual)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </span>
+            {% endif %}
+            
+            <!-- Botón Semana Actual -->
+            <a href="{% url 'reporte_vendedor' %}?{% if vendedor_seleccionado %}vendedor={{ vendedor_seleccionado }}&{% endif %}" class="nav-btn current" title="Ir a semana actual">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Resumen de la semana -->
+    <div class="semana-resumen">
+        <div class="resumen-semanal-card">
+            <div class="resumen-icon">📊</div>
+            <div class="resumen-info">
+                <span class="resumen-valor-grande">{{ semana_actual.total_contratos }}</span>
+                <span class="resumen-label">Total Contratos</span>
             </div>
         </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-<!-- Tablas de datos recientes -->
-<div class="tables-grid">
-    <!-- Últimos clientes -->
-    <div class="table-card">
-        <h3 class="table-title">
-            <i class="fas fa-user-plus"></i>
-            Últimos Clientes Registrados
-        </h3>
-        <div class="table-responsive">
-            <table class="table-mini">
-                <thead>
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Cédula</th>
-                        <th>Teléfono</th>
-                        <th>Interés</th>
-                        <th>Fecha</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for cliente in ultimos_clientes %}
-                    <tr>
-                        <td data-label="Cliente">{{ cliente.nombre }} {{ cliente.apellido }}</td>
-                        <td data-label="Cédula">{{ cliente.cedula }}</td>
-                        <td data-label="Teléfono">{{ cliente.telefono }}</td>
-                        <td data-label="Interés">
-                            <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
-                                {{ cliente.get_interesado_display }}
-                            </span>
-                        </td>
-                        <td data-label="Fecha">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="5" class="empty">No hay clientes registrados</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="resumen-semanal-card success">
+            <div class="resumen-icon">✅</div>
+            <div class="resumen-info">
+                <span class="resumen-valor-grande">{{ semana_actual.completados }}</span>
+                <span class="resumen-label">Completados</span>
+            </div>
+        </div>
+        <div class="resumen-semanal-card warning">
+            <div class="resumen-icon">⏳</div>
+            <div class="resumen-info">
+                <span class="resumen-valor-grande">{{ semana_actual.en_proceso }}</span>
+                <span class="resumen-label">En Proceso</span>
+            </div>
+        </div>
+        <div class="resumen-semanal-card danger">
+            <div class="resumen-icon">❌</div>
+            <div class="resumen-info">
+                <span class="resumen-valor-grande">{{ semana_actual.no_completados }}</span>
+                <span class="resumen-label">No Completados</span>
+            </div>
         </div>
     </div>
     
-    <!-- Últimos contratos -->
-    <div class="table-card">
-        <h3 class="table-title">
-            <i class="fas fa-file-contract"></i>
-            Últimos Contratos
-        </h3>
+    <!-- Contratos de la semana -->
+    <div class="contratos-semana">
+        <h4 class="subtitulo">
+            <i class="fas fa-list"></i>
+            Contratos de la semana
+        </h4>
         <div class="table-responsive">
             <table class="table-mini">
                 <thead>
@@ -246,28 +199,104 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for contrato in ultimos_contratos %}
+                    {% for contrato in semana_actual.contratos %}
                     <tr>
                         <td data-label="Cliente">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</td>
                         <td data-label="Plan">{{ contrato.plan_contratado.nombre }}</td>
                         <td data-label="Estado">
-                            <span class="badge {% if contrato.estado == 'COMPLETADO' %}badge-success{% elif contrato.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-danger{% endif %}">
-                                {{ contrato.get_estado_display }}
-                            </span>
+                            {% if contrato.estado == 'COMPLETADO' %}
+                            <span class="badge-success-sm">✅ Completado</span>
+                            {% elif contrato.estado == 'EN_PROCESO' %}
+                            <span class="badge-warning-sm">⏳ En Proceso</span>
+                            {% else %}
+                            <span class="badge-danger-sm">❌ No Completado</span>
+                            {% endif %}
                         </td>
                         <td data-label="Fecha">{{ contrato.fecha_creacion|date:"d/m/Y" }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="empty">No hay contratos registrados</td></tr>
+                    <tr><td colspan="4" class="empty">No hay contratos en esta semana</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+    
+    <!-- Acumulado total hasta la semana -->
+    <div class="acumulado-total">
+        <div class="acumulado-header">
+            <span class="acumulado-titulo">
+                <i class="fas fa-chart-line"></i> Acumulado hasta {{ semana_actual.fin|date:"d/m/Y" }}
+            </span>
+        </div>
+        <div class="acumulado-stats">
+            <div class="stat-item">
+                <span class="stat-label">✅ Completados</span>
+                <span class="stat-number">{{ semana_actual.acumulado_completados }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">⏳ En Proceso</span>
+                <span class="stat-number warning">{{ semana_actual.acumulado_en_proceso }}</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">❌ No Completados</span>
+                <span class="stat-number danger">{{ semana_actual.acumulado_no_completados }}</span>
+            </div>
+            <div class="stat-item total">
+                <span class="stat-label">TOTAL</span>
+                <span class="stat-number total">{{ semana_actual.acumulado_total }}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="acumulativo-nota">
+        <small>📌 Los contratos en proceso se mantienen en el acumulado hasta que se completen.</small>
+    </div>
+</div>
+
+<!-- Gráficas principales (CON FILTROS DE FECHA) -->
+<div class="charts-grid">
+    <div class="chart-card">
+        <h3 class="chart-title">
+            <i class="fas fa-chart-pie"></i>
+            Distribución por Interés
+            {% if fecha_desde or fecha_hasta %}
+            <span class="filtro-grafica">(Filtrado: {{ fecha_desde|default:"inicio" }} - {{ fecha_hasta|default:"hoy" }})</span>
+            {% endif %}
+        </h3>
+        <div class="chart-container">
+            <canvas id="interesChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card">
+        <h3 class="chart-title">
+            <i class="fas fa-wifi"></i>
+            Distribución de Internet
+            {% if fecha_desde or fecha_hasta %}
+            <span class="filtro-grafica">(Filtrado: {{ fecha_desde|default:"inicio" }} - {{ fecha_hasta|default:"hoy" }})</span>
+            {% endif %}
+        </h3>
+        <div class="chart-container">
+            <canvas id="internetChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="chart-card full-width">
+        <h3 class="chart-title">
+            <i class="fas fa-chart-bar"></i>
+            Nuevos Clientes por Mes
+            {% if fecha_desde or fecha_hasta %}
+            <span class="filtro-grafica">(Filtrado: {{ fecha_desde|default:"inicio" }} - {{ fecha_hasta|default:"hoy" }})</span>
+            {% endif %}
+        </h3>
+        <div class="chart-container">
+            <canvas id="clientesChart"></canvas>
+        </div>
+    </div>
 </div>
 
 <style>
-    /* ===== VARIABLES ===== */
     :root {
         --orange: #ff6b00;
         --orange-light: #fff2e6;
@@ -275,12 +304,17 @@
         --gray-border: #e5e7eb;
         --gray-text: #6b7280;
         --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fed7aa;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
         --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* ===== FILTROS RESPONSIVE ===== */
     .filters-container {
         margin-bottom: 24px;
     }
@@ -327,16 +361,23 @@
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
     
-    .date-range {
-        display: flex;
-        gap: 12px;
-        align-items: flex-end;
-    }
-    
     .filter-actions {
         display: flex;
         gap: 10px;
         align-items: center;
+    }
+    
+    .filtro-nota {
+        margin-top: 10px;
+        padding: 8px 12px;
+        background: #e3f2fd;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .filtro-nota small {
+        color: #1976d2;
+        font-size: 11px;
     }
     
     .btn-primary, .btn-clear {
@@ -374,7 +415,6 @@
         color: var(--orange);
     }
     
-    /* ===== KPIs ===== */
     .kpi-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -435,16 +475,283 @@
         margin: 8px 0 4px;
     }
     
-    .kpi-trend {
+    .acumulativo-semanal {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 30px;
+        border: 1px solid var(--gray-border);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .acumulativo-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .semana-navegacion {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: var(--gray-bg);
+        padding: 8px 16px;
+        border-radius: 50px;
+    }
+    
+    .nav-btn {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+        color: var(--gray-text);
+        text-decoration: none;
+    }
+    
+    .nav-btn:hover:not(.disabled) {
+        border-color: var(--orange);
+        color: var(--orange);
+        transform: scale(1.05);
+        background: var(--orange-light);
+    }
+    
+    .nav-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .nav-btn.current {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: white;
+    }
+    
+    .nav-btn.current:hover {
+        background: #ff8c00;
+        transform: scale(1.05);
+    }
+    
+    .semana-fecha {
+        text-align: center;
+        min-width: 200px;
+    }
+    
+    .fecha-rango {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dark-text);
+    }
+    
+    .semana-mes {
+        display: block;
         font-size: 11px;
-        color: #666;
+        color: var(--gray-text);
+        margin-top: 2px;
     }
     
-    .kpi-trend.positive {
-        color: #10b981;
+    .semana-resumen {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 30px;
     }
     
-    /* ===== GRÁFICAS ===== */
+    .resumen-semanal-card {
+        background: #f8f9fa;
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: var(--transition);
+        border: 1px solid var(--gray-border);
+    }
+    
+    .resumen-semanal-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .resumen-semanal-card.success {
+        border-left: 4px solid var(--success);
+    }
+    
+    .resumen-semanal-card.warning {
+        border-left: 4px solid var(--warning);
+    }
+    
+    .resumen-semanal-card.danger {
+        border-left: 4px solid var(--danger);
+    }
+    
+    .resumen-icon {
+        font-size: 32px;
+    }
+    
+    .resumen-info {
+        flex: 1;
+    }
+    
+    .resumen-valor-grande {
+        font-size: 28px;
+        font-weight: 700;
+        display: block;
+        line-height: 1;
+    }
+    
+    .resumen-semanal-card.success .resumen-valor-grande {
+        color: var(--success);
+    }
+    
+    .resumen-semanal-card.warning .resumen-valor-grande {
+        color: var(--warning);
+    }
+    
+    .resumen-semanal-card.danger .resumen-valor-grande {
+        color: var(--danger);
+    }
+    
+    .resumen-label {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 4px;
+    }
+    
+    .contratos-semana {
+        margin: 20px 0;
+    }
+    
+    .subtitulo {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--dark-text);
+    }
+    
+    .badge-success-sm {
+        display: inline-block;
+        padding: 4px 12px;
+        background: var(--success-light);
+        color: var(--success);
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .badge-warning-sm {
+        display: inline-block;
+        padding: 4px 12px;
+        background: var(--warning-light);
+        color: var(--warning);
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .badge-danger-sm {
+        display: inline-block;
+        padding: 4px 12px;
+        background: var(--danger-light);
+        color: var(--danger);
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .acumulado-total {
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid var(--gray-border);
+    }
+    
+    .acumulado-header {
+        margin-bottom: 15px;
+    }
+    
+    .acumulado-titulo {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--dark-text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .acumulado-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: space-between;
+        margin-top: 15px;
+    }
+    
+    .stat-item {
+        flex: 1;
+        text-align: center;
+        padding: 12px;
+        background: var(--gray-bg);
+        border-radius: 12px;
+        min-width: 100px;
+    }
+    
+    .stat-label {
+        display: block;
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-bottom: 5px;
+    }
+    
+    .stat-number {
+        display: block;
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--success);
+    }
+    
+    .stat-number.warning {
+        color: var(--warning);
+    }
+    
+    .stat-number.danger {
+        color: var(--danger);
+    }
+    
+    .stat-item.total {
+        background: var(--orange-light);
+    }
+    
+    .stat-number.total {
+        color: var(--orange);
+        font-size: 28px;
+    }
+    
+    .acumulativo-nota {
+        margin-top: 16px;
+        padding: 12px;
+        background: #e3f2fd;
+        border-radius: 12px;
+        text-align: center;
+    }
+    
+    .acumulativo-nota small {
+        color: #1976d2;
+    }
+    
     .charts-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -464,6 +771,10 @@
         box-shadow: var(--shadow-md);
     }
     
+    .chart-card.full-width {
+        grid-column: span 2;
+    }
+    
     .chart-title {
         font-size: 16px;
         font-weight: 600;
@@ -472,6 +783,16 @@
         display: flex;
         align-items: center;
         gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .filtro-grafica {
+        font-size: 11px;
+        background: var(--orange-light);
+        color: var(--orange);
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-weight: normal;
     }
     
     .chart-container {
@@ -485,45 +806,14 @@
         height: auto !important;
     }
     
-    /* ===== TABLAS RESPONSIVE ===== */
-    .tables-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        margin-top: 20px;
-    }
-    
-    .table-card {
-        background: white;
-        border-radius: 20px;
-        padding: 20px;
-        border: 1px solid var(--gray-border);
-        transition: var(--transition);
-    }
-    
-    .table-card:hover {
-        box-shadow: var(--shadow-md);
-    }
-    
-    .table-title {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    
     .table-responsive {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
     }
     
     .table-mini {
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
-        min-width: 500px;
     }
     
     .table-mini th {
@@ -543,121 +833,12 @@
         background: var(--gray-bg);
     }
     
-    /* Badges */
-    .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-    
-    .badge-success { background: #d1fae5; color: #065f46; }
-    .badge-warning { background: #fed7aa; color: #9b2c1d; }
-    .badge-danger { background: #fee2e2; color: #991b1b; }
-    
-    /* ===== TOP VENDEDORES ===== */
-    .top-vendedores {
-        background: white;
-        border-radius: 20px;
-        padding: 20px;
-        margin-bottom: 30px;
-        border: 1px solid var(--gray-border);
-    }
-    
-    .section-title {
-        font-size: 18px;
-        font-weight: 700;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--dark-text);
-    }
-    
-    .ranking-list {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    
-    .ranking-item {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 16px;
-        background: var(--gray-bg);
-        border-radius: 16px;
-        transition: var(--transition);
-    }
-    
-    .ranking-item:hover {
-        transform: translateX(4px);
-        background: var(--orange-light);
-    }
-    
-    .ranking-position {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, var(--orange) 0%, #ff8c00 100%);
-        color: white;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 800;
-        font-size: 20px;
-        flex-shrink: 0;
-    }
-    
-    .ranking-info {
-        flex: 1;
-        min-width: 0;
-    }
-    
-    .ranking-info strong {
-        font-size: 15px;
-        display: block;
-        margin-bottom: 6px;
-    }
-    
-    .ranking-stats {
-        display: flex;
-        gap: 16px;
-        font-size: 12px;
-        color: var(--gray-text);
-        flex-wrap: wrap;
-    }
-    
-    .ranking-stats i {
-        margin-right: 4px;
-        font-size: 11px;
-    }
-    
-    .ranking-stats .success {
-        color: #10b981;
-    }
-    
-    .ranking-progress {
-        width: 120px;
-        flex-shrink: 0;
-    }
-    
-    .progress-bar {
-        height: 8px;
-        background: linear-gradient(90deg, var(--orange) 0%, #ff8c00 100%);
-        border-radius: 4px;
-        transition: width 0.3s;
-    }
-    
     .empty {
         text-align: center;
         padding: 40px;
         color: var(--gray-text);
     }
     
-    /* ===== BOTÓN SECUNDARIO ===== */
     .btn-secondary {
         display: inline-flex;
         align-items: center;
@@ -680,23 +861,22 @@
         transform: translateY(-2px);
     }
     
-    /* ===== RESPONSIVE ===== */
-    
-    /* Tablet (768px - 1024px) */
     @media screen and (max-width: 1024px) {
         .kpi-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 16px;
         }
         
-        .charts-grid {
+        .semana-resumen {
             grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
         }
         
-        .tables-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .chart-card.full-width {
+            grid-column: span 1;
         }
         
         .filters-grid {
@@ -705,15 +885,6 @@
         }
         
         .filter-group {
-            width: 100%;
-        }
-        
-        .date-range {
-            flex-direction: column;
-            width: 100%;
-        }
-        
-        .date-range .filter-group {
             width: 100%;
         }
         
@@ -726,57 +897,38 @@
             flex: 1;
             justify-content: center;
         }
-        
-        .ranking-item {
-            flex-wrap: wrap;
-        }
-        
-        .ranking-progress {
-            width: 100%;
-        }
     }
     
-    /* Móvil (hasta 768px) */
     @media screen and (max-width: 768px) {
         .kpi-grid {
             grid-template-columns: 1fr;
             gap: 12px;
         }
         
-        .charts-grid {
+        .semana-resumen {
             grid-template-columns: 1fr;
-            gap: 16px;
         }
         
-        .tables-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
+        .acumulativo-header {
+            flex-direction: column;
+            text-align: center;
         }
         
-        .kpi-card {
-            padding: 16px;
+        .semana-navegacion {
+            justify-content: center;
+            flex-wrap: wrap;
         }
         
-        .kpi-value {
-            font-size: 28px;
+        .semana-fecha {
+            width: 100%;
         }
         
-        .kpi-icon {
-            width: 50px;
-            height: 50px;
+        .acumulado-stats {
+            flex-direction: column;
         }
         
-        .kpi-icon i {
-            font-size: 24px;
-        }
-        
-        .chart-container {
-            min-height: 200px;
-        }
-        
-        /* Tablas con tarjetas en móvil */
-        .table-mini {
-            min-width: 100%;
+        .stat-item {
+            width: 100%;
         }
         
         .table-mini thead {
@@ -813,45 +965,28 @@
             margin-right: 12px;
         }
         
-        .ranking-item {
-            flex-direction: column;
-            text-align: center;
-            gap: 12px;
-        }
-        
-        .ranking-position {
-            width: 40px;
-            height: 40px;
-            font-size: 16px;
-            margin: 0 auto;
-        }
-        
-        .ranking-stats {
-            justify-content: center;
-        }
-        
-        .ranking-progress {
-            width: 100%;
-        }
-        
-        .section-title {
-            font-size: 16px;
-        }
-        
-        .chart-title {
-            font-size: 14px;
-        }
-        
-        .filters-container {
-            margin-bottom: 16px;
-        }
-        
-        .filters-grid {
+        .kpi-card {
             padding: 16px;
+        }
+        
+        .kpi-value {
+            font-size: 28px;
+        }
+        
+        .kpi-icon {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .kpi-icon i {
+            font-size: 24px;
+        }
+        
+        .chart-container {
+            min-height: 200px;
         }
     }
     
-    /* Móvil pequeño (hasta 480px) */
     @media screen and (max-width: 480px) {
         .kpi-card {
             padding: 14px;
@@ -861,22 +996,16 @@
             font-size: 24px;
         }
         
-        .kpi-label {
-            font-size: 11px;
+        .resumen-valor-grande {
+            font-size: 24px;
         }
         
-        .chart-card, .table-card, .top-vendedores {
+        .resumen-icon {
+            font-size: 28px;
+        }
+        
+        .chart-card {
             padding: 16px;
-        }
-        
-        .ranking-stats {
-            gap: 12px;
-            font-size: 11px;
-        }
-        
-        .badge {
-            font-size: 10px;
-            padding: 3px 8px;
         }
         
         .btn-primary, .btn-clear {
@@ -884,82 +1013,39 @@
             font-size: 13px;
         }
         
-        .filter-select, .filter-input {
-            padding: 8px 12px;
-            font-size: 13px;
-        }
-    }
-    
-    /* Landscape en móvil */
-    @media screen and (max-width: 768px) and (orientation: landscape) {
-        .kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
+        .nav-btn {
+            width: 32px;
+            height: 32px;
         }
         
-        .charts-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .tables-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        
-        .table-mini thead {
-            display: table-header-group;
-        }
-        
-        .table-mini tbody tr {
-            display: table-row;
-            border: none;
-            padding: 0;
-        }
-        
-        .table-mini tbody td {
-            display: table-cell;
-            padding: 8px;
-        }
-        
-        .table-mini tbody td::before {
-            display: none;
+        .semana-navegacion {
+            gap: 8px;
         }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Datos de las gráficas
-    const interesLabels = {{ interes_labels|safe }};
-    const interesValues = {{ interes_values|safe }};
-    const interesColors = {{ interes_colors|safe }};
+    // Datos de las gráficas (actualizados con filtros)
+    let interesLabels = {{ interes_labels|safe }};
+    let interesValues = {{ interes_values|safe }};
+    let interesColors = {{ interes_colors|safe }};
     
-    const mesesLabels = {{ meses_labels|safe }};
-    const mesesTotales = {{ meses_totales|safe }};
-    const mesesCompletados = {{ meses_completados|safe }};
+    let clientesMesesLabels = {{ clientes_meses_labels|safe }};
+    let clientesMesesValues = {{ clientes_meses_values|safe }};
     
-    const clientesMesesLabels = {{ clientes_meses_labels|safe }};
-    const clientesMesesValues = {{ clientes_meses_values|safe }};
+    let internetLabels = {{ internet_labels|safe }};
+    let internetValues = {{ internet_values|safe }};
     
-    const internetLabels = {{ internet_labels|safe }};
-    const internetValues = {{ internet_values|safe }};
+    // Variables para las instancias de los charts
+    let interesChart, internetChart, clientesChart;
     
-    const instalacionesLabels = {{ instalaciones_labels|safe }};
-    const instalacionesValues = {{ instalaciones_values|safe }};
-    
-    // Inicializar gráficas con tamaño responsivo
-    document.addEventListener('DOMContentLoaded', function() {
-        // Función para ajustar tamaño de gráficas
-        function resizeCharts() {
-            // Forzar redibujado de gráficas
-            if (window.interesChartInstance) window.interesChartInstance.resize();
-            if (window.contratosChartInstance) window.contratosChartInstance.resize();
-            if (window.clientesChartInstance) window.clientesChartInstance.resize();
-            if (window.internetChartInstance) window.internetChartInstance.resize();
-            if (window.instalacionesChartInstance) window.instalacionesChartInstance.resize();
-        }
-        
+    // Inicializar gráficas
+    function inicializarGraficas() {
         // Gráfica de interés
         const interesCtx = document.getElementById('interesChart').getContext('2d');
-        window.interesChartInstance = new Chart(interesCtx, {
+        if (interesChart) interesChart.destroy();
+        interesChart = new Chart(interesCtx, {
             type: 'pie',
             data: {
                 labels: interesLabels,
@@ -981,74 +1067,10 @@
             }
         });
         
-        // Gráfica de contratos mensuales
-        const contratosCtx = document.getElementById('contratosChart').getContext('2d');
-        window.contratosChartInstance = new Chart(contratosCtx, {
-            type: 'line',
-            data: {
-                labels: mesesLabels,
-                datasets: [
-                    {
-                        label: 'Total Contratos',
-                        data: mesesTotales,
-                        borderColor: '#ff6b00',
-                        backgroundColor: 'rgba(255, 107, 0, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: window.innerWidth < 768 ? 3 : 4,
-                        pointHoverRadius: 6
-                    },
-                    {
-                        label: 'Completados',
-                        data: mesesCompletados,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: window.innerWidth < 768 ? 3 : 4,
-                        pointHoverRadius: 6
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { 
-                        position: 'top',
-                        labels: { font: { size: window.innerWidth < 768 ? 10 : 12 } }
-                    }
-                }
-            }
-        });
-        
-        // Gráfica de clientes mensuales
-        const clientesCtx = document.getElementById('clientesChart').getContext('2d');
-        window.clientesChartInstance = new Chart(clientesCtx, {
-            type: 'bar',
-            data: {
-                labels: clientesMesesLabels,
-                datasets: [{
-                    label: 'Nuevos Clientes',
-                    data: clientesMesesValues,
-                    backgroundColor: '#ff6b00',
-                    borderRadius: 8,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { display: false }
-                }
-            }
-        });
-        
         // Gráfica de internet
         const internetCtx = document.getElementById('internetChart').getContext('2d');
-        window.internetChartInstance = new Chart(internetCtx, {
+        if (internetChart) internetChart.destroy();
+        internetChart = new Chart(internetCtx, {
             type: 'doughnut',
             data: {
                 labels: internetLabels,
@@ -1070,57 +1092,79 @@
             }
         });
         
-        // Escuchar cambios de tamaño de ventana
-        let resizeTimeout;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(resizeCharts, 250);
+        // Gráfica de clientes mensuales
+        const clientesCtx = document.getElementById('clientesChart').getContext('2d');
+        if (clientesChart) clientesChart.destroy();
+        clientesChart = new Chart(clientesCtx, {
+            type: 'bar',
+            data: {
+                labels: clientesMesesLabels,
+                datasets: [{
+                    label: 'Nuevos Clientes',
+                    data: clientesMesesValues,
+                    backgroundColor: '#ff6b00',
+                    borderRadius: 8,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    x: { grid: { display: false } }
+                }
+            }
         });
-    });
+    }
     
-    // Filtros
-    document.getElementById('filterPeriodo')?.addEventListener('change', function() {
-        const dateRange = document.getElementById('dateRange');
-        if (this.value === 'personalizado') {
-            dateRange.style.display = 'flex';
-        } else {
-            dateRange.style.display = 'none';
-        }
-    });
-    
-    function aplicarFiltros() {
+    // Filtros para gráficas
+    function aplicarFiltrosGraficas() {
         const url = new URL(window.location.href);
         const vendedor = document.getElementById('filterVendedor')?.value;
-        const periodo = document.getElementById('filterPeriodo').value;
         const fecha_desde = document.getElementById('fecha_desde')?.value;
         const fecha_hasta = document.getElementById('fecha_hasta')?.value;
         
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
         
-        url.searchParams.set('periodo', periodo);
+        if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
+        else url.searchParams.delete('fecha_desde');
         
-        if (periodo === 'personalizado') {
-            if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
-            else url.searchParams.delete('fecha_desde');
-            
-            if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
-            else url.searchParams.delete('fecha_hasta');
-        } else {
-            url.searchParams.delete('fecha_desde');
-            url.searchParams.delete('fecha_hasta');
+        if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
+        else url.searchParams.delete('fecha_hasta');
+        
+        // Mantener el offset de semana
+        const semanaOffset = url.searchParams.get('semana_offset');
+        if (semanaOffset && parseInt(semanaOffset) !== 0) {
+            url.searchParams.set('semana_offset', semanaOffset);
         }
         
         window.location.href = url.toString();
     }
     
-    function limpiarFiltros() {
+    function limpiarFiltrosGraficas() {
         const url = new URL(window.location.href);
         url.searchParams.delete('vendedor');
-        url.searchParams.delete('periodo');
         url.searchParams.delete('fecha_desde');
         url.searchParams.delete('fecha_hasta');
+        
+        const semanaOffset = url.searchParams.get('semana_offset');
+        if (semanaOffset && parseInt(semanaOffset) !== 0) {
+            url.searchParams.set('semana_offset', semanaOffset);
+        }
+        
         window.location.href = url.toString();
     }
+    
+    // Inicializar cuando la página cargue
+    document.addEventListener('DOMContentLoaded', function() {
+        inicializarGraficas();
+    });
 </script>
 {% endblock %}

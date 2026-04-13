@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count, Q, Sum, Avg, F
@@ -219,120 +220,107 @@ def dashboard_administrador(request):
     user = request.user
     
     hoy = timezone.now().date()
-    inicio_semana = hoy - timedelta(days=hoy.weekday())
     
-    # Estadísticas generales
+    # ========== CLIENTES POTENCIALES ==========
     total_clientes_potenciales = ClientePotencial.objects.count()
-    total_contratos = ContratoCliente.objects.count()
-    total_ventas_directas = VentaDirecta.objects.count()
     
-    # Contratos por estado
-    contratos_proceso = ContratoCliente.objects.filter(estado=ContratoCliente.EstadoContrato.EN_PROCESO).count()
+    # Clientes por interés
+    clientes_interes = ClientePotencial.objects.values('interesado').annotate(
+        count=Count('id')
+    ).order_by('interesado')
+    
+    interes_labels = []
+    interes_values = []
+    for item in clientes_interes:
+        interes_labels.append(dict(ClientePotencial.InteresadoChoices.choices).get(item['interesado'], item['interesado']))
+        interes_values.append(item['count'])
+    
+    # ========== CONTRATOS ==========
+    total_contratos = ContratoCliente.objects.count()
     contratos_completados = ContratoCliente.objects.filter(estado=ContratoCliente.EstadoContrato.COMPLETADO).count()
+    contratos_proceso = ContratoCliente.objects.filter(estado=ContratoCliente.EstadoContrato.EN_PROCESO).count()
     contratos_no_completados = ContratoCliente.objects.filter(estado=ContratoCliente.EstadoContrato.NO_COMPLETADO).count()
     
-    # Instalaciones
+    # Datos para gráfica de torta de contratos
+    contratos_estado_labels = ['Completados', 'En Proceso', 'No Completados']
+    contratos_estado_values = [contratos_completados, contratos_proceso, contratos_no_completados]
+    contratos_estado_colors = ['#10b981', '#f59e0b', '#ef4444']
+    
+    # ========== INSTALACIONES ==========
     total_instalaciones = Instalacion.objects.count()
     instalaciones_completadas = Instalacion.objects.filter(completada=True).count()
     instalaciones_pendientes = total_instalaciones - instalaciones_completadas
     
-    # Soportes por tipo
+    # Datos para gráfica de torta de instalaciones
+    instalaciones_labels = ['Completadas', 'Pendientes']
+    instalaciones_values = [instalaciones_completadas, instalaciones_pendientes]
+    instalaciones_colors = ['#10b981', '#f59e0b']
+    
+    # ========== SOPORTES ==========
     soportes_mudanza = Soporte.objects.filter(tipo=Soporte.TipoSoporte.MUDANZA).count()
     soportes_retiro = Soporte.objects.filter(tipo=Soporte.TipoSoporte.RETIRO).count()
     soportes_recableado = Soporte.objects.filter(tipo=Soporte.TipoSoporte.RECABLEADO).count()
+    total_soportes = soportes_mudanza + soportes_retiro + soportes_recableado
+    
     soportes_pendientes = Soporte.objects.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count()
+    soportes_completados = Soporte.objects.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count()
     
-    # Gráfico de contratos por mes (últimos 6 meses)
-    meses = []
-    contratos_por_mes = []
-    ventas_por_mes = []
-    for i in range(5, -1, -1):
-        fecha_inicio = hoy.replace(day=1) - timedelta(days=30*i)
-        fecha_fin = (fecha_inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
-        
-        contratos_mes = ContratoCliente.objects.filter(
-            fecha_creacion__date__gte=fecha_inicio,
-            fecha_creacion__date__lte=fecha_fin
-        ).count()
-        
-        ventas_mes = VentaDirecta.objects.filter(
-            fecha_creacion__date__gte=fecha_inicio,
-            fecha_creacion__date__lte=fecha_fin
-        ).count()
-        
-        meses.append(fecha_inicio.strftime('%b %Y'))
-        contratos_por_mes.append(contratos_mes)
-        ventas_por_mes.append(ventas_mes)
+    # Datos para gráfica de torta de soportes por tipo
+    soportes_tipo_labels = ['Mudanza', 'Retiro', 'Recableado']
+    soportes_tipo_values = [soportes_mudanza, soportes_retiro, soportes_recableado]
+    soportes_tipo_colors = ['#3b82f6', '#f59e0b', '#8b5cf6']
     
-    # Ranking de vendedores
-    ranking_vendedores = User.objects.filter(groups__name='Vendedor').annotate(
-        total_contratos=Count('contratos_creados', filter=Q(contratos_creados__estado=ContratoCliente.EstadoContrato.COMPLETADO))
-    ).order_by('-total_contratos')[:10]
-    
-    # Ranking de cuadrillas
-    ranking_cuadrillas = Cuadrilla.objects.annotate(
-        total_instalaciones=Count('asignaciones__instalacion', filter=Q(asignaciones__instalacion__completada=True))
-    ).order_by('-total_instalaciones')[:5]
-    
-    # Últimos contratos
+    # ========== ÚLTIMOS CONTRATOS ==========
     ultimos_contratos = ContratoCliente.objects.select_related(
         'cliente_potencial', 'plan_contratado', 'creado_por'
     ).order_by('-fecha_creacion')[:10]
     
-    # Planes más vendidos
-    planes_populares = Plan.objects.annotate(
-        total_contratos=Count('contratos'),
-        total_ventas_directas=Count('ventas_directas')
+    # ========== TOP VENDEDORES ==========
+    top_vendedores = User.objects.filter(groups__name='Vendedor').annotate(
+        total_contratos=Count('contratos_creados', filter=Q(contratos_creados__estado=ContratoCliente.EstadoContrato.COMPLETADO))
     ).order_by('-total_contratos')[:5]
-    
-    # Asignaciones pendientes
-    asignaciones_pendientes = AsignacionContrato.objects.filter(
-        activo=True
-    ).exclude(
-        id__in=Instalacion.objects.values_list('asignacion_id', flat=True)
-    ).select_related('contrato__cliente_potencial', 'venta_directa', 'cuadrilla').count()
-    
-    # Nómina de la semana
-    nominas_semana = NominaVendedor.objects.filter(
-        semana_inicio=inicio_semana
-    ).select_related('vendedor').order_by('-total_usd')
-    
-    total_nomina_usd = nominas_semana.aggregate(total=Sum('total_usd'))['total'] or 0
-    
-    # Soporte por estado
-    soportes_estado = {
-        'pendientes': Soporte.objects.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count(),
-        'proceso': Soporte.objects.filter(estado=Soporte.EstadoSoporte.EN_PROCESO).count(),
-        'completados': Soporte.objects.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count(),
-    }
     
     context = {
         'rol': 'administrador',
+        
+        # Clientes
         'total_clientes_potenciales': total_clientes_potenciales,
+        'interes_labels': json.dumps(interes_labels),
+        'interes_values': json.dumps(interes_values),
+        
+        # Contratos
         'total_contratos': total_contratos,
-        'total_ventas_directas': total_ventas_directas,
-        'contratos_proceso': contratos_proceso,
         'contratos_completados': contratos_completados,
+        'contratos_proceso': contratos_proceso,
         'contratos_no_completados': contratos_no_completados,
+        'contratos_estado_labels': json.dumps(contratos_estado_labels),
+        'contratos_estado_values': json.dumps(contratos_estado_values),
+        'contratos_estado_colors': json.dumps(contratos_estado_colors),
+        
+        # Instalaciones
         'total_instalaciones': total_instalaciones,
         'instalaciones_completadas': instalaciones_completadas,
         'instalaciones_pendientes': instalaciones_pendientes,
-        'porcentaje_instalaciones': (instalaciones_completadas / total_instalaciones * 100) if total_instalaciones > 0 else 0,
+        'instalaciones_labels': json.dumps(instalaciones_labels),
+        'instalaciones_values': json.dumps(instalaciones_values),
+        'instalaciones_colors': json.dumps(instalaciones_colors),
+        
+        # Soportes
+        'total_soportes': total_soportes,
         'soportes_mudanza': soportes_mudanza,
         'soportes_retiro': soportes_retiro,
         'soportes_recableado': soportes_recableado,
         'soportes_pendientes': soportes_pendientes,
-        'meses': meses,
-        'contratos_por_mes': contratos_por_mes,
-        'ventas_por_mes': ventas_por_mes,
-        'ranking_vendedores': ranking_vendedores,
-        'ranking_cuadrillas': ranking_cuadrillas,
+        'soportes_completados': soportes_completados,
+        'soportes_tipo_labels': json.dumps(soportes_tipo_labels),
+        'soportes_tipo_values': json.dumps(soportes_tipo_values),
+        'soportes_tipo_colors': json.dumps(soportes_tipo_colors),
+        
+        # Últimos contratos
         'ultimos_contratos': ultimos_contratos,
-        'planes_populares': planes_populares,
-        'asignaciones_pendientes': asignaciones_pendientes,
-        'nominas_semana': nominas_semana,
-        'total_nomina_usd': total_nomina_usd,
-        'soportes_estado': soportes_estado,
+        
+        # Top vendedores
+        'top_vendedores': top_vendedores,
     }
     
     return render(request, 'Inicio_De_Sesion/dashboard.html', context)
