@@ -5,11 +5,14 @@ from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.db.models.functions import TruncMonth, TruncDate
-from .models import ClientePotencial, ContratoCliente, AsignacionContrato, Instalacion
+from .models import ClientePotencial, ContratoCliente, AsignacionContrato, Cuadrilla, Instalacion, Soporte
 import json
 from django.http import JsonResponse
 from django.contrib.auth.models import User, Group 
-
+from django.db.models import Count, Q, Sum, Avg
+from django.db.models.functions import TruncMonth
+from datetime import datetime, timedelta
+import json
 @login_required
 def reporte_vendedor(request):
     """
@@ -263,3 +266,330 @@ def api_reporte_datos(request):
     # ... (código similar a la vista principal)
     
     return JsonResponse({'success': True})
+
+
+
+@login_required
+def reporte_instalador(request):
+    """
+    Vista para mostrar reportes y gráficas del instalador
+    """
+    
+    # Verificar permisos
+    es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_instalador = request.user.groups.filter(name='Instalador').exists()
+    es_supervisor = request.user.groups.filter(name='Supervisor').exists()
+    
+    if not (es_admin or es_instalador or es_supervisor):
+        messages.error(request, 'No tienes permisos para acceder a esta página.')
+        return redirect('dashboard')
+    
+    # Obtener el instalador actual
+    instalador_id = request.GET.get('instalador', request.user.id if not es_admin else '')
+    cuadrilla_id = request.GET.get('cuadrilla', '')
+    
+    # Filtros de fecha para gráficas
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
+    semana_offset = int(request.GET.get('semana_offset', 0))
+    
+    # ========== BASE DE DATOS ==========
+    # Base para instalaciones
+    if es_admin and instalador_id:
+        instalaciones_base = Instalacion.objects.filter(instaladores__id=instalador_id)
+        soportes_base = Soporte.objects.filter(instaladores__id=instalador_id)
+    elif es_instalador:
+        instalaciones_base = Instalacion.objects.filter(instaladores=request.user)
+        soportes_base = Soporte.objects.filter(instaladores=request.user)
+    else:
+        instalaciones_base = Instalacion.objects.all()
+        soportes_base = Soporte.objects.all()
+    
+    # Filtrar por cuadrilla si se selecciona
+    if cuadrilla_id:
+        instalaciones_base = instalaciones_base.filter(asignacion__cuadrilla_id=cuadrilla_id)
+        soportes_base = soportes_base.filter(instalacion__asignacion__cuadrilla_id=cuadrilla_id)
+    
+    instalaciones_totales = instalaciones_base
+    soportes_totales = soportes_base
+    
+    # ========== ESTADÍSTICAS GENERALES ==========
+    total_instalaciones = instalaciones_totales.count()
+    instalaciones_completadas = instalaciones_totales.filter(completada=True).count()
+    instalaciones_pendientes = instalaciones_totales.filter(completada=False).count()
+    tasa_exito = (instalaciones_completadas / total_instalaciones * 100) if total_instalaciones > 0 else 0
+    
+    # Soportes
+    total_soportes = soportes_totales.count()
+    soportes_completados = soportes_totales.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count()
+    soportes_pendientes = soportes_totales.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count()
+    soportes_en_proceso = soportes_totales.filter(estado=Soporte.EstadoSoporte.EN_PROCESO).count()
+    
+    # ========== DATOS PARA GRÁFICAS ==========
+    # Aplicar filtros de fecha a las gráficas
+    if fecha_desde:
+        instalaciones_graficas = instalaciones_totales.filter(fecha_creacion__date__gte=fecha_desde)
+    else:
+        instalaciones_graficas = instalaciones_totales
+    
+    if fecha_hasta:
+        instalaciones_graficas = instalaciones_graficas.filter(fecha_creacion__date__lte=fecha_hasta)
+    
+    # 1. Instalaciones por estado
+    instalaciones_estado_labels = ['Completadas', 'Pendientes']
+    instalaciones_estado_values = [
+        instalaciones_graficas.filter(completada=True).count(),
+        instalaciones_graficas.filter(completada=False).count()
+    ]
+    instalaciones_estado_colors = ['#10b981', '#f59e0b']
+    
+    # 2. Instalaciones por mes
+    hoy = timezone.now().date()
+    fecha_12_meses = hoy - timedelta(days=365)
+    
+    instalaciones_por_mes = instalaciones_totales.filter(
+        fecha_creacion__date__gte=fecha_12_meses
+    ).annotate(
+        mes=TruncMonth('fecha_creacion')
+    ).values('mes').annotate(
+        total=Count('id'),
+        completadas=Count('id', filter=Q(completada=True))
+    ).order_by('mes')
+    
+    meses_labels = []
+    instalaciones_totales_mes = []
+    instalaciones_completadas_mes = []
+    
+    for item in instalaciones_por_mes:
+        if item['mes']:
+            meses_labels.append(item['mes'].strftime('%b %Y'))
+            instalaciones_totales_mes.append(item['total'])
+            instalaciones_completadas_mes.append(item['completadas'])
+    
+    # 3. Soportes por tipo
+    soportes_por_tipo = soportes_totales.values('tipo').annotate(count=Count('id'))
+    
+    soportes_tipo_labels = []
+    soportes_tipo_values = []
+    soportes_tipo_colors = {'MUDANZA': '#3b82f6', 'RETIRO': '#f59e0b', 'RECABLEADO': '#8b5cf6'}
+    soportes_tipo_colors_list = []
+    
+    for item in soportes_por_tipo:
+        soportes_tipo_labels.append(dict(Soporte.TipoSoporte.choices).get(item['tipo'], item['tipo']))
+        soportes_tipo_values.append(item['count'])
+        soportes_tipo_colors_list.append(soportes_tipo_colors.get(item['tipo'], '#9e9e9e'))
+    
+    # 4. Soportes por estado
+    soportes_estado_labels = ['Completados', 'Pendientes', 'En Proceso']
+    soportes_estado_values = [
+        soportes_totales.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count(),
+        soportes_totales.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count(),
+        soportes_totales.filter(estado=Soporte.EstadoSoporte.EN_PROCESO).count()
+    ]
+    soportes_estado_colors = ['#10b981', '#f59e0b', '#3b82f6']
+    
+    # 5. Materiales utilizados (promedio)
+    instalaciones_completadas_filter = instalaciones_totales.filter(completada=True)
+    
+    # Calcular promedio de metros manualmente
+    total_metros = 0
+    total_instalaciones_metros = 0
+    
+    for inst in instalaciones_completadas_filter:
+        if inst.inicio_fibra is not None and inst.final_fibra is not None:
+            total_metros += abs(inst.final_fibra - inst.inicio_fibra)
+            total_instalaciones_metros += 1
+    
+    avg_metros = total_metros / total_instalaciones_metros if total_instalaciones_metros > 0 else 0
+    
+    materiales = {
+        'avg_conectores': instalaciones_completadas_filter.aggregate(Avg('conectores'))['conectores__avg'] or 0,
+        'avg_rosetas': instalaciones_completadas_filter.aggregate(Avg('rosetas'))['rosetas__avg'] or 0,
+        'avg_patch_cord': instalaciones_completadas_filter.aggregate(Avg('patch_cord'))['patch_cord__avg'] or 0,
+        'avg_tensores': instalaciones_completadas_filter.aggregate(Avg('tensores'))['tensores__avg'] or 0,
+        'avg_metros': avg_metros,
+    }
+    
+    # ========== ACUMULATIVO SEMANAL ==========
+    # Calcular semana actual (viernes a jueves)
+    dias_desde_viernes = (hoy.weekday() - 4) % 7
+    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
+    
+    # Aplicar offset para navegar entre semanas
+    viernes_seleccionado = viernes_actual - timedelta(weeks=semana_offset)
+    jueves_seleccionado = viernes_seleccionado + timedelta(days=6)
+    
+    # Instalaciones COMPLETADAS en la semana
+    instalaciones_completadas_semana = instalaciones_totales.filter(
+        completada=True,
+        fecha_instalacion__date__gte=viernes_seleccionado,
+        fecha_instalacion__date__lte=jueves_seleccionado
+    ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial')
+    
+    # Instalaciones PENDIENTES creadas en la semana
+    instalaciones_pendientes_semana = instalaciones_totales.filter(
+        completada=False,
+        fecha_creacion__date__gte=viernes_seleccionado,
+        fecha_creacion__date__lte=jueves_seleccionado
+    ).exclude(
+        id__in=instalaciones_totales.filter(
+            completada=True,
+            fecha_instalacion__date__gt=jueves_seleccionado
+        ).values_list('id', flat=True)
+    ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial')
+    
+    # Soportes COMPLETADOS en la semana
+    soportes_completados_semana = soportes_totales.filter(
+        estado=Soporte.EstadoSoporte.COMPLETADO,
+        fecha_actualizacion__date__gte=viernes_seleccionado,
+        fecha_actualizacion__date__lte=jueves_seleccionado
+    ).select_related('instalacion__asignacion__cuadrilla')
+    
+    # Soportes PENDIENTES creados en la semana
+    soportes_pendientes_semana = soportes_totales.filter(
+        estado=Soporte.EstadoSoporte.PENDIENTE,
+        fecha_creacion__date__gte=viernes_seleccionado,
+        fecha_creacion__date__lte=jueves_seleccionado
+    ).exclude(
+        id__in=soportes_totales.filter(
+            estado=Soporte.EstadoSoporte.COMPLETADO,
+            fecha_actualizacion__date__gt=jueves_seleccionado
+        ).values_list('id', flat=True)
+    ).select_related('instalacion__asignacion__cuadrilla')
+    
+    # Unir todas las instalaciones de la semana
+    instalaciones_semana = list(instalaciones_completadas_semana) + list(instalaciones_pendientes_semana)
+    instalaciones_semana.sort(key=lambda x: x.fecha_instalacion if x.completada else x.fecha_creacion, reverse=True)
+    
+    # Unir todos los soportes de la semana
+    soportes_semana = list(soportes_completados_semana) + list(soportes_pendientes_semana)
+    soportes_semana.sort(key=lambda x: x.fecha_actualizacion if x.estado == 'COMPLETADO' else x.fecha_creacion, reverse=True)
+    
+    # Totales de la semana
+    total_instalaciones_semana = len(instalaciones_semana)
+    completadas_semana = instalaciones_completadas_semana.count()
+    pendientes_semana = instalaciones_pendientes_semana.count()
+    
+    total_soportes_semana = len(soportes_semana)
+    soportes_completados_semana_count = soportes_completados_semana.count()
+    soportes_pendientes_semana_count = soportes_pendientes_semana.count()
+    
+    # Acumulado hasta la semana
+    acumulado_instalaciones_completadas = instalaciones_totales.filter(
+        completada=True,
+        fecha_instalacion__date__lte=jueves_seleccionado
+    ).count()
+    
+    acumulado_instalaciones_pendientes = instalaciones_totales.filter(
+        completada=False,
+        fecha_creacion__date__lte=jueves_seleccionado
+    ).exclude(
+        id__in=instalaciones_totales.filter(
+            completada=True,
+            fecha_instalacion__date__gt=jueves_seleccionado
+        ).values_list('id', flat=True)
+    ).count()
+    
+    acumulado_instalaciones_total = acumulado_instalaciones_completadas + acumulado_instalaciones_pendientes
+    
+    acumulado_soportes_completados = soportes_totales.filter(
+        estado=Soporte.EstadoSoporte.COMPLETADO,
+        fecha_actualizacion__date__lte=jueves_seleccionado
+    ).count()
+    
+    acumulado_soportes_pendientes = soportes_totales.filter(
+        estado=Soporte.EstadoSoporte.PENDIENTE,
+        fecha_creacion__date__lte=jueves_seleccionado
+    ).exclude(
+        id__in=soportes_totales.filter(
+            estado=Soporte.EstadoSoporte.COMPLETADO,
+            fecha_actualizacion__date__gt=jueves_seleccionado
+        ).values_list('id', flat=True)
+    ).count()
+    
+    acumulado_soportes_total = acumulado_soportes_completados + acumulado_soportes_pendientes
+    
+    semana_data = {
+        'inicio': viernes_seleccionado,
+        'fin': jueves_seleccionado,
+        'total_instalaciones': total_instalaciones_semana,
+        'instalaciones_completadas': completadas_semana,
+        'instalaciones_pendientes': pendientes_semana,
+        'instalaciones': instalaciones_semana,
+        'acumulado_instalaciones_completadas': acumulado_instalaciones_completadas,
+        'acumulado_instalaciones_pendientes': acumulado_instalaciones_pendientes,
+        'acumulado_instalaciones_total': acumulado_instalaciones_total,
+        'total_soportes': total_soportes_semana,
+        'soportes_completados': soportes_completados_semana_count,
+        'soportes_pendientes': soportes_pendientes_semana_count,
+        'soportes': soportes_semana,
+        'acumulado_soportes_completados': acumulado_soportes_completados,
+        'acumulado_soportes_pendientes': acumulado_soportes_pendientes,
+        'acumulado_soportes_total': acumulado_soportes_total,
+    }
+    
+    # ========== TABLAS ==========
+    ultimas_instalaciones = instalaciones_totales.select_related(
+        'asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial'
+    ).order_by('-fecha_creacion')[:10]
+    
+    ultimos_soportes = soportes_totales.select_related('instalacion').order_by('-fecha_creacion')[:10]
+    
+    # ========== OBTENER LISTAS PARA FILTROS ==========
+    instaladores_lista = []
+    if es_admin:
+        instaladores_lista = User.objects.filter(groups__name='Instalador').distinct().order_by('first_name', 'username')
+    
+    # Obtener cuadrillas para el filtro
+    cuadrillas_lista = Cuadrilla.objects.filter(activo=True).order_by('nombre')
+    
+    context = {
+        # Estadísticas generales
+        'total_instalaciones': total_instalaciones,
+        'instalaciones_completadas': instalaciones_completadas,
+        'instalaciones_pendientes': instalaciones_pendientes,
+        'tasa_exito': round(tasa_exito, 1),
+        'total_soportes': total_soportes,
+        'soportes_completados': soportes_completados,
+        'soportes_pendientes': soportes_pendientes,
+        'soportes_en_proceso': soportes_en_proceso,
+        
+        # Semana actual
+        'semana_actual': semana_data,
+        'es_semana_actual': semana_offset == 0,
+        'semana_offset': semana_offset,
+        
+        # Gráficas
+        'instalaciones_estado_labels': json.dumps(instalaciones_estado_labels),
+        'instalaciones_estado_values': json.dumps(instalaciones_estado_values),
+        'instalaciones_estado_colors': json.dumps(instalaciones_estado_colors),
+        
+        'meses_labels': json.dumps(meses_labels),
+        'instalaciones_totales_mes': json.dumps(instalaciones_totales_mes),
+        'instalaciones_completadas_mes': json.dumps(instalaciones_completadas_mes),
+        
+        'soportes_tipo_labels': json.dumps(soportes_tipo_labels),
+        'soportes_tipo_values': json.dumps(soportes_tipo_values),
+        'soportes_tipo_colors': json.dumps(soportes_tipo_colors_list),
+        
+        'soportes_estado_labels': json.dumps(soportes_estado_labels),
+        'soportes_estado_values': json.dumps(soportes_estado_values),
+        'soportes_estado_colors': json.dumps(soportes_estado_colors),
+        
+        'materiales': materiales,
+        
+        # Tablas
+        'ultimas_instalaciones': ultimas_instalaciones,
+        'ultimos_soportes': ultimos_soportes,
+        
+        # Filtros
+        'instaladores': instaladores_lista,
+        'cuadrillas': cuadrillas_lista,
+        'instalador_seleccionado': instalador_id,
+        'cuadrilla_seleccionada': cuadrilla_id,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
+        'es_admin': es_admin,
+    }
+    
+    return render(request, 'Instaladores/reporte_instalador.html', context)

@@ -69,6 +69,7 @@ urlpatterns = [
     path('instalaciones/<int:instalacion_id>/realizar/', realizar_instalacion, name='realizar_instalacion'),
     path('capturar-ubicacion-instalador/', capturar_ubicacion_instalador, name='capturar_ubicacion_instalador'),
     path('instalacion/detalle/<int:instalacion_id>/', obtener_detalle_instalacion, name='detalle_instalacion'),
+    path('reporte-instalador/', reporte_instalador, name='reporte_instalador'),
     #URLS DE VENTA DIRECTA
     path('ventas-directas/',lista_ventas_directas, name='lista_ventas_directas'),
     path('ventas-directas/crear/',crear_venta_directa, name='crear_venta_directa'),

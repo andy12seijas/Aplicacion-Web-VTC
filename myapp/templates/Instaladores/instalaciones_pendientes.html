@@ -433,6 +433,59 @@
         background: var(--orange-light, #fff2e6);
     }
 
+    /* Botón de copiar - SOLO LO NUEVO */
+    .btn-copy {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        background: white;
+        border-radius: 8px;
+        color: #10b981;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .btn-copy:hover {
+        border-color: #10b981;
+        background: #d1fae5;
+        transform: scale(1.05);
+    }
+
+    .btn-copy.copied {
+        background: #10b981;
+        color: white;
+        border-color: #10b981;
+    }
+
+    .copy-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #10b981;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideInRight 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
     .empty {
         text-align: center;
         padding: 48px !important;
@@ -664,7 +717,8 @@
                         <th>Vendedor / Torre</th>
                         {% endif %}
                         <th>Acciones</th>
-                    </thead>
+                    </tr>
+                </thead>
                 <tbody>
                     {% for instalacion in instalaciones_pendientes %}
                     <tr>
@@ -877,6 +931,13 @@
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
+                            <!-- BOTÓN DE COPIAR NUEVO -->
+                            <button class="btn-copy" onclick="copiarDatosInstalacion({{ instalacion.id }}, this)" title="Copiar datos de instalación">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
@@ -932,7 +993,7 @@
     </div>
 </div>
 
-<!-- Modal de Detalles de Instalación -->
+<!-- Modal de Detalles de Instalación (tu modal original completo) -->
 <div id="modalDetalleInstalacion" class="modal-overlay" style="display: none;">
     <div class="modal-container">
         <div class="modal-header">
@@ -1172,7 +1233,7 @@
 </div>
 
 <style>
-    /* Estilos del Modal */
+    /* Estilos del Modal (tus estilos originales del modal) */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -1531,7 +1592,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Función para cambiar entre pestañas
+    // Función para cambiar entre pestañas (tu función original)
     function cambiarTab(tab) {
         const url = new URL(window.location.href);
         url.searchParams.set('tab', tab);
@@ -1626,7 +1687,7 @@
     document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
     {% endif %}
 
-    // Función para abrir el modal con los detalles de la instalación
+    // Función para abrir el modal con los detalles de la instalación (tu función original)
     function verDetalleInstalacion(id) {
         const modal = document.getElementById('modalDetalleInstalacion');
         const loading = document.getElementById('loadingDetalle');
@@ -1764,14 +1825,114 @@
         });
     }
     
-    // Cerrar modal al hacer clic fuera
+    // NUEVA FUNCIÓN: Copiar datos de instalación
+    function copiarDatosInstalacion(id, btnElement) {
+        fetch(`/instalacion/detalle/${id}/`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const inst = data.data;
+                
+                // Calcular metros
+                let metros = inst.metros_utilizados || 0;
+                if (inst.inicio_fibra && inst.final_fibra) {
+                    metros = Math.abs(inst.final_fibra - inst.inicio_fibra);
+                }
+                
+                // Obtener orden de servicio
+                let ordenServicio = inst.orden_servicio || inst.nro_orden || 'N/A';
+                
+                const textoFormateado = `ATR VTC #: ${inst.atr || '03'}
+NOMBRE DEL CLIENTE: ${inst.nombre_cliente}
+ORDEN DE SERVICIO: ${ordenServicio}
+CUSTOMER: ${inst.customer_id || 'N/A'}
+FEEDER: ${inst.feeder || 'N/A'}
+CAJA: ${inst.caja || 'N/A'}
+PUERTO UTILIZADO: ${inst.puerto_utilizado || 'N/A'}
+
+UBICACION: ${inst.latitud && inst.longitud ? `${inst.latitud},${inst.longitud}` : 'No registrada'}
+EQUIPOS: MODEL: ${inst.modelo_modem || 'N/A'}
+SN:${inst.sn_modem || 'N/A'}
+MAC: ${inst.mac_modem || 'N/A'}
+PLAN: ${inst.plan || 'N/A'}
+
+MATERIALES
+INICIO:${inst.inicio_fibra || '0'}
+FINAL:${inst.final_fibra || '0'}
+METROS:${metros}
+CONECTORES:${inst.conectores || '0'}
+ROSETAS:${inst.rosetas || '0'}
+PACH CORD:${inst.patch_cord || '0'}
+TENSORES:${inst.tensores || '0'}
+CONECTORES MALOS:${inst.conectores_malos || '0'}
+OBSERVACIÓN:${inst.observacion || ''}`;
+                
+                navigator.clipboard.writeText(textoFormateado).then(() => {
+                    const originalHTML = btnElement.innerHTML;
+                    btnElement.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+                    btnElement.classList.add('copied');
+                    
+                    mostrarToast('✅ Datos copiados al portapapeles');
+                    
+                    setTimeout(() => {
+                        btnElement.innerHTML = originalHTML;
+                        btnElement.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo copiar al portapapeles',
+                        confirmButtonColor: '#ff6b00'
+                    });
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: data.error || 'No se pudieron obtener los datos',
+                    confirmButtonColor: '#ff6b00'
+                });
+            }
+        })
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al obtener los datos de la instalación',
+                confirmButtonColor: '#ff6b00'
+            });
+        });
+    }
+    
+    function mostrarToast(mensaje) {
+        const existingToast = document.querySelector('.copy-toast');
+        if (existingToast) existingToast.remove();
+        
+        const toast = document.createElement('div');
+        toast.className = 'copy-toast';
+        toast.textContent = mensaje;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+    
+    // Cerrar modal al hacer clic fuera (tu función original)
     document.getElementById('modalDetalleInstalacion')?.addEventListener('click', function(e) {
         if (e.target === this) {
             cerrarModalDetalle();
         }
     });
     
-    // Cerrar modal con tecla ESC
+    // Cerrar modal con tecla ESC (tu función original)
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cerrarModalDetalle();
