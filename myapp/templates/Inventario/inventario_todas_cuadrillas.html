@@ -1,0 +1,271 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Inventario por Cuadrillas{% endblock %}
+
+{% block page_title %}Inventario por Cuadrillas{% endblock %}
+{% block page_subtitle %}Materiales asignados a cada cuadrilla{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'inventario_asignar_cuadrilla' %}" class="btn-primary">
+    Asignar materiales
+</a>
+<a href="{% url 'inventario_global_lista' %}" class="btn-secondary">
+    Inventario Global
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .cuadrilla-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+    
+    .cuadrilla-header {
+        background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
+        padding: 16px 20px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .cuadrilla-titulo {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .cuadrilla-titulo h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .cuadrilla-titulo .codigo {
+        background: var(--orange);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    
+    .cuadrilla-stats {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .stat {
+        font-size: 13px;
+        color: #666;
+    }
+    
+    .stat strong {
+        color: var(--orange);
+        font-size: 16px;
+    }
+    
+    .btn-movimientos {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: #e3f2fd;
+        border: 1px solid #90caf9;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 12px;
+        color: #1976d2;
+        transition: all 0.2s;
+    }
+    
+    .btn-movimientos:hover {
+        background: #1976d2;
+        color: white;
+        border-color: #1976d2;
+    }
+    
+    .btn-ver {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 12px;
+        color: #666;
+        transition: all 0.2s;
+    }
+    
+    .btn-ver:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .table-container {
+        padding: 0 20px 20px 20px;
+        overflow-x: auto;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table th {
+        text-align: left;
+        padding: 12px 8px;
+        font-weight: 600;
+        color: #666;
+        font-size: 12px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .table td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+    
+    @media (max-width: 768px) {
+        .cuadrilla-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .cuadrilla-stats {
+            width: 100%;
+            justify-content: space-between;
+        }
+        
+        .table {
+            min-width: 500px;
+        }
+    }
+</style>
+
+{% for item in inventario_por_cuadrilla %}
+<div class="cuadrilla-card">
+    <div class="cuadrilla-header">
+        <div class="cuadrilla-titulo">
+            <h3>{{ item.cuadrilla.nombre }}</h3>
+            <span class="codigo">{{ item.cuadrilla.codigo }}</span>
+        </div>
+        <div class="cuadrilla-stats">
+            <div class="stat">
+                📦 <strong>{{ item.total_materiales }}</strong> materiales
+            </div>
+            <div class="stat">
+                🔢 <strong>{{ item.total_unidades }}</strong> unidades
+            </div>
+            <a href="{% url 'inventario_movimientos_cuadrilla' item.cuadrilla.id %}" class="btn-movimientos" title="Ver movimientos de inventario">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Movimientos
+            </a>
+            <a href="{% url 'inventario_cuadrilla_detalle' item.cuadrilla.id %}" class="btn-ver">
+                Ver detalles →
+            </a>
+        </div>
+    </div>
+    
+    <div class="table-container">
+        {% if item.inventario %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Cantidad</th>
+                    <th>Última actualización</th>
+                </thead>
+            <tbody>
+                {% for inv in item.inventario|slice:":5" %}
+                <tr>
+                    <td>{{ inv.material.nombre }}</div>
+                    <td><strong>{{ inv.cantidad }}</strong></div>
+                    <td>{{ inv.ultima_actualizacion|date:"d/m/Y" }}</div>
+                </tr>
+                {% endfor %}
+                {% if item.inventario|length > 5 %}
+                <tr>
+                    <td colspan="3" style="text-align: center; color: #999;">
+                        ... y {{ item.inventario|length|add:"-5" }} materiales más
+                    </div>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-message">
+            No tiene materiales asignados
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% empty %}
+<div class="cuadrilla-card">
+    <div class="empty-message">
+        No hay cuadrillas registradas o ninguna tiene materiales asignados.
+        <br>
+        <a href="{% url 'inventario_asignar_cuadrilla' %}" style="color: var(--orange);">Asignar materiales</a>
+    </div>
+</div>
+{% endfor %}
+
+<style>
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: var(--orange, #ff6b00);
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+</style>
+{% endblock %}

@@ -201,83 +201,77 @@ def editar_instalacion(request, instalacion_id):
     
     if request.method == 'POST':
         form = InstalacionEditForm(request.POST, request.FILES, instance=instalacion)
+        
         if form.is_valid():
-            instalacion = form.save(commit=False)
+            instalacion = form.save()
             
-            # Procesar fecha de instalación
-            if request.POST.get('fecha_instalacion'):
-                try:
-                    from django.utils import timezone
-                    fecha_str = request.POST.get('fecha_instalacion')
-                    instalacion.fecha_instalacion = datetime.strptime(fecha_str, '%Y-%m-%dT%H:%M')
-                except:
-                    pass
-            
-            instalacion.save()
-            
-            # Guardar instaladores (ManyToMany)
-            instaladores_ids = request.POST.getlist('instaladores')
-            if instaladores_ids:
-                instalacion.instaladores.set(instaladores_ids)
-            
-            # Procesar eliminación de fotos
+            # ========== PROCESAR ELIMINACIÓN DE FOTOS ==========
             fotos_eliminar = request.POST.get('fotos_eliminar', '')
             if fotos_eliminar:
                 import json
                 fotos_a_eliminar = json.loads(fotos_eliminar)
                 from django.core.files.storage import default_storage
+                
                 fotos_actuales = instalacion.fotos or []
                 for foto_url in fotos_a_eliminar:
                     if foto_url in fotos_actuales:
                         fotos_actuales.remove(foto_url)
-                        if '/media/' in foto_url:
-                            ruta = foto_url.split('/media/')[-1]
-                            if default_storage.exists(ruta):
-                                default_storage.delete(ruta)
+                        # Eliminar archivo físico
+                        try:
+                            if '/media/' in foto_url:
+                                ruta = foto_url.split('/media/')[-1]
+                                if default_storage.exists(ruta):
+                                    default_storage.delete(ruta)
+                        except:
+                            pass
                 instalacion.fotos = fotos_actuales
                 instalacion.save()
             
-            # Procesar nuevas fotos
+            # ========== PROCESAR NUEVAS FOTOS ==========
             fotos = request.FILES.getlist('fotos_upload')
             if fotos:
+                from django.core.files.storage import default_storage
                 import os
                 from django.utils import timezone as tz
+                
                 fotos_urls = instalacion.fotos or []
                 for foto in fotos:
-                    extension = os.path.splitext(foto.name)[1].lower()
-                    nombre_archivo = f"instalacion_{instalacion.id}_{int(tz.now().timestamp())}{extension}"
-                    ruta = os.path.join('instalaciones', nombre_archivo)
-                    from django.core.files.storage import default_storage
-                    saved_path = default_storage.save(ruta, foto)
+                    # Validar tipo de archivo
+                    if not foto.content_type.startswith('image/'):
+                        messages.error(request, f'El archivo {foto.name} no es una imagen válida.')
+                        continue
+                    
+                    # Validar tamaño (5MB)
+                    if foto.size > 5 * 1024 * 1024:
+                        messages.error(request, f'El archivo {foto.name} excede el tamaño máximo de 5MB.')
+                        continue
+                    
+                    # Guardar la foto (misma ruta que en realizar_instalacion)
+                    timestamp = tz.now().strftime('%Y%m%d_%H%M%S')
+                    safe_name = foto.name.replace(' ', '_')
+                    filename = f'pagos/instalaciones/instalacion_{instalacion.id}_{timestamp}_{safe_name}'
+                    saved_path = default_storage.save(filename, foto)
                     fotos_urls.append(default_storage.url(saved_path))
+                
                 instalacion.fotos = fotos_urls
                 instalacion.save()
             
-            messages.success(request, 'Instalación actualizada exitosamente')
+            messages.success(request, '✅ Instalación actualizada exitosamente')
             return redirect('lista_instalaciones')
         else:
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f'Error en {field}: {error}')
     else:
-        form = InstalacionForm(instance=instalacion)
+        form = InstalacionEditForm(instance=instalacion)
     
-    # Obtener instaladores de la cuadrilla para el selector
-    cuadrilla = instalacion.asignacion.cuadrilla if instalacion.asignacion.cuadrilla else None
-    instaladores_disponibles = []
-    if cuadrilla:
-        from myapp.models import PerfilUsuario
-        perfiles = cuadrilla.instaladores.filter(activo=True)
-        instaladores_disponibles = [p.usuario for p in perfiles]
-    
-    # Instaladores actuales
+    # Obtener instaladores actuales
     instaladores_actuales = list(instalacion.instaladores.all())
     
     context = {
         'form': form,
         'instalacion': instalacion,
         'modelos_modem': modelos_modem,
-        'instaladores_disponibles': instaladores_disponibles,
         'instaladores_actuales': instaladores_actuales,
         'fotos_existentes': instalacion.fotos or [],
     }

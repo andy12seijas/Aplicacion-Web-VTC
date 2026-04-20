@@ -57,12 +57,10 @@ def crear_soporte_unificado(request):
                 error_busqueda = 'Debe ingresar Customer ID o Número de Orden (ODS)'
             else:
                 # Buscar por customer_id o nro_orden (ODS)
-                # Primero buscar en ContratoCliente por customer_id
                 contrato = ContratoCliente.objects.filter(
                     Q(customer_id__iexact=busqueda)
                 ).select_related('cliente_potencial', 'plan_contratado').first()
                 
-                # Si no se encuentra en Contrato, buscar en VentaDirecta por customer_id o nro_orden
                 if not contrato:
                     venta = VentaDirecta.objects.filter(
                         Q(customer_id__iexact=busqueda) |
@@ -85,7 +83,7 @@ def crear_soporte_unificado(request):
                         instalacion_encontrada = Instalacion.objects.filter(
                             asignacion__venta_directa=venta,
                             completada=True
-                                            ).select_related('asignacion', 'modelo_modem').first()
+                        ).select_related('asignacion', 'modelo_modem').first()
                 else:
                     cliente_data = {
                         'id': contrato.cliente_potencial.id,
@@ -97,7 +95,7 @@ def crear_soporte_unificado(request):
                         'customer_id': contrato.customer_id,
                         'plan': contrato.plan_contratado.nombre,
                         'atr': contrato.atr,
-                        'ods':contrato.ods,
+                        'ods': contrato.ods,
                     }
                     instalacion_encontrada = Instalacion.objects.filter(
                         asignacion__contrato=contrato,
@@ -109,7 +107,6 @@ def crear_soporte_unificado(request):
                 elif not instalacion_encontrada:
                     error_busqueda = 'El cliente no tiene una instalación completada para realizar soporte'
                 else:
-                    # Verificar si ya existe un soporte de este tipo
                     soporte_existente = Soporte.objects.filter(
                         instalacion=instalacion_encontrada,
                         tipo=tipo_soporte,
@@ -120,7 +117,6 @@ def crear_soporte_unificado(request):
                         error_busqueda = f'Ya existe un soporte de {dict(tipos_soporte).get(tipo_soporte)} para este cliente en estado {soporte_existente.get_estado_display()}'
                     else:
                         mostrar_formulario = True
-                        # Crear formulario con datos iniciales
                         form = SoporteForm(initial={
                             'tipo': tipo_soporte,
                             'instalacion': instalacion_encontrada.id,
@@ -136,82 +132,306 @@ def crear_soporte_unificado(request):
                 return redirect('crear_soporte_unificado')
             
             instalacion_encontrada = get_object_or_404(Instalacion, id=instalacion_id)
+            cuadrilla = instalacion_encontrada.asignacion.cuadrilla
+            
+            # ========== OBTENER INVENTARIO DE LA CUADRILLA ==========
+            inventario_cuadrilla = {
+                "Modem": 0,
+                "Conector": 0,
+                "Roseta": 0,
+                "Patch Cord": 0,
+                "Tensor": 0,
+                "Fibra Optica (metros)": 0
+            }
+            
+            try:
+                materiales_disponibles = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla).select_related('material')
+                for item in materiales_disponibles:
+                    inventario_cuadrilla[item.material.nombre] = item.cantidad
+            except:
+                pass
+            
+            # ========== OBTENER VALORES DEL POST ==========
+            inicio_fibra = int(request.POST.get('inicio_fibra', 0) or 0)
+            final_fibra = int(request.POST.get('final_fibra', 0) or 0)
+            metros_usados = abs(inicio_fibra - final_fibra) if inicio_fibra > 0 or final_fibra > 0 else 0
+            
+            conectores_usados = int(request.POST.get('conectores', 0) or 0)
+            rosetas_usadas = int(request.POST.get('rosetas', 0) or 0)
+            patch_usados = int(request.POST.get('patch_cord', 0) or 0)
+            tensores_usados = int(request.POST.get('tensores', 0) or 0)
+            modelo_modem_id = request.POST.get('modelo_modem')
+            
+            # ========== VALIDAR STOCK ANTES DE GUARDAR ==========
+            errores_stock = []
+            
+            # Validar módem (solo si se seleccionó un modelo)
+            if modelo_modem_id and modelo_modem_id != '':
+                if inventario_cuadrilla.get("Modem", 0) < 1:
+                    errores_stock.append("No hay módems disponibles en el inventario de la cuadrilla.")
+            
+            # Validar conectores (solo si se usaron)
+            if conectores_usados > 0 and conectores_usados > inventario_cuadrilla.get("Conector", 0):
+                errores_stock.append(f"Stock insuficiente de conectores. Disponible: {inventario_cuadrilla.get('Conector', 0)}")
+            
+            # Validar rosetas (solo si se usaron)
+            if rosetas_usadas > 0 and rosetas_usadas > inventario_cuadrilla.get("Roseta", 0):
+                errores_stock.append(f"Stock insuficiente de rosetas. Disponible: {inventario_cuadrilla.get('Roseta', 0)}")
+            
+            # Validar patch cord (solo si se usaron)
+            if patch_usados > 0 and patch_usados > inventario_cuadrilla.get("Patch Cord", 0):
+                errores_stock.append(f"Stock insuficiente de patch cord. Disponible: {inventario_cuadrilla.get('Patch Cord', 0)}")
+            
+            # Validar tensores (solo si se usaron)
+            if tensores_usados > 0 and tensores_usados > inventario_cuadrilla.get("Tensor", 0):
+                errores_stock.append(f"Stock insuficiente de tensores. Disponible: {inventario_cuadrilla.get('Tensor', 0)}")
+            
+            # Validar fibra (solo si se usaron metros)
+            if metros_usados > 0 and metros_usados > inventario_cuadrilla.get("Fibra Optica (metros)", 0):
+                errores_stock.append(f"Stock insuficiente de fibra óptica. Metros disponibles: {inventario_cuadrilla.get('Fibra Optica (metros)', 0)}")
+            
+            # Si hay errores de stock
+            if errores_stock:
+                for error in errores_stock:
+                    messages.error(request, f'❌ {error}')
+                # Recargar datos para mostrar el formulario nuevamente
+                cliente_data = {
+                    'nombre': instalacion_encontrada.nombre_cliente,
+                    'cedula': instalacion_encontrada.cedula_cliente,
+                    'direccion': instalacion_encontrada.direccion,
+                    'customer_id': instalacion_encontrada.customer_id,
+                    'plan': instalacion_encontrada.plan,
+                    'atr': instalacion_encontrada.atr,
+                }
+                mostrar_formulario = True
+                form = SoporteForm(initial={
+                    'tipo': tipo_soporte,
+                    'instalacion': instalacion_encontrada.id,
+                })
+                form.data = request.POST
+                context = {
+                    'tipos_soporte': tipos_soporte,
+                    'cliente': cliente_data,
+                    'instalacion': instalacion_encontrada,
+                    'form': form,
+                    'mostrar_formulario': mostrar_formulario,
+                    'busqueda_realizada': True,
+                    'error_busqueda': None,
+                    'modelos_modem': ModeloModem.objects.filter(activo=True),
+                }
+                return render(request, 'Instaladores/crear_soporte.html', context)
             
             # Crear el soporte manualmente
             try:
-                soporte = Soporte()
-                soporte.instalacion = instalacion_encontrada
-                soporte.tipo = tipo_soporte
-                soporte.creado_por = request.user
-                soporte.estado = 'EN_PROCESO'
+                from django.db import transaction
                 
-                # Asignar fecha y hora
-                fecha_hora = request.POST.get('fecha_hora_servicio')
-                if fecha_hora:
-                    from django.utils import timezone
-                    import datetime
-                    soporte.fecha_hora_servicio = datetime.datetime.strptime(fecha_hora, '%Y-%m-%dT%H:%M')
-                
-                # Asignar falla y solución
-                soporte.falla_encontrada = request.POST.get('falla_encontrada', '')
-                soporte.solucion = request.POST.get('solucion', '')
-                
-                # Asignar módem
-                modelo_modem_id = request.POST.get('modelo_modem')
-                if modelo_modem_id:
-                    soporte.modelo_modem_id = modelo_modem_id
-                soporte.sn_modem = request.POST.get('sn_modem', '')
-                soporte.mac_modem = request.POST.get('mac_modem', '')
-                
-                # Asignar materiales
-                soporte.inicio_fibra = request.POST.get('inicio_fibra') or None
-                soporte.final_fibra = request.POST.get('final_fibra') or None
-                soporte.conectores = request.POST.get('conectores') or 0
-                soporte.rosetas = request.POST.get('rosetas') or 0
-                soporte.patch_cord = request.POST.get('patch_cord') or 0
-                soporte.tensores = request.POST.get('tensores') or 0
-                soporte.conectores_malos = request.POST.get('conectores_malos') or 0
-                
-                # Asignar datos NAP
-                soporte.caja_nap_utilizada = request.POST.get('caja_nap_utilizada', '')
-                soporte.puerto_nap_utilizado = request.POST.get('puerto_nap_utilizado', '')
-                
-                # Asignar ubicación
-                soporte.pin_ubicacion_lat = request.POST.get('pin_ubicacion_lat') or None
-                soporte.pin_ubicacion_lng = request.POST.get('pin_ubicacion_lng') or None
-                
-                # Asignar observaciones
-                soporte.observaciones = request.POST.get('observaciones', '')
-                
-                # Asignar cuadrilla actual del usuario
-                try:
-                    perfil = request.user.perfil
-                    cuadrilla = Cuadrilla.objects.filter(instaladores=perfil).first()
-                    soporte.cuadrilla = cuadrilla
-                except:
-                    pass
-                
-                soporte.save()
-                
-                # Guardar instaladores
-                soporte.instaladores.add(request.user)
-                
-                # Procesar fotos
-                fotos = request.FILES.getlist('fotos_upload')
-                if fotos:
-                    from django.core.files.storage import default_storage
-                    import os
-                    from django.utils import timezone as tz
-                    fotos_urls = []
-                    for foto in fotos:
-                        extension = os.path.splitext(foto.name)[1].lower()
-                        nombre_archivo = f"soporte_{soporte.id}_{int(tz.now().timestamp())}{extension}"
-                        ruta = os.path.join('soportes', nombre_archivo)
-                        saved_path = default_storage.save(ruta, foto)
-                        fotos_urls.append(default_storage.url(saved_path))
+                with transaction.atomic():
+                    soporte = Soporte()
+                    soporte.instalacion = instalacion_encontrada
+                    soporte.tipo = tipo_soporte
+                    soporte.creado_por = request.user
+                    soporte.estado = 'COMPLETADO'  # Se completa directamente
                     
-                    soporte.fotos = fotos_urls
+                    # Asignar fecha y hora
+                    fecha_hora = request.POST.get('fecha_hora_servicio')
+                    if fecha_hora:
+                        import datetime
+                        soporte.fecha_hora_servicio = datetime.datetime.strptime(fecha_hora, '%Y-%m-%dT%H:%M')
+                    else:
+                        soporte.fecha_hora_servicio = timezone.now()
+                    
+                    # Asignar falla y solución
+                    soporte.falla_encontrada = request.POST.get('falla_encontrada', '')
+                    soporte.solucion = request.POST.get('solucion', '')
+                    
+                    # Asignar módem
+                    if modelo_modem_id and modelo_modem_id != '':
+                        soporte.modelo_modem_id = modelo_modem_id
+                    soporte.sn_modem = request.POST.get('sn_modem', '')
+                    soporte.mac_modem = request.POST.get('mac_modem', '')
+                    
+                    # Asignar materiales
+                    soporte.inicio_fibra = request.POST.get('inicio_fibra') or None
+                    soporte.final_fibra = request.POST.get('final_fibra') or None
+                    soporte.conectores = int(request.POST.get('conectores', 0) or 0)
+                    soporte.rosetas = int(request.POST.get('rosetas', 0) or 0)
+                    soporte.patch_cord = int(request.POST.get('patch_cord', 0) or 0)
+                    soporte.tensores = int(request.POST.get('tensores', 0) or 0)
+                    soporte.conectores_malos = int(request.POST.get('conectores_malos', 0) or 0)
+                    
+                    # Asignar datos NAP
+                    soporte.caja_nap_utilizada = request.POST.get('caja_nap_utilizada', '')
+                    soporte.puerto_nap_utilizado = request.POST.get('puerto_nap_utilizado', '')
+                    
+                    # Asignar ubicación
+                    soporte.pin_ubicacion_lat = request.POST.get('pin_ubicacion_lat') or None
+                    soporte.pin_ubicacion_lng = request.POST.get('pin_ubicacion_lng') or None
+                    
+                    # Asignar observaciones
+                    soporte.observaciones = request.POST.get('observaciones', '')
+                    
+                    # Asignar cuadrilla actual del usuario
+                    try:
+                        perfil = request.user.perfil
+                        cuadrilla_asignada = Cuadrilla.objects.filter(instaladores=perfil).first()
+                        soporte.cuadrilla = cuadrilla_asignada
+                    except:
+                        pass
+                    
                     soporte.save()
+                    
+                    # ========== GUARDAR TODOS LOS INSTALADORES DE LA CUADRILLA ==========
+                    if soporte.cuadrilla:
+                        # Obtener todos los usuarios de los perfiles de la cuadrilla
+                        for perfil_instalador in soporte.cuadrilla.instaladores.all():
+                            soporte.instaladores.add(perfil_instalador.usuario)
+                    else:
+                        # Si no se encuentra la cuadrilla, al menos guardar al usuario actual
+                        soporte.instaladores.add(request.user)
+                    
+                    # Procesar fotos
+                    fotos = request.FILES.getlist('fotos_upload')
+                    if fotos:
+                        from django.core.files.storage import default_storage
+                        import os
+                        from django.utils import timezone as tz
+                        fotos_urls = []
+                        for foto in fotos:
+                            extension = os.path.splitext(foto.name)[1].lower()
+                            nombre_archivo = f"soporte_{soporte.id}_{int(tz.now().timestamp())}{extension}"
+                            ruta = os.path.join('soportes', nombre_archivo)
+                            saved_path = default_storage.save(ruta, foto)
+                            fotos_urls.append(default_storage.url(saved_path))
+                        
+                        soporte.fotos = fotos_urls
+                        soporte.save()
+                    
+                    # ========== RESTAR MATERIALES DEL INVENTARIO ==========
+                    # Restar módem (solo si se seleccionó un modelo)
+                    if modelo_modem_id and modelo_modem_id != '':
+                        material_modem, _ = Material.objects.get_or_create(nombre="Modem")
+                        inv_cuadrilla_modem, _ = InventarioCuadrilla.objects.get_or_create(
+                            cuadrilla=cuadrilla,
+                            material=material_modem
+                        )
+                        if inv_cuadrilla_modem.cantidad >= 1:
+                            inv_cuadrilla_modem.cantidad -= 1
+                            inv_cuadrilla_modem.save()
+                            
+                            MovimientoInventario.objects.create(
+                                material=material_modem,
+                                tipo=MovimientoInventario.TipoMovimiento.GASTO_SOPORTE,
+                                cantidad=-1,
+                                cuadrilla=cuadrilla,
+                                soporte=soporte,
+                                realizado_por=request.user,
+                                observacion=f"Soporte #{soporte.id} - Módem usado"
+                            )
+                    
+                    # Restar conectores (solo si se usaron)
+                    if conectores_usados > 0:
+                        material_conector, _ = Material.objects.get_or_create(nombre="Conector")
+                        inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                            cuadrilla=cuadrilla,
+                            material=material_conector
+                        )
+                        if inv_cuadrilla.cantidad >= conectores_usados:
+                            inv_cuadrilla.cantidad -= conectores_usados
+                            inv_cuadrilla.save()
+                            
+                            MovimientoInventario.objects.create(
+                                material=material_conector,
+                                tipo=MovimientoInventario.TipoMovimiento.GASTO_SOPORTE,
+                                cantidad=-conectores_usados,
+                                cuadrilla=cuadrilla,
+                                soporte=soporte,
+                                realizado_por=request.user,
+                                observacion=f"Soporte #{soporte.id} - {conectores_usados} conectores usados"
+                            )
+                    
+                    # Restar rosetas (solo si se usaron)
+                    if rosetas_usadas > 0:
+                        material_roseta, _ = Material.objects.get_or_create(nombre="Roseta")
+                        inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                            cuadrilla=cuadrilla,
+                            material=material_roseta
+                        )
+                        if inv_cuadrilla.cantidad >= rosetas_usadas:
+                            inv_cuadrilla.cantidad -= rosetas_usadas
+                            inv_cuadrilla.save()
+                            
+                            MovimientoInventario.objects.create(
+                                material=material_roseta,
+                                tipo=MovimientoInventario.TipoMovimiento.GASTO_SOPORTE,
+                                cantidad=-rosetas_usadas,
+                                cuadrilla=cuadrilla,
+                                soporte=soporte,
+                                realizado_por=request.user,
+                                observacion=f"Soporte #{soporte.id} - {rosetas_usadas} rosetas usadas"
+                            )
+                    
+                    # Restar patch cord (solo si se usaron)
+                    if patch_usados > 0:
+                        material_patch, _ = Material.objects.get_or_create(nombre="Patch Cord")
+                        inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                            cuadrilla=cuadrilla,
+                            material=material_patch
+                        )
+                        if inv_cuadrilla.cantidad >= patch_usados:
+                            inv_cuadrilla.cantidad -= patch_usados
+                            inv_cuadrilla.save()
+                            
+                            MovimientoInventario.objects.create(
+                                material=material_patch,
+                                tipo=MovimientoInventario.TipoMovimiento.GASTO_SOPORTE,
+                                cantidad=-patch_usados,
+                                cuadrilla=cuadrilla,
+                                soporte=soporte,
+                                realizado_por=request.user,
+                                observacion=f"Soporte #{soporte.id} - {patch_usados} patch cord usados"
+                            )
+                    
+                    # Restar tensores (solo si se usaron)
+                    if tensores_usados > 0:
+                        material_tensor, _ = Material.objects.get_or_create(nombre="Tensor")
+                        inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                            cuadrilla=cuadrilla,
+                            material=material_tensor
+                        )
+                        if inv_cuadrilla.cantidad >= tensores_usados:
+                            inv_cuadrilla.cantidad -= tensores_usados
+                            inv_cuadrilla.save()
+                            
+                            MovimientoInventario.objects.create(
+                                material=material_tensor,
+                                tipo=MovimientoInventario.TipoMovimiento.GASTO_SOPORTE,
+                                cantidad=-tensores_usados,
+                                cuadrilla=cuadrilla,
+                                soporte=soporte,
+                                realizado_por=request.user,
+                                observacion=f"Soporte #{soporte.id} - {tensores_usados} tensores usados"
+                            )
+                    
+                    # Restar fibra (solo si se usaron metros)
+                    if metros_usados > 0:
+                        material_fibra, _ = Material.objects.get_or_create(nombre="Fibra Optica (metros)")
+                        inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                            cuadrilla=cuadrilla,
+                            material=material_fibra
+                        )
+                        if inv_cuadrilla.cantidad >= metros_usados:
+                            inv_cuadrilla.cantidad -= metros_usados
+                            inv_cuadrilla.save()
+                            
+                            MovimientoInventario.objects.create(
+                                material=material_fibra,
+                                tipo=MovimientoInventario.TipoMovimiento.GASTO_SOPORTE,
+                                cantidad=-metros_usados,
+                                cuadrilla=cuadrilla,
+                                soporte=soporte,
+                                realizado_por=request.user,
+                                observacion=f"Soporte #{soporte.id} - {metros_usados} metros de fibra usados"
+                            )
                 
                 messages.success(request, f'Soporte de {dict(tipos_soporte).get(tipo_soporte)} creado exitosamente')
                 return redirect('lista_soportes')
@@ -232,7 +452,6 @@ def crear_soporte_unificado(request):
                     'tipo': tipo_soporte,
                     'instalacion': instalacion_encontrada.id,
                 })
-                # Recargar los valores enviados
                 form.data = request.POST
                 context = {
                     'tipos_soporte': tipos_soporte,

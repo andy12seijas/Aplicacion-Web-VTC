@@ -1568,6 +1568,14 @@
             font-size: 12px;
         }
     }
+        /* Aumentar z-index de SweetAlert para que esté por encima del modal */
+    .swal2-container {
+        z-index: 20000 !important;
+    }
+
+    .swal2-popup {
+        z-index: 20001 !important;
+    }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

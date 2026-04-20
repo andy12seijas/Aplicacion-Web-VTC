@@ -1,0 +1,394 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Inventario Global{% endblock %}
+
+{% block page_title %}Inventario Global{% endblock %}
+{% block page_subtitle %}Gestión de materiales y stock general{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'inventario_global_agregar' %}" class="btn-primary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 5v14M5 12h14"/>
+    </svg>
+    Agregar Materiales
+</a>
+<a href="{% url 'inventario_movimientos' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+    </svg>
+    Ver Movimientos
+</a>
+<a href="{% url 'panel_inventario' %}" class="btn-secondary">
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .stats-inventario {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card-inventario {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        transition: all 0.2s;
+    }
+    
+    .stat-card-inventario:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: var(--orange);
+    }
+    
+    .stat-number {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--orange, #ff6b00);
+        display: block;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+        color: var(--gray-text, #666);
+        margin-top: 8px;
+        display: block;
+    }
+    
+    .bajo-stock-alert {
+        background: #fff3e0;
+        border-left: 4px solid #f59e0b;
+        padding: 12px 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    
+    .bajo-stock-alert svg {
+        flex-shrink: 0;
+    }
+    
+    .bajo-stock-alert .alert-title {
+        font-weight: 600;
+        color: #d97706;
+    }
+    
+    .bajo-stock-lista {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .badge-low-stock {
+        background: #fef3c7;
+        color: #d97706;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 20px;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table th {
+        text-align: left;
+        padding: 12px 8px;
+        color: var(--gray-text, #666);
+        font-weight: 600;
+        border-bottom: 2px solid var(--gray-border, #e0e0e0);
+    }
+    
+    .table td {
+        padding: 12px 8px;
+        border-bottom: 1px solid var(--gray-border, #e0e0e0);
+    }
+    
+    .table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .cantidad {
+        font-weight: 600;
+        font-size: 16px;
+    }
+    
+    .cantidad.bajo {
+        color: #f59e0b;
+    }
+    
+    .cantidad.critico {
+        color: #ef4444;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: #666;
+    }
+    
+    .btn-icon:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: #fff2e6;
+    }
+    
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .page-link {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 8px;
+        color: #666;
+        text-decoration: none;
+    }
+    
+    .page-link.active {
+        background: var(--orange);
+        color: white;
+        border-color: var(--orange);
+    }
+    
+    @media (max-width: 768px) {
+        .stats-inventario {
+            grid-template-columns: 1fr;
+        }
+        
+        .table-container {
+            padding: 12px;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<!-- Estadísticas -->
+<div class="stats-inventario">
+    <div class="stat-card-inventario">
+        <span class="stat-number">{{ total_materiales }}</span>
+        <span class="stat-label">Materiales registrados</span>
+    </div>
+    <div class="stat-card-inventario">
+        <span class="stat-number">{{ total_cantidad }}</span>
+        <span class="stat-label">Total de unidades</span>
+    </div>
+    <div class="stat-card-inventario">
+        <span class="stat-number">{{ bajo_stock|length }}</span>
+        <span class="stat-label">Materiales con bajo stock</span>
+    </div>
+</div>
+
+<!-- Alerta de bajo stock -->
+{% if bajo_stock %}
+<div class="bajo-stock-alert">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <circle cx="12" cy="16" r="0.5" fill="#d97706" stroke="none"/>
+    </svg>
+    <div>
+        <span class="alert-title">⚠️ Alerta de bajo stock:</span>
+        <div class="bajo-stock-lista">
+            {% for item in bajo_stock %}
+            <span class="badge-low-stock">{{ item.material.nombre }}: {{ item.inventario.cantidad }} unidades</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tabla de inventario -->
+<div class="table-container">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Material</th>
+                <th>Cantidad disponible</th>
+                <th>Cantidad mínima</th>
+                <th>Estado</th>
+                <th>Última actualización</th>
+                <th>Acciones</th>
+            </thead>
+        <tbody>
+            {% for item in inventario_list %}
+            <tr>
+                <td><strong>{{ item.material.nombre }}</strong></td>
+                <td>
+                    <span class="cantidad 
+                        {% if item.inventario.cantidad <= 0 %}critico
+                        {% elif item.inventario.esta_bajo_stock %}bajo
+                        {% endif %}">
+                        {{ item.inventario.cantidad }}
+                    </span>
+                </td>
+                <td>{{ item.inventario.cantidad_minima }}</td>
+                <td>
+                    {% if item.inventario.cantidad <= 0 %}
+                    <span class="badge-danger-sm">❌ Sin stock</span>
+                    {% elif item.inventario.esta_bajo_stock %}
+                    <span class="badge-warning-sm">⚠️ Bajo stock</span>
+                    {% else %}
+                    <span class="badge-success-sm">✅ Normal</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.inventario.ultima_actualizacion|date:"d/m/Y H:i" }}</td>
+                <td class="action-buttons">
+                    <a href="{% url 'inventario_global_agregar' %}?material={{ item.material.id }}" class="btn-icon" title="Agregar stock">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 5v14M5 12h14"/>
+                        </svg>
+                    </a>
+                    <a href="{% url 'inventario_global_ajustar' item.material.id %}" class="btn-icon" title="Ajustar cantidad">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                        </svg>
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="empty">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <line x1="8" y1="2" x2="8" y2="22"/>
+                        <line x1="16" y1="2" x2="16" y2="22"/>
+                    </svg>
+                    <br>
+                    No hay materiales registrados. Haz clic en "Agregar Materiales" para comenzar.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Paginación -->
+{% if inventario_list.has_other_pages %}
+<div class="pagination">
+    {% if inventario_list.has_previous %}
+    <a href="?page=1" class="page-link">«</a>
+    <a href="?page={{ inventario_list.previous_page_number }}" class="page-link">‹</a>
+    {% endif %}
+    
+    <span class="page-link active">{{ inventario_list.number }}</span>
+    
+    {% if inventario_list.has_next %}
+    <a href="?page={{ inventario_list.next_page_number }}" class="page-link">›</a>
+    <a href="?page={{ inventario_list.paginator.num_pages }}" class="page-link">»</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+    .badge-success-sm {
+        background: #d1fae5;
+        color: #10b981;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .badge-warning-sm {
+        background: #fed7aa;
+        color: #f59e0b;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .badge-danger-sm {
+        background: #fee2e2;
+        color: #ef4444;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: var(--orange, #ff6b00);
+        color: white;
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+</style>
+{% endblock %}

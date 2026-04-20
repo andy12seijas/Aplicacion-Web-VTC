@@ -1,0 +1,122 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Ajustar Material - Inventario{% endblock %}
+
+{% block page_title %}Ajustar Cantidad{% endblock %}
+{% block page_subtitle %}Material: {{ material.nombre }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'inventario_global_lista' %}" class="btn-secondary">
+    Volver al Inventario
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 30px;
+    }
+    
+    .current-stock {
+        background: #f8f9fa;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    
+    .current-stock .label {
+        font-size: 13px;
+        color: #666;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .current-stock .value {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--orange, #ff6b00);
+        display: block;
+    }
+    
+    .form-group {
+        margin-bottom: 24px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--orange);
+    }
+    
+    .btn-submit {
+        width: 100%;
+        background: var(--orange);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    
+    .btn-submit:hover {
+        background: #ff8c00;
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="current-stock">
+            <span class="label">Cantidad actual en inventario</span>
+            <span class="value">{{ inventario.cantidad }}</span>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="cantidad">📦 Nueva cantidad total</label>
+                <input type="number" name="cantidad" id="cantidad" class="form-control" 
+                       value="{{ inventario.cantidad }}" min="0" required>
+                <small class="help-text">Ingresa la nueva cantidad total que debe haber en inventario</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="observacion">📝 Motivo del ajuste</label>
+                <textarea name="observacion" id="observacion" class="form-control" 
+                          rows="3" placeholder="Ej: Corrección por inventario físico, pérdida, etc."></textarea>
+            </div>
+            
+            <button type="submit" class="btn-submit">
+                🔄 Aplicar Ajuste
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

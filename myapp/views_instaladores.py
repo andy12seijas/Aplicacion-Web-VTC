@@ -183,7 +183,6 @@ def instalaciones_pendientes(request):
     }
     return render(request, 'Instaladores/instalaciones_pendientes.html', context)
 
-
 @login_required
 def realizar_instalacion(request, instalacion_id):
     """Vista para realizar una instalación"""
@@ -222,13 +221,41 @@ def realizar_instalacion(request, instalacion_id):
     # Obtener la cuadrilla asignada
     cuadrilla = instalacion.asignacion.cuadrilla
     
+    # ========== OBTENER INVENTARIO DE LA CUADRILLA ==========
+    inventario_cuadrilla_raw = {
+        "Modem": 0,
+        "Conector": 0,
+        "Roseta": 0,
+        "Patch Cord": 0,
+        "Tensor": 0,
+        "Fibra Optica (metros)": 0,
+        "Tirros": 0,
+    }
+    
+    try:
+        materiales_disponibles = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla).select_related('material')
+        for item in materiales_disponibles:
+            inventario_cuadrilla_raw[item.material.nombre] = item.cantidad
+    except:
+        pass
+    
+    # Transformar claves para el template
+    inventario_cuadrilla = {
+        "Modem": inventario_cuadrilla_raw.get("Modem", 0),
+        "Conector": inventario_cuadrilla_raw.get("Conector", 0),
+        "Roseta": inventario_cuadrilla_raw.get("Roseta", 0),
+        "Patch_Cord": inventario_cuadrilla_raw.get("Patch Cord", 0),
+        "Tensor": inventario_cuadrilla_raw.get("Tensor", 0),
+        "metros": inventario_cuadrilla_raw.get("Fibra Optica (metros)", 0),
+        "Tirros": inventario_cuadrilla_raw.get("Tirros", 0),
+    }
+    
     # Obtener ubicación de la cuadrilla (promedio de instaladores)
     ubicacion_cuadrilla = None
     if cuadrilla.instaladores.exists():
         ubicaciones = []
         for perfil_instalador in cuadrilla.instaladores.all():
             try:
-                # Obtener ubicación del usuario (User, no PerfilUsuario)
                 ub = UbicacionUsuario.objects.get(usuario=perfil_instalador.usuario)
                 ubicaciones.append((ub.latitud, ub.longitud))
             except UbicacionUsuario.DoesNotExist:
@@ -239,8 +266,7 @@ def realizar_instalacion(request, instalacion_id):
             lng_promedio = sum(lng for lat, lng in ubicaciones) / len(ubicaciones)
             ubicacion_cuadrilla = {'lat': lat_promedio, 'lng': lng_promedio}
     
-    # Obtener los instaladores de la cuadrilla (para mostrar en el template)
-    # Convertir PerfilUsuario a User para mostrar
+    # Obtener los instaladores de la cuadrilla
     instaladores_de_cuadrilla = [perfil.usuario for perfil in cuadrilla.instaladores.all()]
     
     # Verificar si es una petición AJAX
@@ -248,6 +274,88 @@ def realizar_instalacion(request, instalacion_id):
     
     if request.method == 'POST':
         form = InstalacionForm(request.POST, request.FILES, instance=instalacion)
+        
+        # ========== OBTENER VALORES DEL POST ==========
+        inicio_fibra = int(request.POST.get('inicio_fibra', 0) or 0)
+        final_fibra = int(request.POST.get('final_fibra', 0) or 0)
+        metros_usados = abs(inicio_fibra - final_fibra)
+        
+        conectores_usados = int(request.POST.get('conectores', 0) or 0)
+        rosetas_usadas = int(request.POST.get('rosetas', 0) or 0)
+        patch_usados = int(request.POST.get('patch_cord', 0) or 0)
+        tensores_usados = int(request.POST.get('tensores', 0) or 0)
+        tirros_usados = int(request.POST.get('tirros', 0) or 0)
+        modelo_modem_id = request.POST.get('modelo_modem')
+        
+        # ========== VALIDAR STOCK ANTES DE GUARDAR ==========
+        errores_stock = []
+        
+        # Validar módem
+        if modelo_modem_id and modelo_modem_id != '':
+            if inventario_cuadrilla.get("Modem", 0) < 1:
+                errores_stock.append("No hay módems disponibles en el inventario de la cuadrilla.")
+        
+        # Validar conectores
+        if conectores_usados > inventario_cuadrilla.get("Conector", 0):
+            errores_stock.append(f"Stock insuficiente de conectores. Disponible: {inventario_cuadrilla.get('Conector', 0)}")
+        
+        # Validar rosetas
+        if rosetas_usadas > inventario_cuadrilla.get("Roseta", 0):
+            errores_stock.append(f"Stock insuficiente de rosetas. Disponible: {inventario_cuadrilla.get('Roseta', 0)}")
+        
+        # Validar patch cord
+        if patch_usados > inventario_cuadrilla.get("Patch_Cord", 0):
+            errores_stock.append(f"Stock insuficiente de patch cord. Disponible: {inventario_cuadrilla.get('Patch_Cord', 0)}")
+        
+        # Validar tensores
+        if tensores_usados > inventario_cuadrilla.get("Tensor", 0):
+            errores_stock.append(f"Stock insuficiente de tensores. Disponible: {inventario_cuadrilla.get('Tensor', 0)}")
+        
+        # Validar tirros
+        if tirros_usados > inventario_cuadrilla.get("Tirros", 0):
+            errores_stock.append(f"Stock insuficiente de tirros. Disponible: {inventario_cuadrilla.get('Tirros', 0)}")
+        
+        # Validar fibra
+        if metros_usados > inventario_cuadrilla.get("metros", 0):
+            errores_stock.append(f"Stock insuficiente de fibra óptica. Metros disponibles: {inventario_cuadrilla.get('metros', 0)}")
+        
+        # Si hay errores de stock, mostrar mensajes
+        if errores_stock:
+            if is_ajax:
+                return JsonResponse({'error': '<br>'.join(errores_stock)}, status=400)
+            for error in errores_stock:
+                messages.error(request, f'❌ {error}')
+            return redirect('realizar_instalacion', instalacion_id=instalacion.id)
+        
+        # ========== VALIDACIÓN ADICIONAL CON BD ==========
+        if modelo_modem_id and modelo_modem_id != '':
+            inv_modem_bd = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla, material__nombre="Modem").first()
+            if not inv_modem_bd or inv_modem_bd.cantidad < 1:
+                if is_ajax:
+                    return JsonResponse({'error': 'No hay módems disponibles en inventario'}, status=400)
+                messages.error(request, 'No hay módems disponibles en inventario')
+                return redirect('realizar_instalacion', instalacion_id=instalacion.id)
+        
+        inv_fibra_bd = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla, material__nombre="Fibra Optica (metros)").first()
+        if not inv_fibra_bd or inv_fibra_bd.cantidad < metros_usados:
+            if is_ajax:
+                return JsonResponse({'error': f'Stock insuficiente de fibra. Disponible: {inv_fibra_bd.cantidad if inv_fibra_bd else 0}'}, status=400)
+            messages.error(request, f'Stock insuficiente de fibra. Disponible: {inv_fibra_bd.cantidad if inv_fibra_bd else 0}')
+            return redirect('realizar_instalacion', instalacion_id=instalacion.id)
+        
+        inv_patch_bd = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla, material__nombre="Patch Cord").first()
+        if not inv_patch_bd or inv_patch_bd.cantidad < patch_usados:
+            if is_ajax:
+                return JsonResponse({'error': f'Stock insuficiente de patch cord. Disponible: {inv_patch_bd.cantidad if inv_patch_bd else 0}'}, status=400)
+            messages.error(request, f'Stock insuficiente de patch cord. Disponible: {inv_patch_bd.cantidad if inv_patch_bd else 0}')
+            return redirect('realizar_instalacion', instalacion_id=instalacion.id)
+        
+        inv_tirro_bd = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla, material__nombre="Tirros").first()
+        if not inv_tirro_bd or inv_tirro_bd.cantidad < tirros_usados:
+            if is_ajax:
+                return JsonResponse({'error': f'Stock insuficiente de tirros. Disponible: {inv_tirro_bd.cantidad if inv_tirro_bd else 0}'}, status=400)
+            messages.error(request, f'Stock insuficiente de tirros. Disponible: {inv_tirro_bd.cantidad if inv_tirro_bd else 0}')
+            return redirect('realizar_instalacion', instalacion_id=instalacion.id)
         
         if form.is_valid():
             instalacion = form.save(commit=False)
@@ -269,51 +377,200 @@ def realizar_instalacion(request, instalacion_id):
                     messages.error(request, f'El archivo {foto.name} excede el tamaño máximo de 5MB.')
                     return redirect('realizar_instalacion', instalacion_id=instalacion.id)
                 
-                # Guardar la foto
                 timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-                filename = f'instalaciones/instalacion_{instalacion.id}_{timestamp}_{foto.name}'
+                filename = f'pagos/instalaciones/instalacion_{instalacion.id}_{timestamp}_{foto.name}'
                 saved_path = default_storage.save(filename, foto)
                 fotos_urls.append(default_storage.url(saved_path))
             
-            # Actualizar lista de fotos
             fotos_actuales = instalacion.fotos or []
             fotos_actuales.extend(fotos_urls)
             instalacion.fotos = fotos_actuales
             
-            # Guardar la instalación primero
             instalacion.save()
             
-            # ========== NUEVO: GUARDAR TODOS LOS INSTALADORES DE LA CUADRILLA ==========
-            # Obtener todos los usuarios de los perfiles de la cuadrilla
+            # ========== GUARDAR INSTALADORES DE LA CUADRILLA ==========
             usuarios_instaladores = [perfil.usuario for perfil in cuadrilla.instaladores.all()]
-            
-            # Asignar todos los instaladores de la cuadrilla a esta instalación
             if usuarios_instaladores:
                 instalacion.instaladores.set(usuarios_instaladores)
             else:
-                # Si por alguna razón no hay instaladores, al menos guardar al usuario actual
                 instalacion.instaladores.add(request.user)
+            
+            # ========== RESTAR MATERIALES DEL INVENTARIO ==========
+            from django.db import transaction
+            
+            with transaction.atomic():
+                # Restar módem
+                if modelo_modem_id and modelo_modem_id != '':
+                    material_modem, _ = Material.objects.get_or_create(nombre="Modem")
+                    inv_cuadrilla_modem, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_modem
+                    )
+                    if inv_cuadrilla_modem.cantidad >= 1:
+                        inv_cuadrilla_modem.cantidad -= 1
+                        inv_cuadrilla_modem.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_modem,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-1,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - Módem usado"
+                        )
+                
+                # Restar conectores
+                if conectores_usados > 0:
+                    material_conector, _ = Material.objects.get_or_create(nombre="Conector")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_conector
+                    )
+                    if inv_cuadrilla.cantidad >= conectores_usados:
+                        inv_cuadrilla.cantidad -= conectores_usados
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_conector,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-conectores_usados,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {conectores_usados} conectores usados"
+                        )
+                
+                # Restar rosetas
+                if rosetas_usadas > 0:
+                    material_roseta, _ = Material.objects.get_or_create(nombre="Roseta")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_roseta
+                    )
+                    if inv_cuadrilla.cantidad >= rosetas_usadas:
+                        inv_cuadrilla.cantidad -= rosetas_usadas
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_roseta,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-rosetas_usadas,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {rosetas_usadas} rosetas usadas"
+                        )
+                
+                # Restar patch cord
+                if patch_usados > 0:
+                    material_patch, _ = Material.objects.get_or_create(nombre="Patch Cord")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_patch
+                    )
+                    if inv_cuadrilla.cantidad >= patch_usados:
+                        inv_cuadrilla.cantidad -= patch_usados
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_patch,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-patch_usados,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {patch_usados} patch cord usados"
+                        )
+                
+                # Restar tensores
+                if tensores_usados > 0:
+                    material_tensor, _ = Material.objects.get_or_create(nombre="Tensor")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_tensor
+                    )
+                    if inv_cuadrilla.cantidad >= tensores_usados:
+                        inv_cuadrilla.cantidad -= tensores_usados
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_tensor,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-tensores_usados,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {tensores_usados} tensores usados"
+                        )
+                
+                # Restar tirros
+                if tirros_usados > 0:
+                    material_tirro, _ = Material.objects.get_or_create(nombre="Tirros")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_tirro
+                    )
+                    if inv_cuadrilla.cantidad >= tirros_usados:
+                        inv_cuadrilla.cantidad -= tirros_usados
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_tirro,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-tirros_usados,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {tirros_usados} tirros usados"
+                        )
+                
+                # Restar fibra
+                if metros_usados > 0:
+                    material_fibra, _ = Material.objects.get_or_create(nombre="Fibra Optica (metros)")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_fibra
+                    )
+                    if inv_cuadrilla.cantidad >= metros_usados:
+                        inv_cuadrilla.cantidad -= metros_usados
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_fibra,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-metros_usados,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {metros_usados} metros de fibra usados"
+                        )
             
             # Marcar como completada
             instalacion.completada = True
             instalacion.fecha_instalacion = timezone.now()
             instalacion.save()
             
-            # Actualizar estado del contrato a COMPLETADO
+            # ========== ACTUALIZAR ESTADO DEL CONTRATO ==========
             contrato = instalacion.asignacion.contrato
             if contrato:
-                contrato.estado = 'COMPLETADO'
+                contrato.estado = ContratoCliente.EstadoContrato.COMPLETADO
                 contrato.save()
             
+            # ========== ACTUALIZAR ESTADO DE LA VENTA DIRECTA ==========
+            venta_directa = instalacion.asignacion.venta_directa
+            if venta_directa:
+                venta_directa.estado = VentaDirecta.EstadoVenta.COMPLETADO
+                venta_directa.save()
+            
             # ========== ACTUALIZAR ESTADO DE LA CUADRILLA ==========
-            # Verificar si la cuadrilla tiene instalaciones pendientes
-            # Una instalación pendiente es aquella cuyo contrato está EN_PROCESO
             instalaciones_pendientes = AsignacionContrato.objects.filter(
                 cuadrilla=cuadrilla,
-                contrato__estado='EN_PROCESO'  # Contratos en proceso = instalaciones pendientes
+                activo=True
+            ).exclude(
+                instalacion__completada=True
             ).count()
             
-            # Si no tiene instalaciones pendientes, la cuadrilla está disponible
             if instalaciones_pendientes == 0:
                 cuadrilla.estado = Cuadrilla.EstadoCuadrilla.DISPONIBLE
                 cuadrilla.save(update_fields=['estado'])
@@ -325,7 +582,6 @@ def realizar_instalacion(request, instalacion_id):
                     })
                 messages.info(request, mensaje)
             else:
-                # La cuadrilla aún tiene instalaciones pendientes, sigue ocupada
                 mensaje = f'📌 La cuadrilla {cuadrilla.nombre} aún tiene {instalaciones_pendientes} instalación(es) pendiente(s).'
                 if is_ajax:
                     return JsonResponse({
@@ -340,7 +596,6 @@ def realizar_instalacion(request, instalacion_id):
             messages.success(request, '✅ Instalación completada exitosamente.')
             return redirect('instalaciones_pendientes')
         else:
-            # Si el formulario tiene errores
             if is_ajax:
                 errors = {}
                 for field, error_list in form.errors.items():
@@ -351,16 +606,10 @@ def realizar_instalacion(request, instalacion_id):
                 for error in errors:
                     messages.error(request, f'Error en {field}: {error}')
     
-    # Si es GET o hay errores, mostrar el formulario
+    # ========== GET: Mostrar formulario ==========
     form = InstalacionForm(instance=instalacion)
-    
-    # Obtener modelos de modem
     modelos_modem = ModeloModem.objects.filter(activo=True).order_by('nombre')
-    
-    # Convertir fotos existentes a JSON para el template
     fotos_existentes = json.dumps(instalacion.fotos or [])
-    
-    # Obtener instaladores que ya están asignados (para mostrar en el template como seleccionados)
     instaladores_seleccionados = list(instalacion.instaladores.values_list('id', flat=True))
     
     context = {
@@ -370,11 +619,11 @@ def realizar_instalacion(request, instalacion_id):
         'ubicacion_cuadrilla': ubicacion_cuadrilla,
         'fotos_existentes': fotos_existentes,
         'es_admin': es_admin,
-        'instaladores_disponibles': instaladores_de_cuadrilla,  # Para mostrar en el template
-        'instaladores_seleccionados': instaladores_seleccionados,  # Para marcar los que ya están
+        'instaladores_disponibles': instaladores_de_cuadrilla,
+        'instaladores_seleccionados': instaladores_seleccionados,
+        'inventario_cuadrilla': inventario_cuadrilla,
     }
     return render(request, 'Instaladores/realizar_instalaciones.html', context)
-
 
 @login_required
 def capturar_ubicacion_instalador(request):
@@ -427,19 +676,65 @@ def obtener_detalle_instalacion(request, instalacion_id):
             if request.user not in instalacion.instaladores.all():
                 return JsonResponse({'error': 'No tienes permiso para ver esta instalación.'}, status=403)
         
+        # ========== OBTENER DIRECCIÓN ==========
+        direccion = "No registrada"
+        if instalacion.asignacion.contrato:
+            direccion = instalacion.asignacion.contrato.direccion_detallada or "No registrada"
+        elif instalacion.asignacion.venta_directa:
+            direccion = getattr(instalacion.asignacion.venta_directa, 'direccion', None) or "No registrada"
+        
+        # ========== OBTENER TELÉFONO DEL CLIENTE ==========
+        telefono_cliente = "No disponible"
+        if instalacion.asignacion.contrato:
+            telefono_cliente = instalacion.asignacion.contrato.telefono_principal or "No disponible"
+        elif instalacion.asignacion.venta_directa:
+            telefono_cliente = instalacion.asignacion.venta_directa.telefono or "No disponible"
+        
+        # ========== OBTENER INFORMACIÓN DEL VENDEDOR/TORRE ==========
+        vendedor_nombre = "No disponible"
+        vendedor_usuario = "-"
+        vendedor_telefono = "No registrado"
+        vendedor_email = "-"
+        
+        if instalacion.asignacion.contrato:
+            # Es un contrato de vendedor
+            creador = instalacion.asignacion.contrato.creado_por
+            if creador:
+                vendedor_nombre = creador.get_full_name() or creador.username
+                vendedor_usuario = creador.username
+                vendedor_email = creador.email or "-"
+                try:
+                    perfil_vendedor = creador.perfil
+                    vendedor_telefono = perfil_vendedor.telefono or "No registrado"
+                except:
+                    vendedor_telefono = "No registrado"
+        elif instalacion.asignacion.venta_directa:
+            # Es una venta directa (Torre de Control)
+            creador = instalacion.asignacion.venta_directa.creado_por
+            if creador:
+                vendedor_nombre = creador.get_full_name() or "Torre de Control"
+                vendedor_usuario = creador.username or "torre_control"
+                vendedor_email = creador.email or "torre@vtconexiones.com"
+                try:
+                    perfil_vendedor = creador.perfil
+                    vendedor_telefono = perfil_vendedor.telefono or "0412-1234567"
+                except:
+                    vendedor_telefono = "0412-1234567"
+        
         # Construir datos de la instalación
         datos = {
             'id': instalacion.id,
             'orden_servicio': instalacion.orden_servicio,
+            'nro_orden': instalacion.nro_orden,
             'nombre_cliente': instalacion.nombre_cliente,
             'cedula_cliente': instalacion.cedula_cliente,
-            'telefono': instalacion.asignacion.telefono_cliente if hasattr(instalacion.asignacion, 'telefono_cliente') else 'No disponible',
+            'telefono_cliente': telefono_cliente,
+            'direccion': direccion,
             'plan': instalacion.plan,
-            'cuadrilla': instalacion.asignacion.cuadrilla.nombre,
+            'cuadrilla': instalacion.asignacion.cuadrilla.nombre if instalacion.asignacion.cuadrilla else "N/A",
             'estado': 'Completada' if instalacion.completada else 'Pendiente',
             'fecha_instalacion': instalacion.fecha_instalacion.strftime('%d/%m/%Y %H:%M') if instalacion.fecha_instalacion else 'No registrada',
             'fecha_asignacion': instalacion.asignacion.fecha_asignacion.strftime('%d/%m/%Y %H:%M'),
-            'fecha_creacion': instalacion.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
             
             # Datos técnicos
             'latitud': instalacion.latitud,
@@ -478,10 +773,16 @@ def obtener_detalle_instalacion(request, instalacion_id):
             ],
             
             # Información de origen
-            'tipo': 'Contrato' if instalacion.asignacion.contrato else 'Venta Directa',
-            'creado_por': instalacion.creado_por.get_full_name() or instalacion.creado_por.username if instalacion.creado_por else 'Sistema',
+            'tipo': 'contrato' if instalacion.asignacion.contrato else 'venta_directa',
+            'creado_por': instalacion.creado_por_nombre,
             'customer_id': instalacion.customer_id,
             'atr': instalacion.atr,
+            
+            # Datos del vendedor/torre
+            'vendedor_nombre': vendedor_nombre,
+            'vendedor_usuario': vendedor_usuario,
+            'vendedor_telefono': vendedor_telefono,
+            'vendedor_email': vendedor_email,
         }
         
         return JsonResponse({'success': True, 'data': datos})

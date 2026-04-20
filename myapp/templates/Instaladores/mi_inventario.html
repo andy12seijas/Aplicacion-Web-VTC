@@ -1,0 +1,1003 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Mi Inventario{% endblock %}
+
+{% block page_title %}Mi Inventario{% endblock %}
+{% block page_subtitle %}
+    {% if es_admin %}
+        Gestión de inventario por cuadrilla
+    {% else %}
+        {{ cuadrilla.nombre }} ({{ cuadrilla.codigo }})
+    {% endif %}
+{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'dashboard' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% if es_admin %}
+<a href="{% url 'inventario_todas_cuadrillas' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+    </svg>
+    Inventario de Cuadrillas
+</a>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<style>
+    .inventario-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* Filtros para admin */
+    .filters-bar {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .filters-form {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 180px;
+    }
+    
+    .filter-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .filter-select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 13px;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .filter-select:hover {
+        border-color: var(--orange);
+    }
+    
+    .filter-select:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255,107,0,0.1);
+    }
+    
+    .btn-filter {
+        background: var(--orange);
+        color: white;
+        border: none;
+        padding: 10px 28px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-filter:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    /* Tarjetas de resumen */
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .summary-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .summary-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--orange);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .summary-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .summary-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        border-color: var(--orange);
+    }
+    
+    .summary-icon {
+        width: 55px;
+        height: 55px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+    }
+    
+    .summary-icon.recibido {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    }
+    
+    .summary-icon.instalacion {
+        background: linear-gradient(135deg, #fee2e2, #fecaca);
+    }
+    
+    .summary-icon.soporte {
+        background: linear-gradient(135deg, #fed7aa, #fdba74);
+    }
+    
+    .summary-icon.stock {
+        background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+    }
+    
+    .summary-info {
+        flex: 1;
+    }
+    
+    .summary-number {
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--dark-text);
+        display: block;
+        line-height: 1.2;
+    }
+    
+    .summary-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+        display: block;
+    }
+    
+    /* Tarjetas de inventario actual */
+    .inventario-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .inventario-card {
+        background: white;
+        border-radius: 20px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .inventario-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--orange), transparent);
+        transform: scaleX(0);
+        transition: transform 0.3s ease;
+    }
+    
+    .inventario-card:hover::after {
+        transform: scaleX(1);
+    }
+    
+    .inventario-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        border-color: var(--orange);
+    }
+    
+    .inventario-icon {
+        font-size: 36px;
+        width: 65px;
+        height: 65px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8f9fa, #fff);
+        border-radius: 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .inventario-info {
+        flex: 1;
+    }
+    
+    .inventario-cantidad {
+        display: block;
+        font-size: 32px;
+        font-weight: 800;
+        color: var(--orange);
+        line-height: 1.2;
+    }
+    
+    .inventario-cantidad.sin-stock {
+        color: #ef4444;
+    }
+    
+    .inventario-cantidad.poco-stock {
+        color: #f59e0b;
+    }
+    
+    .inventario-label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-top: 6px;
+        font-weight: 500;
+    }
+    
+    /* Sección de movimientos */
+    .movimientos-section {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 24px;
+        margin-bottom: 24px;
+        transition: all 0.3s ease;
+    }
+    
+    .movimientos-section:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    
+    .section-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #333;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--orange);
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table th {
+        text-align: left;
+        padding: 14px 12px;
+        background: #f8f9fa;
+        font-size: 12px;
+        font-weight: 700;
+        color: #555;
+        border-bottom: 2px solid #e0e0e0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+        vertical-align: middle;
+    }
+    
+    .table tr:hover {
+        background: #fafafa;
+    }
+    
+    .badge-tipo {
+        display: inline-block;
+        padding: 5px 14px;
+        border-radius: 25px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    
+    .badge-recibido {
+        background: #d1fae5;
+        color: #10b981;
+    }
+    
+    .badge-gasto {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+    
+    .badge-soporte {
+        background: #fed7aa;
+        color: #f59e0b;
+    }
+    
+    .badge-devolucion {
+        background: #e0e7ff;
+        color: #3b82f6;
+    }
+    
+    .movimiento-entrada {
+        color: #10b981;
+        font-weight: 700;
+        font-size: 15px;
+    }
+    
+    .movimiento-salida {
+        color: #ef4444;
+        font-weight: 700;
+        font-size: 15px;
+    }
+    
+    /* Paginación mejorada */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    
+    .page-link {
+        min-width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        text-decoration: none;
+        color: #666;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+        background: white;
+        padding: 0 12px;
+    }
+    
+    .page-link:hover:not(.active) {
+        border-color: var(--orange);
+        color: var(--orange);
+        transform: translateY(-2px);
+    }
+    
+    .page-link.active {
+        background: var(--orange);
+        color: white;
+        border-color: var(--orange);
+    }
+    
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    .page-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #666;
+        background: #f8f9fa;
+        padding: 8px 20px;
+        border-radius: 30px;
+    }
+    
+    .empty-message {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+    
+    .warning-message {
+        background: linear-gradient(135deg, #fef3c7, #fffbeb);
+        border: 1px solid #f59e0b;
+        border-radius: 20px;
+        padding: 24px;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    
+    /* Cuadrilla info para admin */
+    .cuadrilla-info-admin {
+        background: linear-gradient(135deg, #fff2e6, #ffffff);
+        border-radius: 16px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 15px;
+        border-left: 4px solid var(--orange);
+    }
+    
+    .cuadrilla-info-admin h4 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .cuadrilla-info-admin p {
+        margin: 0;
+        font-size: 13px;
+        color: #666;
+    }
+    
+    @media (max-width: 1200px) {
+        .inventario-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 1024px) {
+        .summary-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .filters-form {
+            flex-direction: column;
+        }
+        
+        .filter-group {
+            width: 100%;
+        }
+        
+        .summary-cards {
+            grid-template-columns: 1fr;
+        }
+        
+        .inventario-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .btn-filter {
+            width: 100%;
+            text-align: center;
+        }
+        
+        .table {
+            min-width: 650px;
+        }
+        
+        .cuadrilla-info-admin {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .summary-number {
+            font-size: 24px;
+        }
+        
+        .inventario-cantidad {
+            font-size: 24px;
+        }
+        
+        .summary-icon {
+            width: 45px;
+            height: 45px;
+            font-size: 20px;
+        }
+        
+        .inventario-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 28px;
+        }
+    }
+</style>
+
+<div class="inventario-container">
+    {% if sin_cuadrilla and not es_admin %}
+    <div class="warning-message">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" style="margin-bottom: 12px;">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <circle cx="12" cy="16" r="0.5" fill="#f59e0b" stroke="none"/>
+        </svg>
+        <h3>No estás asignado a ninguna cuadrilla</h3>
+        <p>Contacta con tu supervisor para que te asigne a una cuadrilla.</p>
+        <a href="{% url 'dashboard' %}" class="btn-primary" style="margin-top: 12px; display: inline-block;">Volver al Panel</a>
+    </div>
+    {% else %}
+    
+    <!-- Filtro de cuadrilla para ADMIN -->
+    {% if es_admin %}
+    <div class="filters-bar">
+        <form method="get" class="filters-form" id="filtroForm">
+            <div class="filter-group">
+                <label>👥 Seleccionar Cuadrilla</label>
+                <select name="cuadrilla_id" class="filter-select" onchange="this.form.submit()">
+                    <option value="">-- Todas las cuadrillas --</option>
+                    {% for cuad in cuadrillas_disponibles %}
+                    <option value="{{ cuad.id }}" {% if cuadrilla_seleccionada == cuad.id|stringformat:"s" %}selected{% endif %}>
+                        {{ cuad.nombre }} ({{ cuad.codigo }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>&nbsp;</label>
+                <button type="submit" class="btn-filter">Filtrar</button>
+            </div>
+        </form>
+    </div>
+    
+    {% if cuadrilla %}
+    <div class="cuadrilla-info-admin">
+        <div>
+            <h4>📌 {{ cuadrilla.nombre }}</h4>
+            <p>Código: {{ cuadrilla.codigo }} | Instaladores: {{ cuadrilla.cantidad_instaladores }}</p>
+        </div>
+        <div>
+            <span class="badge-tipo" style="background: #e0e7ff; color: #3b82f6;">
+                {{ cuadrilla.get_estado_display }}
+            </span>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Tarjetas de resumen -->
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="summary-icon recibido">📦</div>
+            <div class="summary-info">
+                <span class="summary-number">{{ total_recibido }}</span>
+                <span class="summary-label">Total recibido</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon instalacion">🔧</div>
+            <div class="summary-info">
+                <span class="summary-number">{{ total_instalacion }}</span>
+                <span class="summary-label">Gastado en instalaciones</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon soporte">🛠️</div>
+            <div class="summary-info">
+                <span class="summary-number">{{ total_soporte }}</span>
+                <span class="summary-label">Gastado en soportes</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon stock">📊</div>
+            <div class="summary-info">
+                <span class="summary-number">{{ stock_actual }}</span>
+                <span class="summary-label">Stock actual</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Inventario actual -->
+    <div class="movimientos-section">
+        <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            📦 Stock Actual
+            {% if es_admin and cuadrilla %}
+            de {{ cuadrilla.nombre }}
+            {% endif %}
+        </h3>
+        <div class="inventario-grid">
+            {% for item in inventario_actual %}
+            <div class="inventario-card">
+                <div class="inventario-icon">
+                    {% if 'Modem' in item.material %}
+                    📡
+                    {% elif 'Conector' in item.material %}
+                    🔌
+                    {% elif 'Roseta' in item.material %}
+                    🏠
+                    {% elif 'Patch' in item.material %}
+                    📀
+                    {% elif 'Tensor' in item.material %}
+                    ⚙️
+                    {% elif 'Fibra' in item.material %}
+                    📏
+                    {% else %}
+                    📦
+                    {% endif %}
+                </div>
+                <div class="inventario-info">
+                    <span class="inventario-cantidad {% if item.cantidad <= 0 %}sin-stock{% elif item.cantidad < 5 %}poco-stock{% endif %}">
+                        {{ item.cantidad }}
+                    </span>
+                    <span class="inventario-label">{{ item.material }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Últimos movimientos con paginación -->
+    <div class="movimientos-section">
+        <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            📋 Últimos Movimientos
+        </h3>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Material</th>
+                        <th>Cantidad</th>
+                        <th>Referencia</th>
+                        <th>Realizado por</th>
+                    </thead>
+                <tbody>
+                    {% for mov in movimientos_page %}
+                    <tr>
+                        <td>
+                            <strong>{{ mov.fecha_movimiento|date:"d/m/Y" }}</strong><br>
+                            <small style="color:#999">{{ mov.fecha_movimiento|date:"H:i" }}</small>
+                        </div>
+                        <td>
+                            <span class="badge-tipo 
+                                {% if mov.tipo == 'SALIDA_A_CUADRILLA' %}badge-recibido
+                                {% elif mov.tipo == 'GASTO_INSTALACION' %}badge-gasto
+                                {% elif mov.tipo == 'GASTO_SOPORTE' %}badge-soporte
+                                {% elif mov.tipo == 'DEVOLUCION_CUADRILLA' %}badge-devolucion
+                                {% endif %}">
+                                {{ mov.get_tipo_display }}
+                            </span>
+                        </div>
+                        <td>{{ mov.material.nombre }}</div>
+                        <td class="{% if mov.cantidad > 0 %}movimiento-entrada{% else %}movimiento-salida{% endif %}">
+                            {% if mov.cantidad > 0 %}+{% endif %}{{ mov.cantidad }}
+                        </div>
+                        <td>
+                            {% if mov.instalacion %}
+                            <span style="color:#1976d2;">Instalación #{{ mov.instalacion.id }}</span>
+                            {% elif mov.soporte %}
+                            <span style="color:#f59e0b;">Soporte #{{ mov.soporte.id }}</span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </div>
+                        <td>
+                            {% if mov.realizado_por %}
+                            {{ mov.realizado_por.get_full_name|default:mov.realizado_por.username }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </div>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty-message">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" style="margin-bottom: 12px;">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                                <line x1="8" y1="21" x2="16" y2="21"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                            </svg>
+                            <br>
+                            No hay movimientos registrados
+                        </div>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación de movimientos -->
+        {% if movimientos_page.has_other_pages %}
+        <div class="pagination">
+            {% if movimientos_page.has_previous %}
+            <a href="?page_movimientos=1{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link" title="Primera página">««</a>
+            <a href="?page_movimientos={{ movimientos_page.previous_page_number }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link" title="Página anterior">‹</a>
+            {% else %}
+            <span class="page-link disabled">««</span>
+            <span class="page-link disabled">‹</span>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ movimientos_page.number }} de {{ movimientos_page.paginator.num_pages }}
+            </span>
+            
+            {% if movimientos_page.has_next %}
+            <a href="?page_movimientos={{ movimientos_page.next_page_number }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link" title="Página siguiente">›</a>
+            <a href="?page_movimientos={{ movimientos_page.paginator.num_pages }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link" title="Última página">»»</a>
+            {% else %}
+            <span class="page-link disabled">›</span>
+            <span class="page-link disabled">»»</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Últimas Instalaciones con paginación -->
+    <div class="movimientos-section">
+        <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            🔧 Últimas Instalaciones
+        </h3>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Plan</th>
+                        <th>Materiales usados</th>
+                        <th>Instaladores</th>
+                    </thead>
+                <tbody>
+                    {% for inst in instalaciones_page %}
+                    <tr>
+                        <td>{{ inst.fecha_instalacion|date:"d/m/Y" }}</div>
+                        <td>{{ inst.nombre_cliente|truncatechars:35 }}</div>
+                        <td>{{ inst.plan }}</div>
+                        <td>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                {% if inst.conectores > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">🔌 {{ inst.conectores }}</span>{% endif %}
+                                {% if inst.rosetas > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">🏠 {{ inst.rosetas }}</span>{% endif %}
+                                {% if inst.patch_cord > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">📀 {{ inst.patch_cord }}</span>{% endif %}
+                                {% if inst.tensores > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">⚙️ {{ inst.tensores }}</span>{% endif %}
+                                {% if inst.metros_utilizados > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">📏 {{ inst.metros_utilizados }}m</span>{% endif %}
+                            </div>
+                            {% if not inst.conectores and not inst.rosetas and not inst.patch_cord and not inst.tensores and not inst.metros_utilizados %}
+                            <span style="color:#999;">—</span>
+                            {% endif %}
+                        </div>
+                        <td>
+                            {% for insta in inst.instaladores.all|slice:":2" %}
+                            {{ insta.get_full_name|default:insta.username }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                            {% if inst.instaladores.count > 2 %}
+                            +{{ inst.instaladores.count|add:"-2" }}
+                            {% endif %}
+                        </div>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty-message">No hay instalaciones realizadas</div>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación de instalaciones -->
+        {% if instalaciones_page.has_other_pages %}
+        <div class="pagination">
+            {% if instalaciones_page.has_previous %}
+            <a href="?page_instalaciones=1{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">««</a>
+            <a href="?page_instalaciones={{ instalaciones_page.previous_page_number }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">‹</a>
+            {% else %}
+            <span class="page-link disabled">««</span>
+            <span class="page-link disabled">‹</span>
+            {% endif %}
+            
+            <span class="page-info">Página {{ instalaciones_page.number }} de {{ instalaciones_page.paginator.num_pages }}</span>
+            
+            {% if instalaciones_page.has_next %}
+            <a href="?page_instalaciones={{ instalaciones_page.next_page_number }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">›</a>
+            <a href="?page_instalaciones={{ instalaciones_page.paginator.num_pages }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">»»</a>
+            {% else %}
+            <span class="page-link disabled">›</span>
+            <span class="page-link disabled">»»</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Últimos Soportes con paginación -->
+    <div class="movimientos-section">
+        <h3 class="section-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                <path d="M12 2v4M12 22v-4M4 12H2h2M20 12h2-2M5.64 5.64l-1.41 1.41 1.41-1.41M18.36 18.36l1.41-1.41-1.41 1.41M5.64 18.36l1.41-1.41-1.41 1.41M18.36 5.64l-1.41 1.41 1.41-1.41"/>
+            </svg>
+            🛠️ Últimos Soportes
+        </h3>
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Tipo</th>
+                        <th>Materiales usados</th>
+                        <th>Instaladores</th>
+                    </thead>
+                <tbody>
+                    {% for sop in soportes_page %}
+                    <tr>
+                        <td>{{ sop.fecha_hora_servicio|date:"d/m/Y" }}</div>
+                        <td>{{ sop.nombre_cliente|truncatechars:35 }}</div>
+                        <td>{{ sop.get_tipo_display }}</div>
+                        <td>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                {% if sop.conectores > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">🔌 {{ sop.conectores }}</span>{% endif %}
+                                {% if sop.rosetas > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">🏠 {{ sop.rosetas }}</span>{% endif %}
+                                {% if sop.patch_cord > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">📀 {{ sop.patch_cord }}</span>{% endif %}
+                                {% if sop.tensores > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">⚙️ {{ sop.tensores }}</span>{% endif %}
+                                {% if sop.metros_utilizados > 0 %}<span style="background:#e0e0e0; padding:2px 8px; border-radius:12px;">📏 {{ sop.metros_utilizados }}m</span>{% endif %}
+                            </div>
+                            {% if not sop.conectores and not sop.rosetas and not sop.patch_cord and not sop.tensores and not sop.metros_utilizados %}
+                            <span style="color:#999;">—</span>
+                            {% endif %}
+                        </div>
+                        <td>
+                            {% for insta in sop.instaladores.all|slice:":2" %}
+                            {{ insta.get_full_name|default:insta.username }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                            {% if sop.instaladores.count > 2 %}
+                            +{{ sop.instaladores.count|add:"-2" }}
+                            {% endif %}
+                        </div>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty-message">No hay soportes realizados</div>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación de soportes -->
+        {% if soportes_page.has_other_pages %}
+        <div class="pagination">
+            {% if soportes_page.has_previous %}
+            <a href="?page_soportes=1{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">««</a>
+            <a href="?page_soportes={{ soportes_page.previous_page_number }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">‹</a>
+            {% else %}
+            <span class="page-link disabled">««</span>
+            <span class="page-link disabled">‹</span>
+            {% endif %}
+            
+            <span class="page-info">Página {{ soportes_page.number }} de {{ soportes_page.paginator.num_pages }}</span>
+            
+            {% if soportes_page.has_next %}
+            <a href="?page_soportes={{ soportes_page.next_page_number }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">›</a>
+            <a href="?page_soportes={{ soportes_page.paginator.num_pages }}{% if cuadrilla_id %}&cuadrilla_id={{ cuadrilla_id }}{% endif %}" class="page-link">»»</a>
+            {% else %}
+            <span class="page-link disabled">›</span>
+            <span class="page-link disabled">»»</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Alerta de bajo stock -->
+    {% if stock_actual <= 10 %}
+    <div class="warning-message" style="background: linear-gradient(135deg, #fee2e2, #fef2f2); border-color: #ef4444;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <circle cx="12" cy="16" r="0.5" fill="#ef4444" stroke="none"/>
+        </svg>
+        <strong style="color: #dc2626;">⚠️ Alerta de bajo stock</strong>
+        <p style="color: #dc2626; margin-top: 8px;">Tu cuadrilla tiene poco inventario ({{ stock_actual }} unidades totales). Contacta a tu supervisor para solicitar más materiales.</p>
+    </div>
+    {% endif %}
+    
+    {% endif %}
+</div>
+
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: #fff2e6;
+    }
+    
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+</style>
+
+<script>
+    // Mantener filtros en paginación
+    document.querySelectorAll('.page-link').forEach(link => {
+        if (link.href && !link.classList.contains('disabled') && !link.classList.contains('active')) {
+            const url = new URL(link.href);
+            const currentUrl = new URL(window.location.href);
+            const cuadrillaId = currentUrl.searchParams.get('cuadrilla_id');
+            if (cuadrillaId) {
+                url.searchParams.set('cuadrilla_id', cuadrillaId);
+                link.href = url.toString();
+            }
+        }
+    });
+</script>
+{% endblock %}

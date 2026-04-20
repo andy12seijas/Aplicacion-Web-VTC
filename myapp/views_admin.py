@@ -538,6 +538,14 @@ def completar_contrato(request, contrato_id):
         if not customer_id or not ods:
             return JsonResponse({'error': 'Customer ID y ODS son requeridos'}, status=400)
         
+        if customer_id and ods:
+            # Verificar si ya existen en otros contratos
+            if ContratoCliente.objects.filter(customer_id=customer_id).exclude(id=contrato_id).exists():
+                return JsonResponse({'error': 'Este Customer ID ya está asignado a otro contrato'}, status=400)
+            
+            if ContratoCliente.objects.filter(ods=ods).exclude(id=contrato_id).exists():
+                return JsonResponse({'error': 'Esta ODS ya está asignada a otro contrato'}, status=400)
+        
        
         
         # Validar que sea una imagen

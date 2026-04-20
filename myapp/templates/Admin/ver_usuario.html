@@ -7,622 +7,1184 @@
 {% block page_subtitle %}Gestión de usuarios y roles{% endblock %}
 
 {% block header_actions %}
-<a href="{% url 'crear_usuario' %}" class="btn-primary">
+<a href="{% url 'crear_usuario' %}" class="btn-orange">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 5v14M5 12h14"/>
     </svg>
-    Nuevo
+    Nuevo Usuario
 </a>
 {% endblock %}
 
 {% block content %}
-<!-- Stats compactos -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-value">{{ total_usuarios }}</span>
-        <span class="stat-label">Total</span>
+<div class="usuarios-container">
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_usuarios }}</span>
+            <span class="stat-label">Total</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_superusuarios }}</span>
+            <span class="stat-label">Super</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_administradores }}</span>
+            <span class="stat-label">Admin</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_vendedores }}</span>
+            <span class="stat-label">Ventas</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_instaladores }}</span>
+            <span class="stat-label">Instal</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ total_supervisores }}</span>
+            <span class="stat-label">Superv</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ usuarios_activos }}</span>
+            <span class="stat-label">Activos</span>
+        </div>
     </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_superusuarios }}</span>
-        <span class="stat-label">Super</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_administradores }}</span>
-        <span class="stat-label">Admin</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_vendedores }}</span>
-        <span class="stat-label">Ventas</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_instaladores }}</span>
-        <span class="stat-label">Instal</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_supervisores }}</span>
-        <span class="stat-label">Superv</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ usuarios_activos }}</span>
-        <span class="stat-label">Activos</span>
-    </div>
-</div>
 
-<!-- Filtros -->
-<div class="filters">
-    <div class="search-box">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="M21 21l-4.35-4.35"/>
-        </svg>
-        <input type="text" placeholder="Buscar..." id="searchInput">
+    <!-- Filtros -->
+    <div class="filters-container">
+        <div class="filters-grid">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" placeholder="Buscar por usuario, nombre, email..." 
+                       id="searchInput" value="{{ busqueda }}">
+            </div>
+            
+            <select id="filterRol" class="filter-select">
+                <option value="">Todos los roles</option>
+                <option value="super">Superusuario</option>
+                <option value="admin">Administrador</option>
+                <option value="ventas">Vendedor</option>
+                <option value="instal">Instalador</option>
+                <option value="supervisor">Supervisor</option>
+            </select>
+            
+            <select id="filterStatus" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+            </select>
+        </div>
     </div>
-    
-    <select id="filterRol" class="filter-select">
-        <option value="">Todos</option>
-        <option value="super">Super</option>
-        <option value="admin">Admin</option>
-        <option value="ventas">Ventas</option>
-        <option value="instal">Instal</option>
-        <option value="supervisor">Superv</option>
-    </select>
-    
-    <select id="filterStatus" class="filter-select">
-        <option value="">Todos</option>
-        <option value="activo">Activo</option>
-        <option value="inactivo">Inactivo</option>
-    </select>
-</div>
 
-<!-- Vista Desktop: Tabla compacta -->
-<div class="desktop-view">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Usuario</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
+    <!-- Indicador de filtros activos -->
+    <div id="filtrosActivos" class="filtros-activos" style="display: none;">
+        <span class="filtros-label">📌 Filtros activos:</span>
+        <span class="filtros-lista" id="filtrosLista"></span>
+        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
+    </div>
+
+    <!-- Contenedor con scroll (SOLO para la tabla/cards) -->
+    <div class="usuarios-scroll-wrapper">
+        <!-- Vista Desktop: Tabla -->
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nombre completo</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Fecha registro</th>
+                            <th>Acciones</th>
+                        </thead>
+                    <tbody>
+                        {% for usuario in page_obj %}
+                        <tr>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ usuario.username|first|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ usuario.username }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <td>{{ usuario.first_name }} {{ usuario.last_name|default:"—" }}</div>
+                            <td class="email-cell">{{ usuario.email|default:"—" }}</div>
+                            <td>
+                                {% if usuario.is_superuser %}
+                                <span class="badge badge-super">Superusuario</span>
+                                {% elif usuario.groups.all %}
+                                    {% for group in usuario.groups.all %}
+                                        {% if group.name == 'Administrador' %}
+                                        <span class="badge badge-admin">Administrador</span>
+                                        {% elif group.name == 'Vendedor' %}
+                                        <span class="badge badge-ventas">Vendedor</span>
+                                        {% elif group.name == 'Instalador' %}
+                                        <span class="badge badge-instal">Instalador</span>
+                                        {% elif group.name == 'Supervisor' %}
+                                        <span class="badge badge-supervisor">Supervisor</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                <span class="badge">—</span>
+                                {% endif %}
+                            </div>
+                            <td>
+                                <span class="status {% if usuario.is_active %}active{% endif %}">
+                                    {{ usuario.is_active|yesno:"Activo,Inactivo" }}
+                                </span>
+                            </div>
+                            <td class="fecha-cell">{{ usuario.date_joined|date:"d/m/Y" }}</div>
+                            <td>
+                                <div class="actions">
+                                    <button class="action-btn" onclick="verUsuario('{{ usuario.id }}')" title="Ver detalles">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="action-btn" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'" title="Editar usuario">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                        </svg>
+                                    </button>
+                                    {% if usuario != user %}
+                                    <button class="action-btn" onclick="cambiarEstadoUsuario(event, '{% url 'cambiar_estado_usuario' usuario.id %}', '{{ usuario.username }}', '{{ usuario.is_active }}')" 
+                                            title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}"
+                                            style="{% if usuario.is_active %}color: #ef4444;{% else %}color: #10b981;{% endif %}">
+                                        {% if usuario.is_active %}
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <line x1="18" y1="6" x2="6" y2="18"/>
+                                            <line x1="6" y1="6" x2="18" y2="18"/>
+                                        </svg>
+                                        {% else %}
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M20 6L9 17l-5-5"/>
+                                        </svg>
+                                        {% endif %}
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty">No hay usuarios registrados</div>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Vista Mobile: Cards -->
+        <div class="mobile-view">
             {% for usuario in page_obj %}
-            <tr>
-                <td>
-                    <div class="user-cell">
-                        <span class="user-avatar">{{ usuario.username|first|upper }}</span>
+            <div class="usuario-card">
+                <div class="card-header">
+                    <div class="card-usuario">
+                        <span class="card-avatar">{{ usuario.username|first|upper }}</span>
                         <div>
-                            <div class="user-name">{{ usuario.username }}</div>
-                            <div class="user-fullname">{{ usuario.first_name }} {{ usuario.last_name }}</div>
+                            <div class="card-name">{{ usuario.username }}</div>
+                            <div class="card-detail">{{ usuario.first_name }} {{ usuario.last_name|default:"Sin nombre" }}</div>
                         </div>
                     </div>
-                </td>
-                <td class="email-cell">{{ usuario.email|truncatechars:20|default:"—" }}</td>
-                <td>
-                    {% if usuario.is_superuser %}
-                    <span class="badge super">Super</span>
-                    {% elif usuario.groups.all %}
-                        {% for group in usuario.groups.all %}
-                            {% if group.name == 'Administrador' %}
-                            <span class="badge admin">Admin</span>
-                            {% elif group.name == 'Vendedor' %}
-                            <span class="badge ventas">Ventas</span>
-                            {% elif group.name == 'Instalador' %}
-                            <span class="badge instal">Instal</span>
-                            {% elif group.name == 'Supervisor' %}
-                            <span class="badge supervisor">Superv</span>
-                            {% endif %}
-                        {% endfor %}
-                    {% else %}
-                    <span class="badge">—</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <span class="status {% if usuario.is_active %}active{% endif %}">
-                        {{ usuario.is_active|yesno:"Activo,Inactivo" }}
-                    </span>
-                </td>
-                <td class="date-cell">{{ usuario.date_joined|date:"d/m/y" }}</td>
-                <td>
-                    <div class="actions">
-                        <button class="action-btn" onclick="verUsuario('{{ usuario.id }}')" title="Ver">👁️</button>
-                        <button class="action-btn" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'" title="Editar">✎</button>
-                        <button class="action-btn" onclick="cambiarRol('{{ usuario.id }}')" title="Cambiar Rol">👤</button>
-                        {% if usuario != user %}
-                        <button type="button" class="action-btn" onclick="cambiarEstadoUsuario(event, '{% url 'cambiar_estado_usuario' usuario.id %}', '{{ usuario.username }}', '{{ usuario.is_active }}')" 
-                                title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}" 
-                                style="{% if usuario.is_active %}color: #f44336;{% else %}color: #4caf50;{% endif %}">
-                            {% if usuario.is_active %}✕{% else %}✓{% endif %}
-                        </button>
-                        {% endif %}
+                    <span class="status-dot {% if usuario.is_active %}active{% endif %}"></span>
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-row">
+                        <span class="card-label">📧 Email:</span>
+                        <span class="card-value">{{ usuario.email|default:"—" }}</span>
                     </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="empty">No hay usuarios</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<!-- Vista Mobile: Cards -->
-<div class="mobile-view">
-    {% for usuario in page_obj %}
-    <div class="user-card">
-        <div class="card-header">
-            <div class="card-user">
-                <span class="card-avatar">{{ usuario.username|first|upper }}</span>
-                <div>
-                    <div class="card-name">{{ usuario.username }}</div>
-                    <div class="card-email">{{ usuario.email|truncatechars:25|default:"Sin email" }}</div>
+                    <div class="card-row">
+                        <span class="card-label">🎯 Rol:</span>
+                        <span class="card-value">
+                            {% if usuario.is_superuser %}
+                            <span class="badge badge-super">Superusuario</span>
+                            {% elif usuario.groups.all %}
+                                {% for group in usuario.groups.all %}
+                                    {% if group.name == 'Administrador' %}
+                                    <span class="badge badge-admin">Administrador</span>
+                                    {% elif group.name == 'Vendedor' %}
+                                    <span class="badge badge-ventas">Vendedor</span>
+                                    {% elif group.name == 'Instalador' %}
+                                    <span class="badge badge-instal">Instalador</span>
+                                    {% elif group.name == 'Supervisor' %}
+                                    <span class="badge badge-supervisor">Supervisor</span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                            <span class="badge">—</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">📅 Registro:</span>
+                        <span class="card-value">{{ usuario.date_joined|date:"d/m/Y" }}</span>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    <button class="card-action" onclick="verUsuario('{{ usuario.id }}')" title="Ver detalles">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                        </svg>
+                    </button>
+                    <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'" title="Editar usuario">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                    {% if usuario != user %}
+                    <button class="card-action" onclick="cambiarEstadoUsuario(event, '{% url 'cambiar_estado_usuario' usuario.id %}', '{{ usuario.username }}', '{{ usuario.is_active }}')" 
+                            title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}"
+                            style="{% if usuario.is_active %}color: #ef4444;{% else %}color: #10b981;{% endif %}">
+                        {% if usuario.is_active %}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        {% else %}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        {% endif %}
+                    </button>
+                    {% endif %}
                 </div>
             </div>
-            <span class="status-dot {% if usuario.is_active %}active{% endif %}"></span>
-        </div>
-        
-        <div class="card-body">
-            <div class="card-row">
-                <span class="card-label">Nombre:</span>
-                <span class="card-value">{{ usuario.first_name }} {{ usuario.last_name }}</span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">Rol:</span>
-                <span class="card-value">
-                    {% if usuario.is_superuser %}Superusuario
-                    {% elif usuario.groups.all %}
-                        {% for group in usuario.groups.all %}
-                            {% if group.name == 'Administrador' %}Administrador
-                            {% elif group.name == 'Vendedor' %}Vendedor
-                            {% elif group.name == 'Instalador' %}Instalador
-                            {% elif group.name == 'Supervisor' %}Supervisor
-                            {% endif %}
-                        {% endfor %}
-                    {% else %}—{% endif %}
-                </span>
-            </div>
-            <div class="card-row">
-                <span class="card-label">Registro:</span>
-                <span class="card-value">{{ usuario.date_joined|date:"d/m/y" }}</span>
-            </div>
-        </div>
-        
-        <div class="card-actions">
-            <button class="card-action" onclick="window.location.href='{% url 'editar_usuario' usuario.id %}'" title="Ver/Editar">👁️</button>
-            <button class="card-action" onclick="cambiarRol('{{ usuario.id }}')" title="Cambiar Rol">👤</button>
-            {% if usuario != user %}
-            <button type="button" class="card-action" onclick="cambiarEstadoUsuario(event, '{% url 'cambiar_estado_usuario' usuario.id %}', '{{ usuario.username }}', '{{ usuario.is_active }}')" 
-                    title="{% if usuario.is_active %}Desactivar{% else %}Activar{% endif %}" 
-                    style="{% if usuario.is_active %}color: #f44336;{% else %}color: #4caf50;{% endif %}">
-                {% if usuario.is_active %}✕{% else %}✓{% endif %}
-            </button>
-            {% endif %}
+            {% empty %}
+            <div class="empty-mobile">No hay usuarios registrados</div>
+            {% endfor %}
         </div>
     </div>
-    {% empty %}
-    <div class="empty-mobile">No hay usuarios</div>
-    {% endfor %}
+
+    <!-- PAGINACIÓN - FUERA DEL SCROLL, SIEMPRE VISIBLE -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} usuarios
+        </div>
+        
+        <div class="pagination-controls">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Primera página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Página anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </span>
+            {% endif %}
+
+            <div class="page-numbers">
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num == page_obj.number %}
+                        <span class="page-current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-num">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Página siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Última página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                </svg>
+            </span>
+            <span class="page-link disabled">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                </svg>
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Selector de página para móvil (dropdown) -->
+        <div class="page-selector-mobile">
+            <span>Ir a página</span>
+            <select id="pageSelect" class="page-select">
+                {% for num in page_obj.paginator.page_range %}
+                <option value="{{ num }}" {% if num == page_obj.number %}selected{% endif %}>
+                    {{ num }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
-<!-- Paginación compacta -->
-{% if page_obj.has_other_pages %}
-<div class="pagination">
-    {% if page_obj.has_previous %}
-    <a href="?page=1" class="page-link">←←</a>
-    <a href="?page={{ page_obj.previous_page_number }}" class="page-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M9 18l6-6-6-6"/>
-        </svg>
-    </a>
-    {% endif %}
-
-    <span class="page-info">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-
-    {% if page_obj.has_next %}
-    <a href="?page={{ page_obj.next_page_number }}" class="page-link">→</a>
-    <a href="?page={{ page_obj.paginator.num_pages }}" class="page-link">→→</a>
-    {% endif %}
+<!-- Modal para detalle de usuario -->
+<div id="usuarioModal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModal()"></div>
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalNombreUsuario"></h2>
+                    <p id="modalRol"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="modal-section">
+                <h3 class="modal-section-title">Información Personal</h3>
+                <div class="modal-grid">
+                    <div class="modal-item">
+                        <span class="modal-label">Nombre completo</span>
+                        <span class="modal-value" id="modalNombreCompleto"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Usuario</span>
+                        <span class="modal-value" id="modalUsuario"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Email</span>
+                        <span class="modal-value" id="modalEmail"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Teléfono</span>
+                        <span class="modal-value" id="modalTelefono"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Cédula</span>
+                        <span class="modal-value" id="modalCedula"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-section">
+                <h3 class="modal-section-title">Información del Sistema</h3>
+                <div class="modal-grid">
+                    <div class="modal-item">
+                        <span class="modal-label">Rol</span>
+                        <span class="modal-value" id="modalRolValue"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Estado</span>
+                        <span class="modal-value" id="modalEstado"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Fecha registro</span>
+                        <span class="modal-value" id="modalFechaRegistro"></span>
+                    </div>
+                    <div class="modal-item">
+                        <span class="modal-label">Último inicio</span>
+                        <span class="modal-value" id="modalUltimoLogin"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-outline" onclick="cerrarModal()">Cerrar</button>
+            <button class="btn-primary" id="modalEditarBtn">Editar Usuario</button>
+        </div>
+    </div>
 </div>
-{% endif %}
 
 <style>
     /* ===== VARIABLES ===== */
     :root {
         --orange: #ff6b00;
         --orange-light: #fff2e6;
-        --gray-bg: #fafafa;
-        --gray-border: #f0f0f0;
-        --gray-text: #999;
-        --dark-text: #333;
+        --gray-bg: #f9fafb;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --warning-light: #fed7aa;
+        --danger: #ef4444;
+        --danger-light: #fee2e2;
+        --info: #3b82f6;
+        --info-light: #dbeafe;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
-
-    /* ===== LAYOUT PRINCIPAL ===== */
-    .btn-primary {
+    
+    .btn-orange {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 6px 12px;
+        gap: 8px;
+        padding: 8px 16px;
         background: var(--orange);
         color: white;
-        border-radius: 6px;
+        border-radius: 12px;
         font-size: 13px;
         font-weight: 500;
         text-decoration: none;
-        transition: all 0.2s;
+        transition: var(--transition);
         border: none;
         cursor: pointer;
     }
-
-    .btn-primary:hover {
+    
+    .btn-orange:hover {
         background: #ff8c00;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
     }
-
-    /* ===== STATS COMPACTOS ===== */
+    
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    .usuarios-container {
+        height: calc(100vh - 120px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    /* ===== STATS ===== */
     .stats-grid {
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 8px;
         margin-bottom: 16px;
+        flex-shrink: 0;
     }
-
+    
     .stat-card {
         background: white;
-        padding: 6px 12px;
-        border-radius: 20px;
+        padding: 6px 14px;
+        border-radius: 30px;
         border: 1px solid var(--gray-border);
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        font-size: 13px;
+        gap: 8px;
+        font-size: 12px;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
     }
-
+    
+    .stat-card:hover {
+        border-color: var(--orange);
+        transform: translateY(-1px);
+    }
+    
     .stat-value {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--orange);
+        font-size: 14px;
     }
-
+    
     .stat-label {
         color: var(--gray-text);
+        font-size: 11px;
     }
-
+    
     /* ===== FILTROS ===== */
-    .filters {
+    .filters-container {
+        margin-bottom: 12px;
+        flex-shrink: 0;
+    }
+    
+    .filters-grid {
         display: flex;
-        gap: 6px;
-        margin-bottom: 16px;
+        gap: 8px;
         flex-wrap: wrap;
     }
-
+    
     .search-box {
         flex: 2;
         min-width: 200px;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 8px;
         background: white;
-        padding: 0 10px;
+        padding: 0 12px;
         border: 1px solid var(--gray-border);
-        border-radius: 20px;
+        border-radius: 30px;
+        transition: var(--transition);
     }
-
+    
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
     .search-box input {
         border: none;
-        padding: 8px 0;
+        padding: 9px 0;
         width: 100%;
         outline: none;
         font-size: 13px;
         background: transparent;
     }
-
+    
     .filter-select {
         flex: 1;
-        min-width: 100px;
-        padding: 8px 10px;
+        min-width: 140px;
+        padding: 9px 12px;
         border: 1px solid var(--gray-border);
-        border-radius: 20px;
+        border-radius: 30px;
         background: white;
         font-size: 13px;
-        color: var(--dark-text);
         outline: none;
         cursor: pointer;
+        transition: var(--transition);
     }
-
-    .filter-select:hover {
+    
+    .filter-select:hover,
+    .filter-select:focus {
         border-color: var(--orange);
     }
-
-    /* ===== TABLA DESKTOP COMPACTA ===== */
+    
+    /* ===== FILTROS ACTIVOS ===== */
+    .filtros-activos {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        border-radius: 10px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+    
+    .filtros-label {
+        font-weight: 600;
+        color: #1565c0;
+    }
+    
+    .filtros-lista {
+        color: #555;
+        flex: 1;
+        font-size: 11px;
+    }
+    
+    .btn-limpiar-filtros {
+        background: white;
+        border: 1px solid #2196f3;
+        color: #2196f3;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    /* ===== WRAPPER CON SCROLL ===== */
+    .usuarios-scroll-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        margin-right: -4px;
+        min-height: 0;
+    }
+    
+    .usuarios-scroll-wrapper::-webkit-scrollbar {
+        width: 5px;
+    }
+    
+    .usuarios-scroll-wrapper::-webkit-scrollbar-track {
+        background: var(--gray-border);
+        border-radius: 10px;
+    }
+    
+    .usuarios-scroll-wrapper::-webkit-scrollbar-thumb {
+        background: var(--orange);
+        border-radius: 10px;
+    }
+    
+    /* ===== TABLA ===== */
     .desktop-view {
         display: block;
         background: white;
-        border-radius: 12px;
+        border-radius: 16px;
         border: 1px solid var(--gray-border);
-        overflow: hidden;
-        margin-bottom: 16px;
+        overflow: auto;
+        margin-bottom: 12px;
     }
-
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
     .table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
+        font-size: 12px;
+        min-width: 900px;
     }
-
+    
     .table th {
         text-align: left;
-        padding: 10px 12px;
-        font-weight: 500;
+        padding: 12px 12px;
+        font-weight: 600;
         color: var(--gray-text);
-        background: var(--gray-bg);
+        background: #f9fafb;
         border-bottom: 1px solid var(--gray-border);
         font-size: 11px;
         text-transform: uppercase;
     }
-
+    
     .table td {
-        padding: 8px 12px;
+        padding: 10px 12px;
         border-bottom: 1px solid var(--gray-border);
         color: var(--dark-text);
     }
-
+    
     .table tbody tr:hover {
         background: var(--gray-bg);
     }
-
+    
     .user-cell {
         display: flex;
         align-items: center;
         gap: 8px;
     }
-
+    
     .user-avatar {
         width: 28px;
         height: 28px;
-        background: var(--orange);
-        color: white;
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 500;
-        font-size: 12px;
-        flex-shrink: 0;
-    }
-
-    .user-name {
-        font-weight: 500;
-        color: var(--dark-text);
-        font-size: 13px;
-        line-height: 1.2;
-    }
-
-    .user-fullname {
-        font-size: 11px;
-        color: var(--gray-text);
-        line-height: 1.2;
-    }
-
-    .email-cell {
-        max-width: 180px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: #666;
-    }
-
-    .date-cell {
-        color: #666;
-        white-space: nowrap;
-    }
-
-    /* Badges pequeños */
-    .badge {
-        display: inline-block;
-        padding: 3px 6px;
-        border-radius: 4px;
-        font-size: 10px;
-        font-weight: 500;
-        background: #f5f5f5;
-        color: #666;
-        white-space: nowrap;
-    }
-
-    .badge.super { background: #f3e5f5; color: #9c27b0; }
-    .badge.admin { background: #fff2e6; color: var(--orange); }
-    .badge.ventas { background: #e3f2fd; color: #2196f3; }
-    .badge.instal { background: #e8f5e9; color: #4caf50; }
-    .badge.supervisor { background: #f3e5f5; color: #9c27b0; }
-
-    /* Status */
-    .status {
-        font-size: 12px;
-        color: #f44336;
-        white-space: nowrap;
-    }
-    .status.active { color: #4caf50; }
-
-    /* Acciones compactas */
-    .actions {
-        display: flex;
-        gap: 4px;
-    }
-
-    .action-btn {
-        width: 26px;
-        height: 26px;
-        border: 1px solid var(--gray-border);
-        background: white;
-        border-radius: 4px;
-        color: var(--gray-text);
-        cursor: pointer;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-
-    .action-btn:hover {
-        border-color: var(--orange);
-        color: var(--orange);
-    }
-
-    /* ===== MOBILE CARDS ===== */
-    .mobile-view {
-        display: none;
-    }
-
-    .user-card {
-        background: white;
-        border: 1px solid var(--gray-border);
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 8px;
-    }
-
-    .card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-    }
-
-    .card-user {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .card-avatar {
-        width: 36px;
-        height: 36px;
         background: var(--orange);
         color: white;
         border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 500;
-        font-size: 14px;
-        flex-shrink: 0;
-    }
-
-    .card-name {
-        font-weight: 500;
-        color: var(--dark-text);
-        font-size: 14px;
-    }
-
-    .card-email {
+        font-weight: 600;
         font-size: 11px;
-        color: var(--gray-text);
     }
-
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #f44336;
-    }
-    .status-dot.active { background: #4caf50; }
-
-    .card-body {
-        background: var(--gray-bg);
-        padding: 8px 10px;
-        border-radius: 6px;
-        margin-bottom: 8px;
+    
+    .user-name {
+        font-weight: 500;
         font-size: 12px;
     }
-
-    .card-row {
-        display: flex;
-        margin-bottom: 4px;
+    
+    .email-cell {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #666;
+        font-size: 11px;
     }
-
-    .card-row:last-child {
-        margin-bottom: 0;
+    
+    .fecha-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 11px;
     }
-
-    .card-label {
-        width: 65px;
-        color: var(--gray-text);
-        flex-shrink: 0;
-    }
-
-    .card-value {
-        color: var(--dark-text);
+    
+    /* Badges */
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
         font-weight: 500;
-        word-break: break-word;
     }
-
-    .card-actions {
+    
+    .badge-super { background: #f3e5f5; color: #9c27b0; }
+    .badge-admin { background: #fff2e6; color: var(--orange); }
+    .badge-ventas { background: #e3f2fd; color: #1976d2; }
+    .badge-instal { background: #e8f5e9; color: #2e7d32; }
+    .badge-supervisor { background: #f3e5f5; color: #9c27b0; }
+    
+    /* Status */
+    .status {
+        font-size: 12px;
+        color: #ef4444;
+        white-space: nowrap;
+    }
+    .status.active { color: #10b981; }
+    
+    .actions {
         display: flex;
-        gap: 6px;
-        justify-content: flex-end;
+        gap: 5px;
     }
-
-    .card-action {
-        width: 32px;
-        height: 32px;
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
         border: 1px solid var(--gray-border);
         background: white;
         border-radius: 6px;
         color: var(--gray-text);
         cursor: pointer;
-        font-size: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        text-decoration: none;
+        transition: var(--transition);
     }
-
+    
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    /* ===== MOBILE CARDS ===== */
+    .mobile-view {
+        display: none;
+    }
+    
+    .usuario-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 10px;
+    }
+    
+    .usuario-card .card-header {
+        padding: 12px;
+        background: #f9fafb;
+        border-bottom: 1px solid var(--gray-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .card-usuario {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .card-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--orange);
+        color: white;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    
+    .card-name {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .card-detail {
+        font-size: 10px;
+        color: var(--gray-text);
+    }
+    
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .status-dot.active { background: var(--success); }
+    .status-dot:not(.active) { background: var(--danger); }
+    
+    .usuario-card .card-body {
+        padding: 12px;
+    }
+    
+    .card-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 12px;
+    }
+    
+    .card-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .card-label {
+        width: 70px;
+        color: var(--gray-text);
+        flex-shrink: 0;
+        font-size: 11px;
+    }
+    
+    .card-value {
+        color: var(--dark-text);
+        font-weight: 500;
+        flex: 1;
+        font-size: 12px;
+        word-break: break-word;
+    }
+    
+    .usuario-card .card-actions {
+        display: flex;
+        gap: 8px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--gray-border);
+        background: #f9fafb;
+        justify-content: flex-end;
+    }
+    
+    .card-action {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition);
+    }
+    
     .card-action:hover {
         border-color: var(--orange);
         color: var(--orange);
+        background: var(--orange-light);
     }
-
-    /* ===== PAGINACIÓN COMPACTA ===== */
-    .pagination {
+    
+    /* ===== PAGINACIÓN ===== */
+    .pagination-container {
+        flex-shrink: 0;
+        background: white;
+        border-radius: 14px;
+        border: 1px solid var(--gray-border);
+        padding: 12px;
+        margin-top: 8px;
+    }
+    
+    .pagination-info {
+        text-align: center;
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-bottom: 10px;
+    }
+    
+    .pagination-controls {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 6px;
-        margin-top: 16px;
+        flex-wrap: wrap;
     }
-
+    
     .page-link {
-        padding: 5px 10px;
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         border: 1px solid var(--gray-border);
-        border-radius: 6px;
-        color: #666;
+        border-radius: 8px;
+        color: var(--gray-text);
         text-decoration: none;
-        font-size: 12px;
-        transition: all 0.2s;
+        transition: var(--transition);
+        background: white;
     }
-
-    .page-link:hover {
+    
+    .page-link:hover:not(.disabled) {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f5f5f5;
+    }
+    
+    .page-numbers {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .page-num {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        color: var(--gray-text);
+        text-decoration: none;
+        font-size: 13px;
+        transition: var(--transition);
+        background: white;
+    }
+    
+    .page-num:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    .page-current {
+        min-width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    
+    .page-selector-mobile {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--gray-border);
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    .page-select {
+        padding: 6px 10px;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        background: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
+    .empty, .empty-mobile {
+        text-align: center;
+        padding: 40px !important;
+        color: var(--gray-text);
+    }
+    
+    /* ===== MODAL ===== */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 2000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+    
+    .modal-container {
+        position: relative;
+        width: 90%;
+        max-width: 500px;
+        max-height: 85vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        z-index: 2001;
+    }
+    
+    .modal-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--gray-border);
+        background: #f9fafb;
+        border-radius: 20px 20px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+    }
+    
+    .modal-header-info h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+    
+    .modal-header-info p {
+        font-size: 12px;
+        color: var(--gray-text);
+    }
+    
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .modal-close:hover {
         border-color: var(--orange);
         color: var(--orange);
     }
-
-    .page-info {
-        padding: 0 6px;
-        color: var(--gray-text);
-        font-size: 12px;
+    
+    .modal-body {
+        padding: 16px;
     }
-
-    .empty, .empty-mobile {
-        text-align: center;
-        padding: 24px !important;
+    
+    .modal-section {
+        margin-bottom: 16px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .modal-section:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    
+    .modal-section-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+    
+    .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .modal-label {
+        font-size: 10px;
         color: var(--gray-text);
+        text-transform: uppercase;
+    }
+    
+    .modal-value {
         font-size: 13px;
+        font-weight: 500;
     }
-
+    
+    .modal-footer {
+        padding: 12px 16px;
+        border-top: 1px solid var(--gray-border);
+        background: #f9fafb;
+        border-radius: 0 0 20px 20px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    .btn-outline {
+        padding: 6px 14px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
+    .btn-outline:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .btn-primary {
+        padding: 6px 14px;
+        background: var(--orange);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
     /* ===== RESPONSIVE ===== */
-    @media (max-width: 768px) {
+    @media screen and (max-width: 768px) {
+        .usuarios-container {
+            height: calc(100vh - 80px);
+        }
+        
         .desktop-view {
             display: none;
         }
@@ -631,106 +1193,185 @@
             display: block;
         }
         
-        .filters {
+        .filters-grid {
             flex-direction: column;
         }
         
-        .search-box, .filter-select {
+        .search-box,
+        .filter-select {
             width: 100%;
         }
         
         .stats-grid {
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
         }
         
         .stat-card {
-            flex: 1 1 auto;
             justify-content: center;
+        }
+        
+        .page-numbers {
+            display: none;
+        }
+        
+        .page-selector-mobile {
+            display: flex;
+        }
+        
+        .modal-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .filtros-activos {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .btn-limpiar-filtros {
+            align-self: flex-start;
         }
     }
-
-    @media (max-width: 480px) {
+    
+    @media screen and (max-width: 480px) {
         .stats-grid {
-            flex-wrap: wrap;
-        }
-        
-        .stat-card {
-            flex: 1 0 calc(33.33% - 4px);
-            justify-content: center;
-            padding: 6px 8px;
-            font-size: 12px;
-        }
-        
-        .user-card {
-            padding: 10px;
+            grid-template-columns: repeat(2, 1fr);
         }
         
         .card-avatar {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
+            font-size: 14px;
+        }
+        
+        .card-name {
             font-size: 13px;
         }
-    }
-
-    @media (max-width: 360px) {
-        .stat-card {
-            flex: 1 0 calc(50% - 3px);
+        
+        .card-label {
+            width: 65px;
+            font-size: 10px;
+        }
+        
+        .card-value {
+            font-size: 11px;
+        }
+        
+        .pagination-info {
+            font-size: 10px;
+        }
+        
+        .page-link {
+            width: 30px;
+            height: 30px;
         }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Search function
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        const searchText = this.value.toLowerCase();
-        
-        // Desktop
-        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchText) ? '' : 'none';
-        });
-        
-        // Mobile
-        document.querySelectorAll('.user-card').forEach(card => {
-            const text = card.textContent.toLowerCase();
-            card.style.display = text.includes(searchText) ? 'block' : 'none';
-        });
-    });
+    let searchTimeout;
+    let busquedaActual = '{{ busqueda|default:"" }}';
+    let rolFiltroActual = '{{ rol_filtro|default:"" }}';
+    let statusFiltroActual = '{{ status_filtro|default:"" }}';
 
-    // Filter function
-    function filterTable() {
-        const rolFilter = document.getElementById('filterRol').value.toLowerCase();
-        const statusFilter = document.getElementById('filterStatus').value.toLowerCase();
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const rol = document.getElementById('filterRol')?.value || '';
+        const status = document.getElementById('filterStatus')?.value || '';
+        const busqueda = document.getElementById('searchInput')?.value || '';
         
-        // Desktop
-        document.querySelectorAll('.desktop-view tbody tr').forEach(row => {
-            let show = true;
-            const rolText = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
-            const statusText = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
-            
-            if (rolFilter && !rolText.includes(rolFilter)) show = false;
-            if (statusFilter && show && !statusText.includes(statusFilter)) show = false;
-            
-            row.style.display = show ? '' : 'none';
-        });
+        if (rol) url.searchParams.set('rol', rol);
+        else url.searchParams.delete('rol');
         
-        // Mobile
-        document.querySelectorAll('.user-card').forEach(card => {
-            let show = true;
-            const text = card.textContent.toLowerCase();
-            
-            if (rolFilter && !text.includes(rolFilter)) show = false;
-            if (statusFilter && show && !text.includes(statusFilter)) show = false;
-            
-            card.style.display = show ? 'block' : 'none';
-        });
+        if (status) url.searchParams.set('status', status);
+        else url.searchParams.delete('status');
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
     }
 
-    document.getElementById('filterRol')?.addEventListener('change', filterTable);
-    document.getElementById('filterStatus')?.addEventListener('change', filterTable);
+    document.getElementById('searchInput')?.addEventListener('keyup', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => aplicarFiltros(), 500);
+    });
 
-    // Función para cambiar estado con confirmación
+    document.getElementById('filterRol')?.addEventListener('change', aplicarFiltros);
+    document.getElementById('filterStatus')?.addEventListener('change', aplicarFiltros);
+
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('rol');
+        url.searchParams.delete('status');
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+
+    // Selector de página para móvil
+    document.getElementById('pageSelect')?.addEventListener('change', function() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', this.value);
+        window.location.href = url.toString();
+    });
+
+    function verUsuario(id) {
+        Swal.fire({
+            title: 'Cargando...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        fetch(`/usuario/${id}/detalle/`)
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.error) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.error, confirmButtonColor: '#ff6b00' });
+                } else {
+                    mostrarModal(data);
+                }
+            })
+            .catch(() => {
+                Swal.close();
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la información', confirmButtonColor: '#ff6b00' });
+            });
+    }
+
+    function mostrarModal(usuario) {
+        document.getElementById('modalAvatar').textContent = usuario.username.charAt(0).toUpperCase();
+        document.getElementById('modalNombreUsuario').textContent = usuario.username;
+        document.getElementById('modalRol').textContent = usuario.rol;
+        document.getElementById('modalNombreCompleto').textContent = `${usuario.first_name} ${usuario.last_name}`.trim() || '—';
+        document.getElementById('modalUsuario').textContent = usuario.username;
+        document.getElementById('modalEmail').textContent = usuario.email || '—';
+        document.getElementById('modalTelefono').textContent = usuario.telefono || '—';
+        document.getElementById('modalCedula').textContent = usuario.cedula || '—';
+        
+        let rolClass = 'badge';
+        if (usuario.rol === 'Superusuario') rolClass = 'badge-super';
+        else if (usuario.rol === 'Administrador') rolClass = 'badge-admin';
+        else if (usuario.rol === 'Vendedor') rolClass = 'badge-ventas';
+        else if (usuario.rol === 'Instalador') rolClass = 'badge-instal';
+        else if (usuario.rol === 'Supervisor') rolClass = 'badge-supervisor';
+        
+        document.getElementById('modalRolValue').innerHTML = `<span class="badge ${rolClass}">${usuario.rol}</span>`;
+        document.getElementById('modalEstado').innerHTML = `<span class="status ${usuario.is_active ? 'active' : ''}">${usuario.is_active ? 'Activo' : 'Inactivo'}</span>`;
+        document.getElementById('modalFechaRegistro').textContent = usuario.date_joined;
+        document.getElementById('modalUltimoLogin').textContent = usuario.last_login || 'Nunca';
+        
+        document.getElementById('modalEditarBtn').onclick = () => window.location.href = `/usuarios/${usuario.id}/editar/`;
+        document.getElementById('usuarioModal').style.display = 'flex';
+    }
+
+    function cerrarModal() {
+        document.getElementById('usuarioModal').style.display = 'none';
+    }
+
     function cambiarEstadoUsuario(event, url, username, estadoActual) {
         event.preventDefault();
         event.stopPropagation();
@@ -751,13 +1392,12 @@
             `,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: esActivo ? '#f44336' : '#4caf50',
-            cancelButtonColor: '#666',
+            confirmButtonColor: esActivo ? '#ef4444' : '#10b981',
+            cancelButtonColor: '#6b7280',
             confirmButtonText: `Sí, ${accion}`,
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                // Crear formulario y enviar
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = url;
@@ -777,22 +1417,33 @@
         return false;
     }
 
-    // Action functions
-    function verUsuario(id) {
-        window.location.href = `/usuarios/${id}/detalle/`;
-    }
-    
-    function editarUsuario(id) {
-        window.location.href = `/usuarios/${id}/editar/`;
-    }
-    
-    function cambiarRol(id) {
-        Swal.fire({
-            title: 'Cambiar Rol',
-            text: 'Funcionalidad en desarrollo',
-            icon: 'info',
-            confirmButtonColor: '#ff6b00'
-        });
-    }
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+    document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
+
+    // Mostrar indicador de filtros activos
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const busqueda = urlParams.get('busqueda');
+        const rol = urlParams.get('rol');
+        const status = urlParams.get('status');
+        
+        if (busqueda || rol || status) {
+            const filtrosArray = [];
+            if (busqueda) filtrosArray.push(`"${busqueda}"`);
+            if (rol) {
+                let rolTexto = '';
+                if (rol === 'super') rolTexto = 'Superusuario';
+                else if (rol === 'admin') rolTexto = 'Administrador';
+                else if (rol === 'ventas') rolTexto = 'Vendedor';
+                else if (rol === 'instal') rolTexto = 'Instalador';
+                else if (rol === 'supervisor') rolTexto = 'Supervisor';
+                filtrosArray.push(`rol: ${rolTexto}`);
+            }
+            if (status) filtrosArray.push(`estado: ${status === 'activo' ? 'Activo' : 'Inactivo'}`);
+            
+            document.getElementById('filtrosLista').textContent = filtrosArray.join(' • ');
+            document.getElementById('filtrosActivos').style.display = 'flex';
+        }
+    });
 </script>
 {% endblock %}

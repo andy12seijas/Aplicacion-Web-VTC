@@ -15,6 +15,7 @@ from myapp.views_dashboard import *
 from myapp.views_soporte_admin import *
 from myapp.views_instalacion_admin import *
 from myapp.views_reportes_admin import * 
+from myapp.views_inventario import *
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
 
@@ -103,12 +104,28 @@ urlpatterns = [
     path('instalacion/<int:instalacion_id>/detalle-json/', detalle_instalacion_json, name='detalle_instalacion_json'),
     path('instalacion/<int:instalacion_id>/editar/', editar_instalacion, name='editar_instalacion'),
      # Reportes
-    path('reportes-admin/', reportes_view, name='reportes'),
+    # URLs de Reportes
+    path('reportes/', reportes_view, name='reportes'),
     path('api/reporte-ventas/', reporte_ventas_json, name='reporte_ventas_json'),
     path('api/reporte-instalaciones/', reporte_instalaciones_json, name='reporte_instalaciones_json'),
     path('api/reporte-soportes/', reporte_soportes_json, name='reporte_soportes_json'),
-    path('exportar-excel/', exportar_excel, name='exportar_excel'),
-    path('exportar-pdf/', exportar_pdf, name='exportar_pdf'),
+    path('api/reporte-inventario/', reporte_inventario_json, name='reporte_inventario_json'),
+    path('exportar-reporte/', exportar_reporte, name='exportar_reporte'),
+    #URLS DE INVENTARIO
+    # URLs de Inventario
+    path('inventario/', inventario_global_lista, name='inventario_global_lista'),
+    path('inventario/agregar/', inventario_global_agregar, name='inventario_global_agregar'),
+    path('inventario/ajustar/<int:material_id>/', inventario_global_ajustar, name='inventario_global_ajustar'),
+    path('inventario/movimientos/', inventario_movimientos, name='inventario_movimientos'),
+    # URLs de Inventario - Asignación a cuadrillas
+    path('inventario/asignar-cuadrilla/', inventario_asignar_cuadrilla, name='inventario_asignar_cuadrilla'),
+    path('inventario/cuadrilla/<int:cuadrilla_id>/', inventario_cuadrilla_detalle, name='inventario_cuadrilla_detalle'),
+    path('inventario/devolver/<int:inventario_id>/', inventario_devolver_cuadrilla, name='inventario_devolver_cuadrilla'),
+    path('inventario/todas-cuadrillas/', inventario_todas_cuadrillas, name='inventario_todas_cuadrillas'),
+    path('inventario/panel/', panel_inventario, name='panel_inventario'),
+    path('inventario/movimientos-cuadrilla/<int:cuadrilla_id>/', inventario_movimientos_cuadrilla, name='inventario_movimientos_cuadrilla'),
+    path('mi-inventario/', mi_inventario, name='mi_inventario'),
+
 ]
 
 

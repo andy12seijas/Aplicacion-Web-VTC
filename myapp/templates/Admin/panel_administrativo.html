@@ -130,6 +130,16 @@
             <div class="button-arrow">→</div>
         </a>
         {% endif %}
+        {% if mostrar_todos %}
+<a href="{% url 'panel_inventario' %}" class="admin-button">
+    <div class="button-icon">📦</div>
+    <div class="button-content">
+        <h3>Inventario</h3>
+        <p>Gestiona materiales, stock global y asignaciones a cuadrillas</p>
+    </div>
+    <div class="button-arrow">→</div>
+</a>
+{% endif %}
     </div>
     
     <!-- Estadísticas rápidas (SOLO ADMIN) -->

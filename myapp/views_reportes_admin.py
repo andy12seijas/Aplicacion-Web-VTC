@@ -13,7 +13,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .models import ContratoCliente, Instalacion, Soporte, User, Plan, Cuadrilla, VentaDirecta
+from .models import ContratoCliente, Instalacion, Soporte, User, Plan, Cuadrilla, VentaDirecta, Material, MovimientoInventario, InventarioGlobal
 
 
 def es_admin(user):
@@ -23,17 +23,19 @@ def es_admin(user):
 @login_required
 @user_passes_test(es_admin)
 def reportes_view(request):
-    """Vista principal de reportes"""
-    from myapp.models import User, Plan, Cuadrilla
+    """Vista principal de reportes unificada"""
+    from myapp.models import User, Plan, Cuadrilla, Material
     
     vendedores = User.objects.filter(groups__name='Vendedor').distinct()
     planes = Plan.objects.filter(activo=True)
     cuadrillas = Cuadrilla.objects.filter(activo=True)
+    materiales = Material.objects.filter(activo=True)
     
     context = {
         'vendedores': vendedores,
         'planes': planes,
         'cuadrillas': cuadrillas,
+        'materiales': materiales,
     }
     return render(request, 'Admin/reporte.html', context)
 
@@ -41,7 +43,7 @@ def reportes_view(request):
 @login_required
 @user_passes_test(es_admin)
 def reporte_ventas_json(request):
-    """API para obtener datos de ventas con paginación backend"""
+    """API para obtener datos de ventas"""
     
     tipo_reporte = request.GET.get('tipo', 'simple')
     fecha_desde = request.GET.get('fecha_desde', '')
@@ -52,7 +54,6 @@ def reporte_ventas_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
-    # Base de consulta - Contratos COMPLETADOS
     ventas = ContratoCliente.objects.filter(estado='COMPLETADO')
     
     if fecha_desde:
@@ -71,66 +72,45 @@ def reporte_ventas_json(request):
             Q(customer_id__icontains=busqueda)
         )
     
-    # Contar total antes de paginar
     total_registros = ventas.count()
-    
-    # Aplicar paginación
     paginator = Paginator(ventas, per_page)
+    
     try:
         page_obj = paginator.page(page)
-    except PageNotAnInteger:
+    except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
     
-    # Convertir datos a JSON
     if tipo_reporte == 'simple':
-        data_list = []
-        for venta in page_obj:
-            data_list.append({
-                'id': venta.id,
-                'cliente': venta.nombre_completo,
-                'cedula': venta.cedula,
-                'plan': venta.plan_contratado.nombre,
-                'fecha': venta.fecha_creacion.strftime('%d/%m/%Y'),
-                'vendedor': venta.creado_por.get_full_name() or venta.creado_por.username if venta.creado_por else 'N/A',
-                'customer_id': venta.customer_id or 'N/A',
-                'ods': venta.ods or 'N/A',
-                'estado': venta.get_estado_display(),
-            })
+        data_list = [{
+            'id': v.id,
+            'cliente': v.nombre_completo,
+            'cedula': v.cedula,
+            'plan': v.plan_contratado.nombre,
+            'fecha': v.fecha_creacion.strftime('%d/%m/%Y'),
+            'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+            'customer_id': v.customer_id or 'N/A',
+            'ods': v.ods or 'N/A',
+            'estado': v.get_estado_display(),
+        } for v in page_obj]
     else:
-        data_list = []
-        for venta in page_obj:
-            data_list.append({
-                'id': venta.id,
-                'cliente': venta.nombre_completo,
-                'cedula': venta.cedula,
-                'telefono': venta.telefono_principal,
-                'otro_telefono': venta.otro_telefono or 'N/A',
-                'correo': venta.correo_electronico,
-                'direccion': venta.direccion_detallada[:100] if venta.direccion_detallada else 'N/A',
-                'plan': venta.plan_contratado.nombre,
-                'simple_plus': venta.simple_plus,
-                'modalidad': venta.modalidad_equipo.nombre,
-                'tipo_vivienda': venta.tipo_vivienda.nombre,
-                'red': venta.red.nombre,
-                'fecha_nacimiento': venta.fecha_nacimiento.strftime('%d/%m/%Y'),
-                'fecha_creacion': venta.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
-                'vendedor': venta.creado_por.get_full_name() or venta.creado_por.username if venta.creado_por else 'N/A',
-                'customer_id': venta.customer_id or 'N/A',
-                'ods': venta.ods or 'N/A',
-                'atr': venta.atr or 'N/A',
-                'estado': venta.get_estado_display(),
-            })
-    
-    # Estadísticas (totales sin paginación)
-    vendedores_stats = list(ventas.values('creado_por__username').annotate(count=Count('id')).order_by('-count')[:10])
-    planes_stats = list(ventas.values('plan_contratado__nombre').annotate(count=Count('id')).order_by('-count')[:10])
+        data_list = [{
+            'id': v.id,
+            'cliente': v.nombre_completo,
+            'cedula': v.cedula,
+            'telefono': v.telefono_principal,
+            'correo': v.correo_electronico,
+            'direccion': v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
+            'plan': v.plan_contratado.nombre,
+            'fecha': v.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+            'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+            'customer_id': v.customer_id or 'N/A',
+            'ods': v.ods or 'N/A',
+            'atr': v.atr or 'N/A',
+            'estado': v.get_estado_display(),
+        } for v in page_obj]
     
     estadisticas = {
         'total_ventas': total_registros,
-        'vendedores': vendedores_stats,
-        'planes': planes_stats,
     }
     
     return JsonResponse({
@@ -146,7 +126,7 @@ def reporte_ventas_json(request):
 @login_required
 @user_passes_test(es_admin)
 def reporte_instalaciones_json(request):
-    """API para obtener datos de instalaciones con paginación backend"""
+    """API para obtener datos de instalaciones"""
     
     tipo_reporte = request.GET.get('tipo', 'simple')
     fecha_desde = request.GET.get('fecha_desde', '')
@@ -155,7 +135,7 @@ def reporte_instalaciones_json(request):
     estado = request.GET.get('estado', '')
     busqueda = request.GET.get('busqueda', '')
     page = request.GET.get('page', 1)
-    per_page = int(request.GET.get('per_page', 6))
+    per_page = int(request.GET.get('per_page', 15))
     
     instalaciones = Instalacion.objects.all()
     
@@ -176,61 +156,36 @@ def reporte_instalaciones_json(request):
         )
     
     total_registros = instalaciones.count()
+    paginator = Paginator(instalaciones, per_page)
     
-    # Paginación
-    paginator = Paginator(instalaciones, 5)
     try:
         page_obj = paginator.page(page)
-    except PageNotAnInteger:
+    except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
     
     if tipo_reporte == 'simple':
         data_list = []
         for inst in page_obj:
-            if inst.asignacion.contrato:
-                origen = "Contrato"
-                customer_id = inst.asignacion.contrato.customer_id or 'N/A'
-                ods = inst.asignacion.contrato.ods or 'N/A'
-            else:
-                origen = "Venta Directa"
-                customer_id = inst.asignacion.venta_directa.customer_id or 'N/A'
-                ods = inst.asignacion.venta_directa.nro_orden or 'N/A'
-            
             data_list.append({
                 'id': inst.id,
                 'cliente': inst.nombre_cliente,
                 'cedula': inst.cedula_cliente,
                 'plan': inst.plan,
-                'origen': origen,
-                'customer_id': customer_id,
-                'ods': ods,
                 'cuadrilla': inst.asignacion.cuadrilla.nombre if inst.asignacion.cuadrilla else 'N/A',
                 'fecha': inst.fecha_instalacion.strftime('%d/%m/%Y') if inst.fecha_instalacion else 'No registrada',
                 'estado': 'Completada' if inst.completada else 'Pendiente',
-                'metros': inst.metros_utilizados,
             })
     else:
         data_list = []
         for inst in page_obj:
-            if inst.asignacion.contrato:
-                origen = "Contrato"
-                contrato = inst.asignacion.contrato
-                customer_id = contrato.customer_id or 'N/A'
-                ods = contrato.ods or 'N/A'
-                atr = contrato.atr or '*VTC Conexiones'
-                vendedor = contrato.creado_por.get_full_name() or contrato.creado_por.username if contrato.creado_por else 'N/A'
-                orden_servicio = contrato.ods or 'N/A'
-                direccion = contrato.direccion_detallada[:100] if contrato.direccion_detallada else "N/A"
-            else:
-                origen = "Venta Directa"
-                venta = inst.asignacion.venta_directa
-                customer_id = venta.customer_id or 'N/A'
-                ods = venta.nro_orden or 'N/A'
-                atr = '*VTC Conexiones'
-                vendedor = venta.creado_por.get_full_name() or venta.creado_por.username if venta.creado_por else 'N/A'
-                orden_servicio = venta.nro_orden or 'N/A'
+            # Obtener dirección de manera segura
+            direccion = "N/A"
+            try:
+                if inst.asignacion.contrato:
+                    direccion = inst.asignacion.contrato.direccion_detallada or "N/A"
+                elif inst.asignacion.venta_directa:
+                    direccion = getattr(inst.asignacion.venta_directa, 'direccion', None) or "N/A"
+            except:
                 direccion = "N/A"
             
             data_list.append({
@@ -239,34 +194,18 @@ def reporte_instalaciones_json(request):
                 'cedula': inst.cedula_cliente,
                 'direccion': direccion,
                 'plan': inst.plan,
-                'origen': origen,
-                'customer_id': customer_id,
-                'ods': ods,
-                'atr': atr,
-                'vendedor': vendedor,
-                'orden_servicio': orden_servicio,
                 'cuadrilla': inst.asignacion.cuadrilla.nombre if inst.asignacion.cuadrilla else 'N/A',
-                'fecha_instalacion': inst.fecha_instalacion.strftime('%d/%m/%Y %H:%M') if inst.fecha_instalacion else 'No registrada',
-                'fecha_creacion': inst.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'fecha': inst.fecha_instalacion.strftime('%d/%m/%Y %H:%M') if inst.fecha_instalacion else 'No registrada',
                 'estado': 'Completada' if inst.completada else 'Pendiente',
-                'modelo_modem': inst.modelo_modem.nombre if inst.modelo_modem else 'N/A',
-                'sn_modem': inst.sn_modem or 'N/A',
-                'mac_modem': inst.mac_modem or 'N/A',
-                'metros_utilizados': inst.metros_utilizados,
-                'conectores': inst.conectores or 0,
-                'rosetas': inst.rosetas or 0,
-                'patch_cord': inst.patch_cord or 0,
-                'tensores': inst.tensores or 0,
-                'feeder': inst.feeder or 'N/A',
-                'caja': inst.caja or 'N/A',
-                'puerto': inst.puerto_utilizado or 'N/A',
+                'modelo': inst.modelo_modem.nombre if inst.modelo_modem else 'N/A',
+                'serial': inst.sn_modem or 'N/A',
+                'metros': inst.metros_utilizados,
             })
     
     estadisticas = {
         'total_instalaciones': total_registros,
         'completadas': instalaciones.filter(completada=True).count(),
         'pendientes': instalaciones.filter(completada=False).count(),
-        'metros_totales': sum(inst.metros_utilizados for inst in instalaciones[:1000]),
     }
     
     return JsonResponse({
@@ -278,10 +217,11 @@ def reporte_instalaciones_json(request):
         'por_pagina': per_page,
     })
 
+
 @login_required
 @user_passes_test(es_admin)
 def reporte_soportes_json(request):
-    """API para obtener datos de soportes con paginación backend"""
+    """API para obtener datos de soportes"""
     
     tipo_reporte = request.GET.get('tipo', 'simple')
     fecha_desde = request.GET.get('fecha_desde', '')
@@ -305,51 +245,43 @@ def reporte_soportes_json(request):
     if busqueda:
         soportes = soportes.filter(
             Q(instalacion__nombre_cliente__icontains=busqueda) |
-            Q(instalacion__cedula_cliente__icontains=busqueda) |
-            Q(falla_encontrada__icontains=busqueda)
+            Q(instalacion__cedula_cliente__icontains=busqueda)
         )
     
     total_registros = soportes.count()
-    
-    # Paginación
     paginator = Paginator(soportes, per_page)
+    
     try:
         page_obj = paginator.page(page)
-    except PageNotAnInteger:
+    except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
-    except EmptyPage:
-        page_obj = paginator.page(paginator.num_pages)
     
     if tipo_reporte == 'simple':
-        data_list = []
-        for sop in page_obj:
-            data_list.append({
-                'id': sop.id,
-                'cliente': sop.nombre_cliente,
-                'cedula': sop.cedula_cliente,
-                'tipo': sop.get_tipo_display(),
-                'estado': sop.get_estado_display(),
-                'fecha': sop.fecha_hora_servicio.strftime('%d/%m/%Y'),
-                'falla': sop.falla_encontrada[:50] + '...' if len(sop.falla_encontrada) > 50 else sop.falla_encontrada,
-            })
+        data_list = [{
+            'id': s.id,
+            'cliente': s.nombre_cliente,
+            'cedula': s.cedula_cliente,
+            'tipo': s.get_tipo_display(),
+            'estado': s.get_estado_display(),
+            'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y'),
+            'falla': s.falla_encontrada[:50] + '...' if len(s.falla_encontrada) > 50 else s.falla_encontrada,
+        } for s in page_obj]
     else:
-        data_list = []
-        for sop in page_obj:
-            data_list.append({
-                'id': sop.id,
-                'cliente': sop.nombre_cliente,
-                'cedula': sop.cedula_cliente,
-                'tipo': sop.get_tipo_display(),
-                'estado': sop.get_estado_display(),
-                'fecha_servicio': sop.fecha_hora_servicio.strftime('%d/%m/%Y %H:%M'),
-                'falla_encontrada': sop.falla_encontrada[:100] if sop.falla_encontrada else 'N/A',
-                'solucion': sop.solucion[:100] if sop.solucion else 'N/A',
-            })
+        data_list = [{
+            'id': s.id,
+            'cliente': s.nombre_cliente,
+            'cedula': s.cedula_cliente,
+            'tipo': s.get_tipo_display(),
+            'estado': s.get_estado_display(),
+            'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y %H:%M'),
+            'falla': s.falla_encontrada[:100] if s.falla_encontrada else 'N/A',
+            'solucion': s.solucion[:100] if s.solucion else 'N/A',
+        } for s in page_obj]
     
     estadisticas = {
         'total_soportes': total_registros,
-        'pendientes': soportes.filter(estado__in=['PENDIENTE', 'EN_PROCESO']).count(),
         'completados': soportes.filter(estado='COMPLETADO').count(),
+        'pendientes': soportes.filter(estado__in=['PENDIENTE', 'EN_PROCESO']).count(),
     }
     
     return JsonResponse({
@@ -364,13 +296,103 @@ def reporte_soportes_json(request):
 
 @login_required
 @user_passes_test(es_admin)
-def exportar_excel(request):
-    """Exportar datos a Excel"""
+def reporte_inventario_json(request):
+    """API para obtener datos del inventario global"""
     
+    tipo_reporte = request.GET.get('tipo', 'simple')
+    material_id = request.GET.get('material', '')
+    categoria = request.GET.get('categoria', '')
+    busqueda = request.GET.get('busqueda', '')
+    page = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 15))
+    
+    inventario = InventarioGlobal.objects.select_related('material')
+    
+    if material_id:
+        inventario = inventario.filter(material_id=material_id)
+    if busqueda:
+        inventario = inventario.filter(material__nombre__icontains=busqueda)
+    
+    total_registros = inventario.count()
+    paginator = Paginator(inventario, per_page)
+    
+    try:
+        page_obj = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.page(1)
+    
+    if tipo_reporte == 'simple':
+        data_list = [{
+            'id': item.id,
+            'material': item.material.nombre,
+            'cantidad': item.cantidad,
+            'minimo': item.cantidad_minima,
+            'estado': 'Bajo stock' if item.esta_bajo_stock else 'Normal',
+        } for item in page_obj]
+    else:
+        data_list = [{
+            'id': item.id,
+            'material': item.material.nombre,
+            'cantidad': item.cantidad,
+            'minimo': item.cantidad_minima,
+            'estado': 'Bajo stock' if item.esta_bajo_stock else 'Normal',
+            'ultima_actualizacion': item.ultima_actualizacion.strftime('%d/%m/%Y %H:%M'),
+            'actualizado_por': item.actualizado_por.get_full_name() or item.actualizado_por.username if item.actualizado_por else 'Sistema',
+        } for item in page_obj]
+    
+    estadisticas = {
+        'total_materiales': total_registros,
+        'total_unidades': sum(item.cantidad for item in inventario),
+        'bajo_stock': sum(1 for item in inventario if item.esta_bajo_stock),
+    }
+    
+    return JsonResponse({
+        'data': data_list,
+        'estadisticas': estadisticas,
+        'total_registros': total_registros,
+        'total_paginas': paginator.num_pages,
+        'pagina_actual': page_obj.number,
+        'por_pagina': per_page,
+    })
+
+
+@login_required
+@user_passes_test(es_admin)
+def exportar_reporte(request):
+    """Exportar datos a Excel o PDF"""
+    
+    formato = request.GET.get('formato', 'excel')
     tipo = request.GET.get('tipo', 'ventas')
     reporte_tipo = request.GET.get('reporte_tipo', 'simple')
+    
+    # Obtener todos los parámetros de filtro
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
+    busqueda = request.GET.get('busqueda', '')
+    
+    # Filtros específicos por tipo
+    vendedor = request.GET.get('vendedor', '')
+    plan = request.GET.get('plan', '')
+    cuadrilla = request.GET.get('cuadrilla', '')
+    estado = request.GET.get('estado', '')
+    tipo_soporte = request.GET.get('tipo_soporte', '')
+    estado_soporte = request.GET.get('estado_soporte', '')
+    material = request.GET.get('material', '')
+    
+    if formato == 'excel':
+        return exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta, 
+                              busqueda, vendedor, plan, cuadrilla, estado, 
+                              tipo_soporte, estado_soporte, material)
+    else:
+        return exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
+                            busqueda, vendedor, plan, cuadrilla, estado,
+                            tipo_soporte, estado_soporte, material)
+
+
+def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
+                   busqueda, vendedor, plan, cuadrilla, estado,
+                   tipo_soporte, estado_soporte, material):
+    """Exportar datos a Excel con filtros"""
     
     wb = Workbook()
     
@@ -379,10 +401,22 @@ def exportar_excel(request):
         ws.title = "Reporte de Ventas"
         
         ventas = ContratoCliente.objects.filter(estado='COMPLETADO')
+        
         if fecha_desde:
             ventas = ventas.filter(fecha_creacion__date__gte=fecha_desde)
         if fecha_hasta:
             ventas = ventas.filter(fecha_creacion__date__lte=fecha_hasta)
+        if vendedor:
+            ventas = ventas.filter(creado_por_id=vendedor)
+        if plan:
+            ventas = ventas.filter(plan_contratado_id=plan)
+        if busqueda:
+            ventas = ventas.filter(
+                Q(cliente_potencial__nombre__icontains=busqueda) |
+                Q(cliente_potencial__apellido__icontains=busqueda) |
+                Q(cliente_potencial__cedula__icontains=busqueda) |
+                Q(customer_id__icontains=busqueda)
+            )
         
         if reporte_tipo == 'simple':
             headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Fecha', 'Vendedor', 'Customer ID', 'ODS', 'Estado']
@@ -406,29 +440,46 @@ def exportar_excel(request):
         ws.title = "Reporte de Instalaciones"
         
         instalaciones = Instalacion.objects.all()
+        
         if fecha_desde:
             instalaciones = instalaciones.filter(fecha_instalacion__date__gte=fecha_desde)
         if fecha_hasta:
             instalaciones = instalaciones.filter(fecha_instalacion__date__lte=fecha_hasta)
+        if cuadrilla:
+            instalaciones = instalaciones.filter(asignacion__cuadrilla_id=cuadrilla)
+        if estado == 'completada':
+            instalaciones = instalaciones.filter(completada=True)
+        elif estado == 'pendiente':
+            instalaciones = instalaciones.filter(completada=False)
+        if busqueda:
+            instalaciones = instalaciones.filter(
+                Q(nombre_cliente__icontains=busqueda) |
+                Q(cedula_cliente__icontains=busqueda)
+            )
         
         if reporte_tipo == 'simple':
-            headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Origen', 'Cuadrilla', 'Fecha', 'Estado']
+            headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Cuadrilla', 'Fecha', 'Estado']
             data = []
             for i in instalaciones:
-                origen = "Contrato" if i.asignacion.contrato else "Venta Directa"
                 data.append([
-                    i.id, i.nombre_cliente, i.cedula_cliente, i.plan, origen,
+                    i.id, i.nombre_cliente, i.cedula_cliente, i.plan,
                     i.asignacion.cuadrilla.nombre if i.asignacion.cuadrilla else 'N/A',
                     i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'No registrada',
                     'Completada' if i.completada else 'Pendiente'
                 ])
         else:
-            headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Origen', 'Cuadrilla', 'Fecha', 'Estado', 'Modelo', 'Serial', 'Metros']
+            headers = ['ID', 'Cliente', 'Cédula', 'Dirección', 'Plan', 'Cuadrilla', 'Fecha', 'Estado', 'Modelo', 'Serial', 'Metros']
             data = []
             for i in instalaciones:
-                origen = "Contrato" if i.asignacion.contrato else "Venta Directa"
+                direccion = "N/A"
+                try:
+                    if i.asignacion.contrato:
+                        direccion = i.asignacion.contrato.direccion_detallada or "N/A"
+                except:
+                    pass
+                
                 data.append([
-                    i.id, i.nombre_cliente, i.cedula_cliente, i.plan, origen,
+                    i.id, i.nombre_cliente, i.cedula_cliente, direccion, i.plan,
                     i.asignacion.cuadrilla.nombre if i.asignacion.cuadrilla else 'N/A',
                     i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'No registrada',
                     'Completada' if i.completada else 'Pendiente',
@@ -436,15 +487,25 @@ def exportar_excel(request):
                     i.sn_modem or 'N/A', i.metros_utilizados
                 ])
     
-    else:  # soportes
+    elif tipo == 'soportes':
         ws = wb.active
         ws.title = "Reporte de Soportes"
         
         soportes = Soporte.objects.all()
+        
         if fecha_desde:
             soportes = soportes.filter(fecha_hora_servicio__date__gte=fecha_desde)
         if fecha_hasta:
             soportes = soportes.filter(fecha_hora_servicio__date__lte=fecha_hasta)
+        if tipo_soporte:
+            soportes = soportes.filter(tipo=tipo_soporte)
+        if estado_soporte:
+            soportes = soportes.filter(estado=estado_soporte)
+        if busqueda:
+            soportes = soportes.filter(
+                Q(instalacion__nombre_cliente__icontains=busqueda) |
+                Q(instalacion__cedula_cliente__icontains=busqueda)
+            )
         
         if reporte_tipo == 'simple':
             headers = ['ID', 'Cliente', 'Cédula', 'Tipo', 'Estado', 'Fecha', 'Falla']
@@ -461,6 +522,32 @@ def exportar_excel(request):
                 s.falla_encontrada[:100] if s.falla_encontrada else 'N/A',
                 s.solucion[:100] if s.solucion else 'N/A'
             ] for s in soportes]
+    
+    else:  # inventario
+        ws = wb.active
+        ws.title = "Reporte de Inventario"
+        
+        inventario = InventarioGlobal.objects.select_related('material')
+        
+        if material:
+            inventario = inventario.filter(material_id=material)
+        if busqueda:
+            inventario = inventario.filter(material__nombre__icontains=busqueda)
+        
+        if reporte_tipo == 'simple':
+            headers = ['ID', 'Material', 'Cantidad', 'Mínimo', 'Estado']
+            data = [[
+                item.id, item.material.nombre, item.cantidad, item.cantidad_minima,
+                'Bajo stock' if item.esta_bajo_stock else 'Normal'
+            ] for item in inventario]
+        else:
+            headers = ['ID', 'Material', 'Cantidad', 'Mínimo', 'Estado', 'Última Actualización', 'Actualizado Por']
+            data = [[
+                item.id, item.material.nombre, item.cantidad, item.cantidad_minima,
+                'Bajo stock' if item.esta_bajo_stock else 'Normal',
+                item.ultima_actualizacion.strftime('%d/%m/%Y %H:%M'),
+                item.actualizado_por.get_full_name() or item.actualizado_por.username if item.actualizado_por else 'Sistema'
+            ] for item in inventario]
     
     # Estilos
     header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
@@ -495,26 +582,36 @@ def exportar_excel(request):
     return response
 
 
-@login_required
-@user_passes_test(es_admin)
-def exportar_pdf(request):
-    """Exportar datos a PDF"""
+
+
+
+def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
+                 busqueda, vendedor, plan, cuadrilla, estado,
+                 tipo_soporte, estado_soporte, material):
+    """Exportar datos a PDF con filtros"""
     
     import io
     from reportlab.lib.pagesizes import A4, landscape
     
-    tipo = request.GET.get('tipo', 'ventas')
-    reporte_tipo = request.GET.get('reporte_tipo', 'simple')
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
-    
     if tipo == 'ventas':
         titulo = "Reporte de Ventas"
         datos = ContratoCliente.objects.filter(estado='COMPLETADO')
+        
         if fecha_desde:
             datos = datos.filter(fecha_creacion__date__gte=fecha_desde)
         if fecha_hasta:
             datos = datos.filter(fecha_creacion__date__lte=fecha_hasta)
+        if vendedor:
+            datos = datos.filter(creado_por_id=vendedor)
+        if plan:
+            datos = datos.filter(plan_contratado_id=plan)
+        if busqueda:
+            datos = datos.filter(
+                Q(cliente_potencial__nombre__icontains=busqueda) |
+                Q(cliente_potencial__apellido__icontains=busqueda) |
+                Q(cliente_potencial__cedula__icontains=busqueda) |
+                Q(customer_id__icontains=busqueda)
+            )
         
         if reporte_tipo == 'simple':
             headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Fecha', 'Vendedor']
@@ -534,10 +631,22 @@ def exportar_pdf(request):
     elif tipo == 'instalaciones':
         titulo = "Reporte de Instalaciones"
         datos = Instalacion.objects.all()
+        
         if fecha_desde:
             datos = datos.filter(fecha_instalacion__date__gte=fecha_desde)
         if fecha_hasta:
             datos = datos.filter(fecha_instalacion__date__lte=fecha_hasta)
+        if cuadrilla:
+            datos = datos.filter(asignacion__cuadrilla_id=cuadrilla)
+        if estado == 'completada':
+            datos = datos.filter(completada=True)
+        elif estado == 'pendiente':
+            datos = datos.filter(completada=False)
+        if busqueda:
+            datos = datos.filter(
+                Q(nombre_cliente__icontains=busqueda) |
+                Q(cedula_cliente__icontains=busqueda)
+            )
         
         if reporte_tipo == 'simple':
             headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Cuadrilla', 'Fecha', 'Estado']
@@ -550,23 +659,42 @@ def exportar_pdf(request):
                     'Completada' if i.completada else 'Pendiente'
                 ])
         else:
-            headers = ['ID', 'Cliente', 'Cédula', 'Plan', 'Cuadrilla', 'Fecha', 'Estado', 'Metros']
+            headers = ['ID', 'Cliente', 'Cédula', 'Dirección', 'Plan', 'Cuadrilla', 'Fecha', 'Estado', 'Modelo', 'Serial', 'Metros']
             rows = []
             for i in datos[:500]:
+                direccion = "N/A"
+                try:
+                    if i.asignacion.contrato:
+                        direccion = i.asignacion.contrato.direccion_detallada or "N/A"
+                except:
+                    pass
+                
                 rows.append([
-                    str(i.id), i.nombre_cliente, i.cedula_cliente, i.plan,
+                    str(i.id), i.nombre_cliente, i.cedula_cliente, direccion, i.plan,
                     i.asignacion.cuadrilla.nombre if i.asignacion.cuadrilla else 'N/A',
                     i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'N/A',
-                    'Completada' if i.completada else 'Pendiente', str(i.metros_utilizados)
+                    'Completada' if i.completada else 'Pendiente',
+                    i.modelo_modem.nombre if i.modelo_modem else 'N/A',
+                    i.sn_modem or 'N/A', str(i.metros_utilizados)
                 ])
     
-    else:  # soportes
+    elif tipo == 'soportes':
         titulo = "Reporte de Soportes"
         datos = Soporte.objects.all()
+        
         if fecha_desde:
             datos = datos.filter(fecha_hora_servicio__date__gte=fecha_desde)
         if fecha_hasta:
             datos = datos.filter(fecha_hora_servicio__date__lte=fecha_hasta)
+        if tipo_soporte:
+            datos = datos.filter(tipo=tipo_soporte)
+        if estado_soporte:
+            datos = datos.filter(estado=estado_soporte)
+        if busqueda:
+            datos = datos.filter(
+                Q(instalacion__nombre_cliente__icontains=busqueda) |
+                Q(instalacion__cedula_cliente__icontains=busqueda)
+            )
         
         if reporte_tipo == 'simple':
             headers = ['ID', 'Cliente', 'Cédula', 'Tipo', 'Estado', 'Fecha']
@@ -581,7 +709,29 @@ def exportar_pdf(request):
                 s.get_estado_display(), s.fecha_hora_servicio.strftime('%d/%m/%Y')
             ] for s in datos[:500]]
     
-    # Crear PDF
+    else:  # inventario
+        titulo = "Reporte de Inventario"
+        datos = InventarioGlobal.objects.select_related('material')
+        
+        if material:
+            datos = datos.filter(material_id=material)
+        if busqueda:
+            datos = datos.filter(material__nombre__icontains=busqueda)
+        
+        if reporte_tipo == 'simple':
+            headers = ['ID', 'Material', 'Cantidad', 'Mínimo', 'Estado']
+            rows = [[
+                str(item.id), item.material.nombre, str(item.cantidad), str(item.cantidad_minima),
+                'Bajo stock' if item.esta_bajo_stock else 'Normal'
+            ] for item in datos]
+        else:
+            headers = ['ID', 'Material', 'Cantidad', 'Mínimo', 'Estado', 'Última Actualización']
+            rows = [[
+                str(item.id), item.material.nombre, str(item.cantidad), str(item.cantidad_minima),
+                'Bajo stock' if item.esta_bajo_stock else 'Normal',
+                item.ultima_actualizacion.strftime('%d/%m/%Y %H:%M')
+            ] for item in datos]
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
     styles = getSampleStyleSheet()

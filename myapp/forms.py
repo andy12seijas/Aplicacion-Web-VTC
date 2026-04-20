@@ -650,6 +650,7 @@ class InstalacionForm(forms.ModelForm):
             'modelo_modem', 'sn_modem', 'mac_modem',
             'inicio_fibra', 'final_fibra',
             'conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos',
+            'tirros',
             'observacion'
         ]
         widgets = {
@@ -657,68 +658,85 @@ class InstalacionForm(forms.ModelForm):
                 'class': 'form-input', 
                 'step': '0.000001', 
                 'placeholder': '10.126830',
-                
                 'id': 'id_latitud'
             }),
             'longitud': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'step': '0.000001', 
                 'placeholder': '-68.009860',
-                
                 'id': 'id_longitud'
             }),
             'feeder': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Ej: FVL01'
+                'placeholder': 'Ej: FVL01',
+                'required': True
             }),
             'caja': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Ej: N0101'
+                'placeholder': 'Ej: N0101',
+                'required': True
             }),
             'puerto_utilizado': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Ej: 3'
+                'placeholder': 'Ej: 3',
+                'required': True
             }),
             'modelo_modem': forms.Select(attrs={
-                'class': 'form-select'
+                'class': 'form-select',
+                'required': True
             }),
             'sn_modem': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Ej: ALCLFCD0A4C5'
+                'placeholder': 'Ej: ALCLFCD0A4C5',
+                'required': True
             }),
             'mac_modem': forms.TextInput(attrs={
                 'class': 'form-input', 
-                'placeholder': 'Ej: E8F8D0BC1560'
+                'placeholder': 'Ej: E8F8D0BC1560',
+                'required': True
             }),
             'inicio_fibra': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'placeholder': '35',
-                'min': '0'
+                'min': '0',
+                'required': True
             }),
             'final_fibra': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'placeholder': '5',
-                'min': '0'
+                'min': '0',
+                'required': True
             }),
             'conectores': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
-                'min': '0'
+                'min': '0',
+                'required': True
             }),
             'rosetas': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
-                'min': '0'
+                'min': '0',
+                'required': True
             }),
             'patch_cord': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
-                'min': '0'
+                'min': '0',
+                'required': True
             }),
             'tensores': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
-                'min': '0'
+                'min': '0',
+                'required': True
+            }),
+            'tirros': forms.NumberInput(attrs={
+                'class': 'form-input', 
+                'value': 1,
+                'min': '0',
+                'placeholder': 'Cantidad de tirros',
+                'required': True
             }),
             'conectores_malos': forms.NumberInput(attrs={
                 'class': 'form-input', 
@@ -747,6 +765,7 @@ class InstalacionForm(forms.ModelForm):
             'patch_cord': 'PACH CORD',
             'tensores': 'TENSORES',
             'conectores_malos': 'CONECTORES MALOS',
+            'tirros': 'TIROS',
             'observacion': 'OBSERVACIÓN',
         }
     
@@ -761,11 +780,16 @@ class InstalacionForm(forms.ModelForm):
         self.fields['latitud'].required = False
         self.fields['longitud'].required = False
         
-        # Hacer que los campos numéricos tengan valor por defecto 0
+        # Hacer que los campos numéricos tengan valor por defecto
         for field_name in ['conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos']:
             if field_name in self.fields:
                 self.fields[field_name].initial = 0
                 self.fields[field_name].required = False
+        
+        # Tirros tiene valor por defecto 1
+        if 'tirros' in self.fields:
+            self.fields['tirros'].initial = 1
+            self.fields['tirros'].required = False
     
     def clean(self):
         """Validaciones personalizadas"""
@@ -781,7 +805,7 @@ class InstalacionForm(forms.ModelForm):
             self.add_error('inicio_fibra', 'Debe ingresar el valor INICIO')
         
         # Validar que los valores numéricos no sean negativos
-        for field_name in ['conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos']:
+        for field_name in ['conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos', 'tirros']:
             value = cleaned_data.get(field_name)
             if value is not None and value < 0:
                 self.add_error(field_name, 'El valor no puede ser negativo')
@@ -930,18 +954,7 @@ class SoporteForm(forms.ModelForm):
         self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
         self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
     
-    def clean_mac_modem(self):
-        """Validar formato de MAC address"""
-        mac = self.cleaned_data.get('mac_modem')
-        if mac:
-            import re
-            # Formato MAC: XX:XX:XX:XX:XX:XX o XX-XX-XX-XX-XX-XX
-            pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
-            if not re.match(pattern, mac):
-                raise forms.ValidationError('Formato de MAC inválido. Use formato XX:XX:XX:XX:XX:XX')
-            # Normalizar a mayúsculas
-            mac = mac.upper()
-        return mac
+  
     
     def clean(self):
         cleaned_data = super().clean()
@@ -1055,15 +1068,7 @@ class SoporteEditarForm(forms.ModelForm):
         self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
         self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
     
-    def clean_mac_modem(self):
-        """Validar formato de MAC address"""
-        mac = self.cleaned_data.get('mac_modem')
-        if mac:
-            pattern = r'^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$'
-            if not re.match(pattern, mac):
-                raise forms.ValidationError('Formato de MAC inválido. Use formato XX:XX:XX:XX:XX:XX')
-            mac = mac.upper()
-        return mac
+   
     
     def clean(self):
         cleaned_data = super().clean()
@@ -1103,12 +1108,6 @@ class SoporteEditarForm(forms.ModelForm):
 class InstalacionEditForm(forms.ModelForm):
     """Formulario para editar instalaciones"""
     
-    fotos_upload = MultipleFileField(
-        required=False,
-        label="Agregar más fotos",
-        help_text="Puedes seleccionar múltiples imágenes (JPG, PNG, GIF - Máx. 5MB cada una)"
-    )
-    
     class Meta:
         model = Instalacion
         fields = [
@@ -1142,5 +1141,3 @@ class InstalacionEditForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
         self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
-    
-           

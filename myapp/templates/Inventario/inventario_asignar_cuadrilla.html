@@ -1,0 +1,567 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Asignar Material a Cuadrilla{% endblock %}
+
+{% block page_title %}Asignar Material a Cuadrilla{% endblock %}
+{% block page_subtitle %}Transferir stock del inventario global a una cuadrilla{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'inventario_global_lista' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Inventario
+</a>
+<a href="{% url 'inventario_todas_cuadrillas' %}" class="btn-secondary">
+    Ver Inventario de Cuadrillas
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 24px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--orange, #ff6b00);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    /* Tabla de materiales */
+    .materiales-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    
+    .materiales-table th {
+        text-align: left;
+        padding: 12px;
+        background: #f8f9fa;
+        border-bottom: 2px solid #e0e0e0;
+        font-size: 13px;
+        font-weight: 600;
+        color: #555;
+    }
+    
+    .materiales-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+    
+    .materiales-table tr:hover {
+        background: #fafafa;
+    }
+    
+    .material-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+    }
+    
+    .cantidad-input {
+        width: 100px;
+        padding: 8px 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        text-align: center;
+    }
+    
+    .cantidad-input:focus {
+        outline: none;
+        border-color: var(--orange);
+    }
+    
+    .stock-info {
+        font-size: 12px;
+        color: #666;
+    }
+    
+    .stock-info.bajo {
+        color: #f59e0b;
+    }
+    
+    .stock-info.critico {
+        color: #ef4444;
+    }
+    
+    .btn-remove-row {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #ef4444;
+        padding: 4px;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    
+    .btn-remove-row:hover {
+        background: #fee2e2;
+        transform: scale(1.1);
+    }
+    
+    .btn-add-material {
+        background: #f8f9fa;
+        border: 2px dashed #e0e0e0;
+        color: #666;
+        padding: 10px 20px;
+        border-radius: 12px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        transition: all 0.2s;
+        margin-bottom: 20px;
+    }
+    
+    .btn-add-material:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: #fff2e6;
+    }
+    
+    .btn-submit {
+        width: 100%;
+        background: var(--orange, #ff6b00);
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-submit:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    .info-box {
+        background: #e3f2fd;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 20px;
+    }
+    
+    .info-box p {
+        margin: 0;
+        font-size: 13px;
+        color: #1976d2;
+    }
+    
+    .selected-cuadrilla-info {
+        background: #fff2e6;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: none;
+    }
+    
+    .selected-cuadrilla-info.show {
+        display: block;
+    }
+    
+    @media (max-width: 768px) {
+        .form-card {
+            padding: 20px;
+        }
+        
+        .materiales-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .cantidad-input {
+            width: 70px;
+        }
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-card">
+        <form method="post" id="asignacionForm" novalidate>
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="cuadrilla">👥 Seleccionar Cuadrilla</label>
+                <select name="cuadrilla" id="cuadrilla" class="form-select" required>
+                    <option value="">-- Selecciona una cuadrilla --</option>
+                    {% for cuadrilla in cuadrillas %}
+                    <option value="{{ cuadrilla.id }}">
+                        {{ cuadrilla.nombre }} ({{ cuadrilla.codigo }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Información de la cuadrilla seleccionada -->
+            <div id="cuadrillaInfo" class="selected-cuadrilla-info">
+                <strong>📌 Cuadrilla seleccionada:</strong> <span id="cuadrillaNombre"></span>
+            </div>
+            
+            <div class="form-group">
+                <label>📦 Materiales a asignar</label>
+                <button type="button" class="btn-add-material" onclick="agregarFilaMaterial()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Agregar material
+                </button>
+                
+                <div style="overflow-x: auto;">
+                    <table class="materiales-table" id="materialesTable">
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Cantidad a asignar</th>
+                                <th>Stock disponible</th>
+                                <th style="width: 40px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="materialesBody">
+                            <tr id="filaBase" style="display: none;">
+                                <td>
+                                    <select class="material-select" name="materiales_ids" >
+                                        <option value="">-- Seleccionar --</option>
+                                        {% for material in materiales %}
+                                        <option value="{{ material.id }}" data-stock="{{ material.stock }}">
+                                            {{ material.nombre }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" class="cantidad-input" name="cantidades" placeholder="Cantidad" min="1" value="1">
+                                </td>
+                                <td>
+                                    <span class="stock-info">0 disponible</span>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btn-remove-row" onclick="eliminarFila(this)">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <line x1="15" y1="9" x2="9" y2="15"/>
+                                            <line x1="9" y1="9" x2="15" y2="15"/>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="observacion">📝 Observación (opcional)</label>
+                <textarea name="observacion" id="observacion" class="form-control" 
+                          placeholder="Ej: Materiales asignados para instalaciones de esta semana"></textarea>
+            </div>
+            
+            <button type="submit" class="btn-submit" id="btnSubmit">
+                📦 Asignar a Cuadrilla
+            </button>
+        </form>
+        
+        <div class="info-box">
+            <p>⚠️ Esta acción transferirá los materiales del inventario global a la cuadrilla seleccionada.</p>
+            <p>Los materiales asignados se descontarán automáticamente al realizar instalaciones o soportes.</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Datos de materiales con stock
+    const materialesData = {
+        {% for material in materiales %}
+        "{{ material.id }}": {
+            nombre: "{{ material.nombre|escapejs }}",
+            stock: {{ material.stock }}
+        },
+        {% endfor %}
+    };
+    
+    let filaCounter = 0;
+    
+    // Mostrar información de la cuadrilla seleccionada
+    document.getElementById('cuadrilla').addEventListener('change', function() {
+        const select = this;
+        const selectedOption = select.options[select.selectedIndex];
+        const cuadrillaInfo = document.getElementById('cuadrillaInfo');
+        const cuadrillaNombreSpan = document.getElementById('cuadrillaNombre');
+        
+        if (select.value) {
+            cuadrillaNombreSpan.textContent = selectedOption.text;
+            cuadrillaInfo.classList.add('show');
+        } else {
+            cuadrillaInfo.classList.remove('show');
+        }
+    });
+    
+    function agregarFilaMaterial() {
+        const tbody = document.getElementById('materialesBody');
+        const filaBase = document.getElementById('filaBase');
+        const nuevaFila = filaBase.cloneNode(true);
+        nuevaFila.style.display = '';
+        nuevaFila.id = 'fila_' + Date.now() + '_' + filaCounter++;
+        
+        // Limpiar valores
+        const select = nuevaFila.querySelector('.material-select');
+        if (select) select.value = '';
+        
+        const cantidadInput = nuevaFila.querySelector('.cantidad-input');
+        if (cantidadInput) cantidadInput.value = '1';
+        
+        const stockSpan = nuevaFila.querySelector('.stock-info');
+        if (stockSpan) stockSpan.textContent = '0 disponible';
+        stockSpan.className = 'stock-info';
+        
+        // Agregar evento al select
+        select.addEventListener('change', function() {
+            actualizarStockInfo(this);
+        });
+        
+        // Agregar evento al input de cantidad
+        cantidadInput.addEventListener('input', function() {
+            validarCantidad(this);
+        });
+        
+        tbody.appendChild(nuevaFila);
+        
+        // Si es la primera fila, mostrar mensaje
+        if (tbody.children.length === 1) {
+            const emptyMsg = document.getElementById('emptyMessage');
+            if (emptyMsg) emptyMsg.remove();
+        }
+    }
+    
+    function actualizarStockInfo(selectElement) {
+        const fila = selectElement.closest('tr');
+        const materialId = selectElement.value;
+        const stockSpan = fila.querySelector('.stock-info');
+        const cantidadInput = fila.querySelector('.cantidad-input');
+        
+        if (materialId && materialesData[materialId]) {
+            const stock = materialesData[materialId].stock;
+            stockSpan.textContent = `${stock} disponible`;
+            
+            if (stock === 0) {
+                stockSpan.className = 'stock-info critico';
+                stockSpan.style.color = '#ef4444';
+            } else if (stock < 5) {
+                stockSpan.className = 'stock-info bajo';
+                stockSpan.style.color = '#f59e0b';
+            } else {
+                stockSpan.className = 'stock-info';
+                stockSpan.style.color = '#666';
+            }
+            
+            // Validar cantidad actual
+            validarCantidad(cantidadInput);
+        } else {
+            stockSpan.textContent = '0 disponible';
+            stockSpan.className = 'stock-info';
+        }
+    }
+    
+    function validarCantidad(inputElement) {
+        const fila = inputElement.closest('tr');
+        const select = fila.querySelector('.material-select');
+        const materialId = select ? select.value : null;
+        const cantidad = parseInt(inputElement.value) || 0;
+        
+        if (materialId && materialesData[materialId]) {
+            const stock = materialesData[materialId].stock;
+            
+            if (cantidad > stock) {
+                inputElement.style.borderColor = '#ef4444';
+                inputElement.style.backgroundColor = '#fee2e2';
+                return false;
+            } else {
+                inputElement.style.borderColor = '#10b981';
+                inputElement.style.backgroundColor = '#d1fae5';
+                return true;
+            }
+        }
+        return true;
+    }
+    
+    function eliminarFila(btnElement) {
+        const fila = btnElement.closest('tr');
+        const tbody = document.getElementById('materialesBody');
+        
+        if (tbody.children.length <= 1) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No se puede eliminar',
+                text: 'Debe haber al menos un material para asignar.',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        fila.remove();
+    }
+    
+    // Validar antes de enviar
+    document.getElementById('asignacionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const cuadrillaSelect = document.getElementById('cuadrilla');
+        if (!cuadrillaSelect.value) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debes seleccionar una cuadrilla.',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        const filas = document.querySelectorAll('#materialesBody tr:not([style*="display: none"])');
+        let materialesValidos = 0;
+        let erroresStock = [];
+        
+        for (let fila of filas) {
+            const select = fila.querySelector('.material-select');
+            const cantidadInput = fila.querySelector('.cantidad-input');
+            
+            if (!select || !cantidadInput) continue;
+            
+            const materialId = select.value;
+            const cantidad = parseInt(cantidadInput.value) || 0;
+            
+            if (!materialId) continue;
+            
+            if (cantidad <= 0) {
+                erroresStock.push(`❌ ${select.options[select.selectedIndex]?.text || 'Material'}: Cantidad inválida.`);
+                continue;
+            }
+            
+            if (materialesData[materialId] && cantidad > materialesData[materialId].stock) {
+                erroresStock.push(`❌ ${materialesData[materialId].nombre}: Stock insuficiente. Solo hay ${materialesData[materialId].stock} unidades.`);
+                continue;
+            }
+            
+            materialesValidos++;
+        }
+        
+        if (materialesValidos === 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debes seleccionar al menos un material con cantidad válida.',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        if (erroresStock.length > 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Stock insuficiente',
+                html: erroresStock.join('<br>'),
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        // Confirmar asignación
+        Swal.fire({
+            title: '¿Confirmar asignación?',
+            text: `Se asignarán ${materialesValidos} material(es) a la cuadrilla seleccionada.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '✅ Sí, asignar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                this.submit();
+            }
+        });
+    });
+    
+    // Agregar una fila por defecto al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        agregarFilaMaterial();
+    });
+</script>
+
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .help-text {
+        font-size: 12px;
+        color: #999;
+        margin-top: 6px;
+        display: block;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+</style>
+{% endblock %}

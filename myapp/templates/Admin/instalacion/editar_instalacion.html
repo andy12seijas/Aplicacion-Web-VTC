@@ -673,10 +673,10 @@
                     <div class="form-group {% if form.mac_modem.errors %}has-error{% endif %}">
                         <label>MAC Address</label>
                         {{ form.mac_modem }}
-                        {% if form.mac_modem.errors %}
+                        
                             <span class="error-text">{{ form.mac_modem.errors.0 }}</span>
-                        {% endif %}
-                        <small class="help-text">Formato: XX:XX:XX:XX:XX:XX</small>
+                        
+                        
                     </div>
                 </div>
             </div>
@@ -820,7 +820,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
+<<script>
     let fotosAEliminar = [];
     
     function eliminarFotoExistente(fotoUrl) {
@@ -836,9 +836,12 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 const fotoElement = document.querySelector(`.foto-item[data-url="${fotoUrl}"]`);
-                if (fotoElement) fotoElement.remove();
-                fotosAEliminar.push(fotoUrl);
-                document.getElementById('fotos_eliminar').value = JSON.stringify(fotosAEliminar);
+                if (fotoElement) {
+                    fotoElement.remove();
+                    fotosAEliminar.push(fotoUrl);
+                    document.getElementById('fotos_eliminar').value = JSON.stringify(fotosAEliminar);
+                    console.log('Fotos a eliminar:', fotosAEliminar);
+                }
                 Swal.fire('Eliminada', 'Foto eliminada correctamente', 'success');
             }
         });
@@ -848,30 +851,59 @@
         const galeria = document.getElementById('galeria-fotos');
         const files = Array.from(input.files);
         
-        files.forEach((file, index) => {
+        files.forEach((file) => {
             if (file.type.startsWith('image/')) {
+                // Validar tamaño
+                if (file.size > 5 * 1024 * 1024) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: `El archivo ${file.name} excede el tamaño máximo de 5MB.`,
+                        confirmButtonColor: '#ff6b00'
+                    });
+                    return;
+                }
+                
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const fotoDiv = document.createElement('div');
                     fotoDiv.className = 'foto-item';
                     fotoDiv.innerHTML = `
                         <img src="${e.target.result}" alt="Vista previa">
-                        <button type="button" class="eliminar-foto" onclick="this.parentElement.remove()">✕</button>
+                        <button type="button" class="eliminar-foto" onclick="eliminarFotoPreview(this)">✕</button>
                     `;
                     galeria.appendChild(fotoDiv);
                 };
                 reader.readAsDataURL(file);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: `El archivo ${file.name} no es una imagen válida.`,
+                    confirmButtonColor: '#ff6b00'
+                });
             }
         });
         
+        // Limpiar el input para poder seleccionar más fotos
         input.value = '';
     }
     
-    // Mostrar errores de validación del formulario
+    function eliminarFotoPreview(btn) {
+        const fotoDiv = btn.parentElement;
+        fotoDiv.remove();
+    }
+    
+    // Debug: Verificar que el formulario se envía correctamente
     document.getElementById('editForm')?.addEventListener('submit', function(e) {
+        console.log('Enviando formulario...');
+        console.log('Fotos a eliminar:', fotosAEliminar);
+        
         const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Guardando...';
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" class="spin"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Guardando...';
+        }
     });
 </script>
 {% endblock %}

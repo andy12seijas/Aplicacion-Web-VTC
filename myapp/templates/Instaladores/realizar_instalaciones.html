@@ -16,350 +16,6 @@
 {% endblock %}
 
 {% block content %}
-<div class="form-container">
-    <div class="form-card">
-        <div class="form-header">
-            <div class="form-header-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                </svg>
-            </div>
-            <div class="form-header-text">
-                <h2>Orden de Instalación #{{ instalacion.orden_servicio|default:"Nueva" }}</h2>
-                <p>Complete todos los campos para finalizar la instalación</p>
-            </div>
-        </div>
-
-        <!-- Datos del contrato (solo lectura) -->
-        <div class="cliente-info-card">
-            <div class="cliente-info-header">
-                <h4>Datos del Contrato</h4>
-                <span class="badge-verificado">✓ No editable</span>
-            </div>
-            <div class="cliente-info-grid">
-                <div class="info-item">
-                    <span class="info-label">ATR VTC #</span>
-                    <span class="info-value">{{ instalacion.atr|default:"03" }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">NOMBRE DEL CLIENTE</span>
-                    <span class="info-value">{{ instalacion.nombre_cliente }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">CÉDULA</span>
-                    <span class="info-value">{{ instalacion.cedula_cliente }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">ORDEN DE SERVICIO</span>
-                    <span class="info-value">{{ instalacion.orden_servicio|default:"—" }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">CUSTOMER</span>
-                    <span class="info-value">{{ instalacion.customer_id }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">PLAN</span>
-                    <span class="info-value">{{ instalacion.plan }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">CUADRILLA</span>
-                    <span class="info-value">{{ instalacion.asignacion.cuadrilla.nombre }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">CÓDIGO CUADRILLA</span>
-                    <span class="info-value">{{ instalacion.asignacion.cuadrilla.codigo }}</span>
-                </div>
-            </div>
-        </div>
-
-        <form method="post" class="edit-form" id="realizarInstalacionForm" enctype="multipart/form-data">
-            {% csrf_token %}
-            
-            {% if form.non_field_errors %}
-            <div class="alert-error">
-                {% for error in form.non_field_errors %}
-                <p>❌ {{ error }}</p>
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            <!-- SECCIÓN: INSTALADORES DE LA CUADRILLA (SOLO INFORMATIVO) -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                        <circle cx="12" cy="7" r="4"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                    Instaladores de la Cuadrilla
-                </h3>
-                <div class="instaladores-container readonly">
-                    {% for instalador in instaladores_disponibles %}
-                    <div class="instalador-item">
-                        <div class="instalador-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                            </svg>
-                        </div>
-                        <span class="instalador-nombre">
-                            {{ instalador.get_full_name|default:instalador.username }}
-                            {% if instalador == request.user %}
-                            <span class="badge-current">(Tú)</span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    {% empty %}
-                    <p class="text-muted">⚠️ No hay instaladores asignados a esta cuadrilla.</p>
-                    {% endfor %}
-                </div>
-                <small class="help-text">Estos son los instaladores que pertenecen a la cuadrilla asignada. Todos quedarán registrados como participantes de la instalación.</small>
-            </div>
-
-            <!-- Campo oculto para enviar los IDs de los instaladores automáticamente -->
-            <input type="hidden" name="instaladores" id="instaladoresHidden" value="">
-
-            <!-- Ubicación de la Instalación (CLIENTE) - Campos desbloqueados -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                    Ubicación del Cliente
-                </h3>
-                
-                <div class="ubicacion-container">
-                    <div class="ubicacion-campos">
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label for="{{ form.latitud.id_for_label }}">{{ form.latitud.label }}</label>
-                                {{ form.latitud }}
-                                <small class="help-text">Coordenadas de la casa del cliente (puede ingresarlas manualmente)</small>
-                            </div>
-                            <div class="form-group">
-                                <label for="{{ form.longitud.id_for_label }}">{{ form.longitud.label }}</label>
-                                {{ form.longitud }}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="ubicacion-boton">
-                        <button type="button" class="btn-capture" id="capturarUbicacionBtn" onclick="capturarUbicacionCliente()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M12 8v4l3 3"/>
-                            </svg>
-                            Capturar ubicación del cliente
-                        </button>
-                        <small class="help-text">Párese frente a la casa y presione el botón</small>
-                    </div>
-                </div>
-                
-                {% if ubicacion_cuadrilla %}
-                <div class="cuadrilla-ubicacion-info">
-                    <p><strong>📍 Ubicación actual de tu cuadrilla:</strong></p>
-                    <p>Lat: {{ ubicacion_cuadrilla.lat|floatformat:6 }} | Lng: {{ ubicacion_cuadrilla.lng|floatformat:6 }}</p>
-                    <p class="help-text" style="margin-top: 5px;">Esta es la ubicación promedio de todos los instaladores de tu cuadrilla</p>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Datos de Ubicación Técnica -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <path d="M12 2v4M12 22v-4M4 12H2h2M20 12h2-2M5.64 5.64l-1.41 1.41 1.41-1.41M18.36 18.36l1.41-1.41-1.41 1.41M5.64 18.36l1.41-1.41-1.41 1.41M18.36 5.64l-1.41 1.41 1.41-1.41"/>
-                    </svg>
-                    Datos Técnicos
-                </h3>
-                
-                <div class="grid-3">
-                    <div class="form-group">
-                        <label for="{{ form.feeder.id_for_label }}">{{ form.feeder.label }}</label>
-                        {{ form.feeder }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.caja.id_for_label }}">{{ form.caja.label }}</label>
-                        {{ form.caja }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.puerto_utilizado.id_for_label }}">{{ form.puerto_utilizado.label }}</label>
-                        {{ form.puerto_utilizado }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Datos del Equipo -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
-                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
-                    </svg>
-                    EQUIPOS
-                </h3>
-                
-                <div class="grid-3">
-                    <div class="form-group">
-                        <label for="{{ form.modelo_modem.id_for_label }}">{{ form.modelo_modem.label }}</label>
-                        {{ form.modelo_modem }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.sn_modem.id_for_label }}">{{ form.sn_modem.label }}</label>
-                        {{ form.sn_modem }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.mac_modem.id_for_label }}">{{ form.mac_modem.label }}</label>
-                        {{ form.mac_modem }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Materiales -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
-                        <circle cx="12" cy="14" r="3"/>
-                    </svg>
-                    MATERIALES
-                </h3>
-                
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label for="{{ form.inicio_fibra.id_for_label }}">{{ form.inicio_fibra.label }}</label>
-                        {{ form.inicio_fibra }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.final_fibra.id_for_label }}">{{ form.final_fibra.label }}</label>
-                        {{ form.final_fibra }}
-                    </div>
-                </div>
-                
-                <div class="grid-4">
-                    <div class="form-group">
-                        <label for="{{ form.conectores.id_for_label }}">{{ form.conectores.label }}</label>
-                        {{ form.conectores }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.rosetas.id_for_label }}">{{ form.rosetas.label }}</label>
-                        {{ form.rosetas }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.patch_cord.id_for_label }}">{{ form.patch_cord.label }}</label>
-                        {{ form.patch_cord }}
-                    </div>
-                    <div class="form-group">
-                        <label for="{{ form.tensores.id_for_label }}">{{ form.tensores.label }}</label>
-                        {{ form.tensores }}
-                    </div>
-                </div>
-                
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label for="{{ form.conectores_malos.id_for_label }}">{{ form.conectores_malos.label }}</label>
-                        {{ form.conectores_malos }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Fotos de la Instalación con sistema de galería -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
-                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
-                    </svg>
-                    FOTOS DE LA INSTALACIÓN
-                </h3>
-                
-                <div class="fotos-container">
-                    <div class="galeria-fotos" id="galeria-fotos">
-                        <!-- Las fotos existentes se mostrarán aquí -->
-                    </div>
-                    
-                    <div class="agregar-foto-btn" id="agregarFotoBtn" onclick="abrirSelectorFoto()">
-                        <div class="plus-icon">+</div>
-                        <span>Agregar fotos</span>
-                    </div>
-                </div>
-                
-                <!-- Input file para múltiples selecciones -->
-                <input type="file" id="inputFoto" accept="image/*" multiple style="display: none;" onchange="procesarMultiplesFotos(this)">
-                <small class="help-text">Haz clic en el botón + para seleccionar múltiples fotos (Ctrl+Click o Shift+Click para seleccionar varias)</small>
-            </div>
-
-            <!-- Observaciones -->
-            <div class="form-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                    </svg>
-                    OBSERVACIÓN
-                </h3>
-                
-                <div class="form-group">
-                    {{ form.observacion }}
-                </div>
-            </div>
-
-            <!-- Resumen de materiales -->
-            <div class="form-section resumen-section">
-                <h3 class="section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    Resumen de Materiales
-                </h3>
-                
-                <div class="resumen-card" id="resumen-materiales">
-                    <div class="resumen-item">
-                        <span class="resumen-label">METROS</span>
-                        <span class="resumen-value" id="resumen-metros">0</span>
-                    </div>
-                    <div class="resumen-item">
-                        <span class="resumen-label">CONECTORES</span>
-                        <span class="resumen-value" id="resumen-conectores">0</span>
-                    </div>
-                    <div class="resumen-item">
-                        <span class="resumen-label">ROSETAS</span>
-                        <span class="resumen-value" id="resumen-rosetas">0</span>
-                    </div>
-                    <div class="resumen-item">
-                        <span class="resumen-label">PACH CORD</span>
-                        <span class="resumen-value" id="resumen-patch">0</span>
-                    </div>
-                    <div class="resumen-item">
-                        <span class="resumen-label">TENSORES</span>
-                        <span class="resumen-value" id="resumen-tensores">0</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-actions">
-                <a href="{% url 'instalaciones_pendientes' %}" class="btn-outline">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M19 12H5M12 19l-7-7 7-7"/>
-                    </svg>
-                    Cancelar
-                </a>
-                <button type="submit" class="btn-primary" id="btn-submit">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 6L9 17l-5-5"/>
-                    </svg>
-                    Completar Instalación
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <style>
     .btn-secondary {
         display: inline-flex;
@@ -380,7 +36,6 @@
         color: var(--orange);
     }
     
-    /* ===== ESTILOS PARA INSTALADORES (SOLO LECTURA) ===== */
     .instaladores-container.readonly {
         background: #f8f9fa;
         border: 1px solid #e0e0e0;
@@ -432,7 +87,6 @@
         margin: 0;
     }
 
-    /* Contenedor principal de ubicación */
     .ubicacion-container {
         display: flex;
         gap: 20px;
@@ -464,11 +118,6 @@
         width: 100%;
     }
 
-    .ubicacion-campos .grid-2 {
-        margin-bottom: 0;
-    }
-
-    /* Estilos del formulario */
     .form-container {
         max-width: 1000px;
         margin: 0 auto;
@@ -665,7 +314,6 @@
         color: #1976d2;
     }
     
-    /* Estilos para la galería de fotos */
     .fotos-container {
         display: flex;
         flex-wrap: wrap;
@@ -759,10 +407,6 @@
         font-weight: 300;
     }
     
-    .agregar-foto-btn span {
-        font-size: 12px;
-    }
-    
     .resumen-section {
         background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
         border: 1px solid #ff6b00;
@@ -770,7 +414,7 @@
     
     .resumen-card {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
         gap: 15px;
         padding: 15px;
         background: white;
@@ -794,6 +438,96 @@
         font-size: 20px;
         font-weight: 600;
         color: #ff6b00;
+    }
+    
+    /* Estilos para el inventario */
+    .inventario-section {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        border: 1px solid #86efac;
+    }
+    
+    .inventario-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .inventario-card {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.2s;
+    }
+    
+    .inventario-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: #86efac;
+    }
+    
+    .inventario-icon {
+        font-size: 28px;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f0fdf4;
+        border-radius: 12px;
+    }
+    
+    .inventario-info {
+        flex: 1;
+    }
+    
+    .inventario-cantidad {
+        display: block;
+        font-size: 24px;
+        font-weight: 700;
+        color: #22c55e;
+        line-height: 1.2;
+    }
+    
+    .inventario-cantidad.sin-stock {
+        color: #ef4444;
+    }
+    
+    .inventario-cantidad.poco-stock {
+        color: #f59e0b;
+    }
+    
+    .inventario-label {
+        display: block;
+        font-size: 11px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .inventario-help {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+        margin-top: 12px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .stock-alert {
+        animation: fadeOut 5s ease forwards;
+    }
+    
+    @keyframes fadeOut {
+        0% { opacity: 1; }
+        70% { opacity: 1; }
+        100% { opacity: 0; display: none; }
     }
     
     .form-actions {
@@ -843,7 +577,6 @@
         color: #ff6b00;
     }
     
-    /* Responsive */
     @media (max-width: 768px) {
         .cliente-info-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -896,6 +629,10 @@
         .instalador-item {
             width: 100%;
         }
+        
+        .inventario-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
     
     @media (max-width: 480px) {
@@ -906,8 +643,445 @@
         .foto-item, .agregar-foto-btn {
             width: calc(50% - 7.5px);
         }
+        
+        .inventario-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-header">
+            <div class="form-header-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+            </div>
+            <div class="form-header-text">
+                <h2>Orden de Instalación #{{ instalacion.orden_servicio|default:"Nueva" }}</h2>
+                <p>Complete todos los campos para finalizar la instalación</p>
+            </div>
+        </div>
+
+        <!-- Datos del contrato (solo lectura) -->
+        <div class="cliente-info-card">
+            <div class="cliente-info-header">
+                <h4>Datos del Contrato</h4>
+                <span class="badge-verificado">✓ No editable</span>
+            </div>
+            <div class="cliente-info-grid">
+                <div class="info-item">
+                    <span class="info-label">ATR VTC #</span>
+                    <span class="info-value">{{ instalacion.atr|default:"03" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">NOMBRE DEL CLIENTE</span>
+                    <span class="info-value">{{ instalacion.nombre_cliente }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CÉDULA</span>
+                    <span class="info-value">{{ instalacion.cedula_cliente }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">ORDEN DE SERVICIO</span>
+                    <span class="info-value">{{ instalacion.orden_servicio|default:"—" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CUSTOMER</span>
+                    <span class="info-value">{{ instalacion.customer_id }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">PLAN</span>
+                    <span class="info-value">{{ instalacion.plan }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CUADRILLA</span>
+                    <span class="info-value">{{ instalacion.asignacion.cuadrilla.nombre }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CÓDIGO CUADRILLA</span>
+                    <span class="info-value">{{ instalacion.asignacion.cuadrilla.codigo }}</span>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" class="edit-form" id="realizarInstalacionForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {% for error in form.non_field_errors %}
+                <p>❌ {{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- SECCIÓN: INSTALADORES DE LA CUADRILLA -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Instaladores de la Cuadrilla
+                </h3>
+                <div class="instaladores-container readonly">
+                    {% for instalador in instaladores_disponibles %}
+                    <div class="instalador-item">
+                        <div class="instalador-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <span class="instalador-nombre">
+                            {{ instalador.get_full_name|default:instalador.username }}
+                            {% if instalador == request.user %}
+                            <span class="badge-current">(Tú)</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">⚠️ No hay instaladores asignados a esta cuadrilla.</p>
+                    {% endfor %}
+                </div>
+                <small class="help-text">Estos son los instaladores que pertenecen a la cuadrilla asignada. Todos quedarán registrados como participantes de la instalación.</small>
+            </div>
+
+            <input type="hidden" name="instaladores" id="instaladoresHidden" value="">
+
+            <!-- Ubicación del Cliente -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Ubicación del Cliente
+                </h3>
+                
+                <div class="ubicacion-container">
+                    <div class="ubicacion-campos">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="{{ form.latitud.id_for_label }}">{{ form.latitud.label }}</label>
+                                {{ form.latitud }}
+                                <small class="help-text">Coordenadas de la casa del cliente (puede ingresarlas manualmente)</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.longitud.id_for_label }}">{{ form.longitud.label }}</label>
+                                {{ form.longitud }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ubicacion-boton">
+                        <button type="button" class="btn-capture" id="capturarUbicacionBtn" onclick="capturarUbicacionCliente()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M12 8v4l3 3"/>
+                            </svg>
+                            Capturar ubicación del cliente
+                        </button>
+                        <small class="help-text">Párese frente a la casa y presione el botón</small>
+                    </div>
+                </div>
+                
+                {% if ubicacion_cuadrilla %}
+                <div class="cuadrilla-ubicacion-info">
+                    <p><strong>📍 Ubicación actual de tu cuadrilla:</strong></p>
+                    <p>Lat: {{ ubicacion_cuadrilla.lat|floatformat:6 }} | Lng: {{ ubicacion_cuadrilla.lng|floatformat:6 }}</p>
+                    <p class="help-text" style="margin-top: 5px;">Esta es la ubicación promedio de todos los instaladores de tu cuadrilla</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Datos Técnicos -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M12 2v4M12 22v-4M4 12H2h2M20 12h2-2M5.64 5.64l-1.41 1.41 1.41-1.41M18.36 18.36l1.41-1.41-1.41 1.41M5.64 18.36l1.41-1.41-1.41 1.41M18.36 5.64l-1.41 1.41 1.41-1.41"/>
+                    </svg>
+                    Datos Técnicos
+                </h3>
+                
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.feeder.id_for_label }}">{{ form.feeder.label }}</label>
+                        {{ form.feeder }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.caja.id_for_label }}">{{ form.caja.label }}</label>
+                        {{ form.caja }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.puerto_utilizado.id_for_label }}">{{ form.puerto_utilizado.label }}</label>
+                        {{ form.puerto_utilizado }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equipos -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    EQUIPOS
+                </h3>
+                
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.modelo_modem.id_for_label }}">{{ form.modelo_modem.label }}</label>
+                        {{ form.modelo_modem }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.sn_modem.id_for_label }}">{{ form.sn_modem.label }}</label>
+                        {{ form.sn_modem }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.mac_modem.id_for_label }}">{{ form.mac_modem.label }}</label>
+                        {{ form.mac_modem }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materiales -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="14" r="3"/>
+                    </svg>
+                    MATERIALES
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.inicio_fibra.id_for_label }}">{{ form.inicio_fibra.label }}</label>
+                        {{ form.inicio_fibra }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.final_fibra.id_for_label }}">{{ form.final_fibra.label }}</label>
+                        {{ form.final_fibra }}
+                    </div>
+                </div>
+                
+                <div class="grid-4">
+                    <div class="form-group">
+                        <label for="{{ form.conectores.id_for_label }}">{{ form.conectores.label }}</label>
+                        {{ form.conectores }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.rosetas.id_for_label }}">{{ form.rosetas.label }}</label>
+                        {{ form.rosetas }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.patch_cord.id_for_label }}">{{ form.patch_cord.label }}</label>
+                        {{ form.patch_cord }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.tensores.id_for_label }}">{{ form.tensores.label }}</label>
+                        {{ form.tensores }}
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.conectores_malos.id_for_label }}">{{ form.conectores_malos.label }}</label>
+                        {{ form.conectores_malos }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.tirros.id_for_label }}">TIROS</label>
+                        {{ form.tirros }}
+                        <small class="help-text">Cantidad de tirros utilizados</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarjeta de inventario disponible -->
+            <div class="form-section inventario-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    📦 Inventario disponible en tu cuadrilla
+                </h3>
+                <div class="inventario-grid">
+                    <div class="inventario-card">
+                        <div class="inventario-icon">📡</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Modem <= 0 %}sin-stock{% elif inventario_cuadrilla.Modem < 5 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Modem|default:0 }}
+                            </span>
+                            <span class="inventario-label">Módems</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">🔌</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Conector <= 0 %}sin-stock{% elif inventario_cuadrilla.Conector < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Conector|default:0 }}
+                            </span>
+                            <span class="inventario-label">Conectores</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">🏠</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Roseta <= 0 %}sin-stock{% elif inventario_cuadrilla.Roseta < 5 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Roseta|default:0 }}
+                            </span>
+                            <span class="inventario-label">Rosetas</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">📀</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Patch_Cord <= 0 %}sin-stock{% elif inventario_cuadrilla.Patch_Cord < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Patch_Cord|default:0 }}
+                            </span>
+                            <span class="inventario-label">Patch Cord</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">⚙️</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Tensor <= 0 %}sin-stock{% elif inventario_cuadrilla.Tensor < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Tensor|default:0 }}
+                            </span>
+                            <span class="inventario-label">Tensores</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">🔧</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Tirros <= 0 %}sin-stock{% elif inventario_cuadrilla.Tirro < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Tirros |default:0 }}
+                            </span>
+                            <span class="inventario-label">Tirros</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">📏</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.metros <= 0 %}sin-stock{% elif inventario_cuadrilla.metros < 50 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.metros|default:0 }}
+                            </span>
+                            <span class="inventario-label">Metros de Fibra</span>
+                        </div>
+                    </div>
+                </div>
+                <small class="inventario-help">
+                    ⚠️ Los materiales que ingreses en esta instalación se descontarán automáticamente de tu inventario.
+                    {% if inventario_cuadrilla.Modem <= 0 or inventario_cuadrilla.Conector <= 0 or inventario_cuadrilla.Roseta <= 0 %}
+                    <span style="color: #ef4444; display: block; margin-top: 8px;">
+                        ⚠️ Alerta: Tienes materiales con stock bajo o agotado. Contacta a tu supervisor para reabastecimiento.
+                    </span>
+                    {% endif %}
+                </small>
+            </div>
+
+            <!-- Fotos de la Instalación -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    FOTOS DE LA INSTALACIÓN
+                </h3>
+                
+                <div class="fotos-container">
+                    <div class="galeria-fotos" id="galeria-fotos"></div>
+                    <div class="agregar-foto-btn" id="agregarFotoBtn" onclick="abrirSelectorFoto()">
+                        <div class="plus-icon">+</div>
+                        <span>Agregar fotos</span>
+                    </div>
+                </div>
+                
+                <input type="file" id="inputFoto" accept="image/*" multiple style="display: none;" onchange="procesarMultiplesFotos(this)">
+                <small class="help-text">Haz clic en el botón + para seleccionar múltiples fotos (Ctrl+Click o Shift+Click para seleccionar varias)</small>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                    OBSERVACIÓN
+                </h3>
+                
+                <div class="form-group">
+                    {{ form.observacion }}
+                </div>
+            </div>
+
+            <!-- Resumen de materiales -->
+            <div class="form-section resumen-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Resumen de Materiales
+                </h3>
+                
+                <div class="resumen-card" id="resumen-materiales">
+                    <div class="resumen-item">
+                        <span class="resumen-label">METROS</span>
+                        <span class="resumen-value" id="resumen-metros">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">CONECTORES</span>
+                        <span class="resumen-value" id="resumen-conectores">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">ROSETAS</span>
+                        <span class="resumen-value" id="resumen-rosetas">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">PACH CORD</span>
+                        <span class="resumen-value" id="resumen-patch">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">TENSORES</span>
+                        <span class="resumen-value" id="resumen-tensores">0</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">TIROS</span>
+                        <span class="resumen-value" id="resumen-tirros">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'instalaciones_pendientes' %}" class="btn-outline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary" id="btn-submit">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    Completar Instalación
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -915,27 +1089,25 @@
     // 1. LLENAR CAMPO OCULTO CON LOS INSTALADORES DE LA CUADRILLA
     // ============================================================
     document.addEventListener('DOMContentLoaded', function() {
-        // Obtener los IDs de los instaladores seleccionados desde el contexto
         const instaladoresSeleccionados = {{ instaladores_seleccionados|safe }};
-        
-        // Llenar el campo oculto con los IDs de los instaladores
         const hiddenInput = document.getElementById('instaladoresHidden');
         if (hiddenInput && instaladoresSeleccionados.length > 0) {
             hiddenInput.value = instaladoresSeleccionados.join(',');
             console.log('✅ Instaladores cargados automáticamente:', instaladoresSeleccionados.length);
         } else if (hiddenInput && instaladoresSeleccionados.length === 0) {
-            // Si no hay instaladores, al menos poner el ID del usuario actual
             hiddenInput.value = '{{ request.user.id }}';
             console.log('⚠️ No hay instaladores en cuadrilla, usando usuario actual');
         }
+        
+        cargarFotosExistentes();
     });
     
     // ============================================================
-    // 2. CAPTURAR UBICACIÓN DEL INSTALADOR AUTOMÁTICAMENTE
+    // 2. CAPTURAR UBICACIÓN DEL INSTALADOR
     // ============================================================
     function capturarUbicacionInstalador() {
         if (!navigator.geolocation) {
-            console.log('⚠️ Geolocalización no soportada por el navegador');
+            console.log('⚠️ Geolocalización no soportada');
             return;
         }
         
@@ -943,8 +1115,6 @@
             function(position) {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
-                
-                console.log(`📍 Ubicación obtenida: ${lat}, ${lng}`);
                 
                 fetch('/capturar-ubicacion-instalador/', {
                     method: 'POST',
@@ -953,116 +1123,62 @@
                         'X-CSRFToken': '{{ csrf_token }}',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify({
-                        latitud: lat,
-                        longitud: lng
-                    })
+                    body: JSON.stringify({ latitud: lat, longitud: lng })
                 })
-                .then(async response => {
-                    const data = await response.json();
-                    if (data.success) {
-                        console.log('✅ Ubicación del instalador guardada correctamente');
-                        mostrarToast('📍 Tu ubicación ha sido actualizada', 'success');
-                    }
-                    return data;
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) console.log('✅ Ubicación guardada');
                 })
-                .catch(error => {
-                    console.error('Error al guardar ubicación:', error);
-                });
+                .catch(error => console.error('Error:', error));
             },
             function(error) {
                 console.warn('⚠️ No se pudo capturar ubicación:', error.message);
             },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
     
-    // Capturar ubicación del instalador al cargar la página (solo si no es admin)
+    {% if not es_admin %}
     document.addEventListener('DOMContentLoaded', function() {
-        {% if not es_admin %}
-        console.log('📍 Capturando ubicación del instalador...');
         capturarUbicacionInstalador();
-        {% endif %}
-        
-        // Cargar fotos existentes
-        cargarFotosExistentes();
     });
+    {% endif %}
     
     // ============================================================
-    // 3. CAPTURAR UBICACIÓN DEL CLIENTE (botón manual)
+    // 3. CAPTURAR UBICACIÓN DEL CLIENTE
     // ============================================================
     function capturarUbicacionCliente() {
         if (!navigator.geolocation) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Tu navegador no soporta geolocalización',
-                confirmButtonColor: '#ff6b00'
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Tu navegador no soporta geolocalización', confirmButtonColor: '#ff6b00' });
             return;
         }
         
-        Swal.fire({
-            title: 'Capturando ubicación del cliente...',
-            text: 'Por favor espera mientras obtenemos la ubicación',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
+        Swal.fire({ title: 'Capturando ubicación...', text: 'Por favor espera', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
-                
                 document.getElementById('id_latitud').value = lat.toFixed(6);
                 document.getElementById('id_longitud').value = lng.toFixed(6);
-                
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Ubicación del cliente capturada',
-                    text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`,
-                    confirmButtonColor: '#ff6b00',
-                    timer: 2000
-                });
+                Swal.fire({ icon: 'success', title: 'Ubicación capturada', text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`, confirmButtonColor: '#ff6b00', timer: 2000 });
             },
             function(error) {
                 let mensaje = '';
                 switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        mensaje = 'Permiso denegado. Activa la ubicación en tu navegador.';
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        mensaje = 'Ubicación no disponible.';
-                        break;
-                    case error.TIMEOUT:
-                        mensaje = 'Tiempo de espera agotado.';
-                        break;
-                    default:
-                        mensaje = 'Error desconocido.';
+                    case error.PERMISSION_DENIED: mensaje = 'Permiso denegado.'; break;
+                    case error.POSITION_UNAVAILABLE: mensaje = 'Ubicación no disponible.'; break;
+                    case error.TIMEOUT: mensaje = 'Tiempo agotado.'; break;
+                    default: mensaje = 'Error desconocido.';
                 }
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: mensaje,
-                    confirmButtonColor: '#ff6b00'
-                });
+                Swal.fire({ icon: 'error', title: 'Error', text: mensaje, confirmButtonColor: '#ff6b00' });
             },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
     }
     
     // ============================================================
-    // 4. MANEJO DE FOTOS - MÚLTIPLES FOTOS A LA VEZ
+    // 4. MANEJO DE FOTOS
     // ============================================================
     let fotosTemporales = [];
     let fotosAEliminar = [];
@@ -1070,20 +1186,14 @@
     function cargarFotosExistentes() {
         const fotosExistentes = {{ fotos_existentes|safe }};
         const galeria = document.getElementById('galeria-fotos');
-        
         if (fotosExistentes && fotosExistentes.length > 0) {
             galeria.innerHTML = '';
-            fotosExistentes.forEach(foto => {
-                agregarFotoAGaleria(foto, true);
-            });
+            fotosExistentes.forEach(foto => agregarFotoAGaleria(foto, true));
         }
     }
     
-    function abrirSelectorFoto() {
-        document.getElementById('inputFoto').click();
-    }
+    function abrirSelectorFoto() { document.getElementById('inputFoto').click(); }
     
-    // Procesar múltiples fotos a la vez (SIN capturar ubicación automática)
     function procesarMultiplesFotos(input) {
         const files = Array.from(input.files);
         if (files.length === 0) return;
@@ -1094,32 +1204,17 @@
         files.forEach(file => {
             if (!file.type.startsWith('image/')) {
                 errores.push(`${file.name}: No es una imagen válida`);
-                return;
+            } else if (file.size > 5 * 1024 * 1024) {
+                errores.push(`${file.name}: Excede 5MB`);
+            } else {
+                archivosValidos.push(file);
             }
-            
-            if (file.size > 5 * 1024 * 1024) {
-                errores.push(`${file.name}: Excede el tamaño máximo de 5MB`);
-                return;
-            }
-            
-            archivosValidos.push(file);
         });
         
         if (errores.length > 0) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Algunos archivos no se pudieron agregar',
-                html: errores.join('<br>'),
-                confirmButtonColor: '#ff6b00'
-            });
+            Swal.fire({ icon: 'warning', title: 'Archivos no válidos', html: errores.join('<br>'), confirmButtonColor: '#ff6b00' });
         }
         
-        if (archivosValidos.length === 0) {
-            input.value = '';
-            return;
-        }
-        
-        // Procesar cada archivo válido (SIN capturar ubicación automática)
         archivosValidos.forEach(file => {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1129,13 +1224,8 @@
             reader.readAsDataURL(file);
         });
         
-        // Limpiar el input para poder seleccionar más fotos después
         input.value = '';
-        
-        // Mostrar mensaje de éxito
-        if (archivosValidos.length > 0) {
-            mostrarToast(`✅ ${archivosValidos.length} foto(s) agregada(s)`, 'success');
-        }
+        if (archivosValidos.length > 0) mostrarToast(`✅ ${archivosValidos.length} foto(s) agregada(s)`, 'success');
     }
     
     function agregarFotoAGaleria(url, esExistente = false, archivo = null) {
@@ -1145,16 +1235,13 @@
         
         const img = document.createElement('img');
         img.src = url;
-        img.alt = 'Foto de instalación';
         
         const btnEliminar = document.createElement('div');
         btnEliminar.className = 'eliminar-foto';
         btnEliminar.innerHTML = '✕';
         btnEliminar.onclick = function(e) {
             e.stopPropagation();
-            // Eliminación directa SIN CONFIRMACIÓN
             fotoDiv.remove();
-            
             if (esExistente) {
                 fotosAEliminar.push(url);
             } else if (archivo) {
@@ -1166,65 +1253,45 @@
         
         fotoDiv.appendChild(img);
         fotoDiv.appendChild(btnEliminar);
-        
-        fotoDiv.onclick = function() {
-            verFotoGrande(url);
-        };
-        
+        fotoDiv.onclick = () => verFotoGrande(url);
         galeria.appendChild(fotoDiv);
     }
     
     function verFotoGrande(url) {
-        Swal.fire({
-            title: 'Foto de instalación',
-            imageUrl: url,
-            imageWidth: '90%',
-            imageAlt: 'Foto de instalación',
-            confirmButtonColor: '#ff6b00',
-            confirmButtonText: 'Cerrar',
-            width: '800px'
-        });
+        Swal.fire({ title: 'Foto de instalación', imageUrl: url, imageWidth: '90%', confirmButtonColor: '#ff6b00', confirmButtonText: 'Cerrar', width: '800px' });
     }
     
     function mostrarToast(mensaje, tipo) {
         const color = tipo === 'success' ? '#4caf50' : '#ff9800';
         const toast = document.createElement('div');
-        toast.innerHTML = `
-            <div style="position: fixed; bottom: 20px; right: 20px; background: ${color}; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 13px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);">
-                ${mensaje}
-            </div>
-        `;
+        toast.innerHTML = `<div style="position: fixed; bottom: 20px; right: 20px; background: ${color}; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 13px;">${mensaje}</div>`;
         document.body.appendChild(toast);
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
+        setTimeout(() => toast.remove(), 3000);
     }
     
     // ============================================================
-    // 5. FUNCIONES AUXILIARES
+    // 5. ACTUALIZAR RESUMEN DE MATERIALES
     // ============================================================
-    
-    // Actualizar resumen de materiales en tiempo real
     document.addEventListener('DOMContentLoaded', function() {
-        const inicioFibra = document.getElementById('{{ form.inicio_fibra.id_for_label }}');
-        const finalFibra = document.getElementById('{{ form.final_fibra.id_for_label }}');
-        const conectores = document.getElementById('{{ form.conectores.id_for_label }}');
-        const rosetas = document.getElementById('{{ form.rosetas.id_for_label }}');
-        const patchCord = document.getElementById('{{ form.patch_cord.id_for_label }}');
-        const tensores = document.getElementById('{{ form.tensores.id_for_label }}');
+        const inicioFibra = document.getElementById('id_inicio_fibra');
+        const finalFibra = document.getElementById('id_final_fibra');
+        const conectores = document.getElementById('id_conectores');
+        const rosetas = document.getElementById('id_rosetas');
+        const patchCord = document.getElementById('id_patch_cord');
+        const tensores = document.getElementById('id_tensores');
+        const tirros = document.getElementById('id_tirros');
         
         function actualizarResumen() {
             if (inicioFibra && finalFibra) {
                 const inicio = parseInt(inicioFibra.value) || 0;
                 const final = parseInt(finalFibra.value) || 0;
-                const metros = Math.abs(final - inicio);
-                document.getElementById('resumen-metros').textContent = metros;
+                document.getElementById('resumen-metros').textContent = Math.abs(final - inicio);
             }
-            
-            if (conectores) document.getElementById('resumen-conectores').textContent = conectores.value || 0;
+            if (conectores) document.getElementById('resumen-conectores').textContent = conectores.value || 2;
             if (rosetas) document.getElementById('resumen-rosetas').textContent = rosetas.value || 0;
             if (patchCord) document.getElementById('resumen-patch').textContent = patchCord.value || 0;
             if (tensores) document.getElementById('resumen-tensores').textContent = tensores.value || 0;
+            if (tirros) document.getElementById('resumen-tirros').textContent = tirros.value || 0;
         }
         
         if (inicioFibra) inicioFibra.addEventListener('input', actualizarResumen);
@@ -1233,84 +1300,48 @@
         if (rosetas) rosetas.addEventListener('input', actualizarResumen);
         if (patchCord) patchCord.addEventListener('input', actualizarResumen);
         if (tensores) tensores.addEventListener('input', actualizarResumen);
+        if (tirros) tirros.addEventListener('input', actualizarResumen);
         
         actualizarResumen();
     });
     
     // ============================================================
-    // 6. ENVÍO DEL FORMULARIO CON FOTOS
+    // 6. ENVÍO DEL FORMULARIO
     // ============================================================
     document.getElementById('realizarInstalacionForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // Mostrar loading
-        Swal.fire({
-            title: 'Guardando...',
-            text: 'Por favor espera mientras se guarda la instalación',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
+        Swal.fire({ title: 'Guardando...', text: 'Por favor espera', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         
         const formData = new FormData(this);
+        fotosTemporales.forEach(foto => formData.append('fotos', foto));
         
-        // Agregar fotos temporales
-        fotosTemporales.forEach((foto, index) => {
-            formData.append('fotos', foto);
-        });
-        
-        // Enviar formulario
         fetch(window.location.href, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' },
             body: formData
         })
         .then(async response => {
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
                 const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Error en el servidor');
-                }
+                if (!response.ok) throw new Error(data.error || 'Error en el servidor');
                 return data;
-            } else {
-                const text = await response.text();
-                console.error('Respuesta no JSON:', text);
-                throw new Error('Error en el servidor. Por favor, contacta al administrador.');
             }
+            throw new Error('Error en el servidor');
         })
         .then(data => {
             Swal.close();
             if (data.success) {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Instalación completada',
-                    text: data.message || 'Los datos se han guardado correctamente',
-                    confirmButtonColor: '#ff6b00'
-                }).then(() => {
-                    window.location.href = '{% url 'instalaciones_pendientes' %}';
-                });
+                Swal.fire({ icon: 'success', title: 'Instalación completada', text: data.message, confirmButtonColor: '#ff6b00' })
+                    .then(() => window.location.href = '{% url "instalaciones_pendientes" %}');
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.error || 'No se pudo completar la instalación',
-                    confirmButtonColor: '#ff6b00'
-                });
+                Swal.fire({ icon: 'error', title: 'Error', text: data.error, confirmButtonColor: '#ff6b00' });
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: error.message || 'Error al procesar la solicitud',
-                confirmButtonColor: '#ff6b00'
-            });
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message, confirmButtonColor: '#ff6b00' });
         });
     });
 </script>

@@ -607,6 +607,12 @@ class Instalacion(models.Model):
         verbose_name="CONECTORES MALOS",
         default=0
     )
+    tirros = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="TIRROS",
+        default=0,
+        help_text="Cantidad de tirros utilizados en la instalación"
+    )
     
     # Fotos de la instalación (múltiples imágenes)
     fotos = models.JSONField(
@@ -659,7 +665,16 @@ class Instalacion(models.Model):
         ]
     
     def __str__(self):
-        return f"Instalación - {self.asignacion.contrato.cliente_potencial.nombre_completo}"
+        try:
+            if self.asignacion.contrato:
+                nombre = self.asignacion.contrato.cliente_potencial.nombre_completo
+            elif self.asignacion.venta_directa:
+                nombre = self.asignacion.venta_directa.nombre_completo
+            else:
+                nombre = "Cliente no disponible"
+            return f"Instalación - {nombre}"
+        except:
+            return f"Instalación #{self.id}"
     
     @property
     def orden_servicio(self):
@@ -1063,7 +1078,7 @@ class Soporte(models.Model):
     )
     modelo_modem = models.ForeignKey(
         'ModeloModem',
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name='soportes',
         verbose_name="Modelo del Módem",
         null=True, blank=True
@@ -1198,7 +1213,13 @@ class Soporte(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.get_tipo_display()} - {self.instalacion.nombre_cliente} - {self.fecha_hora_servicio.strftime('%d/%m/%Y')}"
+        try:
+            tipo = self.get_tipo_display()
+            nombre = self.instalacion.nombre_cliente
+            fecha = self.fecha_hora_servicio.strftime('%d/%m/%Y') if self.fecha_hora_servicio else "Fecha sin definir"
+            return f"{tipo} - {nombre} - {fecha}"
+        except:
+            return f"Soporte #{self.id}"
     
     @property
     def esta_completo(self):
@@ -1247,3 +1268,153 @@ class Soporte(models.Model):
     def atr(self):
         """Obtiene el ATR"""
         return self.instalacion.atr        
+    
+    
+# ==================== INVENTARIO SIMPLIFICADO ====================
+
+class Material(models.Model):
+    """Materiales disponibles en inventario"""
+    
+    nombre = models.CharField(max_length=50, unique=True, verbose_name="Nombre del material")
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Material"
+        verbose_name_plural = "Materiales"
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class InventarioGlobal(models.Model):
+    """Inventario global de materiales (stock general)"""
+    
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.CASCADE,
+        related_name='inventario_global',
+        verbose_name="Material"
+    )
+    cantidad = models.PositiveIntegerField(default=0, verbose_name="Cantidad disponible")
+    cantidad_minima = models.PositiveIntegerField(default=5, verbose_name="Cantidad mínima de alerta")
+    ultima_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Última actualización")
+    actualizado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='actualizaciones_inventario',
+        verbose_name="Actualizado por"
+    )
+    
+    class Meta:
+        verbose_name = "Inventario Global"
+        verbose_name_plural = "Inventario Global"
+        unique_together = ['material']
+    
+    def __str__(self):
+        return f"{self.material.nombre}: {self.cantidad}"
+    
+    @property
+    def esta_bajo_stock(self):
+        return self.cantidad <= self.cantidad_minima
+
+
+class InventarioCuadrilla(models.Model):
+    """Inventario asignado a cada cuadrilla"""
+    
+    cuadrilla = models.ForeignKey(
+        Cuadrilla,
+        on_delete=models.CASCADE,
+        related_name='inventario',
+        verbose_name="Cuadrilla"
+    )
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.PROTECT,
+        related_name='inventario_cuadrillas',
+        verbose_name="Material"
+    )
+    cantidad = models.PositiveIntegerField(default=0, verbose_name="Cantidad en cuadrilla")
+    ultima_actualizacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Inventario de Cuadrilla"
+        verbose_name_plural = "Inventarios de Cuadrillas"
+        unique_together = ['cuadrilla', 'material']
+    
+    def __str__(self):
+        return f"{self.cuadrilla.nombre} - {self.material.nombre}: {self.cantidad}"
+
+
+class MovimientoInventario(models.Model):
+    """Registro de todos los movimientos de inventario"""
+    
+    class TipoMovimiento(models.TextChoices):
+        ENTRADA = 'ENTRADA', '➕ Entrada (Compra/Adición)'
+        SALIDA_A_CUADRILLA = 'SALIDA_CUADRILLA', '📦 Salida a cuadrilla'
+        DEVOLUCION_CUADRILLA = 'DEVOLUCION', '🔄 Devolución de cuadrilla'
+        GASTO_INSTALACION = 'GASTO_INSTALACION', '🔧 Gasto en instalación'
+        GASTO_SOPORTE = 'GASTO_SOPORTE', '🛠️ Gasto en soporte'
+        AJUSTE = 'AJUSTE', '📝 Ajuste manual'
+    
+    material = models.ForeignKey(
+        Material,
+        on_delete=models.CASCADE,
+        related_name='movimientos',
+        verbose_name="Material"
+    )
+    tipo = models.CharField(
+        max_length=30,
+        choices=TipoMovimiento.choices,
+        verbose_name="Tipo de movimiento"
+    )
+    cantidad = models.IntegerField(verbose_name="Cantidad")
+    
+    # Referencias
+    cuadrilla = models.ForeignKey(
+        Cuadrilla,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos_inventario',
+        verbose_name="Cuadrilla relacionada"
+    )
+    instalacion = models.ForeignKey(
+        'Instalacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos_inventario',
+        verbose_name="Instalación relacionada"
+    )
+    soporte = models.ForeignKey(
+        'Soporte',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos_inventario',
+        verbose_name="Soporte relacionado"
+    )
+    
+    observacion = models.TextField(max_length=500, blank=True, null=True)
+    fecha_movimiento = models.DateTimeField(auto_now_add=True)
+    realizado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos_inventario',
+        verbose_name="Realizado por"
+    )
+    
+    class Meta:
+        verbose_name = "Movimiento de Inventario"
+        verbose_name_plural = "Movimientos de Inventario"
+        ordering = ['-fecha_movimiento']
+    
+    def __str__(self):
+        signo = "+" if self.cantidad > 0 else ""
+        return f"{self.get_tipo_display()}: {signo}{self.cantidad} {self.material.nombre} - {self.fecha_movimiento.strftime('%d/%m/%Y %H:%M')}"    

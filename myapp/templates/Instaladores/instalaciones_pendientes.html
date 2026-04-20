@@ -432,8 +432,19 @@
         color: var(--orange, #ff6b00);
         background: var(--orange-light, #fff2e6);
     }
+    
+    /* Botón de información (ojo) */
+    .action-btn.info-btn {
+        color: #3b82f6;
+    }
+    
+    .action-btn.info-btn:hover {
+        border-color: #3b82f6;
+        color: white;
+        background: #3b82f6;
+    }
 
-    /* Botón de copiar - SOLO LO NUEVO */
+    /* Botón de copiar */
     .btn-copy {
         width: 32px;
         height: 32px;
@@ -530,710 +541,7 @@
         font-weight: 500;
     }
 
-    @media (max-width: 768px) {
-        .filters-grid {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        
-        .search-box,
-        .filter-select,
-        .date-filter {
-            width: 100%;
-        }
-        
-        .actions-wrapper {
-            flex-direction: column;
-        }
-        
-        .btn-primary, .btn-clear {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        .tab-btn {
-            flex-direction: column;
-            font-size: 13px;
-            padding: 12px;
-        }
-
-        .tab-count {
-            margin-left: 0;
-        }
-
-        .table th, .table td {
-            padding: 10px;
-        }
-        
-        .table {
-            min-width: 800px;
-        }
-        
-        .pagination {
-            gap: 6px;
-        }
-        
-        .page-link {
-            width: 34px;
-            height: 34px;
-        }
-        
-        .page-info {
-            font-size: 12px;
-        }
-        
-        .cuadrilla-cell {
-            min-width: 160px;
-        }
-        
-        .instaladores-lista {
-            flex-direction: column;
-            gap: 2px;
-        }
-        
-        .instalador-badge {
-            display: inline-block;
-            width: fit-content;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .page-link {
-            width: 30px;
-            height: 30px;
-        }
-        
-        .page-link svg {
-            width: 14px;
-            height: 14px;
-        }
-        
-        .page-info {
-            font-size: 11px;
-            padding: 0 8px;
-        }
-        
-        .cuadrilla-cell {
-            min-width: 140px;
-        }
-    }
-</style>
-
-<!-- Estadísticas -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-value">{{ total_pendientes }}</span>
-        <span class="stat-label">Pendientes</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_completadas }}</span>
-        <span class="stat-label">Completadas</span>
-    </div>
-</div>
-
-<!-- Filtros -->
-<div class="filters-container">
-    <div class="filters-grid">
-        <!-- Búsqueda -->
-        <div class="search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Buscar por cliente, cédula, customer ID o N° Orden..." 
-                   id="searchInput" value="{{ busqueda }}">
-        </div>
-        
-        <!-- Filtro por vendedor (solo para admin) -->
-        {% if es_admin %}
-        <select id="filterVendedor" class="filter-select">
-            <option value="">Todos los vendedores</option>
-            {% for vendedor in vendedores %}
-            <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
-                {{ vendedor.get_full_name|default:vendedor.username }}
-            </option>
-            {% endfor %}
-        </select>
-        {% endif %}
-        
-        <!-- Filtro por fecha desde -->
-        <div class="date-filter">
-            <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde" value="{{ fecha_desde }}">
-        </div>
-        
-        <!-- Filtro por fecha hasta -->
-        <div class="date-filter">
-            <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta" value="{{ fecha_hasta }}">
-        </div>
-        
-        <div class="actions-wrapper">
-            <button onclick="aplicarFiltros()" class="btn-primary">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="M21 21l-4.35-4.35"/>
-                </svg>
-                Buscar
-            </button>
-            <button onclick="limpiarFiltros()" class="btn-clear">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6m-9 4v6m4-6v6"/>
-                </svg>
-                Limpiar
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Pestañas -->
-<div class="tabs-container">
-    <div class="tabs-header">
-        <button class="tab-btn {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
-            <span class="tab-icon">⏳</span>
-            Instalaciones Pendientes
-            <span class="tab-count">{{ total_pendientes }}</span>
-        </button>
-        <button class="tab-btn {% if tab_activa == 'completadas' %}active{% endif %}" onclick="cambiarTab('completadas')" id="tab-completadas-btn">
-            <span class="tab-icon">✅</span>
-            Instalaciones Completadas
-            <span class="tab-count">{{ total_completadas }}</span>
-        </button>
-    </div>
-
-    <!-- TAB: Instalaciones Pendientes -->
-    <div id="tab-pendientes" class="tab-content {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Cliente</th>
-                        <th>Cédula</th>
-                        <th>Customer ID</th>
-                        <th>N° Orden / ODS</th>
-                        <th>Plan</th>
-                        <th>Cuadrilla Asignada</th>
-                        <th>Fecha Asignación</th>
-                        {% if es_admin %}
-                        <th>Vendedor / Torre</th>
-                        {% endif %}
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for instalacion in instalaciones_pendientes %}
-                    <tr>
-                        <td class="text-center">
-                            {% if instalacion.asignacion.contrato %}
-                            <span class="badge badge-info">Contrato</span>
-                            {% else %}
-                            <span class="badge badge-warning">Venta Directa</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="user-cell">
-                                <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
-                                <div>
-                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>{{ instalacion.cedula_cliente }}</td>
-                        <td>
-                            <span class="badge completado">{{ instalacion.customer_id }}</span>
-                        </td>
-                        <td>
-                            {% if instalacion.asignacion.contrato %}
-                            <span class="badge" style="background: #2196f3; color: white;">{{ instalacion.orden_servicio }}</span>
-                            {% else %}
-                            <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ instalacion.plan }}</td>
-                        <td class="cuadrilla-cell">
-                            <div class="cuadrilla-nombre">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="12" cy="7" r="4"/>
-                                </svg>
-                                {{ instalacion.asignacion.cuadrilla.nombre }}
-                            </div>
-                            <div class="instaladores-lista">
-                                <small class="sin-instaladores">Instaladores asignados pendientes</small>
-                            </div>
-                        </td>
-                        <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</td>
-                        {% if es_admin %}
-                        <td>
-                            {% if instalacion.asignacion.contrato %}
-                            <span class="vendedor-badge">
-                                {{ instalacion.asignacion.contrato.creado_por.get_full_name|default:instalacion.asignacion.contrato.creado_por.username }}
-                            </span>
-                            {% else %}
-                            <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">
-                                {{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}
-                            </span>
-                            {% endif %}
-                        </td>
-                        {% endif %}
-                        <td>
-                            <a href="{% url 'realizar_instalacion' instalacion.id %}" class="action-btn" title="Realizar instalación">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                    <polyline points="14 2 14 8 20 8"/>
-                                    <line x1="16" y1="13" x2="8" y2="13"/>
-                                    <line x1="16" y1="17" x2="8" y2="17"/>
-                                    <polyline points="10 9 9 9 8 9"/>
-                                </svg>
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
-                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-                                <line x1="8" y1="2" x2="8" y2="22"/>
-                                <line x1="16" y1="2" x2="16" y2="22"/>
-                                <line x1="2" y1="8" x2="22" y2="8"/>
-                                <line x1="2" y1="16" x2="22" y2="16"/>
-                            </svg>
-                            <br>
-                            No tienes instalaciones pendientes
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Paginación pendientes -->
-        {% if instalaciones_pendientes.has_other_pages %}
-        <div class="pagination">
-            {% if instalaciones_pendientes.has_previous %}
-            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Primera página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-                </svg>
-            </a>
-            <a href="?page_pendientes={{ instalaciones_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página anterior">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 18l-6-6 6-6"/>
-                </svg>
-            </a>
-            {% endif %}
-            
-            <span class="page-info">
-                Página {{ instalaciones_pendientes.number }} de {{ instalaciones_pendientes.paginator.num_pages }}
-            </span>
-            
-            {% if instalaciones_pendientes.has_next %}
-            <a href="?page_pendientes={{ instalaciones_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página siguiente">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
-            </a>
-            <a href="?page_pendientes={{ instalaciones_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Última página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-                </svg>
-            </a>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- TAB: Instalaciones Completadas -->
-    <div id="tab-completadas" class="tab-content {% if tab_activa == 'completadas' %}active{% endif %}">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Cliente</th>
-                        <th>Cédula</th>
-                        <th>Customer ID</th>
-                        <th>N° Orden / ODS</th>
-                        <th>Plan</th>
-                        <th>Cuadrilla e Instaladores</th>
-                        <th>Fecha Instalación</th>
-                        {% if es_admin %}
-                        <th>Vendedor / Torre</th>
-                        {% endif %}
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for instalacion in instalaciones_completadas %}
-                    <tr>
-                        <td class="text-center">
-                            {% if instalacion.asignacion.contrato %}
-                            <span class="badge badge-info">Contrato</span>
-                            {% else %}
-                            <span class="badge badge-warning">Venta Directa</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="user-cell">
-                                <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
-                                <div>
-                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td>{{ instalacion.cedula_cliente }}</td>
-                        <td>
-                            <span class="badge completado">{{ instalacion.customer_id }}</span>
-                        </td>
-                        <td>
-                            {% if instalacion.asignacion.contrato %}
-                            <span class="badge" style="background: #4caf50; color: white;">{{ instalacion.orden_servicio }}</span>
-                            {% else %}
-                            <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ instalacion.plan }}</td>
-                        <td class="cuadrilla-cell">
-                            <div class="cuadrilla-nombre">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="12" cy="7" r="4"/>
-                                </svg>
-                                {{ instalacion.asignacion.cuadrilla.nombre }}
-                            </div>
-                            <div class="instaladores-lista">
-                                {% for inst in instalacion.instaladores.all %}
-                                <span class="instalador-badge" title="{{ inst.get_full_name|default:inst.username }}">
-                                    {{ inst.get_full_name|default:inst.username|truncatechars:20 }}
-                                </span>
-                                {% empty %}
-                                <span class="sin-instaladores">No hay instaladores registrados</span>
-                                {% endfor %}
-                            </div>
-                        </td>
-                        <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</td>
-                        {% if es_admin %}
-                        <td>
-                            {% if instalacion.asignacion.contrato %}
-                            <span class="vendedor-badge">
-                                {{ instalacion.asignacion.contrato.creado_por.get_full_name|default:instalacion.asignacion.contrato.creado_por.username }}
-                            </span>
-                            {% else %}
-                            <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">
-                                {{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}
-                            </span>
-                            {% endif %}
-                        </td>
-                        {% endif %}
-                        <td>
-                            <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="3"/>
-                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                                </svg>
-                            </button>
-                            <!-- BOTÓN DE COPIAR NUEVO -->
-                            <button class="btn-copy" onclick="copiarDatosInstalacion({{ instalacion.id }}, this)" title="Copiar datos de instalación">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                </svg>
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                <polyline points="22 4 12 14.01 9 11.01"/>
-                            </svg>
-                            <br>
-                            No tienes instalaciones completadas
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Paginación completadas -->
-        {% if instalaciones_completadas.has_other_pages %}
-        <div class="pagination">
-            {% if instalaciones_completadas.has_previous %}
-            <a href="?page_completadas=1&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Primera página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-                </svg>
-            </a>
-            <a href="?page_completadas={{ instalaciones_completadas.previous_page_number }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página anterior">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 18l-6-6 6-6"/>
-                </svg>
-            </a>
-            {% endif %}
-            
-            <span class="page-info">
-                Página {{ instalaciones_completadas.number }} de {{ instalaciones_completadas.paginator.num_pages }}
-            </span>
-            
-            {% if instalaciones_completadas.has_next %}
-            <a href="?page_completadas={{ instalaciones_completadas.next_page_number }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Página siguiente">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
-            </a>
-            <a href="?page_completadas={{ instalaciones_completadas.paginator.num_pages }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link" title="Última página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-                </svg>
-            </a>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Modal de Detalles de Instalación (tu modal original completo) -->
-<div id="modalDetalleInstalacion" class="modal-overlay" style="display: none;">
-    <div class="modal-container">
-        <div class="modal-header">
-            <div class="modal-header-content">
-                <div class="modal-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 id="modalTitulo">Detalles de Instalación</h3>
-                    <p id="modalSubtitulo">Información completa de la instalación</p>
-                </div>
-            </div>
-            <button class="modal-close" onclick="cerrarModalDetalle()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        
-        <div class="modal-body">
-            <div class="loading-detalle" id="loadingDetalle" style="text-align: center; padding: 40px;">
-                <div class="spinner"></div>
-                <p>Cargando detalles...</p>
-            </div>
-            
-            <div id="contenidoDetalle" style="display: none;">
-                <!-- Información General -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                        </svg>
-                        Información General
-                    </h4>
-                    <div class="detalle-grid">
-                        <div class="detalle-item">
-                            <span class="detalle-label">Cliente:</span>
-                            <span class="detalle-valor" id="detalleCliente">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Cédula:</span>
-                            <span class="detalle-valor" id="detalleCedula">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Teléfono:</span>
-                            <span class="detalle-valor" id="detalleTelefono">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Plan:</span>
-                            <span class="detalle-valor" id="detallePlan">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Customer ID:</span>
-                            <span class="detalle-valor" id="detalleCustomerId">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">ATR:</span>
-                            <span class="detalle-valor" id="detalleAtr">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Cuadrilla:</span>
-                            <span class="detalle-valor" id="detalleCuadrilla">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Estado:</span>
-                            <span class="detalle-valor" id="detalleEstado">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Fecha Instalación:</span>
-                            <span class="detalle-valor" id="detalleFechaInstalacion">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Fecha Asignación:</span>
-                            <span class="detalle-valor" id="detalleFechaAsignacion">-</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Datos Técnicos -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                            <line x1="8" y1="21" x2="16" y2="21"/>
-                            <line x1="12" y1="17" x2="12" y2="21"/>
-                        </svg>
-                        Datos Técnicos
-                    </h4>
-                    <div class="detalle-grid">
-                        <div class="detalle-item">
-                            <span class="detalle-label">Latitud:</span>
-                            <span class="detalle-valor" id="detalleLatitud">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Longitud:</span>
-                            <span class="detalle-valor" id="detalleLongitud">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Feeder:</span>
-                            <span class="detalle-valor" id="detalleFeeder">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Caja:</span>
-                            <span class="detalle-valor" id="detalleCaja">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Puerto:</span>
-                            <span class="detalle-valor" id="detallePuerto">-</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Equipo Instalado -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="2" width="20" height="20" rx="2.18"/>
-                            <path d="M7 2v20M17 2v20M2 12h20"/>
-                        </svg>
-                        Equipo Instalado
-                    </h4>
-                    <div class="detalle-grid">
-                        <div class="detalle-item">
-                            <span class="detalle-label">Modelo Módem:</span>
-                            <span class="detalle-valor" id="detalleModelo">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Serial:</span>
-                            <span class="detalle-valor" id="detalleSerial">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">MAC:</span>
-                            <span class="detalle-valor" id="detalleMac">-</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Materiales Utilizados -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
-                            <circle cx="12" cy="14" r="3"/>
-                        </svg>
-                        Materiales Utilizados
-                    </h4>
-                    <div class="detalle-grid materiales-grid">
-                        <div class="material-card">
-                            <span class="material-numero" id="detalleMetros">0</span>
-                            <span class="material-label">Metros de Fibra</span>
-                        </div>
-                        <div class="material-card">
-                            <span class="material-numero" id="detalleConectores">0</span>
-                            <span class="material-label">Conectores</span>
-                        </div>
-                        <div class="material-card">
-                            <span class="material-numero" id="detalleRosetas">0</span>
-                            <span class="material-label">Rosetas</span>
-                        </div>
-                        <div class="material-card">
-                            <span class="material-numero" id="detallePatch">0</span>
-                            <span class="material-label">Patch Cord</span>
-                        </div>
-                        <div class="material-card">
-                            <span class="material-numero" id="detalleTensores">0</span>
-                            <span class="material-label">Tensores</span>
-                        </div>
-                        <div class="material-card">
-                            <span class="material-numero" id="detalleConectoresMalos">0</span>
-                            <span class="material-label">Conectores Malos</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Instaladores que participaron -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                        Instaladores que participaron
-                    </h4>
-                    <div id="detalleInstaladores" class="instaladores-detalle"></div>
-                </div>
-                
-                <!-- Observaciones -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-                        </svg>
-                        Observaciones
-                    </h4>
-                    <div class="observacion-card" id="detalleObservacion"></div>
-                </div>
-                
-                <!-- Fotos de la Instalación -->
-                <div class="detalle-section">
-                    <h4 class="detalle-section-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <path d="M21 15l-5-4-3 3-3-3-5 5"/>
-                        </svg>
-                        Fotos de la Instalación
-                    </h4>
-                    <div id="detalleFotos" class="galeria-detalle"></div>
-                </div>
-                
-                <!-- Información adicional -->
-                <div class="detalle-section info-adicional">
-                    <div class="detalle-grid">
-                        <div class="detalle-item">
-                            <span class="detalle-label">Registrado por:</span>
-                            <span class="detalle-valor" id="detalleCreadoPor">-</span>
-                        </div>
-                        <div class="detalle-item">
-                            <span class="detalle-label">Tipo de Origen:</span>
-                            <span class="detalle-valor" id="detalleTipo">-</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-footer">
-            <button class="btn-cerrar" onclick="cerrarModalDetalle()">Cerrar</button>
-        </div>
-    </div>
-</div>
-
-<style>
-    /* Estilos del Modal (tus estilos originales del modal) */
+    /* Estilos del Modal de Información del Cliente */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -1252,7 +560,7 @@
         background: white;
         border-radius: 24px;
         width: 90%;
-        max-width: 900px;
+        max-width: 800px;
         max-height: 85vh;
         overflow: hidden;
         display: flex;
@@ -1385,136 +693,75 @@
         max-width: 60%;
     }
     
-    .materiales-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-    }
-    
-    .material-card {
-        background: white;
-        border-radius: 12px;
-        padding: 12px;
-        text-align: center;
-        border: 1px solid #e0e0e0;
-        transition: all 0.2s;
-    }
-    
-    .material-card:hover {
-        border-color: #ff6b00;
-        transform: translateY(-2px);
-    }
-    
-    .material-numero {
-        font-size: 24px;
-        font-weight: 700;
-        color: #ff6b00;
-        display: block;
-    }
-    
-    .material-label {
-        font-size: 11px;
-        color: #999;
-        text-transform: uppercase;
-        margin-top: 4px;
-        display: block;
-    }
-    
-    .instaladores-detalle {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .instalador-detalle-card {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 16px;
-        background: white;
-        border-radius: 30px;
-        border: 1px solid #e0e0e0;
-        transition: all 0.2s;
-    }
-    
-    .instalador-detalle-card:hover {
-        border-color: #ff6b00;
-        background: #fff2e6;
-    }
-    
-    .instalador-avatar {
-        width: 32px;
-        height: 32px;
-        background: #ff6b00;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 14px;
-    }
-    
-    .instalador-info {
-        flex: 1;
-    }
-    
-    .instalador-nombre-detalle {
-        font-size: 14px;
-        font-weight: 500;
-        color: #333;
-    }
-    
-    .instalador-username {
-        font-size: 11px;
-        color: #999;
-    }
-    
-    .observacion-card {
-        background: white;
-        border-radius: 12px;
-        padding: 16px;
-        color: #555;
-        font-size: 14px;
-        line-height: 1.5;
-        border: 1px solid #e0e0e0;
-    }
-    
+    /* Estilos para la galería de fotos en el modal */
     .galeria-detalle {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
         gap: 12px;
         margin-top: 12px;
     }
     
-    .foto-detalle {
-        width: 120px;
-        height: 120px;
+    .foto-item-modal {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
         border-radius: 12px;
         overflow: hidden;
         cursor: pointer;
         border: 2px solid #e0e0e0;
         transition: all 0.2s;
+        background: #f5f5f5;
     }
     
-    .foto-detalle img {
+    .foto-item-modal:hover {
+        transform: scale(1.02);
+        border-color: #ff6b00;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .foto-item-modal img {
         width: 100%;
         height: 100%;
         object-fit: cover;
     }
     
-    .foto-detalle:hover {
-        border-color: #ff6b00;
-        transform: scale(1.05);
+    /* SweetAlert personalizado para fotos */
+    .swal2-image {
+        border-radius: 12px !important;
+        max-height: 80vh !important;
+        object-fit: contain !important;
     }
     
-    .info-adicional {
-        background: #e8f5e9;
-        border-color: #4caf50;
+    .info-vendedor {
+        background: #eff6ff;
+        border-color: #bfdbfe;
     }
     
-    .info-adicional .detalle-label {
-        color: #2e7d32;
+    .info-vendedor .detalle-section-title {
+        color: #2563eb;
+        border-bottom-color: #2563eb;
+    }
+    
+    .info-vendedor .detalle-label {
+        color: #1e40af;
+    }
+    
+    .info-vendedor .detalle-valor {
+        color: #1e3a8a;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid #f0f0f0;
+        border-top-color: #ff6b00;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
     
     .modal-footer {
@@ -1540,33 +787,75 @@
         border-color: #ff6b00;
         color: #ff6b00;
     }
-    
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid #f0f0f0;
-        border-top-color: #ff6b00;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin: 0 auto 16px;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
+
     @media (max-width: 768px) {
-        .modal-container {
-            width: 95%;
-            max-height: 90vh;
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .search-box,
+        .filter-select,
+        .date-filter {
+            width: 100%;
+        }
+        
+        .actions-wrapper {
+            flex-direction: column;
+        }
+        
+        .btn-primary, .btn-clear {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .tab-btn {
+            flex-direction: column;
+            font-size: 13px;
+            padding: 12px;
+        }
+
+        .tab-count {
+            margin-left: 0;
+        }
+
+        .table th, .table td {
+            padding: 10px;
+        }
+        
+        .table {
+            min-width: 800px;
+        }
+        
+        .pagination {
+            gap: 6px;
+        }
+        
+        .page-link {
+            width: 34px;
+            height: 34px;
+        }
+        
+        .page-info {
+            font-size: 12px;
+        }
+        
+        .cuadrilla-cell {
+            min-width: 160px;
+        }
+        
+        .instaladores-lista {
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .instalador-badge {
+            display: inline-block;
+            width: fit-content;
         }
         
         .detalle-grid {
             grid-template-columns: 1fr;
-        }
-        
-        .materiales-grid {
-            grid-template-columns: repeat(2, 1fr);
         }
         
         .detalle-item {
@@ -1579,46 +868,579 @@
             max-width: 100%;
         }
         
-        .galeria-detalle {
-            justify-content: center;
+        .modal-container {
+            width: 95%;
+            max-height: 90vh;
         }
         
-        .foto-detalle {
-            width: 100px;
-            height: 100px;
+        .galeria-detalle {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .page-link {
+            width: 30px;
+            height: 30px;
+        }
+        
+        .page-link svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .page-info {
+            font-size: 11px;
+            padding: 0 8px;
+        }
+        
+        .cuadrilla-cell {
+            min-width: 140px;
+        }
+        
+        .galeria-detalle {
+            grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
         }
     }
 </style>
 
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_pendientes }}</span>
+        <span class="stat-label">Pendientes</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ total_completadas }}</span>
+        <span class="stat-label">Completadas</span>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por cliente, cédula, customer ID o N° Orden..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        {% if es_admin %}
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for vendedor in vendedores %}
+            <option value="{{ vendedor.id }}" {% if filtro_vendedor == vendedor.id|stringformat:"s" %}selected{% endif %}>
+                {{ vendedor.get_full_name|default:vendedor.username }}
+            </option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        
+        <div class="date-filter">
+            <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde" value="{{ fecha_desde }}">
+        </div>
+        
+        <div class="date-filter">
+            <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta" value="{{ fecha_hasta }}">
+        </div>
+        
+        <div class="actions-wrapper">
+            <button onclick="aplicarFiltros()" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                Buscar
+            </button>
+            <button onclick="limpiarFiltros()" class="btn-clear">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M5 6v14a2 2 0 002 2h10a2 2 0 002-2V6m-9 4v6m4-6v6"/>
+                </svg>
+                Limpiar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
+            <span class="tab-icon">⏳</span>
+            Instalaciones Pendientes
+            <span class="tab-count">{{ total_pendientes }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'completadas' %}active{% endif %}" onclick="cambiarTab('completadas')" id="tab-completadas-btn">
+            <span class="tab-icon">✅</span>
+            Instalaciones Completadas
+            <span class="tab-count">{{ total_completadas }}</span>
+        </button>
+    </div>
+
+    <!-- TAB: Instalaciones Pendientes -->
+    <div id="tab-pendientes" class="tab-content {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Customer ID</th>
+                        <th>N° Orden / ODS</th>
+                        <th>Plan</th>
+                        <th>Cuadrilla Asignada</th>
+                        <th>Fecha Asignación</th>
+                        {% if es_admin %}
+                        <th>Vendedor / Torre</th>
+                        {% endif %}
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instalacion in instalaciones_pendientes %}
+                    <tr>
+                        <td class="text-center">
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge badge-info">Contrato</span>
+                            {% else %}
+                            <span class="badge badge-warning">Venta Directa</span>
+                            {% endif %}
+                        </div>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <td>{{ instalacion.cedula_cliente }}</div>
+                        <td>
+                            <span class="badge completado">{{ instalacion.customer_id }}</span>
+                        </div>
+                        <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge" style="background: #2196f3; color: white;">{{ instalacion.orden_servicio }}</span>
+                            {% else %}
+                            <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
+                            {% endif %}
+                        </div>
+                        <td>{{ instalacion.plan }}</div>
+                        <td class="cuadrilla-cell">
+                            <div class="cuadrilla-nombre">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                                {{ instalacion.asignacion.cuadrilla.nombre }}
+                            </div>
+                            <div class="instaladores-lista">
+                                <small class="sin-instaladores">Instaladores asignados pendientes</small>
+                            </div>
+                        </div>
+                        <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</div>
+                        {% if es_admin %}
+                        <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="vendedor-badge">
+                                {{ instalacion.asignacion.contrato.creado_por.get_full_name|default:instalacion.asignacion.contrato.creado_por.username }}
+                            </span>
+                            {% else %}
+                            <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">
+                                {{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <td class="action-buttons">
+                            <button class="action-btn info-btn" onclick="verInfoCliente({{ instalacion.id }})" title="Ver información del cliente y vendedor">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="12" y1="16" x2="12" y2="12"/>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                                </svg>
+                            </button>
+                            <a href="{% url 'realizar_instalacion' instalacion.id %}" class="action-btn" title="Realizar instalación">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
+                                <line x1="8" y1="2" x2="8" y2="22"/>
+                                <line x1="16" y1="2" x2="16" y2="22"/>
+                                <line x1="2" y1="8" x2="22" y2="8"/>
+                                <line x1="2" y1="16" x2="22" y2="16"/>
+                            </svg>
+                            <br>
+                            No tienes instalaciones pendientes
+                        </div>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación pendientes -->
+        {% if instalaciones_pendientes.has_other_pages %}
+        <div class="pagination">
+            {% if instalaciones_pendientes.has_previous %}
+            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">«</a>
+            <a href="?page_pendientes={{ instalaciones_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">‹</a>
+            {% endif %}
+            
+            <span class="page-info">Página {{ instalaciones_pendientes.number }} de {{ instalaciones_pendientes.paginator.num_pages }}</span>
+            
+            {% if instalaciones_pendientes.has_next %}
+            <a href="?page_pendientes={{ instalaciones_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">›</a>
+            <a href="?page_pendientes={{ instalaciones_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">»</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB: Instalaciones Completadas -->
+    <div id="tab-completadas" class="tab-content {% if tab_activa == 'completadas' %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Customer ID</th>
+                        <th>N° Orden / ODS</th>
+                        <th>Plan</th>
+                        <th>Cuadrilla e Instaladores</th>
+                        <th>Fecha Instalación</th>
+                        {% if es_admin %}
+                        <th>Vendedor / Torre</th>
+                        {% endif %}
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instalacion in instalaciones_completadas %}
+                    <tr>
+                        <td class="text-center">
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge badge-info">Contrato</span>
+                            {% else %}
+                            <span class="badge badge-warning">Venta Directa</span>
+                            {% endif %}
+                        </div>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <td>{{ instalacion.cedula_cliente }}</div>
+                        <td>
+                            <span class="badge completado">{{ instalacion.customer_id }}</span>
+                        </div>
+                        <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="badge" style="background: #4caf50; color: white;">{{ instalacion.orden_servicio }}</span>
+                            {% else %}
+                            <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
+                            {% endif %}
+                        </div>
+                        <td>{{ instalacion.plan }}</div>
+                        <td class="cuadrilla-cell">
+                            <div class="cuadrilla-nombre">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                                {{ instalacion.asignacion.cuadrilla.nombre }}
+                            </div>
+                            <div class="instaladores-lista">
+                                {% for inst in instalacion.instaladores.all %}
+                                <span class="instalador-badge">{{ inst.get_full_name|default:inst.username|truncatechars:20 }}</span>
+                                {% empty %}
+                                <span class="sin-instaladores">No hay instaladores registrados</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</div>
+                        {% if es_admin %}
+                        <td>
+                            {% if instalacion.asignacion.contrato %}
+                            <span class="vendedor-badge">{{ instalacion.asignacion.contrato.creado_por.get_full_name|default:instalacion.asignacion.contrato.creado_por.username }}</span>
+                            {% else %}
+                            <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">{{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}</span>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <td>
+                            <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-copy" onclick="copiarDatosInstalacion({{ instalacion.id }}, this)" title="Copiar datos de instalación">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                <polyline points="22 4 12 14.01 9 11.01"/>
+                            </svg>
+                            <br>
+                            No tienes instalaciones completadas
+                        </div>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación completadas -->
+        {% if instalaciones_completadas.has_other_pages %}
+        <div class="pagination">
+            {% if instalaciones_completadas.has_previous %}
+            <a href="?page_completadas=1&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">«</a>
+            <a href="?page_completadas={{ instalaciones_completadas.previous_page_number }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">‹</a>
+            {% endif %}
+            
+            <span class="page-info">Página {{ instalaciones_completadas.number }} de {{ instalaciones_completadas.paginator.num_pages }}</span>
+            
+            {% if instalaciones_completadas.has_next %}
+            <a href="?page_completadas={{ instalaciones_completadas.next_page_number }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">›</a>
+            <a href="?page_completadas={{ instalaciones_completadas.paginator.num_pages }}&tab=completadas{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if filtro_vendedor %}&vendedor={{ filtro_vendedor }}{% endif %}" class="page-link">»</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Detalles de Instalación -->
+<div id="modalDetalleInstalacion" class="modal-overlay" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-content">
+                <div class="modal-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3>Detalles de Instalación</h3>
+                    <p>Información completa de la instalación</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalDetalle()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="loading-detalle" id="loadingDetalle" style="text-align: center; padding: 40px;">
+                <div class="spinner"></div>
+                <p>Cargando detalles...</p>
+            </div>
+            
+            <div id="contenidoDetalle" style="display: none;">
+                <!-- Información General -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">📋 Información General</h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item"><span class="detalle-label">Cliente:</span><span class="detalle-valor" id="detalleCliente">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Cédula:</span><span class="detalle-valor" id="detalleCedula">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Teléfono:</span><span class="detalle-valor" id="detalleTelefono">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Plan:</span><span class="detalle-valor" id="detallePlan">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Customer ID:</span><span class="detalle-valor" id="detalleCustomerId">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">ATR:</span><span class="detalle-valor" id="detalleAtr">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Cuadrilla:</span><span class="detalle-valor" id="detalleCuadrilla">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Estado:</span><span class="detalle-valor" id="detalleEstado">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Fecha Instalación:</span><span class="detalle-valor" id="detalleFechaInstalacion">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Fecha Asignación:</span><span class="detalle-valor" id="detalleFechaAsignacion">-</span></div>
+                    </div>
+                </div>
+                
+                <!-- Datos Técnicos -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">📍 Datos Técnicos</h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item"><span class="detalle-label">Latitud:</span><span class="detalle-valor" id="detalleLatitud">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Longitud:</span><span class="detalle-valor" id="detalleLongitud">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Feeder:</span><span class="detalle-valor" id="detalleFeeder">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Caja:</span><span class="detalle-valor" id="detalleCaja">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Puerto:</span><span class="detalle-valor" id="detallePuerto">-</span></div>
+                    </div>
+                </div>
+                
+                <!-- Equipo Instalado -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">🖥️ Equipo Instalado</h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item"><span class="detalle-label">Modelo Módem:</span><span class="detalle-valor" id="detalleModelo">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Serial:</span><span class="detalle-valor" id="detalleSerial">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">MAC:</span><span class="detalle-valor" id="detalleMac">-</span></div>
+                    </div>
+                </div>
+                
+                <!-- Materiales Utilizados -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">🔧 Materiales Utilizados</h4>
+                    <div class="materiales-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                        <div class="material-card"><span class="material-numero" id="detalleMetros">0</span><span class="material-label">Metros de Fibra</span></div>
+                        <div class="material-card"><span class="material-numero" id="detalleConectores">0</span><span class="material-label">Conectores</span></div>
+                        <div class="material-card"><span class="material-numero" id="detalleRosetas">0</span><span class="material-label">Rosetas</span></div>
+                        <div class="material-card"><span class="material-numero" id="detallePatch">0</span><span class="material-label">Patch Cord</span></div>
+                        <div class="material-card"><span class="material-numero" id="detalleTensores">0</span><span class="material-label">Tensores</span></div>
+                        <div class="material-card"><span class="material-numero" id="detalleConectoresMalos">0</span><span class="material-label">Conectores Malos</span></div>
+                    </div>
+                </div>
+                
+                <!-- Instaladores -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">👥 Instaladores que participaron</h4>
+                    <div id="detalleInstaladores" class="instaladores-detalle"></div>
+                </div>
+                
+                <!-- Observaciones -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">📝 Observaciones</h4>
+                    <div class="observacion-card" id="detalleObservacion"></div>
+                </div>
+                
+                <!-- Fotos de la Instalación -->
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">📸 Fotos de la Instalación</h4>
+                    <div class="galeria-detalle" id="detalleFotos"></div>
+                </div>
+                
+                <!-- Información adicional -->
+                <div class="detalle-section info-adicional">
+                    <div class="detalle-grid">
+                        <div class="detalle-item"><span class="detalle-label">Registrado por:</span><span class="detalle-valor" id="detalleCreadoPor">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Tipo de Origen:</span><span class="detalle-valor" id="detalleTipo">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-cerrar" onclick="cerrarModalDetalle()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Información del Cliente y Vendedor -->
+<div id="modalInfoCliente" class="modal-overlay" style="display: none;">
+    <div class="modal-container" style="max-width: 700px;">
+        <div class="modal-header">
+            <div class="modal-header-content">
+                <div class="modal-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3>Información del Cliente</h3>
+                    <p>Datos completos del cliente y vendedor</p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalInfoCliente()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="loading-detalle" id="loadingInfoCliente" style="text-align: center; padding: 40px;">
+                <div class="spinner"></div>
+                <p>Cargando información...</p>
+            </div>
+            
+            <div id="contenidoInfoCliente" style="display: none;">
+                <div class="detalle-section">
+                    <h4 class="detalle-section-title">🧑 Datos del Cliente</h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item"><span class="detalle-label">Nombre:</span><span class="detalle-valor" id="infoClienteNombre">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Cédula:</span><span class="detalle-valor" id="infoClienteCedula">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Teléfono:</span><span class="detalle-valor" id="infoClienteTelefono">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Dirección:</span><span class="detalle-valor" id="infoClienteDireccion">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Plan:</span><span class="detalle-valor" id="infoClientePlan">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Customer ID:</span><span class="detalle-valor" id="infoClienteCustomerId">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">ATR:</span><span class="detalle-valor" id="infoClienteAtr">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">N° Orden / ODS:</span><span class="detalle-valor" id="infoClienteOrden">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Cuadrilla:</span><span class="detalle-valor" id="infoClienteCuadrilla">-</span></div>
+                    </div>
+                </div>
+                
+                <div class="detalle-section info-vendedor">
+                    <h4 class="detalle-section-title">📞 Información del Vendedor / Torre de Control</h4>
+                    <div class="detalle-grid">
+                        <div class="detalle-item"><span class="detalle-label">Nombre:</span><span class="detalle-valor" id="infoClienteVendedorNombre">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Usuario:</span><span class="detalle-valor" id="infoClienteVendedorUsuario">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Teléfono:</span><span class="detalle-valor" id="infoClienteVendedorTelefono">-</span></div>
+                        <div class="detalle-item"><span class="detalle-label">Email:</span><span class="detalle-valor" id="infoClienteVendedorEmail">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-cerrar" onclick="cerrarModalInfoCliente()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Función para cambiar entre pestañas (tu función original)
     function cambiarTab(tab) {
         const url = new URL(window.location.href);
         url.searchParams.set('tab', tab);
-        
         const busqueda = document.getElementById('searchInput')?.value;
         const fecha_desde = document.getElementById('fecha_desde')?.value;
         const fecha_hasta = document.getElementById('fecha_hasta')?.value;
-        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
-        
         if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
         else url.searchParams.delete('fecha_desde');
-        
         if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
         else url.searchParams.delete('fecha_hasta');
-        
         {% if es_admin %}
         const vendedor = document.getElementById('filterVendedor')?.value;
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
         {% endif %}
-        
         url.searchParams.delete('page_pendientes');
         url.searchParams.delete('page_completadas');
-        
         window.location.href = url.toString();
     }
 
@@ -1628,27 +1450,20 @@
         const fecha_desde = document.getElementById('fecha_desde').value;
         const fecha_hasta = document.getElementById('fecha_hasta').value;
         const tab = document.querySelector('.tab-btn.active')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'pendientes';
-        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
-        
         if (fecha_desde) url.searchParams.set('fecha_desde', fecha_desde);
         else url.searchParams.delete('fecha_desde');
-        
         if (fecha_hasta) url.searchParams.set('fecha_hasta', fecha_hasta);
         else url.searchParams.delete('fecha_hasta');
-        
         url.searchParams.set('tab', tab);
-        
         {% if es_admin %}
         const vendedor = document.getElementById('filterVendedor').value;
         if (vendedor) url.searchParams.set('vendedor', vendedor);
         else url.searchParams.delete('vendedor');
         {% endif %}
-        
         url.searchParams.delete('page_pendientes');
         url.searchParams.delete('page_completadas');
-        
         window.location.href = url.toString();
     }
     
@@ -1659,7 +1474,6 @@
         {% if es_admin %}
         document.getElementById('filterVendedor').value = '';
         {% endif %}
-        
         const url = new URL(window.location.href);
         url.searchParams.delete('busqueda');
         url.searchParams.delete('fecha_desde');
@@ -1667,75 +1481,50 @@
         url.searchParams.delete('vendedor');
         url.searchParams.delete('page_pendientes');
         url.searchParams.delete('page_completadas');
-        
         const tabActual = document.querySelector('.tab-btn.active')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1] || 'pendientes';
         url.searchParams.set('tab', tabActual);
-        
         window.location.href = url.toString();
     }
     
     document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            aplicarFiltros();
-        }
+        if (e.key === 'Enter') aplicarFiltros();
     });
-    
     document.getElementById('fecha_desde')?.addEventListener('change', aplicarFiltros);
     document.getElementById('fecha_hasta')?.addEventListener('change', aplicarFiltros);
-    
     {% if es_admin %}
     document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
     {% endif %}
 
-    // Función para abrir el modal con los detalles de la instalación (tu función original)
     function verDetalleInstalacion(id) {
         const modal = document.getElementById('modalDetalleInstalacion');
         const loading = document.getElementById('loadingDetalle');
         const contenido = document.getElementById('contenidoDetalle');
-        
         modal.style.display = 'flex';
         loading.style.display = 'block';
         contenido.style.display = 'none';
-        
         fetch(`/instalacion/detalle/${id}/`, {
             method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
             loading.style.display = 'none';
-            
             if (data.success) {
                 mostrarDatosEnModal(data.data);
                 contenido.style.display = 'block';
             } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.error || 'No se pudieron cargar los detalles',
-                    confirmButtonColor: '#ff6b00'
-                });
+                Swal.fire({ icon: 'error', title: 'Error', text: data.error || 'No se pudieron cargar los detalles', confirmButtonColor: '#ff6b00' });
                 cerrarModalDetalle();
             }
         })
         .catch(error => {
-            console.error('Error:', error);
             loading.style.display = 'none';
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al cargar los detalles de la instalación',
-                confirmButtonColor: '#ff6b00'
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Error al cargar los detalles de la instalación', confirmButtonColor: '#ff6b00' });
             cerrarModalDetalle();
         });
     }
     
     function mostrarDatosEnModal(data) {
-        // Información General
         document.getElementById('detalleCliente').textContent = data.nombre_cliente;
         document.getElementById('detalleCedula').textContent = data.cedula_cliente;
         document.getElementById('detalleTelefono').textContent = data.telefono;
@@ -1746,20 +1535,14 @@
         document.getElementById('detalleEstado').innerHTML = `<span class="badge completado">${data.estado}</span>`;
         document.getElementById('detalleFechaInstalacion').textContent = data.fecha_instalacion;
         document.getElementById('detalleFechaAsignacion').textContent = data.fecha_asignacion;
-        
-        // Datos Técnicos
         document.getElementById('detalleLatitud').textContent = data.latitud ? data.latitud.toFixed(6) : 'No registrada';
         document.getElementById('detalleLongitud').textContent = data.longitud ? data.longitud.toFixed(6) : 'No registrada';
         document.getElementById('detalleFeeder').textContent = data.feeder;
         document.getElementById('detalleCaja').textContent = data.caja;
         document.getElementById('detallePuerto').textContent = data.puerto_utilizado;
-        
-        // Equipo Instalado
         document.getElementById('detalleModelo').textContent = data.modelo_modem;
         document.getElementById('detalleSerial').textContent = data.sn_modem;
         document.getElementById('detalleMac').textContent = data.mac_modem;
-        
-        // Materiales
         document.getElementById('detalleMetros').textContent = data.metros_utilizados;
         document.getElementById('detalleConectores').textContent = data.conectores;
         document.getElementById('detalleRosetas').textContent = data.rosetas;
@@ -1767,47 +1550,38 @@
         document.getElementById('detalleTensores').textContent = data.tensores;
         document.getElementById('detalleConectoresMalos').textContent = data.conectores_malos;
         
-        // Instaladores
         const instaladoresDiv = document.getElementById('detalleInstaladores');
         instaladoresDiv.innerHTML = '';
         if (data.instaladores && data.instaladores.length > 0) {
             data.instaladores.forEach(inst => {
                 const inicial = inst.nombre.charAt(0).toUpperCase();
-                instaladoresDiv.innerHTML += `
-                    <div class="instalador-detalle-card">
-                        <div class="instalador-avatar">${inicial}</div>
-                        <div class="instalador-info">
-                            <div class="instalador-nombre-detalle">${inst.nombre}</div>
-                            <div class="instalador-username">@${inst.username}</div>
-                        </div>
-                    </div>
-                `;
+                instaladoresDiv.innerHTML += `<div class="instalador-detalle-card"><div class="instalador-avatar">${inicial}</div><div class="instalador-info"><div class="instalador-nombre-detalle">${inst.nombre}</div><div class="instalador-username">@${inst.username}</div></div></div>`;
             });
         } else {
             instaladoresDiv.innerHTML = '<p class="sin-instaladores">No hay instaladores registrados para esta instalación</p>';
         }
         
-        // Observaciones
         document.getElementById('detalleObservacion').innerHTML = data.observacion || 'Sin observaciones registradas';
+        document.getElementById('detalleCreadoPor').textContent = data.creado_por;
+        document.getElementById('detalleTipo').textContent = data.tipo;
         
-        // Fotos
+        // Cargar fotos
         const fotosDiv = document.getElementById('detalleFotos');
         fotosDiv.innerHTML = '';
         if (data.fotos && data.fotos.length > 0) {
             data.fotos.forEach(foto => {
-                fotosDiv.innerHTML += `
-                    <div class="foto-detalle" onclick="verFotoAmpliada('${foto}')">
-                        <img src="${foto}" alt="Foto de instalación">
-                    </div>
-                `;
+                const fotoItem = document.createElement('div');
+                fotoItem.className = 'foto-item-modal';
+                const img = document.createElement('img');
+                img.src = foto;
+                img.alt = 'Foto de instalación';
+                fotoItem.appendChild(img);
+                fotoItem.onclick = () => verFotoAmpliada(foto);
+                fotosDiv.appendChild(fotoItem);
             });
         } else {
             fotosDiv.innerHTML = '<p class="sin-instaladores">No hay fotos registradas para esta instalación</p>';
         }
-        
-        // Información adicional
-        document.getElementById('detalleCreadoPor').textContent = data.creado_por;
-        document.getElementById('detalleTipo').textContent = data.tipo;
     }
     
     function cerrarModalDetalle() {
@@ -1819,123 +1593,105 @@
             imageUrl: url,
             imageAlt: 'Foto de instalación',
             imageWidth: '90%',
+            imageHeight: 'auto',
             confirmButtonColor: '#ff6b00',
             confirmButtonText: 'Cerrar',
-            width: '800px'
+            showCloseButton: true,
+            width: 'auto',
+            padding: '1rem'
         });
     }
     
-    // NUEVA FUNCIÓN: Copiar datos de instalación
     function copiarDatosInstalacion(id, btnElement) {
         fetch(`/instalacion/detalle/${id}/`, {
             method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 const inst = data.data;
-                
-                // Calcular metros
                 let metros = inst.metros_utilizados || 0;
-                if (inst.inicio_fibra && inst.final_fibra) {
-                    metros = Math.abs(inst.final_fibra - inst.inicio_fibra);
-                }
-                
-                // Obtener orden de servicio
+                if (inst.inicio_fibra && inst.final_fibra) metros = Math.abs(inst.final_fibra - inst.inicio_fibra);
                 let ordenServicio = inst.orden_servicio || inst.nro_orden || 'N/A';
-                
-                const textoFormateado = `ATR VTC #: ${inst.atr || '03'}
-NOMBRE DEL CLIENTE: ${inst.nombre_cliente}
-ORDEN DE SERVICIO: ${ordenServicio}
-CUSTOMER: ${inst.customer_id || 'N/A'}
-FEEDER: ${inst.feeder || 'N/A'}
-CAJA: ${inst.caja || 'N/A'}
-PUERTO UTILIZADO: ${inst.puerto_utilizado || 'N/A'}
-
-UBICACION: ${inst.latitud && inst.longitud ? `${inst.latitud},${inst.longitud}` : 'No registrada'}
-EQUIPOS: MODEL: ${inst.modelo_modem || 'N/A'}
-SN:${inst.sn_modem || 'N/A'}
-MAC: ${inst.mac_modem || 'N/A'}
-PLAN: ${inst.plan || 'N/A'}
-
-MATERIALES
-INICIO:${inst.inicio_fibra || '0'}
-FINAL:${inst.final_fibra || '0'}
-METROS:${metros}
-CONECTORES:${inst.conectores || '0'}
-ROSETAS:${inst.rosetas || '0'}
-PACH CORD:${inst.patch_cord || '0'}
-TENSORES:${inst.tensores || '0'}
-CONECTORES MALOS:${inst.conectores_malos || '0'}
-OBSERVACIÓN:${inst.observacion || ''}`;
-                
-                navigator.clipboard.writeText(textoFormateado).then(() => {
-                    const originalHTML = btnElement.innerHTML;
+                const texto = `ATR VTC #: ${inst.atr || '03'}\nNOMBRE DEL CLIENTE: ${inst.nombre_cliente}\nORDEN DE SERVICIO: ${ordenServicio}\nCUSTOMER: ${inst.customer_id || 'N/A'}\nFEEDER: ${inst.feeder || 'N/A'}\nCAJA: ${inst.caja || 'N/A'}\nPUERTO UTILIZADO: ${inst.puerto_utilizado || 'N/A'}\n\nUBICACION: ${inst.latitud && inst.longitud ? `${inst.latitud},${inst.longitud}` : 'No registrada'}\nEQUIPOS: MODEL: ${inst.modelo_modem || 'N/A'}\nSN:${inst.sn_modem || 'N/A'}\nMAC: ${inst.mac_modem || 'N/A'}\nPLAN: ${inst.plan || 'N/A'}\n\nMATERIALES\nINICIO:${inst.inicio_fibra || '0'}\nFINAL:${inst.final_fibra || '0'}\nMETROS:${metros}\nCONECTORES:${inst.conectores || '0'}\nROSETAS:${inst.rosetas || '0'}\nPACH CORD:${inst.patch_cord || '0'}\nTENSORES:${inst.tensores || '0'}\nCONECTORES MALOS:${inst.conectores_malos || '0'}\nOBSERVACIÓN:${inst.observacion || ''}`;
+                navigator.clipboard.writeText(texto).then(() => {
+                    const original = btnElement.innerHTML;
                     btnElement.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
                     btnElement.classList.add('copied');
-                    
                     mostrarToast('✅ Datos copiados al portapapeles');
-                    
-                    setTimeout(() => {
-                        btnElement.innerHTML = originalHTML;
-                        btnElement.classList.remove('copied');
-                    }, 2000);
-                }).catch(err => {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'No se pudo copiar al portapapeles',
-                        confirmButtonColor: '#ff6b00'
-                    });
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: data.error || 'No se pudieron obtener los datos',
-                    confirmButtonColor: '#ff6b00'
+                    setTimeout(() => { btnElement.innerHTML = original; btnElement.classList.remove('copied'); }, 2000);
                 });
             }
-        })
-        .catch(error => {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error',
-                text: 'Error al obtener los datos de la instalación',
-                confirmButtonColor: '#ff6b00'
-            });
         });
     }
     
     function mostrarToast(mensaje) {
-        const existingToast = document.querySelector('.copy-toast');
-        if (existingToast) existingToast.remove();
-        
+        const existing = document.querySelector('.copy-toast');
+        if (existing) existing.remove();
         const toast = document.createElement('div');
         toast.className = 'copy-toast';
         toast.textContent = mensaje;
         document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 3000);
+        setTimeout(() => toast.remove(), 3000);
     }
     
-    // Cerrar modal al hacer clic fuera (tu función original)
-    document.getElementById('modalDetalleInstalacion')?.addEventListener('click', function(e) {
-        if (e.target === this) {
-            cerrarModalDetalle();
-        }
-    });
+    function verInfoCliente(instalacionId) {
+        const modal = document.getElementById('modalInfoCliente');
+        const loading = document.getElementById('loadingInfoCliente');
+        const contenido = document.getElementById('contenidoInfoCliente');
+        modal.style.display = 'flex';
+        loading.style.display = 'block';
+        contenido.style.display = 'none';
+        fetch(`/instalacion/detalle/${instalacionId}/`, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            if (data.success) {
+                const inst = data.data;
+                document.getElementById('infoClienteNombre').textContent = inst.nombre_cliente || '-';
+                document.getElementById('infoClienteCedula').textContent = inst.cedula_cliente || '-';
+                document.getElementById('infoClienteTelefono').textContent = inst.telefono || 'No disponible';
+                document.getElementById('infoClienteDireccion').textContent = inst.direccion || 'No registrada';
+                document.getElementById('infoClientePlan').textContent = inst.plan || '-';
+                document.getElementById('infoClienteCustomerId').textContent = inst.customer_id || '-';
+                document.getElementById('infoClienteAtr').textContent = inst.atr || '03';
+                document.getElementById('infoClienteOrden').textContent = inst.orden_servicio || inst.nro_orden || '-';
+                document.getElementById('infoClienteCuadrilla').textContent = inst.cuadrilla || 'N/A';
+                document.getElementById('infoClienteVendedorNombre').textContent = inst.vendedor_nombre || 'No disponible';
+                document.getElementById('infoClienteVendedorUsuario').textContent = inst.vendedor_usuario || '-';
+                document.getElementById('infoClienteVendedorTelefono').textContent = inst.vendedor_telefono || 'No registrado';
+                document.getElementById('infoClienteVendedorEmail').textContent = inst.vendedor_email || '-';
+                contenido.style.display = 'block';
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.error || 'No se pudieron cargar los datos', confirmButtonColor: '#ff6b00' });
+                cerrarModalInfoCliente();
+            }
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Error al cargar los datos', confirmButtonColor: '#ff6b00' });
+            cerrarModalInfoCliente();
+        });
+    }
     
-    // Cerrar modal con tecla ESC (tu función original)
+    function cerrarModalInfoCliente() {
+        document.getElementById('modalInfoCliente').style.display = 'none';
+    }
+    
+    document.getElementById('modalDetalleInstalacion')?.addEventListener('click', function(e) {
+        if (e.target === this) cerrarModalDetalle();
+    });
+    document.getElementById('modalInfoCliente')?.addEventListener('click', function(e) {
+        if (e.target === this) cerrarModalInfoCliente();
+    });
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cerrarModalDetalle();
+            cerrarModalInfoCliente();
         }
     });
 </script>

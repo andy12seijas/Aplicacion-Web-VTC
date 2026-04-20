@@ -1,0 +1,171 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Devolver Material - {{ cuadrilla.nombre }}{% endblock %}
+
+{% block page_title %}Devolver Material al Inventario Global{% endblock %}
+{% block page_subtitle %}{{ cuadrilla.nombre }} - {{ material.nombre }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'inventario_cuadrilla_detalle' cuadrilla.id %}" class="btn-secondary">
+    Volver al inventario de la cuadrilla
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        padding: 30px;
+    }
+    
+    .current-stock {
+        background: #f8f9fa;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+    
+    .current-stock .label {
+        font-size: 13px;
+        color: #666;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .current-stock .value {
+        font-size: 48px;
+        font-weight: 700;
+        color: var(--orange, #ff6b00);
+        display: block;
+    }
+    
+    .form-group {
+        margin-bottom: 24px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: var(--orange);
+    }
+    
+    .btn-submit {
+        width: 100%;
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 14px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-submit:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+    
+    .info-box {
+        background: #fee2e2;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 20px;
+    }
+    
+    .info-box p {
+        margin: 0;
+        font-size: 13px;
+        color: #dc2626;
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="current-stock">
+            <span class="label">Cantidad actual en cuadrilla</span>
+            <span class="value">{{ inv_cuadrilla.cantidad }}</span>
+            <span class="label">{{ material.nombre }}</span>
+        </div>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="cantidad">📦 Cantidad a devolver</label>
+                <input type="number" name="cantidad" id="cantidad" class="form-control" 
+                       placeholder="Ej: 5, 10" min="1" max="{{ inv_cuadrilla.cantidad }}" required>
+                <small class="help-text">Máximo: {{ inv_cuadrilla.cantidad }} unidades</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="observacion">📝 Motivo de la devolución</label>
+                <textarea name="observacion" id="observacion" class="form-control" 
+                          rows="3" placeholder="Ej: Material sobrante, dañado, etc."></textarea>
+            </div>
+            
+            <button type="submit" class="btn-submit">
+                🔄 Devolver al Inventario Global
+            </button>
+        </form>
+        
+        <div class="info-box">
+            <p>⚠️ Esta acción devolverá los materiales al inventario global.</p>
+            <p>Los materiales devueltos estarán disponibles para otras cuadrillas.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .help-text {
+        font-size: 12px;
+        color: #999;
+        margin-top: 6px;
+        display: block;
+    }
+</style>
+{% endblock %}

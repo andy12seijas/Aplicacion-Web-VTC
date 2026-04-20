@@ -11,17 +11,17 @@
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 5v14M5 12h14"/>
     </svg>
-    Nuevo
+    Nuevo Cliente
 </a>
 {% endblock %}
 
 {% block content %}
 <div class="clientes-container">
-    <!-- Estadísticas compactas -->
+    <!-- Estadísticas -->
     <div class="stats-grid">
         <div class="stat-card">
             <span class="stat-value">{{ total_clientes }}</span>
-            <span class="stat-label">Total</span>
+            <span class="stat-label">Total Clientes</span>
         </div>
         <div class="stat-card">
             <span class="stat-value">{{ interesados }}</span>
@@ -53,24 +53,28 @@
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                 </svg>
-                <input type="text" placeholder="Buscar..." id="searchInput" value="{{ busqueda }}">
+                <input type="text" placeholder="Buscar por nombre, cédula..." 
+                       id="searchInput" value="{{ busqueda }}">
             </div>
+            
             <select id="filterInteres" class="filter-select">
                 <option value="">Todos los intereses</option>
                 <option value="SI" {% if interes_seleccionado == 'SI' %}selected{% endif %}>Sí</option>
                 <option value="TAL_VEZ" {% if interes_seleccionado == 'TAL_VEZ' %}selected{% endif %}>Tal vez</option>
                 <option value="NO" {% if interes_seleccionado == 'NO' %}selected{% endif %}>No</option>
             </select>
+            
             <select id="filterInternet" class="filter-select">
                 <option value="">Todos</option>
                 <option value="si" {% if internet_seleccionado == 'si' %}selected{% endif %}>Con internet</option>
                 <option value="no" {% if internet_seleccionado == 'no' %}selected{% endif %}>Sin internet</option>
             </select>
+            
             {% if es_admin %}
             <select id="filterVendedor" class="filter-select">
                 <option value="">Todos los vendedores</option>
                 {% for vendedor in vendedores %}
-                <option value="{{ vendedor.username }}" {% if vendedor_filtro == vendedor.username %}selected{% endif %}>
+                <option value="{{ vendedor.id }}" {% if vendedor_filtro == vendedor.id|stringformat:"s" %}selected{% endif %}>
                     {{ vendedor.get_full_name|default:vendedor.username }}
                 </option>
                 {% endfor %}
@@ -83,7 +87,7 @@
     <div id="filtrosActivos" class="filtros-activos" style="display: none;">
         <span class="filtros-label">📌 Filtros activos:</span>
         <span class="filtros-lista" id="filtrosLista"></span>
-        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar ✕</button>
+        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar filtros ✕</button>
     </div>
 
     <!-- Contenedor con scroll (SOLO para la tabla/cards) -->
@@ -95,7 +99,7 @@
                     <thead>
                         <tr>
                             <th>Cédula</th>
-                            <th>Nombre</th>
+                            <th>Cliente</th>
                             <th>Teléfono</th>
                             <th>Interés</th>
                             <th>Internet</th>
@@ -108,7 +112,7 @@
                     <tbody>
                         {% for cliente in page_obj %}
                         <tr>
-                            <td class="cedula-cell">{{ cliente.cedula }}</td>
+                            <td class="cedula-cell">{{ cliente.cedula }}</div>
                             <td>
                                 <div class="user-cell">
                                     <span class="user-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
@@ -116,27 +120,27 @@
                                         <div class="user-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
                                     </div>
                                 </div>
-                            </td>
-                            <td class="telefono-cell">{{ cliente.telefono }}</td>
+                            </div>
+                            <td class="telefono-cell">{{ cliente.telefono }}</div>
                             <td>
                                 <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
                                     {{ cliente.get_interesado_display }}
                                 </span>
-                            </td>
+                            </div>
                             <td>
                                 {% if cliente.posee_internet %}
                                 <span class="badge badge-info">Sí</span>
                                 {% else %}
                                 <span class="badge badge-secondary">No</span>
                                 {% endif %}
-                            </td>
-                            <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</td>
+                            </div>
+                            <td class="fecha-cell">{{ cliente.fecha_registro|date:"d/m/Y" }}</div>
                             {% if es_admin %}
                             <td>
                                 <span class="vendedor-badge">
                                     {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
                                 </span>
-                            </td>
+                            </div>
                             {% endif %}     
                             <td>
                                 <div class="actions">
@@ -146,7 +150,7 @@
                                             <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                         </svg>
                                     </button>
-                                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                                    {% if es_admin %}
                                     <button class="action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
@@ -154,11 +158,11 @@
                                     </button>
                                     {% endif %}
                                 </div>
-                            </td>
+                            </div>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</td>
+                            <td colspan="{% if es_admin %}8{% else %}7{% endif %}" class="empty">No hay clientes registrados</div>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -169,24 +173,25 @@
         <!-- Vista Mobile: Cards -->
         <div class="mobile-view">
             {% for cliente in page_obj %}
-            <div class="card cliente-card">
+            <div class="cliente-card">
                 <div class="card-header">
-                    <div class="card-user">
+                    <div class="card-cliente">
                         <span class="card-avatar">{{ cliente.nombre|first|upper }}{{ cliente.apellido|first|upper }}</span>
                         <div>
                             <div class="card-name">{{ cliente.nombre }} {{ cliente.apellido }}</div>
-                            <div class="card-meta">
-                                <span class="card-meta-item">C.I: {{ cliente.cedula }}</span>
-                                <span class="card-meta-item">📞 {{ cliente.telefono }}</span>
-                            </div>
+                            <div class="card-detail">C.I: {{ cliente.cedula }}</div>
                         </div>
                     </div>
-                    <span class="status-dot {% if cliente.interesado == 'SI' %}active{% elif cliente.interesado == 'TAL_VEZ' %}warning{% else %}inactive{% endif %}"></span>
+                    <span class="status-dot {% if cliente.interesado == 'SI' %}interesado{% elif cliente.interesado == 'TAL_VEZ' %}talvez{% else %}no{% endif %}"></span>
                 </div>
                 
                 <div class="card-body">
                     <div class="card-row">
-                        <span class="card-label">Interés:</span>
+                        <span class="card-label">📞 Teléfono:</span>
+                        <span class="card-value">{{ cliente.telefono }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">🎯 Interés:</span>
                         <span class="card-value">
                             <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% elif cliente.interesado == 'TAL_VEZ' %}badge-warning{% else %}badge-danger{% endif %}">
                                 {{ cliente.get_interesado_display }}
@@ -194,7 +199,7 @@
                         </span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">Internet:</span>
+                        <span class="card-label">🌐 Internet:</span>
                         <span class="card-value">
                             {% if cliente.posee_internet %}
                             <span class="badge badge-info">Sí</span>
@@ -204,12 +209,12 @@
                         </span>
                     </div>
                     <div class="card-row">
-                        <span class="card-label">Registro:</span>
+                        <span class="card-label">📅 Registro:</span>
                         <span class="card-value">{{ cliente.fecha_registro|date:"d/m/Y" }}</span>
                     </div>
                     {% if es_admin %}
                     <div class="card-row">
-                        <span class="card-label">Vendedor:</span>
+                        <span class="card-label">👤 Vendedor:</span>
                         <span class="card-value">
                             <span class="vendedor-badge">
                                 {{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}
@@ -220,17 +225,19 @@
                 </div>
                 
                 <div class="card-actions">
-                    <button class="card-action-btn" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
+                    <button class="card-action" onclick="verCliente({{ cliente.id }})" title="Ver detalles">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="12" cy="12" r="3"/>
                             <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                         </svg>
                     </button>
-                    <button class="card-action-btn" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
+                    {% if es_admin %}
+                    <button class="card-action" onclick="editarCliente({{ cliente.id }})" title="Editar cliente">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
                         </svg>
                     </button>
+                    {% endif %}
                 </div>
             </div>
             {% empty %}
@@ -345,19 +352,19 @@
                 <h3 class="modal-section-title">Información Personal</h3>
                 <div class="modal-grid">
                     <div class="modal-item">
-                        <span class="modal-label">Nombre completo:</span>
+                        <span class="modal-label">Nombre completo</span>
                         <span class="modal-value" id="modalNombre"></span>
                     </div>
                     <div class="modal-item">
-                        <span class="modal-label">Cédula:</span>
+                        <span class="modal-label">Cédula</span>
                         <span class="modal-value" id="modalCedulaValue"></span>
                     </div>
                     <div class="modal-item">
-                        <span class="modal-label">Teléfono:</span>
+                        <span class="modal-label">Teléfono</span>
                         <span class="modal-value" id="modalTelefono"></span>
                     </div>
                     <div class="modal-item">
-                        <span class="modal-label">Dirección:</span>
+                        <span class="modal-label">Dirección</span>
                         <span class="modal-value" id="modalDireccion"></span>
                     </div>
                 </div>
@@ -367,11 +374,11 @@
                 <h3 class="modal-section-title">Estado del Cliente</h3>
                 <div class="modal-grid">
                     <div class="modal-item">
-                        <span class="modal-label">Nivel de interés:</span>
+                        <span class="modal-label">Nivel de interés</span>
                         <span class="modal-value" id="modalInteres"></span>
                     </div>
                     <div class="modal-item">
-                        <span class="modal-label">Internet:</span>
+                        <span class="modal-label">Internet</span>
                         <span class="modal-value" id="modalInternet"></span>
                     </div>
                 </div>
@@ -381,15 +388,15 @@
                 <h3 class="modal-section-title">Información de Registro</h3>
                 <div class="modal-grid">
                     <div class="modal-item">
-                        <span class="modal-label">Fecha de registro:</span>
+                        <span class="modal-label">Fecha de registro</span>
                         <span class="modal-value" id="modalFechaRegistro"></span>
                     </div>
                     <div class="modal-item">
-                        <span class="modal-label">Registrado por:</span>
+                        <span class="modal-label">Registrado por</span>
                         <span class="modal-value" id="modalCreadoPor"></span>
                     </div>
                     <div class="modal-item">
-                        <span class="modal-label">Días desde registro:</span>
+                        <span class="modal-label">Días desde registro</span>
                         <span class="modal-value" id="modalDias"></span>
                     </div>
                 </div>
@@ -505,12 +512,14 @@
     }
     
     .filters-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        display: flex;
         gap: 8px;
+        flex-wrap: wrap;
     }
     
     .search-box {
+        flex: 2;
+        min-width: 200px;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -536,6 +545,8 @@
     }
     
     .filter-select {
+        flex: 1;
+        min-width: 140px;
         padding: 9px 12px;
         border: 1px solid var(--gray-border);
         border-radius: 30px;
@@ -588,14 +599,14 @@
         transition: var(--transition);
     }
     
-    /* ===== WRAPPER CON SCROLL - SOLO PARA CONTENIDO ===== */
+    /* ===== WRAPPER CON SCROLL ===== */
     .clientes-scroll-wrapper {
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
         padding-right: 4px;
         margin-right: -4px;
-        min-height: 0; /* Importante para que flex funcione correctamente */
+        min-height: 0;
     }
     
     .clientes-scroll-wrapper::-webkit-scrollbar {
@@ -630,7 +641,7 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 12px;
-        min-width: 700px;
+        min-width: 900px;
     }
     
     .table th {
@@ -654,6 +665,13 @@
         background: var(--gray-bg);
     }
     
+    .cedula-cell,
+    .telefono-cell,
+    .fecha-cell {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 11px;
+    }
+    
     .user-cell {
         display: flex;
         align-items: center;
@@ -671,6 +689,11 @@
         justify-content: center;
         font-weight: 600;
         font-size: 11px;
+    }
+    
+    .user-name {
+        font-weight: 500;
+        font-size: 12px;
     }
     
     .badge {
@@ -743,7 +766,7 @@
         justify-content: space-between;
     }
     
-    .card-user {
+    .card-cliente {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -774,7 +797,7 @@
         text-overflow: ellipsis;
     }
     
-    .card-meta-item {
+    .card-detail {
         font-size: 10px;
         color: var(--gray-text);
     }
@@ -785,9 +808,9 @@
         border-radius: 50%;
         flex-shrink: 0;
     }
-    .status-dot.active { background: var(--success); }
-    .status-dot.warning { background: var(--warning); }
-    .status-dot.inactive { background: var(--danger); }
+    .status-dot.interesado { background: var(--success); }
+    .status-dot.talvez { background: var(--warning); }
+    .status-dot.no { background: var(--danger); }
     
     .cliente-card .card-body {
         padding: 12px;
@@ -814,6 +837,8 @@
         color: var(--dark-text);
         font-weight: 500;
         flex: 1;
+        font-size: 12px;
+        word-break: break-word;
     }
     
     .cliente-card .card-actions {
@@ -825,7 +850,7 @@
         justify-content: flex-end;
     }
     
-    .card-action-btn {
+    .card-action {
         width: 32px;
         height: 32px;
         border: 1px solid var(--gray-border);
@@ -838,7 +863,13 @@
         transition: var(--transition);
     }
     
-    /* ===== PAGINACIÓN - SIEMPRE VISIBLE ===== */
+    .card-action:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
+    /* ===== PAGINACIÓN ===== */
     .pagination-container {
         flex-shrink: 0;
         background: white;
@@ -1008,8 +1039,8 @@
     }
     
     .modal-avatar {
-        width: 50px;
-        height: 50px;
+        width: 48px;
+        height: 48px;
         background: var(--orange);
         color: white;
         border-radius: 12px;
@@ -1017,7 +1048,7 @@
         align-items: center;
         justify-content: center;
         font-weight: 600;
-        font-size: 20px;
+        font-size: 18px;
     }
     
     .modal-header-info h2 {
@@ -1041,6 +1072,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+    
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
     }
     
     .modal-body {
@@ -1115,6 +1151,11 @@
         cursor: pointer;
     }
     
+    .btn-outline:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
     .btn-primary {
         padding: 6px 14px;
         background: var(--orange);
@@ -1123,6 +1164,11 @@
         color: white;
         font-size: 12px;
         cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
     }
     
     /* ===== RESPONSIVE ===== */
@@ -1140,7 +1186,12 @@
         }
         
         .filters-grid {
-            grid-template-columns: 1fr;
+            flex-direction: column;
+        }
+        
+        .search-box,
+        .filter-select {
+            width: 100%;
         }
         
         .stats-grid {
@@ -1151,11 +1202,6 @@
         
         .stat-card {
             justify-content: center;
-            padding: 5px 8px;
-        }
-        
-        .stat-value {
-            font-size: 13px;
         }
         
         .page-numbers {
@@ -1166,27 +1212,17 @@
             display: flex;
         }
         
-        .pagination-controls {
-            justify-content: center;
-        }
-        
         .modal-grid {
             grid-template-columns: 1fr;
-            gap: 8px;
         }
         
-        .modal-header {
-            padding: 12px;
+        .filtros-activos {
+            flex-direction: column;
+            align-items: flex-start;
         }
         
-        .modal-avatar {
-            width: 40px;
-            height: 40px;
-            font-size: 16px;
-        }
-        
-        .modal-header-info h2 {
-            font-size: 16px;
+        .btn-limpiar-filtros {
+            align-self: flex-start;
         }
     }
     
@@ -1208,6 +1244,10 @@
         .card-label {
             width: 65px;
             font-size: 10px;
+        }
+        
+        .card-value {
+            font-size: 11px;
         }
         
         .pagination-info {
@@ -1291,7 +1331,8 @@
                     mostrarModal(data);
                 }
             })
-            .catch(() => {
+            .catch(error => {
+                Swal.close();
                 Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cargar la información', confirmButtonColor: '#ff6b00' });
             });
     }
@@ -1340,6 +1381,7 @@
     document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
     document.querySelector('.modal-overlay')?.addEventListener('click', cerrarModal);
 
+    // Mostrar indicador de filtros activos
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
         const busqueda = urlParams.get('busqueda');

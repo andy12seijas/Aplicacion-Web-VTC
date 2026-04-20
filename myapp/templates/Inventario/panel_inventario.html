@@ -1,0 +1,441 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Panel de Inventario{% endblock %}
+
+{% block page_title %}Panel de Inventario{% endblock %}
+{% block page_subtitle %}Gestión de materiales, stock y asignaciones{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel Admin
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .inventory-panel {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px 0;
+    }
+    
+    .panel-title {
+        font-size: 28px;
+        font-weight: 500;
+        color: var(--dark-text);
+        text-align: center;
+        margin-bottom: 40px;
+        letter-spacing: -0.5px;
+    }
+    
+    .inventory-buttons-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        margin-bottom: 50px;
+    }
+    
+    .inventory-button {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 30px;
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        text-decoration: none;
+        color: var(--dark-text);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .inventory-button:hover {
+        transform: translateY(-5px);
+        border-color: var(--orange);
+        box-shadow: 0 15px 30px rgba(255, 107, 0, 0.15);
+    }
+    
+    .inventory-button:hover .button-arrow {
+        transform: translateX(5px);
+        color: var(--orange);
+    }
+    
+    .button-icon {
+        font-size: 48px;
+        min-width: 70px;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--orange-light);
+        border-radius: 18px;
+        color: var(--orange);
+        transition: all 0.3s ease;
+    }
+    
+    .inventory-button:hover .button-icon {
+        background: var(--orange);
+        color: white;
+    }
+    
+    .button-content {
+        flex: 1;
+    }
+    
+    .button-content h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 8px;
+    }
+    
+    .button-content p {
+        font-size: 14px;
+        color: var(--gray-text);
+        line-height: 1.5;
+        margin: 0;
+    }
+    
+    .button-arrow {
+        font-size: 24px;
+        color: var(--gray-text);
+        transition: all 0.3s ease;
+        opacity: 0.5;
+    }
+    
+    .inventory-button:hover .button-arrow {
+        opacity: 1;
+    }
+    
+    .quick-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    
+    .stat-item {
+        text-align: center;
+        padding: 20px;
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.2s ease;
+    }
+    
+    .stat-item:hover {
+        border-color: var(--orange);
+        transform: translateY(-2px);
+    }
+    
+    .stat-number {
+        display: block;
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--orange);
+        margin-bottom: 5px;
+    }
+    
+    .stat-number.warning {
+        color: #f59e0b;
+    }
+    
+    .stat-number.danger {
+        color: #ef4444;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .movimientos-section {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        padding: 24px;
+        margin-top: 20px;
+    }
+    
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .movimientos-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .movimientos-table th {
+        text-align: left;
+        padding: 12px 8px;
+        background: #f8f9fa;
+        font-size: 12px;
+        font-weight: 600;
+        color: #666;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .movimientos-table td {
+        padding: 12px 8px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 13px;
+    }
+    
+    .movimientos-table tr:hover {
+        background: #fafafa;
+    }
+    
+    .badge-movimiento {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    
+    .badge-entrada {
+        background: #d1fae5;
+        color: #10b981;
+    }
+    
+    .badge-salida {
+        background: #fed7aa;
+        color: #f59e0b;
+    }
+    
+    .badge-gasto {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+    
+    .badge-ajuste {
+        background: #e0e0e0;
+        color: #666;
+    }
+    
+    .ver-todos-link {
+        display: inline-block;
+        margin-top: 16px;
+        color: var(--orange);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    .ver-todos-link:hover {
+        text-decoration: underline;
+    }
+    
+    @media (max-width: 768px) {
+        .panel-title {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .inventory-buttons-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .inventory-button {
+            padding: 20px;
+        }
+        
+        .button-icon {
+            font-size: 40px;
+            min-width: 60px;
+            height: 60px;
+        }
+        
+        .button-content h3 {
+            font-size: 18px;
+        }
+        
+        .quick-stats {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .movimientos-table {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .inventory-button {
+            flex-wrap: wrap;
+            text-align: center;
+            justify-content: center;
+        }
+        
+        .button-arrow {
+            display: none;
+        }
+        
+        .quick-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="inventory-panel">
+    <h2 class="panel-title">📦 Gestión de Inventario</h2>
+    
+    <!-- Estadísticas rápidas -->
+    <div class="quick-stats">
+        <div class="stat-item">
+            <span class="stat-number">{{ total_materiales }}</span>
+            <span class="stat-label">Materiales registrados</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ total_stock_global }}</span>
+            <span class="stat-label">Stock global (unidades)</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number {% if materiales_bajo_stock > 0 %}warning{% endif %}">{{ materiales_bajo_stock }}</span>
+            <span class="stat-label">Materiales bajo stock</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number">{{ total_stock_cuadrillas }}</span>
+            <span class="stat-label">Stock en cuadrillas</span>
+        </div>
+    </div>
+    
+    <!-- Botones de opciones -->
+    <div class="inventory-buttons-grid">
+        <!-- Inventario Global -->
+        <a href="{% url 'inventario_global_lista' %}" class="inventory-button">
+            <div class="button-icon">🏪</div>
+            <div class="button-content">
+                <h3>Inventario Global</h3>
+                <p>Ver y gestionar el stock general de todos los materiales</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <!-- Agregar Materiales -->
+        <a href="{% url 'inventario_global_agregar' %}" class="inventory-button">
+            <div class="button-icon">➕</div>
+            <div class="button-content">
+                <h3>Agregar Materiales</h3>
+                <p>Añadir stock al inventario global (compras, entradas)</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <!-- Asignar a Cuadrilla -->
+        <a href="{% url 'inventario_asignar_cuadrilla' %}" class="inventory-button">
+            <div class="button-icon">📦➡️👥</div>
+            <div class="button-content">
+                <h3>Asignar a Cuadrilla</h3>
+                <p>Transferir materiales del inventario global a una cuadrilla</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <!-- Inventario por Cuadrillas -->
+        <a href="{% url 'inventario_todas_cuadrillas' %}" class="inventory-button">
+            <div class="button-icon">👥</div>
+            <div class="button-content">
+                <h3>Inventario por Cuadrillas</h3>
+                <p>Ver los materiales asignados a cada cuadrilla</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        
+        <!-- Historial de Movimientos -->
+        <a href="{% url 'inventario_movimientos' %}" class="inventory-button">
+            <div class="button-icon">📜</div>
+            <div class="button-content">
+                <h3>Historial de Movimientos</h3>
+                <p>Registro completo de entradas, salidas y gastos</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+    </div>
+    
+    <!-- Últimos movimientos -->
+    <div class="movimientos-section">
+        <div class="section-title">
+            <span>📋</span>
+            Últimos movimientos registrados
+        </div>
+        
+        {% if ultimos_movimientos %}
+        <table class="movimientos-table">
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Material</th>
+                    <th>Cantidad</th>
+                    <th>Cuadrilla</th>
+                    <th>Realizado por</th>
+                </thead>
+            <tbody>
+                {% for mov in ultimos_movimientos %}
+                <tr>
+                    <td>{{ mov.fecha_movimiento|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="badge-movimiento 
+                            {% if mov.tipo == 'ENTRADA' %}badge-entrada
+                            {% elif mov.tipo == 'SALIDA_A_CUADRILLA' %}badge-salida
+                            {% elif mov.tipo == 'GASTO_INSTALACION' %}badge-gasto
+                            {% elif mov.tipo == 'GASTO_SOPORTE' %}badge-gasto
+                            {% else %}badge-ajuste{% endif %}">
+                            {{ mov.get_tipo_display }}
+                        </span>
+                    </td>
+                    <td>{{ mov.material.nombre }}</td>
+                    <td style="{% if mov.cantidad > 0 %}color:#10b981;{% else %}color:#ef4444;{% endif %} font-weight:600;">
+                        {% if mov.cantidad > 0 %}+{% endif %}{{ mov.cantidad }}
+                    </td>
+                    <td>{{ mov.cuadrilla.nombre|default:"—" }}</td>
+                    <td>{{ mov.realizado_por.get_full_name|default:mov.realizado_por.username|default:"—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="{% url 'inventario_movimientos' %}" class="ver-todos-link">Ver todos los movimientos →</a>
+        {% else %}
+        <p style="text-align: center; color: #999; padding: 40px;">No hay movimientos registrados aún</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+</style>
+{% endblock %}

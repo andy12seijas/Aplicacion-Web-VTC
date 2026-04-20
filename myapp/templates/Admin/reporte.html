@@ -4,7 +4,7 @@
 {% block title %}Simple Fibra - Reportes{% endblock %}
 
 {% block page_title %}Reportes{% endblock %}
-{% block page_subtitle %}Generación de reportes de ventas, instalaciones y soportes{% endblock %}
+{% block page_subtitle %}Generación de reportes de ventas, instalaciones, soportes e inventario{% endblock %}
 
 {% block header_actions %}
 <a href="{% url 'panel_administrativo' %}" class="btn-orange">
@@ -58,7 +58,59 @@
         box-shadow: var(--shadow-sm);
     }
     
-    /* Filtros */
+    /* Selector de reporte */
+    .reporte-selector {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .selector-grid {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+    }
+    
+    .selector-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .selector-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--gray-text);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .selector-select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--gray-border);
+        border-radius: 12px;
+        font-size: 14px;
+        background: white;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .selector-select:hover {
+        border-color: var(--orange);
+    }
+    
+    .selector-select:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    /* Filtros dinámicos */
     .filters-container {
         margin-bottom: 20px;
     }
@@ -216,66 +268,7 @@
         font-size: 12px;
     }
 
-    /* Pestañas principales */
-    .tabs-container {
-        background: white;
-        border-radius: 16px;
-        border: 1px solid var(--gray-border);
-        overflow: hidden;
-        margin-bottom: 20px;
-    }
-
-    .tabs-header {
-        display: flex;
-        border-bottom: 1px solid var(--gray-border);
-        background: var(--gray-bg);
-        flex-wrap: wrap;
-    }
-
-    .tab-btn {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 14px 20px;
-        background: none;
-        border: none;
-        border-bottom: 3px solid transparent;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--gray-text);
-        cursor: pointer;
-        transition: var(--transition);
-        min-width: 120px;
-    }
-
-    .tab-btn:hover {
-        color: var(--orange);
-        background: var(--orange-light);
-    }
-
-    .tab-btn.active {
-        color: var(--orange);
-        border-bottom-color: var(--orange);
-        background: white;
-    }
-
-    .tab-count {
-        background: #e0e0e0;
-        color: #666;
-        padding: 2px 8px;
-        border-radius: 20px;
-        font-size: 11px;
-        margin-left: 6px;
-    }
-
-    .tab-btn.active .tab-count {
-        background: var(--orange);
-        color: white;
-    }
-
-    /* Botones de tipo reporte */
+    /* Tipo de reporte (Simple/Avanzado) */
     .tipo-container {
         padding: 16px 20px;
         background: white;
@@ -310,16 +303,6 @@
         border-color: var(--orange);
         color: var(--orange);
         background: var(--orange-light);
-    }
-
-    /* Contenido de pestañas */
-    .tab-content {
-        display: none;
-        padding: 20px;
-    }
-
-    .tab-content.active {
-        display: block;
     }
 
     /* Tabla */
@@ -382,6 +365,11 @@
     .badge-info {
         background: var(--info-light);
         color: #1e40af;
+    }
+    
+    .badge-bajo-stock {
+        background: #fee2e2;
+        color: #dc2626;
     }
 
     /* Botones de exportación */
@@ -504,8 +492,21 @@
         to { transform: rotate(360deg); }
     }
 
+    /* Filtros específicos por tipo */
+    .filters-ventas, .filters-instalaciones, .filters-soportes, .filters-inventario {
+        display: block;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
+        .selector-grid {
+            flex-direction: column;
+        }
+        
+        .selector-group {
+            width: 100%;
+        }
+        
         .filters-grid {
             flex-direction: column;
         }
@@ -529,16 +530,6 @@
         
         .stat-card {
             justify-content: flex-start;
-        }
-        
-        .tab-btn {
-            flex-direction: column;
-            padding: 10px;
-            font-size: 12px;
-        }
-
-        .tab-count {
-            margin-left: 0;
         }
         
         .tipo-buttons {
@@ -565,21 +556,38 @@
     }
 </style>
 
+<!-- Selector de Reporte -->
+<div class="reporte-selector">
+    <div class="selector-grid">
+        <div class="selector-group">
+            <label>📊 Seleccionar Reporte</label>
+            <select id="selectReporte" class="selector-select">
+                <option value="ventas">Reporte de Ventas</option>
+                <option value="instalaciones">Reporte de Instalaciones</option>
+                <option value="soportes">Reporte de Soportes</option>
+                <option value="inventario">Reporte de Inventario</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas -->
 <div class="stats-grid">
     <div class="stat-card">
         <span class="stat-value" id="totalRegistros">0</span>
         <span class="stat-label">Total Registros</span>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" id="statCompletados">
         <span class="stat-value" id="totalCompletados">0</span>
         <span class="stat-label">Completados</span>
     </div>
-    <div class="stat-card">
+    <div class="stat-card" id="statPendientes">
         <span class="stat-value" id="totalPendientes">0</span>
         <span class="stat-label">Pendientes</span>
     </div>
 </div>
 
+<!-- Filtros Comunes -->
 <div class="filters-container">
     <div class="filters-grid">
         <div class="search-box">
@@ -587,22 +595,62 @@
                 <circle cx="11" cy="11" r="8"/>
                 <path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input type="text" placeholder="Buscar por cliente, cédula, customer ID..." id="searchInput">
+            <input type="text" placeholder="Buscar..." id="searchInput">
         </div>
         
-        <select id="filterVendedor" class="filter-select">
-            <option value="">Todos los vendedores</option>
-            {% for v in vendedores %}
-            <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
-            {% endfor %}
-        </select>
+        <!-- Filtros específicos por tipo de reporte -->
+        <div id="filtrosVentas" class="filters-ventas">
+            <select id="filterVendedor" class="filter-select">
+                <option value="">Todos los vendedores</option>
+                {% for v in vendedores %}
+                <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
+                {% endfor %}
+            </select>
+            <select id="filterPlan" class="filter-select">
+                <option value="">Todos los planes</option>
+                {% for p in planes %}
+                <option value="{{ p.id }}">{{ p.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
         
-        <select id="filterPlan" class="filter-select">
-            <option value="">Todos los planes</option>
-            {% for p in planes %}
-            <option value="{{ p.id }}">{{ p.nombre }}</option>
-            {% endfor %}
-        </select>
+        <div id="filtrosInstalaciones" class="filters-instalaciones" style="display: none;">
+            <select id="filterCuadrilla" class="filter-select">
+                <option value="">Todas las cuadrillas</option>
+                {% for c in cuadrillas %}
+                <option value="{{ c.id }}">{{ c.nombre }}</option>
+                {% endfor %}
+            </select>
+            <select id="filterEstadoInstalacion" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="completada">Completadas</option>
+                <option value="pendiente">Pendientes</option>
+            </select>
+        </div>
+        
+        <div id="filtrosSoportes" class="filters-soportes" style="display: none;">
+            <select id="filterTipoSoporte" class="filter-select">
+                <option value="">Todos los tipos</option>
+                <option value="MUDANZA">Mudanza</option>
+                <option value="RETIRO">Retiro</option>
+                <option value="RECABLEADO">Recableado</option>
+            </select>
+            <select id="filterEstadoSoporte" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="COMPLETADO">Completado</option>
+                <option value="PENDIENTE">Pendiente</option>
+                <option value="EN_PROCESO">En Proceso</option>
+            </select>
+        </div>
+        
+        <div id="filtrosInventario" class="filters-inventario" style="display: none;">
+            <select id="filterMaterial" class="filter-select">
+                <option value="">Todos los materiales</option>
+                {% for m in materiales %}
+                <option value="{{ m.id }}">{{ m.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
         
         <div class="date-filter">
             <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde">
@@ -619,79 +667,29 @@
     </div>
 </div>
 
-<div class="tabs-container">
-    <div class="tabs-header">
-        <button class="tab-btn active" onclick="cambiarTipoReporte('ventas')" id="tab-ventas-btn">
-            Reporte de Ventas
-            <span class="tab-count" id="ventas-count">0</span>
-        </button>
-        <button class="tab-btn" onclick="cambiarTipoReporte('instalaciones')" id="tab-instalaciones-btn">
-            Reporte de Instalaciones
-            <span class="tab-count" id="instalaciones-count">0</span>
-        </button>
-        <button class="tab-btn" onclick="cambiarTipoReporte('soportes')" id="tab-soportes-btn">
-            Reporte de Soportes
-            <span class="tab-count" id="soportes-count">0</span>
-        </button>
+<!-- Tipo de Reporte (Simple/Avanzado) -->
+<div class="tipo-container">
+    <div class="tipo-buttons">
+        <button class="tipo-btn active" onclick="cambiarNivelReporte('simple')" id="tipo-simple-btn">Reporte Simple</button>
+        <button class="tipo-btn" onclick="cambiarNivelReporte('avanzado')" id="tipo-avanzado-btn">Reporte Avanzado</button>
     </div>
+</div>
 
-    <div class="tipo-container">
-        <div class="tipo-buttons">
-            <button class="tipo-btn active" onclick="cambiarNivelReporte('simple')" id="tipo-simple-btn">Reporte Simple</button>
-            <button class="tipo-btn" onclick="cambiarNivelReporte('avanzado')" id="tipo-avanzado-btn">Reporte Avanzado</button>
-        </div>
-    </div>
+<!-- Tabla de resultados -->
+<div class="table-wrapper">
+    <table class="table" id="tabla-resultados">
+        <thead id="thead-resultados">
+            <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
+        </thead>
+        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
+    </table>
+</div>
 
-    <!-- Ventas -->
-    <div id="contenido-ventas" class="tab-content active">
-        <div class="table-wrapper">
-            <table class="table" id="tabla-ventas">
-                <thead id="thead-ventas">
-                    <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>
-                </thead>
-                <tbody id="tbody-ventas"><tr><td colspan="9" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
-            </table>
-        </div>
-        <div class="pagination" id="pagination-ventas"></div>
-        <div class="export-buttons">
-            <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
-            <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
-        </div>
-    </div>
+<div class="pagination" id="pagination-resultados"></div>
 
-    <!-- Instalaciones -->
-    <div id="contenido-instalaciones" class="tab-content">
-        <div class="table-wrapper">
-            <table class="table" id="tabla-instalaciones">
-                <thead id="thead-instalaciones">
-                    <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th></tr>
-                </thead>
-                <tbody id="tbody-instalaciones"><tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
-            </table>
-        </div>
-        <div class="pagination" id="pagination-instalaciones"></div>
-        <div class="export-buttons">
-            <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
-            <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
-        </div>
-    </div>
-
-    <!-- Soportes -->
-    <div id="contenido-soportes" class="tab-content">
-        <div class="table-wrapper">
-            <table class="table" id="tabla-soportes">
-                <thead id="thead-soportes">
-                    <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th></tr>
-                </thead>
-                <tbody id="tbody-soportes"><tr><td colspan="7" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
-            </table>
-        </div>
-        <div class="pagination" id="pagination-soportes"></div>
-        <div class="export-buttons">
-            <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
-            <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
-        </div>
-    </div>
+<div class="export-buttons">
+    <button class="btn-excel" onclick="exportarReporte('excel')">Exportar a Excel</button>
+    <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
 </div>
 
 <script>
@@ -702,14 +700,30 @@
     let totalPaginas = 1;
     let itemsPorPagina = 15;
 
-    function cambiarTipoReporte(tipo) {
-        tipoActual = tipo;
+    function cambiarReporte() {
+        const select = document.getElementById('selectReporte');
+        tipoActual = select.value;
         paginaActual = 1;
         
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById(`tab-${tipo}-btn`).classList.add('active');
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        document.getElementById(`contenido-${tipo}`).classList.add('active');
+        // Ocultar/mostrar filtros según tipo
+        document.getElementById('filtrosVentas').style.display = tipoActual === 'ventas' ? 'flex' : 'none';
+        document.getElementById('filtrosInstalaciones').style.display = tipoActual === 'instalaciones' ? 'flex' : 'none';
+        document.getElementById('filtrosSoportes').style.display = tipoActual === 'soportes' ? 'flex' : 'none';
+        document.getElementById('filtrosInventario').style.display = tipoActual === 'inventario' ? 'flex' : 'none';
+        
+        // Mostrar/ocultar estadísticas de completados/pendientes según tipo
+        const statCompletados = document.getElementById('statCompletados');
+        const statPendientes = document.getElementById('statPendientes');
+        
+        if (tipoActual === 'inventario') {
+            statCompletados.style.display = 'none';
+            statPendientes.style.display = 'none';
+            document.getElementById('totalCompletados').textContent = '0';
+            document.getElementById('totalPendientes').textContent = '0';
+        } else {
+            statCompletados.style.display = 'flex';
+            statPendientes.style.display = 'flex';
+        }
         
         cargarReporte();
     }
@@ -721,39 +735,23 @@
         document.querySelectorAll('.tipo-btn').forEach(btn => btn.classList.remove('active'));
         document.getElementById(`tipo-${nivel}-btn`).classList.add('active');
         
-        // Cambiar headers según el nivel
-        if (tipoActual === 'ventas') {
-            if (nivel === 'simple') {
-                document.getElementById('thead-ventas').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
-            } else {
-                document.getElementById('thead-ventas').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>ATR</th><th>Estado</th></tr>';
-            }
-        } else if (tipoActual === 'instalaciones') {
-            if (nivel === 'simple') {
-                document.getElementById('thead-instalaciones').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th></tr>';
-            } else {
-                document.getElementById('thead-instalaciones').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Plan</th><th>Origen</th><th>Customer ID</th><th>ODS</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th><th>Modelo</th><th>Serial</th><th>Metros</th></tr>';
-            }
-        } else {
-            if (nivel === 'simple') {
-                document.getElementById('thead-soportes').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th></tr>';
-            } else {
-                document.getElementById('thead-soportes').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
-            }
-        }
-        
         cargarReporte();
     }
 
-    function aplicarFiltros() { 
+    function aplicarFiltros() {
         paginaActual = 1;
-        cargarReporte(); 
+        cargarReporte();
     }
     
     function limpiarFiltros() {
         document.getElementById('searchInput').value = '';
         document.getElementById('filterVendedor').value = '';
         document.getElementById('filterPlan').value = '';
+        document.getElementById('filterCuadrilla').value = '';
+        document.getElementById('filterEstadoInstalacion').value = '';
+        document.getElementById('filterTipoSoporte').value = '';
+        document.getElementById('filterEstadoSoporte').value = '';
+        document.getElementById('filterMaterial').value = '';
         document.getElementById('fecha_desde').value = '';
         document.getElementById('fecha_hasta').value = '';
         paginaActual = 1;
@@ -762,20 +760,38 @@
 
     function cargarReporte() {
         const busqueda = document.getElementById('searchInput')?.value || '';
-        const vendedor = document.getElementById('filterVendedor')?.value || '';
-        const plan = document.getElementById('filterPlan')?.value || '';
         const fechaDesde = document.getElementById('fecha_desde')?.value || '';
         const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
         
         let url = `/api/reporte-${tipoActual}/?tipo=${nivelActual}&page=${paginaActual}&per_page=${itemsPorPagina}`;
+        
         if (busqueda) url += `&busqueda=${busqueda}`;
-        if (vendedor) url += `&vendedor=${vendedor}`;
-        if (plan) url += `&plan=${plan}`;
         if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
         if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
         
-        const tbody = document.getElementById(`tbody-${tipoActual}`);
-        tbody.innerHTML = '<td><td colspan="20" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        // Filtros específicos
+        if (tipoActual === 'ventas') {
+            const vendedor = document.getElementById('filterVendedor')?.value || '';
+            const plan = document.getElementById('filterPlan')?.value || '';
+            if (vendedor) url += `&vendedor=${vendedor}`;
+            if (plan) url += `&plan=${plan}`;
+        } else if (tipoActual === 'instalaciones') {
+            const cuadrilla = document.getElementById('filterCuadrilla')?.value || '';
+            const estado = document.getElementById('filterEstadoInstalacion')?.value || '';
+            if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
+            if (estado) url += `&estado=${estado}`;
+        } else if (tipoActual === 'soportes') {
+            const tipoSoporte = document.getElementById('filterTipoSoporte')?.value || '';
+            const estadoSoporte = document.getElementById('filterEstadoSoporte')?.value || '';
+            if (tipoSoporte) url += `&tipo_soporte=${tipoSoporte}`;
+            if (estadoSoporte) url += `&estado=${estadoSoporte}`;
+        } else if (tipoActual === 'inventario') {
+            const material = document.getElementById('filterMaterial')?.value || '';
+            if (material) url += `&material=${material}`;
+        }
+        
+        const tbody = document.getElementById('tbody-resultados');
+        tbody.innerHTML = '<tr><td colspan="20" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
         
         fetch(url)
             .then(response => response.json())
@@ -785,7 +801,6 @@
                 paginaActual = data.pagina_actual || 1;
                 
                 actualizarEstadisticas(data.estadisticas);
-                document.getElementById(`${tipoActual}-count`).textContent = data.total_registros || 0;
                 actualizarTabla();
                 actualizarPaginacion();
             })
@@ -796,7 +811,7 @@
     }
 
     function actualizarTabla() {
-        const tbody = document.getElementById(`tbody-${tipoActual}`);
+        const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
             tbody.innerHTML = '<tr><td colspan="20" class="empty">No hay datos disponibles</td></tr>';
@@ -805,94 +820,82 @@
         
         if (tipoActual === 'ventas') {
             if (nivelActual === 'simple') {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.plan}</td>
-                        <td>${item.fecha}</td>
-                        <td>${item.vendedor}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ods}</td>
+                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.plan}</td>
+                        <td>${item.fecha}</td><td>${item.vendedor}</td><td>${item.customer_id}</td><td>${item.ods}</td>
                         <td><span class="badge badge-completado">${item.estado}</span></td>
                     </tr>
                 `).join('');
             } else {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.telefono || 'N/A'}</td>
-                        <td>${item.correo || 'N/A'}</td>
-                        <td>${item.plan}</td>
-                        <td>${item.fecha_creacion || item.fecha}</td>
-                        <td>${item.vendedor}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ods}</td>
-                        <td>${item.atr || 'N/A'}</td>
+                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.telefono || 'N/A'}</td>
+                        <td>${item.correo || 'N/A'}</td><td>${item.plan}</td><td>${item.fecha}</td>
+                        <td>${item.vendedor}</td><td>${item.customer_id}</td><td>${item.ods}</td>
                         <td><span class="badge badge-completado">${item.estado}</span></td>
                     </tr>
                 `).join('');
             }
         } else if (tipoActual === 'instalaciones') {
             if (nivelActual === 'simple') {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th></td>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.plan}</td>
-                        <td>${item.cuadrilla}</td>
-                        <td>${item.fecha}</td>
+                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.plan}</td>
+                        <td>${item.cuadrilla}</td><td>${item.fecha}</td>
                         <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
                     </tr>
                 `).join('');
             } else {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th><th>Modelo</th><th>Serial</th><th>Metros</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.direccion || 'N/A'}</td>
-                        <td>${item.plan}</td>
-                        <td>${item.origen}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ods}</td>
-                        <td>${item.cuadrilla}</td>
-                        <td>${item.fecha_instalacion || item.fecha}</td>
+                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.direccion || 'N/A'}</td>
+                        <td>${item.plan}</td><td>${item.cuadrilla}</td><td>${item.fecha}</td>
                         <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
-                        <td>${item.modelo_modem || 'N/A'}</td>
-                        <td>${item.sn_modem || 'N/A'}</td>
-                        <td>${item.metros_utilizados || 0}m</td>
+                        <td>${item.modelo || 'N/A'}</td><td>${item.serial || 'N/A'}</td><td>${item.metros || 0}m</td>
                     </tr>
                 `).join('');
             }
-        } else {
+        } else if (tipoActual === 'soportes') {
             if (nivelActual === 'simple') {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.tipo}</td>
+                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.tipo}</td>
                         <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
-                        <td>${item.fecha}</td>
-                        <td>${item.falla || 'N/A'}</td>
+                        <td>${item.fecha}</td><td>${item.falla || 'N/A'}</td>
                     </tr>
                 `).join('');
             } else {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.tipo}</td>
+                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.tipo}</td>
                         <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
-                        <td>${item.fecha_servicio || item.fecha}</td>
-                        <td>${item.falla_encontrada || 'N/A'}</td>
-                        <td>${item.solucion || 'N/A'}</td>
+                        <td>${item.fecha}</td><td>${item.falla || 'N/A'}</td><td>${item.solucion || 'N/A'}</td>
+                    </tr>
+                `).join('');
+            }
+        } else if (tipoActual === 'inventario') {
+            if (nivelActual === 'simple') {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th></tr>';
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td><td>${item.material}</td><td>${item.cantidad}</td><td>${item.minimo}</td>
+                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado}</span></td>
+                    </tr>
+                `).join('');
+            } else {
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th><th>Última Actualización</th><th>Actualizado Por</th></tr>';
+                tbody.innerHTML = datosActuales.map(item => `
+                    <tr>
+                        <td>${item.id}</td><td>${item.material}</td><td>${item.cantidad}</td><td>${item.minimo}</td>
+                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado}</span></td>
+                        <td>${item.ultima_actualizacion || 'N/A'}</td><td>${item.actualizado_por || 'Sistema'}</td>
                     </tr>
                 `).join('');
             }
@@ -900,7 +903,7 @@
     }
 
     function actualizarPaginacion() {
-        const paginationDiv = document.getElementById(`pagination-${tipoActual}`);
+        const paginationDiv = document.getElementById('pagination-resultados');
         
         if (totalPaginas <= 1) {
             paginationDiv.innerHTML = '';
@@ -909,14 +912,12 @@
         
         let html = '';
         
-        // Anterior
         if (paginaActual > 1) {
             html += `<button class="page-link" onclick="irPagina(${paginaActual - 1})">‹</button>`;
         } else {
             html += `<span class="page-link disabled">‹</span>`;
         }
         
-        // Números de página
         let inicio = Math.max(1, paginaActual - 2);
         let fin = Math.min(totalPaginas, paginaActual + 2);
         
@@ -938,7 +939,6 @@
             html += `<button class="page-link" onclick="irPagina(${totalPaginas})">${totalPaginas}</button>`;
         }
         
-        // Siguiente
         if (paginaActual < totalPaginas) {
             html += `<button class="page-link" onclick="irPagina(${paginaActual + 1})">›</button>`;
         } else {
@@ -951,47 +951,62 @@
     function irPagina(pagina) {
         paginaActual = pagina;
         cargarReporte();
-        document.getElementById(`contenido-${tipoActual}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.querySelector('.table-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function actualizarEstadisticas(stats) {
         if (!stats) return;
-        if (tipoActual === 'ventas') {
-            document.getElementById('totalRegistros').textContent = stats.total_ventas || 0;
-        } else if (tipoActual === 'instalaciones') {
-            document.getElementById('totalRegistros').textContent = stats.total_instalaciones || 0;
-            document.getElementById('totalCompletados').textContent = stats.completadas || 0;
-            document.getElementById('totalPendientes').textContent = stats.pendientes || 0;
-        } else {
-            document.getElementById('totalRegistros').textContent = stats.total_soportes || 0;
-            document.getElementById('totalCompletados').textContent = stats.completados || 0;
+        document.getElementById('totalRegistros').textContent = stats.total_ventas || stats.total_instalaciones || stats.total_soportes || stats.total_materiales || 0;
+        
+        if (tipoActual !== 'inventario') {
+            document.getElementById('totalCompletados').textContent = stats.completadas || stats.completados || 0;
             document.getElementById('totalPendientes').textContent = stats.pendientes || 0;
         }
     }
 
     function exportarReporte(formato) {
         const busqueda = document.getElementById('searchInput')?.value || '';
-        const vendedor = document.getElementById('filterVendedor')?.value || '';
-        const plan = document.getElementById('filterPlan')?.value || '';
         const fechaDesde = document.getElementById('fecha_desde')?.value || '';
         const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
         
-        let url = `/exportar-${formato}/?tipo=${tipoActual}&reporte_tipo=${nivelActual}`;
+        let url = `/exportar-reporte/?formato=${formato}&tipo=${tipoActual}&reporte_tipo=${nivelActual}`;
+        
         if (busqueda) url += `&busqueda=${busqueda}`;
-        if (vendedor) url += `&vendedor=${vendedor}`;
-        if (plan) url += `&plan=${plan}`;
         if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
         if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+        
+        // Filtros específicos
+        if (tipoActual === 'ventas') {
+            const vendedor = document.getElementById('filterVendedor')?.value || '';
+            const plan = document.getElementById('filterPlan')?.value || '';
+            if (vendedor) url += `&vendedor=${vendedor}`;
+            if (plan) url += `&plan=${plan}`;
+        } else if (tipoActual === 'instalaciones') {
+            const cuadrilla = document.getElementById('filterCuadrilla')?.value || '';
+            if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
+        } else if (tipoActual === 'soportes') {
+            const tipoSoporte = document.getElementById('filterTipoSoporte')?.value || '';
+            if (tipoSoporte) url += `&tipo_soporte=${tipoSoporte}`;
+        } else if (tipoActual === 'inventario') {
+            const material = document.getElementById('filterMaterial')?.value || '';
+            if (material) url += `&material=${material}`;
+        }
         
         window.location.href = url;
     }
 
     // Event listeners
+    document.getElementById('selectReporte')?.addEventListener('change', cambiarReporte);
     document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') cargarReporte();
     });
     document.getElementById('filterVendedor')?.addEventListener('change', cargarReporte);
     document.getElementById('filterPlan')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterCuadrilla')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterEstadoInstalacion')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterTipoSoporte')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterEstadoSoporte')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterMaterial')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_desde')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_hasta')?.addEventListener('change', cargarReporte);
 
