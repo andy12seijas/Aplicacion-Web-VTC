@@ -1353,12 +1353,12 @@ class MovimientoInventario(models.Model):
     """Registro de todos los movimientos de inventario"""
     
     class TipoMovimiento(models.TextChoices):
-        ENTRADA = 'ENTRADA', '➕ Entrada (Compra/Adición)'
-        SALIDA_A_CUADRILLA = 'SALIDA_CUADRILLA', '📦 Salida a cuadrilla'
-        DEVOLUCION_CUADRILLA = 'DEVOLUCION', '🔄 Devolución de cuadrilla'
+        ENTRADA = 'ENTRADA', 'Entrada (Compra/Adición)'
+        SALIDA_A_CUADRILLA = 'SALIDA_CUADRILLA', 'Salida a cuadrilla'
+        DEVOLUCION_CUADRILLA = 'DEVOLUCION', 'Devolución de cuadrilla'
         GASTO_INSTALACION = 'GASTO_INSTALACION', '🔧 Gasto en instalación'
-        GASTO_SOPORTE = 'GASTO_SOPORTE', '🛠️ Gasto en soporte'
-        AJUSTE = 'AJUSTE', '📝 Ajuste manual'
+        GASTO_SOPORTE = 'GASTO_SOPORTE', 'Gasto en soporte'
+        AJUSTE = 'AJUSTE', 'Ajuste manual'
     
     material = models.ForeignKey(
         Material,
@@ -1417,4 +1417,4 @@ class MovimientoInventario(models.Model):
     
     def __str__(self):
         signo = "+" if self.cantidad > 0 else ""
-        return f"{self.get_tipo_display()}: {signo}{self.cantidad} {self.material.nombre} - {self.fecha_movimiento.strftime('%d/%m/%Y %H:%M')}"    
+        return f"{signo}{self.cantidad} {self.material.nombre} - {self.fecha_movimiento.strftime('%d/%m/%Y %H:%M')}"    
