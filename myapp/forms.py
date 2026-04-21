@@ -669,74 +669,74 @@ class InstalacionForm(forms.ModelForm):
             'feeder': forms.TextInput(attrs={
                 'class': 'form-input', 
                 'placeholder': 'Ej: FVL01',
-                'required': True
+                
             }),
             'caja': forms.TextInput(attrs={
                 'class': 'form-input', 
                 'placeholder': 'Ej: N0101',
-                'required': True
+                
             }),
             'puerto_utilizado': forms.TextInput(attrs={
                 'class': 'form-input', 
                 'placeholder': 'Ej: 3',
-                'required': True
+                
             }),
             'modelo_modem': forms.Select(attrs={
                 'class': 'form-select',
-                'required': True
+                
             }),
             'sn_modem': forms.TextInput(attrs={
                 'class': 'form-input', 
                 'placeholder': 'Ej: ALCLFCD0A4C5',
-                'required': True
+               
             }),
             'mac_modem': forms.TextInput(attrs={
                 'class': 'form-input', 
                 'placeholder': 'Ej: E8F8D0BC1560',
-                'required': True
+                
             }),
             'inicio_fibra': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'placeholder': '35',
                 'min': '0',
-                'required': True
+                
             }),
             'final_fibra': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'placeholder': '5',
                 'min': '0',
-                'required': True
+                
             }),
             'conectores': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
                 'min': '0',
-                'required': True
+                
             }),
             'rosetas': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
                 'min': '0',
-                'required': True
+                
             }),
             'patch_cord': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
                 'min': '0',
-                'required': True
+                
             }),
             'tensores': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 0,
                 'min': '0',
-                'required': True
+                
             }),
             'tirros': forms.NumberInput(attrs={
                 'class': 'form-input', 
                 'value': 1,
                 'min': '0',
                 'placeholder': 'Cantidad de tirros',
-                'required': True
+                
             }),
             'conectores_malos': forms.NumberInput(attrs={
                 'class': 'form-input', 
