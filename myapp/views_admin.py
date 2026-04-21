@@ -437,16 +437,19 @@ def gestionar_contratos(request):
     estado = request.GET.get('estado', '')
     tab_activa = request.GET.get('tab', 'pendientes')
     
-    # Base querysets
+    # Base querysets - EXCLUIR contratos NO_COMPLETADO de pendientes
     contratos_pendientes = ContratoCliente.objects.filter(
         Q(customer_id__isnull=True) | Q(customer_id='') |
         Q(ods__isnull=True) | Q(ods='')
-    ).select_related('cliente_potencial', 'creado_por', 'plan_contratado')
+    ).exclude(estado='NO_COMPLETADO').select_related('cliente_potencial', 'creado_por', 'plan_contratado')
     
     contratos_completados = ContratoCliente.objects.exclude(
         Q(customer_id__isnull=True) | Q(customer_id='') |
         Q(ods__isnull=True) | Q(ods='')
-    ).select_related('cliente_potencial', 'creado_por', 'plan_contratado')
+    ).exclude(estado='NO_COMPLETADO').select_related('cliente_potencial', 'creado_por', 'plan_contratado')
+    
+    # Contratos NO COMPLETADOS (para estadísticas, no se muestran en las tablas)
+    contratos_no_completados = ContratoCliente.objects.filter(estado='NO_COMPLETADO').count()
     
     # Aplicar filtros a ambos querysets
     if busqueda:
@@ -455,16 +458,18 @@ def gestionar_contratos(request):
             Q(cliente_potencial__apellido__icontains=busqueda) |
             Q(cliente_potencial__cedula__icontains=busqueda) |
             Q(correo_electronico__icontains=busqueda) |
-            Q(customer_id__icontains=busqueda) |           # 👈 NUEVO
-            Q(ods__icontains=busqueda)
+            Q(customer_id__icontains=busqueda) |
+            Q(ods__icontains=busqueda) |
+            Q(direccion_detallada__icontains=busqueda)
         )
         contratos_completados = contratos_completados.filter(
             Q(cliente_potencial__nombre__icontains=busqueda) |
             Q(cliente_potencial__apellido__icontains=busqueda) |
             Q(cliente_potencial__cedula__icontains=busqueda) |
             Q(correo_electronico__icontains=busqueda) |
-            Q(customer_id__icontains=busqueda) |           # 👈 NUEVO
-            Q(ods__icontains=busqueda)
+            Q(customer_id__icontains=busqueda) |
+            Q(ods__icontains=busqueda) |
+            Q(direccion_detallada__icontains=busqueda)
         )
     
     if vendedor_id:
@@ -501,16 +506,42 @@ def gestionar_contratos(request):
         'contratos_pendientes_count': contratos_pendientes.count(),
         'contratos_completados': contratos_completados_page,
         'contratos_completados_count': contratos_completados.count(),
+        'contratos_no_completados_count': contratos_no_completados,
         'vendedores': vendedores,
         'busqueda': busqueda,
         'filtro_vendedor': vendedor_id,
         'filtro_estado': estado,
         'tab_activa': tab_activa,
-        'es_admin': es_admin,  # 👈 Pasar esta variable a la template
-        'es_supervisor': es_supervisor,  # 👈 Pasar esta variable a la template
+        'es_admin': es_admin,
+        'es_supervisor': es_supervisor,
     }
     
     return render(request, 'Admin/gestionar_contratos.html', context)
+
+
+@login_required
+def marcar_contrato_no_completado(request, contrato_id):
+    """Vista para marcar un contrato como 'No Completado'"""
+    
+    # Verificar permisos
+    es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_supervisor = request.user.groups.filter(name='Supervisor').exists()
+    
+    if not (es_admin or es_supervisor):
+        return JsonResponse({'error': 'No tienes permisos para realizar esta acción'}, status=403)
+    
+    contrato = get_object_or_404(ContratoCliente, id=contrato_id)
+    
+    if request.method == 'POST':
+        contrato.estado = 'NO_COMPLETADO'
+        contrato.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Contrato #{contrato.id} marcado como No Completado'
+        })
+    
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
 
 
 # ============================================

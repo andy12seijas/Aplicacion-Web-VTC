@@ -366,6 +366,24 @@
         color: #3b82f6;
     }
     
+    .badge-malos {
+        background: #fee2e2;
+        color: #ef4444;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-left: 6px;
+    }
+    
+    .badge-buenos {
+        background: #d1fae5;
+        color: #10b981;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 12px;
+        margin-left: 6px;
+    }
+    
     .movimiento-entrada {
         color: #10b981;
         font-weight: 700;
@@ -670,7 +688,7 @@
         </div>
     </div>
     
-    <!-- Últimos movimientos con paginación -->
+    <!-- Últimos movimientos con paginación y observación -->
     <div class="movimientos-section">
         <h3 class="section-title">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
@@ -687,6 +705,7 @@
                         <th>Material</th>
                         <th>Cantidad</th>
                         <th>Referencia</th>
+                        <th>Observación</th>
                         <th>Realizado por</th>
                     </thead>
                 <tbody>
@@ -706,7 +725,14 @@
                                 {{ mov.get_tipo_display }}
                             </span>
                         </div>
-                        <td>{{ mov.material.nombre }}</div>
+                        <td>
+                            {{ mov.material.nombre }}
+                            {% if 'MALOS' in mov.observacion|upper %}
+                            <span class="badge-malos">Malos</span>
+                            {% elif 'BUENOS' in mov.observacion|upper %}
+                            <span class="badge-buenos">Buenos</span>
+                            {% endif %}
+                        </div>
                         <td class="{% if mov.cantidad > 0 %}movimiento-entrada{% else %}movimiento-salida{% endif %}">
                             {% if mov.cantidad > 0 %}+{% endif %}{{ mov.cantidad }}
                         </div>
@@ -719,6 +745,9 @@
                             —
                             {% endif %}
                         </div>
+                        <td style="max-width: 300px; word-break: break-word; font-size: 12px; color: #555;">
+                            {{ mov.observacion|default:"—" }}
+                        </div>
                         <td>
                             {% if mov.realizado_por %}
                             {{ mov.realizado_por.get_full_name|default:mov.realizado_por.username }}
@@ -729,7 +758,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="empty-message">
+                        <td colspan="7" class="empty-message">
                             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5" style="margin-bottom: 12px;">
                                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
                                 <line x1="8" y1="21" x2="16" y2="21"/>

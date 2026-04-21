@@ -281,6 +281,9 @@ def realizar_instalacion(request, instalacion_id):
         metros_usados = abs(inicio_fibra - final_fibra)
         
         conectores_usados = int(request.POST.get('conectores', 0) or 0)
+        conectores_malos_usados = int(request.POST.get('conectores_malos', 0) or 0)
+        conectores_totales = conectores_usados + conectores_malos_usados
+        
         rosetas_usadas = int(request.POST.get('rosetas', 0) or 0)
         patch_usados = int(request.POST.get('patch_cord', 0) or 0)
         tensores_usados = int(request.POST.get('tensores', 0) or 0)
@@ -295,9 +298,9 @@ def realizar_instalacion(request, instalacion_id):
             if inventario_cuadrilla.get("Modem", 0) < 1:
                 errores_stock.append("No hay módems disponibles en el inventario de la cuadrilla.")
         
-        # Validar conectores
-        if conectores_usados > inventario_cuadrilla.get("Conector", 0):
-            errores_stock.append(f"Stock insuficiente de conectores. Disponible: {inventario_cuadrilla.get('Conector', 0)}")
+        # Validar conectores (incluyendo malos)
+        if conectores_totales > inventario_cuadrilla.get("Conector", 0):
+            errores_stock.append(f"Stock insuficiente de conectores. Necesitas {conectores_totales} (Buenos: {conectores_usados}, Malos: {conectores_malos_usados}). Disponible: {inventario_cuadrilla.get('Conector', 0)}")
         
         # Validar rosetas
         if rosetas_usadas > inventario_cuadrilla.get("Roseta", 0):
@@ -335,6 +338,15 @@ def realizar_instalacion(request, instalacion_id):
                     return JsonResponse({'error': 'No hay módems disponibles en inventario'}, status=400)
                 messages.error(request, 'No hay módems disponibles en inventario')
                 return redirect('realizar_instalacion', instalacion_id=instalacion.id)
+        
+        # Verificar conectores en BD (sumando buenos y malos)
+        conectores_totales_necesarios = conectores_usados + conectores_malos_usados
+        inv_conector_bd = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla, material__nombre="Conector").first()
+        if not inv_conector_bd or inv_conector_bd.cantidad < conectores_totales_necesarios:
+            if is_ajax:
+                return JsonResponse({'error': f'Stock insuficiente de conectores. Necesitas {conectores_totales_necesarios}. Disponible: {inv_conector_bd.cantidad if inv_conector_bd else 0}'}, status=400)
+            messages.error(request, f'Stock insuficiente de conectores. Necesitas {conectores_totales_necesarios}. Disponible: {inv_conector_bd.cantidad if inv_conector_bd else 0}')
+            return redirect('realizar_instalacion', instalacion_id=instalacion.id)
         
         inv_fibra_bd = InventarioCuadrilla.objects.filter(cuadrilla=cuadrilla, material__nombre="Fibra Optica (metros)").first()
         if not inv_fibra_bd or inv_fibra_bd.cantidad < metros_usados:
@@ -420,7 +432,7 @@ def realizar_instalacion(request, instalacion_id):
                             observacion=f"Instalación #{instalacion.id} - Módem usado"
                         )
                 
-                # Restar conectores
+                # Restar conectores BUENOS
                 if conectores_usados > 0:
                     material_conector, _ = Material.objects.get_or_create(nombre="Conector")
                     inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
@@ -438,7 +450,28 @@ def realizar_instalacion(request, instalacion_id):
                             cuadrilla=cuadrilla,
                             instalacion=instalacion,
                             realizado_por=request.user,
-                            observacion=f"Instalación #{instalacion.id} - {conectores_usados} conectores usados"
+                            observacion=f"Instalación #{instalacion.id} - {conectores_usados} conectores BUENOS usados"
+                        )
+                
+                # Restar conectores MALOS
+                if conectores_malos_usados > 0:
+                    material_conector, _ = Material.objects.get_or_create(nombre="Conector")
+                    inv_cuadrilla, _ = InventarioCuadrilla.objects.get_or_create(
+                        cuadrilla=cuadrilla,
+                        material=material_conector
+                    )
+                    if inv_cuadrilla.cantidad >= conectores_malos_usados:
+                        inv_cuadrilla.cantidad -= conectores_malos_usados
+                        inv_cuadrilla.save()
+                        
+                        MovimientoInventario.objects.create(
+                            material=material_conector,
+                            tipo=MovimientoInventario.TipoMovimiento.GASTO_INSTALACION,
+                            cantidad=-conectores_malos_usados,
+                            cuadrilla=cuadrilla,
+                            instalacion=instalacion,
+                            realizado_por=request.user,
+                            observacion=f"Instalación #{instalacion.id} - {conectores_malos_usados} conectores MALOS usados"
                         )
                 
                 # Restar rosetas

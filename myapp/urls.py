@@ -58,7 +58,7 @@ urlpatterns = [
     path('contrato/crear/', crear_contrato, name='crear_contrato'),
     path('lista_contratos/', lista_contratos, name='lista_contratos'),
     path('datos-contrato/<int:contrato_id>/', datos_contrato, name='datos_contrato'),
-    
+    path('contrato/<int:contrato_id>/no-completado/', marcar_contrato_no_completado, name='marcar_contrato_no_completado'),
     path('contrato/crear/error/', crear_contrato_error, name='crear_contrato_error'),
     path('capturar-ubicacion-vendedor/', capturar_ubicacion_vendedor, name='capturar_ubicacion_vendedor'),
     path('cuadrillas/estado/', estado_cuadrillas, name='estado_cuadrillas'),

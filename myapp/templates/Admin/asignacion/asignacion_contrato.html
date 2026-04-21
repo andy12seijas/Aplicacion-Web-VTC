@@ -25,7 +25,7 @@
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                 </svg>
-                <input type="text" placeholder="Buscar por cliente, cédula, customer ID, correo..." 
+                <input type="text" placeholder="Buscar por cliente, cédula, customer ID, dirección..." 
                        id="searchInput" value="{{ busqueda }}">
             </div>
             
@@ -50,6 +50,22 @@
                 <option value="COMPLETADO" {% if filtro_contrato_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
                 <option value="NO_COMPLETADO" {% if filtro_contrato_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
             </select>
+            
+            <!-- Botones de acción -->
+            <button class="btn-search" onclick="aplicarFiltros()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                Buscar
+            </button>
+            
+            <button class="btn-clear" onclick="limpiarFiltros()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+                Limpiar filtros
+            </button>
         </div>
     </div>
 
@@ -79,22 +95,22 @@
                     <div class="table-container">
                         <table class="table">
                             <thead>
-                                <tr><th>Tipo</th><th>Cliente</th><th>Cédula</th><th>Correo</th><th>Customer ID</th><th>ODS</th><th>Vendedor</th><th>Plan</th><th>Acciones</th></thead>
+                                <tr><th>Tipo</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Customer ID</th><th>ODS</th><th>Vendedor</th><th>Plan</th><th>Acciones</th></thead>
                             <tbody>
                                 {% for item in contratos_no_asignados %}
                                 <tr>
                                     <td>{% if item.tipo == 'contrato' %}<span class="badge badge-info">Contrato</span>{% else %}<span class="badge badge-warning">Venta Directa</span>{% endif %}</td>
-                                    <td><div class="user-cell"><span class="user-avatar">{{ item.cliente_nombre|first|upper }}</span><div><div class="user-name">{{ item.cliente_nombre }}</div></div></div></td>
-                                    <td>{{ item.cedula }}</td>
-                                    <td class="email-cell"><span class="email-badge">{{ item.correo|default:"—" }}</span></td>
-                                    <td><span class="badge completado">{{ item.customer_id|default:"—" }}</span></td>
-                                    <td><span class="badge completado">{{ item.ods|default:"—" }}</span></td>
-                                    <td><span class="vendedor-badge">{{ item.vendedor }}</span></td>
-                                    <td>{{ item.plan }}</td>
-                                    <td><button class="action-btn" onclick="abrirModalAsignar({{ item.id }}, '{{ item.cliente_nombre }}', '{{ item.tipo }}')" title="Asignar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></button></td>
+                                    <td><div class="user-cell"><span class="user-avatar">{{ item.cliente_nombre|first|upper }}</span><div><div class="user-name">{{ item.cliente_nombre }}</div></div></div></div>
+                                    <td>{{ item.cedula }}</div>
+                                    <td class="address-cell"><span class="address-badge">{{ item.direccion|default:"—"|truncatechars:30 }}</span></div>
+                                    <td><span class="badge completado">{{ item.customer_id|default:"—" }}</span></div>
+                                    <td><span class="badge completado">{{ item.ods|default:"—" }}</span></div>
+                                    <td><span class="vendedor-badge">{{ item.vendedor }}</span></div>
+                                    <td>{{ item.plan }}</div>
+                                    <td><button class="action-btn" onclick="abrirModalAsignar({{ item.id }}, '{{ item.cliente_nombre }}', '{{ item.tipo }}')" title="Asignar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></button></div>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="9" class="empty">No hay contratos pendientes de asignar</td></tr>
+                                <tr><td colspan="9" class="empty">No hay contratos pendientes de asignar</div></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -110,7 +126,7 @@
                             <div class="card-type">{% if item.tipo == 'contrato' %}<span class="badge badge-info">Contrato</span>{% else %}<span class="badge badge-warning">Venta Directa</span>{% endif %}</div>
                         </div>
                         <div class="card-body">
-                            <div class="card-row"><span class="card-label">✉️ Correo:</span><span class="card-value">{{ item.correo|default:"—" }}</span></div>
+                            <div class="card-row"><span class="card-label">📍 Dirección:</span><span class="card-value">{{ item.direccion|default:"—" }}</span></div>
                             <div class="card-row"><span class="card-label">🆔 Customer ID:</span><span class="card-value">{{ item.customer_id|default:"—" }}</span></div>
                             <div class="card-row"><span class="card-label">📋 ODS:</span><span class="card-value">{{ item.ods|default:"—" }}</span></div>
                             <div class="card-row"><span class="card-label">👤 Vendedor:</span><span class="card-value">{{ item.vendedor }}</span></div>
@@ -165,23 +181,26 @@
                 <div class="desktop-view">
                     <div class="table-container">
                         <table class="table">
-                            <thead><tr><th>Tipo</th><th>Cliente</th><th>Cédula</th><th>Customer ID</th><th>ODS</th><th>Estado</th><th>Vendedor</th><th>Cuadrilla</th><th>Fecha</th><th>Acciones</th></tr></thead>
+                            <thead>
+                                <tr><th>Tipo</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Customer ID</th><th>ODS</th><th>Estado</th><th>Vendedor</th><th>Cuadrilla</th><th>Fecha</th><th>Acciones</th></tr>
+                            </thead>
                             <tbody>
                                 {% for item in contratos_asignados %}
                                 <tr>
                                     <td>{% if item.tipo == 'contrato' %}<span class="badge badge-info">Contrato</span>{% else %}<span class="badge badge-warning">Venta Directa</span>{% endif %}</td>
-                                    <td><div class="user-cell"><span class="user-avatar">{{ item.cliente_nombre|first|upper }}</span><div><div class="user-name">{{ item.cliente_nombre }}</div></div></div></td>
-                                    <td>{{ item.cedula }}</td>
-                                    <td><span class="badge completado">{{ item.customer_id|default:"—" }}</span></td>
-                                    <td><span class="badge completado">{{ item.ods|default:"—" }}</span></td>
-                                    <td>{% if item.estado == 'EN_PROCESO' %}<span class="badge proceso">En Proceso</span>{% elif item.estado == 'COMPLETADO' %}<span class="badge completado">Completado</span>{% else %}<span class="badge no-completado">No Completado</span>{% endif %}</td>
-                                    <td><span class="vendedor-badge">{{ item.vendedor }}</span></td>
-                                    <td><div class="cuadrilla-info"><span class="cuadrilla-badge">{{ item.cuadrilla.nombre }}</span><div class="instaladores-list">{% with instaladores=item.cuadrilla.instaladores.all %}{% for inst in instaladores %}<span class="instalador-tag">{{ inst.usuario.get_full_name|default:inst.usuario.username }}</span>{% empty %}<span class="instalador-tag empty">Sin instaladores</span>{% endfor %}{% endwith %}</div></div></td>
-                                    <td>{{ item.fecha_asignacion|date:"d/m/y H:i" }}</td>
-                                    <td>{% if item.estado == 'EN_PROCESO' %}<button class="action-btn" onclick="confirmarDesasignar({{ item.id }})" title="Desasignar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>{% else %}<button class="action-btn disabled" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>{% endif %}</td>
+                                    <td><div class="user-cell"><span class="user-avatar">{{ item.cliente_nombre|first|upper }}</span><div><div class="user-name">{{ item.cliente_nombre }}</div></div></div></div>
+                                    <td>{{ item.cedula }}</div>
+                                    <td class="address-cell"><span class="address-badge">{{ item.direccion|default:"—"|truncatechars:30 }}</span></div>
+                                    <td><span class="badge completado">{{ item.customer_id|default:"—" }}</span></div>
+                                    <td><span class="badge completado">{{ item.ods|default:"—" }}</span></div>
+                                    <td>{% if item.estado == 'EN_PROCESO' %}<span class="badge proceso">En Proceso</span>{% elif item.estado == 'COMPLETADO' %}<span class="badge completado">Completado</span>{% else %}<span class="badge no-completado">No Completado</span>{% endif %}</div>
+                                    <td><span class="vendedor-badge">{{ item.vendedor }}</span></div>
+                                    <td><div class="cuadrilla-info"><span class="cuadrilla-badge">{{ item.cuadrilla.nombre }}</span><div class="instaladores-list">{% with instaladores=item.cuadrilla.instaladores.all %}{% for inst in instaladores %}<span class="instalador-tag">{{ inst.usuario.get_full_name|default:inst.usuario.username }}</span>{% empty %}<span class="instalador-tag empty">Sin instaladores</span>{% endfor %}{% endwith %}</div></div></div>
+                                    <td>{{ item.fecha_asignacion|date:"d/m/y H:i" }}</div>
+                                    <td>{% if item.estado == 'EN_PROCESO' %}<button class="action-btn" onclick="confirmarDesasignar({{ item.id }})" title="Desasignar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>{% else %}<button class="action-btn disabled" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>{% endif %}</div>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="10" class="empty">No hay contratos asignados</td></tr>
+                                <tr><td colspan="11" class="empty">No hay contratos asignados</div></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -197,7 +216,7 @@
                             <div class="card-status">{% if item.estado == 'EN_PROCESO' %}<span class="status-badge proceso">En Proceso</span>{% elif item.estado == 'COMPLETADO' %}<span class="status-badge completado">Completado</span>{% else %}<span class="status-badge no-completado">No Completado</span>{% endif %}</div>
                         </div>
                         <div class="card-body">
-                            <div class="card-row"><span class="card-label">✉️ Correo:</span><span class="card-value">{{ item.correo|default:"—" }}</span></div>
+                            <div class="card-row"><span class="card-label">📍 Dirección:</span><span class="card-value">{{ item.direccion|default:"—" }}</span></div>
                             <div class="card-row"><span class="card-label">🆔 Customer ID:</span><span class="card-value">{{ item.customer_id|default:"—" }}</span></div>
                             <div class="card-row"><span class="card-label">📋 ODS:</span><span class="card-value">{{ item.ods|default:"—" }}</span></div>
                             <div class="card-row"><span class="card-label">👤 Vendedor:</span><span class="card-value">{{ item.vendedor }}</span></div>
@@ -284,12 +303,18 @@
     
     .asignacion-container { height: calc(100vh - 120px); display: flex; flex-direction: column; overflow: hidden; }
     .filters-container { margin-bottom: 16px; flex-shrink: 0; }
-    .filters-grid { display: flex; gap: 10px; flex-wrap: wrap; background: white; padding: 16px; border-radius: 16px; border: 1px solid var(--gray-border); }
+    .filters-grid { display: flex; gap: 10px; flex-wrap: wrap; background: white; padding: 16px; border-radius: 16px; border: 1px solid var(--gray-border); align-items: center; }
     .search-box { flex: 2; min-width: 200px; display: flex; align-items: center; gap: 8px; background: var(--gray-bg); padding: 0 12px; border: 1px solid var(--gray-border); border-radius: 30px; }
     .search-box:focus-within { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,107,0,0.1); }
     .search-box input { border: none; padding: 10px 0; width: 100%; outline: none; font-size: 13px; background: transparent; }
     .filter-select { flex: 1; min-width: 140px; padding: 10px 12px; border: 1px solid var(--gray-border); border-radius: 30px; background: white; font-size: 13px; cursor: pointer; }
     .filter-select:hover { border-color: var(--orange); }
+    
+    .btn-search, .btn-clear { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-search { background: var(--orange); color: white; }
+    .btn-search:hover { background: #ff8c00; transform: translateY(-2px); }
+    .btn-clear { background: #f0f0f0; color: #666; border: 1px solid var(--gray-border); }
+    .btn-clear:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-light); }
     
     .stats-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; flex-shrink: 0; }
     .stat-card { background: white; padding: 6px 14px; border-radius: 30px; border: 1px solid var(--gray-border); display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
@@ -315,7 +340,7 @@
     
     .desktop-view { display: block; overflow-x: auto; }
     .table-container { overflow-x: auto; }
-    .table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1000px; }
+    .table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 1100px; }
     .table th { text-align: left; padding: 12px 12px; font-weight: 600; color: var(--gray-text); background: #f9fafb; border-bottom: 1px solid var(--gray-border); font-size: 11px; text-transform: uppercase; }
     .table td { padding: 10px 12px; border-bottom: 1px solid var(--gray-border); color: var(--dark-text); }
     .table tbody tr:hover { background: var(--gray-bg); }
@@ -327,8 +352,8 @@
     .badge.completado { background: #e8f5e9; color: #2e7d32; }
     .badge.no-completado { background: #ffebee; color: #c62828; }
     
-    .email-badge { display: inline-block; padding: 3px 8px; background: #e3f2fd; color: #1976d2; border-radius: 12px; font-size: 10px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .email-cell { max-width: 160px; }
+    .address-badge { display: inline-block; padding: 3px 8px; background: #e3f2fd; color: #1976d2; border-radius: 12px; font-size: 10px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .address-cell { max-width: 200px; }
     .vendedor-badge { display: inline-block; padding: 3px 8px; background: #f3f4f6; border-radius: 20px; font-size: 10px; }
     .cuadrilla-badge { display: inline-block; padding: 3px 8px; background: var(--orange); color: white; border-radius: 20px; font-size: 10px; margin-bottom: 4px; }
     .cuadrilla-info { display: flex; flex-direction: column; gap: 4px; }
@@ -359,7 +384,7 @@
     .card-body { padding: 12px; }
     .card-row { display: flex; margin-bottom: 8px; font-size: 12px; flex-wrap: wrap; }
     .card-label { width: 85px; color: var(--gray-text); flex-shrink: 0; font-size: 11px; }
-    .card-value { flex: 1; }
+    .card-value { flex: 1; word-break: break-word; }
     .instaladores-group { display: flex; flex-wrap: wrap; gap: 4px; }
     .instalador-tag-mobile { display: inline-block; padding: 3px 8px; background: #e3f2fd; color: #1976d2; border-radius: 14px; font-size: 10px; }
     .card-actions { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--gray-border); background: #f9fafb; }
@@ -415,7 +440,7 @@
         .desktop-view { display: none; }
         .mobile-view { display: block; }
         .filters-grid { flex-direction: column; align-items: stretch; }
-        .search-box, .filter-select { width: 100%; }
+        .search-box, .filter-select, .btn-search, .btn-clear { width: 100%; }
         .tab-btn { flex-direction: column; font-size: 12px; padding: 10px 12px; }
         .tab-count { margin-left: 0; }
         .stats-grid { justify-content: center; }
@@ -481,6 +506,26 @@
         window.location.href = url.toString();
     }
 
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('cuadrilla');
+        url.searchParams.delete('estado');
+        url.searchParams.delete('contrato_estado');
+        
+        const tabActiva = document.querySelector('.tab-content.active')?.id || 'tab-no_asignados';
+        const tab = tabActiva === 'tab-no_asignados' ? 'no_asignados' : 'asignados';
+        url.searchParams.set('tab', tab);
+        
+        if (tab === 'no_asignados') {
+            url.searchParams.set('page_no_asignados', 1);
+        } else {
+            url.searchParams.set('page_asignados', 1);
+        }
+        
+        window.location.href = url.toString();
+    }
+
     document.getElementById('pageSelectNoAsignados')?.addEventListener('change', function() {
         const url = new URL(window.location.href);
         url.searchParams.set('page_no_asignados', this.value);
@@ -496,9 +541,10 @@
     });
 
     let searchTimeout;
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => aplicarFiltros(), 500);
+    document.getElementById('searchInput')?.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
+            aplicarFiltros();
+        }
     });
 
     document.getElementById('filterCuadrilla')?.addEventListener('change', aplicarFiltros);
@@ -541,6 +587,7 @@
         
         window.location.href = url.toString();
     }
+    
     function abrirModalAsignar(itemId, clienteNombre, tipo) {
         contratoSeleccionadoId = itemId;
         document.getElementById('modalClienteInfo').textContent = `Asignando ${tipo === 'contrato' ? 'contrato' : 'venta directa'} a: ${clienteNombre}`;

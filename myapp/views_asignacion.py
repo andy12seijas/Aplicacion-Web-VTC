@@ -67,7 +67,8 @@ def lista_asignaciones(request):
             'id': contrato.id,
             'cliente_nombre': contrato.nombre_completo,
             'cedula': contrato.cedula,
-            'correo': contrato.correo_electronico,
+            'direccion': contrato.direccion_detallada or '',
+            'correo': contrato.correo_electronico or '',
             'customer_id': contrato.customer_id,
             'ods': contrato.ods,
             'vendedor': contrato.creado_por.get_full_name() or contrato.creado_por.username if contrato.creado_por else 'Sistema',
@@ -82,6 +83,7 @@ def lista_asignaciones(request):
             'id': venta.id,
             'cliente_nombre': venta.nombre_completo,
             'cedula': venta.cedula,
+            'direccion': 'N/A',
             'correo': 'N/A',
             'customer_id': venta.customer_id or '',
             'ods': venta.nro_orden,
@@ -123,7 +125,8 @@ def lista_asignaciones(request):
                 'asignacion_obj': asignacion,
                 'cliente_nombre': asignacion.contrato.nombre_completo,
                 'cedula': asignacion.contrato.cedula,
-                'correo': asignacion.contrato.correo_electronico,
+                'direccion': asignacion.contrato.direccion_detallada or '',
+                'correo': asignacion.contrato.correo_electronico or '',
                 'customer_id': asignacion.contrato.customer_id,
                 'ods': asignacion.contrato.ods,
                 'vendedor': asignacion.contrato.creado_por.get_full_name() or asignacion.contrato.creado_por.username if asignacion.contrato.creado_por else 'Sistema',
@@ -139,6 +142,7 @@ def lista_asignaciones(request):
                 'asignacion_obj': asignacion,
                 'cliente_nombre': asignacion.venta_directa.nombre_completo,
                 'cedula': asignacion.venta_directa.cedula,
+                'direccion': 'N/A',
                 'correo': '',
                 'customer_id': asignacion.venta_directa.customer_id or '',
                 'ods': asignacion.venta_directa.nro_orden, 
@@ -158,7 +162,9 @@ def lista_asignaciones(request):
             busqueda_lower in item['customer_id'].lower() or
             busqueda_lower in item['ods'].lower() or
             busqueda_lower in item['vendedor'].lower() or
-            busqueda_lower in item['plan'].lower()
+            busqueda_lower in item['plan'].lower() or
+            busqueda_lower in item.get('direccion', '').lower() or
+            busqueda_lower in item.get('correo', '').lower()
         )]
     
     # ===== APLICAR FILTRO DE ESTADO A NO ASIGNADOS =====
@@ -176,6 +182,8 @@ def lista_asignaciones(request):
             busqueda_lower in item['ods'].lower() or
             busqueda_lower in item['vendedor'].lower() or
             busqueda_lower in item['plan'].lower() or
+            busqueda_lower in item.get('direccion', '').lower() or
+            busqueda_lower in item.get('correo', '').lower() or
             busqueda_lower in item['cuadrilla'].nombre.lower()
         )]
     
@@ -187,6 +195,8 @@ def lista_asignaciones(request):
     ).order_by('nombre')
     
     # ========== PAGINACIÓN ==========
+    from django.core.paginator import Paginator
+    
     paginator_no_asignados = Paginator(no_asignados, 10)
     paginator_asignados = Paginator(asignados, 10)
     

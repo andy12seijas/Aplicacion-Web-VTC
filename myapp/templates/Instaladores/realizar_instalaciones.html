@@ -1100,6 +1100,34 @@
         }
         
         cargarFotosExistentes();
+        
+        // ============================================================
+        // 7. ESTABLECER VALORES PREDETERMINADOS PARA MATERIALES
+        // ============================================================
+        const conectoresInput = document.getElementById('id_conectores');
+        const rosetasInput = document.getElementById('id_rosetas');
+        const patchCordInput = document.getElementById('id_patch_cord');
+        const tirrosInput = document.getElementById('id_tirros');
+        
+        if (conectoresInput && (conectoresInput.value === '' || conectoresInput.value === '0')) {
+            conectoresInput.value = '2';
+            conectoresInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (rosetasInput && (rosetasInput.value === '' || rosetasInput.value === '0')) {
+            rosetasInput.value = '1';
+            rosetasInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (patchCordInput && (patchCordInput.value === '' || patchCordInput.value === '0')) {
+            patchCordInput.value = '1';
+            patchCordInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (tirrosInput && (tirrosInput.value === '' || tirrosInput.value === '0')) {
+            tirrosInput.value = '1';
+            tirrosInput.dispatchEvent(new Event('input'));
+        }
     });
     
     // ============================================================
@@ -1288,10 +1316,10 @@
                 document.getElementById('resumen-metros').textContent = Math.abs(final - inicio);
             }
             if (conectores) document.getElementById('resumen-conectores').textContent = conectores.value || 2;
-            if (rosetas) document.getElementById('resumen-rosetas').textContent = rosetas.value || 0;
-            if (patchCord) document.getElementById('resumen-patch').textContent = patchCord.value || 0;
+            if (rosetas) document.getElementById('resumen-rosetas').textContent = rosetas.value || 1;
+            if (patchCord) document.getElementById('resumen-patch').textContent = patchCord.value || 1;
             if (tensores) document.getElementById('resumen-tensores').textContent = tensores.value || 0;
-            if (tirros) document.getElementById('resumen-tirros').textContent = tirros.value || 0;
+            if (tirros) document.getElementById('resumen-tirros').textContent = tirros.value || 1;
         }
         
         if (inicioFibra) inicioFibra.addEventListener('input', actualizarResumen);

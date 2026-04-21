@@ -25,7 +25,7 @@
                 <circle cx="11" cy="11" r="8"/>
                 <path d="M21 21l-4.35-4.35"/>
             </svg>
-            <input type="text" placeholder="Buscar por nombre, cédula, correo..." 
+            <input type="text" placeholder="Buscar por nombre, cédula, dirección..." 
                    id="searchInput" value="{{ busqueda }}">
         </div>
         
@@ -44,8 +44,23 @@
             <option value="">Todos los estados</option>
             <option value="EN_PROCESO" {% if filtro_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
             <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
-            <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
         </select>
+        
+        <!-- Botones de acción -->
+        <button class="btn-search" onclick="aplicarFiltrosConRecarga()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            Buscar
+        </button>
+        
+        <button class="btn-clear" onclick="limpiarFiltros()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+            </svg>
+            Limpiar filtros
+        </button>
     </div>
 </div>
 
@@ -73,8 +88,7 @@
                         <th>Cliente</th>
                         <th>Cédula</th>
                         <th>Teléfono</th>
-                        <th>Correo</th>
-                        <th>Plan</th>
+                        <th>Dirección</th>
                         <th>Estado</th>
                         <th>Vendedor</th>
                         <th>Fecha</th>
@@ -91,24 +105,21 @@
                                     <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
                                 </div>
                             </div>
-                        </div>
-                        <td>{{ contrato.cliente_potencial.cedula }}</div>
-                        <td>{{ contrato.cliente_potencial.telefono }}</div>
-                        <td class="email-cell">{{ contrato.correo_electronico|truncatechars:20 }}</div>
-                        <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</div>
+                        </td>
+                        <td>{{ contrato.cliente_potencial.cedula }}</td>
+                        <td>{{ contrato.cliente_potencial.telefono }}</td>
+                        <td class="address-cell">{{ contrato.direccion_detallada|truncatechars:30|default:"—" }}</td>
                         <td>
                             {% if contrato.estado == 'EN_PROCESO' %}
                             <span class="badge proceso">En Proceso</span>
                             {% elif contrato.estado == 'COMPLETADO' %}
                             <span class="badge completado">Completado</span>
-                            {% elif contrato.estado == 'NO_COMPLETADO' %}
-                            <span class="badge no-completado">No Completado</span>
                             {% endif %}
-                        </div>
+                        </td>
                         <td>
                             <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
-                        </div>
-                        <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</div>
+                        </td>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
                         <td class="actions-cell">
                             <!-- Ver detalles - TODOS -->
                             <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
@@ -126,11 +137,21 @@
                                 </svg>
                             </button>
                             {% endif %}
-                        </div>
+                            
+                            <!-- Marcar como No Completado - ADMIN y SUPERVISOR -->
+                            {% if es_admin or es_supervisor %}
+                            <button class="action-btn no-completado-btn" onclick="marcarNoCompletado({{ contrato.id }})" title="Marcar como No Completado">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="empty">No hay contratos pendientes</td>
+                        <td colspan="8" class="empty">No hay contratos pendientes</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -183,7 +204,7 @@
                         <th>Cédula</th>
                         <th>Customer ID</th>
                         <th>ODS</th>
-                        <th>Plan</th>
+                        <th>Dirección</th>
                         <th>Estado</th>
                         <th>Vendedor</th>
                         <th>Fecha</th>
@@ -200,24 +221,22 @@
                                     <div class="user-name">{{ contrato.cliente_potencial.nombre }} {{ contrato.cliente_potencial.apellido }}</div>
                                 </div>
                             </div>
-                        </div>
-                        <td>{{ contrato.cliente_potencial.cedula }}</div>
-                        <td><span class="badge completado">{{ contrato.customer_id|default:"—" }}</span></div>
-                        <td><span class="badge completado">{{ contrato.ods|default:"—" }}</span></div>
-                        <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</div>
+                        </td>
+                        <td>{{ contrato.cliente_potencial.cedula }}</td>
+                        <td><span class="badge completado">{{ contrato.customer_id|default:"—" }}</span></td>
+                        <td><span class="badge completado">{{ contrato.ods|default:"—" }}</span></td>
+                        <td class="address-cell">{{ contrato.direccion_detallada|truncatechars:25|default:"—" }}</td>
                         <td>
                             {% if contrato.estado == 'EN_PROCESO' %}
                             <span class="badge proceso">En Proceso</span>
                             {% elif contrato.estado == 'COMPLETADO' %}
                             <span class="badge completado">Completado</span>
-                            {% elif contrato.estado == 'NO_COMPLETADO' %}
-                            <span class="badge no-completado">No Completado</span>
                             {% endif %}
-                        </div>
+                        </td>
                         <td>
                             <span class="vendedor-badge">{{ contrato.creado_por.get_full_name|default:contrato.creado_por.username }}</span>
-                        </div>
-                        <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</div>
+                        </td>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/y" }}</td>
                         <td class="actions-cell">
                             <!-- Ver detalles - TODOS -->
                             <button class="action-btn" onclick="verContrato({{ contrato.id }})" title="Ver detalles">
@@ -263,7 +282,7 @@
                                 </svg>
                             </button>
                             {% endif %}
-                        </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -630,6 +649,50 @@
         --dark-text: #333;
     }
 
+    /* Botones de filtro */
+    .btn-search, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+    
+    .btn-search {
+        background: #ff6b00;
+        color: white;
+    }
+    
+    .btn-search:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    .btn-clear {
+        background: #f0f0f0;
+        color: #666;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .btn-clear:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+        background: #fffaf5;
+    }
+
+    .address-cell {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #555;
+    }
+
     .form-actions {
         display: flex;
         justify-content: flex-end;
@@ -690,300 +753,19 @@
         transform: translateY(-2px);
     }
 
-    .btn-cancel:active {
-        transform: translateY(0);
+    .no-completado-btn {
+        background: #ffebee;
+        color: #c62828;
+        border-color: #ffcdd2;
+    }
+    
+    .no-completado-btn:hover {
+        background: #ffcdd2;
+        color: #b71c1c;
+        border-color: #ef9a9a;
     }
 
-    .btn-save.loading {
-        pointer-events: none;
-        opacity: 0.8;
-    }
-
-    .btn-save.loading svg {
-        animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-
-    .modal-footer {
-        padding: 20px 24px;
-        background: linear-gradient(to bottom, #ffffff, #f8f9fa);
-        border-top: 2px solid #f0f0f0;
-        border-radius: 0 0 24px 24px;
-        position: sticky;
-        bottom: 0;
-        z-index: 10;
-        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.02);
-    }
-
-    .footer-actions {
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
-        align-items: center;
-    }
-
-    .btn-close-modern {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        padding: 12px 28px;
-        background: white;
-        border: 2px solid #e0e0e0;
-        border-radius: 50px;
-        font-size: 14px;
-        font-weight: 600;
-        color: #666;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .btn-close-modern::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 107, 0, 0.1);
-        transform: translate(-50%, -50%);
-        transition: width 0.6s, height 0.6s;
-        z-index: 0;
-    }
-
-    .btn-close-modern:hover {
-        border-color: #ff6b00;
-        color: #ff6b00;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(255, 107, 0, 0.15);
-    }
-
-    .btn-close-modern:hover::before {
-        width: 300px;
-        height: 300px;
-    }
-
-    .btn-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        z-index: 1;
-        transition: transform 0.3s ease;
-    }
-
-    .btn-close-modern:hover .btn-icon {
-        transform: translateX(-4px);
-    }
-
-    .btn-icon svg {
-        width: 18px;
-        height: 18px;
-        stroke: currentColor;
-    }
-
-    .btn-text {
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Nuevos estilos para el botón de copiar */
-    .modal-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .copy-modal-btn {
-        width: auto;
-        padding: 8px 16px;
-        background: white;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #666;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .copy-modal-btn:hover {
-        border-color: #ff6b00;
-        color: #ff6b00;
-        background: #fffaf5;
-    }
-    
-    .copy-btn {
-        background: #f0f0f0;
-    }
-    
-    .copy-btn:hover {
-        background: #fffaf5;
-        border-color: #ff6b00;
-        color: #ff6b00;
-    }
-    
-    /* Estilo para el botón de pago */
-    .payment-btn {
-        background: #f0f0f0;
-    }
-    
-    .payment-btn:hover {
-        background: #e3f2fd;
-        border-color: #2196f3;
-        color: #2196f3;
-    }
-    
-    /* Estilos para foto de pago */
-    .foto-pago-container {
-        margin-top: 20px;
-        padding: 16px;
-        background: #f8f9fa;
-        border-radius: 12px;
-        border: 1px solid #e0e0e0;
-    }
-    
-    .foto-pago-img {
-        width: 100%;
-        max-height: 300px;
-        object-fit: contain;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-bottom: 12px;
-        background: white;
-        padding: 8px;
-        border: 1px solid #e0e0e0;
-    }
-    
-    .foto-pago-img:hover {
-        transform: scale(1.02);
-        transition: transform 0.3s ease;
-    }
-    
-    .foto-placeholder {
-        padding: 40px;
-        text-align: center;
-        background: #f0f0f0;
-        border-radius: 8px;
-        color: #999;
-    }
-    
-    .foto-pago-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    .btn-primary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
-    }
-    
-    .btn-outline {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        background: white;
-        border: 2px solid #e0e0e0;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
-        color: #666;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-    }
-    
-    .btn-outline:hover {
-        border-color: #ff6b00;
-        color: #ff6b00;
-    }
-    
-    /* Estilos para el modal de foto ampliada */
-    .modal-container.modal-foto {
-        max-width: 90vw;
-        width: auto;
-        max-height: 90vh;
-    }
-    
-    .foto-modal-body {
-        text-align: center;
-        padding: 20px;
-        overflow: auto;
-    }
-    
-    .foto-ampliada {
-        max-width: 100%;
-        max-height: 70vh;
-        object-fit: contain;
-        border-radius: 8px;
-    }
-    
-    /* Toast notification */
-    .toast-notification {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: #4caf50;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        z-index: 10000;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        animation: slideInRight 0.3s ease;
-    }
-    
-    .toast-notification.error {
-        background: #f44336;
-    }
-    
-    .toast-notification.warning {
-        background: #ff9800;
-    }
-    
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    /* Filtros */
+    /* Resto de estilos igual que antes... */
     .filters-container {
         margin-bottom: 20px;
     }
@@ -1043,7 +825,6 @@
         border-color: #ff6b00;
     }
 
-    /* Pestañas */
     .tabs-container {
         background: white;
         border-radius: 16px;
@@ -1113,7 +894,6 @@
         display: block;
     }
 
-    /* Tabla */
     .table-container {
         overflow-x: auto;
     }
@@ -1146,7 +926,6 @@
         background: #f5f5f5;
     }
 
-    /* Badges */
     .badge {
         display: inline-block;
         padding: 4px 10px;
@@ -1180,7 +959,6 @@
         color: #555;
     }
 
-    /* User cell */
     .user-cell {
         display: flex;
         align-items: center;
@@ -1207,7 +985,6 @@
         font-size: 13px;
     }
 
-    /* Action buttons */
     .action-btn {
         width: 32px;
         height: 32px;
@@ -1229,13 +1006,6 @@
         background: #fffaf5;
     }
 
-    .email-cell {
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
     .empty {
         text-align: center;
         padding: 48px !important;
@@ -1243,7 +1013,6 @@
         font-size: 14px;
     }
 
-    /* Modal */
     .modal {
         position: fixed;
         top: 0;
@@ -1396,7 +1165,6 @@
         margin-bottom: 16px;
     }
 
-    /* Formulario */
     .form-group {
         margin-bottom: 20px;
     }
@@ -1435,7 +1203,6 @@
         margin-top: 4px;
     }
 
-    /* Paginación */
     .pagination {
         display: flex;
         align-items: center;
@@ -1472,7 +1239,6 @@
         font-weight: 500;
     }
 
-    /* Botón secundario */
     .btn-secondary {
         display: inline-flex;
         align-items: center;
@@ -1492,15 +1258,148 @@
         color: #ff6b00;
     }
 
-    /* Responsive */
+    .foto-pago-container {
+        margin-top: 20px;
+        padding: 16px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .foto-pago-img {
+        width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 12px;
+        background: white;
+        padding: 8px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .foto-placeholder {
+        padding: 40px;
+        text-align: center;
+        background: #f0f0f0;
+        border-radius: 8px;
+        color: #999;
+    }
+    
+    .foto-pago-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+    }
+    
+    .btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: white;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+
+    .modal-container.modal-foto {
+        max-width: 90vw;
+        width: auto;
+        max-height: 90vh;
+    }
+    
+    .foto-modal-body {
+        text-align: center;
+        padding: 20px;
+        overflow: auto;
+    }
+    
+    .foto-ampliada {
+        max-width: 100%;
+        max-height: 70vh;
+        object-fit: contain;
+        border-radius: 8px;
+    }
+
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: #4caf50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInRight 0.3s ease;
+    }
+    
+    .toast-notification.error {
+        background: #f44336;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .swal2-container {
+        z-index: 20000 !important;
+    }
+
+    .swal2-popup {
+        z-index: 20001 !important;
+    }
+
     @media (max-width: 768px) {
         .filters-grid {
             flex-direction: column;
             align-items: stretch;
         }
 
-        .search-box,
-        .filter-select {
+        .search-box, .filter-select, .btn-search, .btn-clear {
             width: 100%;
         }
 
@@ -1546,42 +1445,15 @@
             justify-content: flex-end;
         }
         
-        .foto-pago-actions {
-            flex-direction: column;
+        .address-cell {
+            max-width: 150px;
         }
-        
-        .btn-primary, .btn-outline {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        .pagination {
-            gap: 6px;
-        }
-        
-        .page-link {
-            width: 34px;
-            height: 34px;
-        }
-        
-        .page-info {
-            font-size: 12px;
-        }
-    }
-        /* Aumentar z-index de SweetAlert para que esté por encima del modal */
-    .swal2-container {
-        z-index: 20000 !important;
-    }
-
-    .swal2-popup {
-        z-index: 20001 !important;
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function verHistorialSoportes(contratoId) {
-        // Primero obtener la instalación asociada al contrato
         fetch(`/instalacion-por-contrato/${contratoId}/`)
             .then(response => response.json())
             .then(data => {
@@ -1606,8 +1478,88 @@
                 });
             });
     }
+    
     let datosContratoActual = null;
     let fotoUrlActual = null;
+    
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('vendedor');
+        url.searchParams.delete('estado');
+        
+        const tabActiva = document.querySelector('.tab-content.active')?.id || 'tab-pendientes';
+        const tab = tabActiva === 'tab-pendientes' ? 'pendientes' : 'completados';
+        url.searchParams.set('tab', tab);
+        
+        if (tab === 'pendientes') {
+            url.searchParams.set('page_pendientes', 1);
+        } else {
+            url.searchParams.set('page_completados', 1);
+        }
+        
+        window.location.href = url.toString();
+    }
+    
+    function marcarNoCompletado(contratoId) {
+        Swal.fire({
+            title: '¿Marcar como No Completado?',
+            text: 'Este contrato pasará a estado "No Completado" y no aparecerá en las listas de pendientes ni completados.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Sí, marcar como No Completado',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Procesando...',
+                    text: 'Actualizando estado del contrato',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+                
+                fetch(`/contrato/${contratoId}/no-completado/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Contrato actualizado',
+                            text: data.message,
+                            confirmButtonColor: '#ff6b00'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.error || 'No se pudo actualizar el contrato',
+                            confirmButtonColor: '#ff6b00'
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.close();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al procesar la solicitud',
+                        confirmButtonColor: '#ff6b00'
+                    });
+                });
+            }
+        });
+    }
     
     async function copiarInfoContrato(id) {
         try {
@@ -1728,13 +1680,11 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
     
     let contratoSeleccionado = null;
 
-    // Búsqueda en tiempo real con recarga de página
     let searchTimeout;
-    document.getElementById('searchInput')?.addEventListener('keyup', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
+    document.getElementById('searchInput')?.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') {
             aplicarFiltrosConRecarga();
-        }, 500);
+        }
     });
 
     document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltrosConRecarga);
@@ -1746,7 +1696,6 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         const estado = document.getElementById('filterEstado').value;
         const busqueda = document.getElementById('searchInput').value;
         
-        // Obtener la pestaña activa actual
         const tabActiva = document.querySelector('.tab-content.active')?.id || 'tab-pendientes';
         const tab = tabActiva === 'tab-pendientes' ? 'pendientes' : 'completados';
         
@@ -1761,7 +1710,6 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         
         url.searchParams.set('tab', tab);
         
-        // Ir a la primera página
         if (tab === 'pendientes') {
             url.searchParams.delete('page_completados');
             url.searchParams.set('page_pendientes', 1);
@@ -1777,7 +1725,6 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         const url = new URL(window.location.href);
         url.searchParams.set('tab', tab);
         
-        // Mantener los filtros actuales
         const busqueda = document.getElementById('searchInput')?.value;
         const vendedor = document.getElementById('filterVendedor')?.value;
         const estado = document.getElementById('filterEstado')?.value;
@@ -1791,7 +1738,6 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         if (estado) url.searchParams.set('estado', estado);
         else url.searchParams.delete('estado');
         
-        // Ir a la primera página de la nueva pestaña
         if (tab === 'pendientes') {
             url.searchParams.delete('page_completados');
             url.searchParams.set('page_pendientes', 1);
@@ -1913,10 +1859,6 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         if (estadoTexto === 'Completado' || estadoTexto === 'COMPLETADO') {
             estadoClass = 'badge completado';
             estadoTexto = 'Completado';
-        }
-        if (estadoTexto === 'No Completado' || estadoTexto === 'NO_COMPLETADO') {
-            estadoClass = 'badge no-completado';
-            estadoTexto = 'No Completado';
         }
         document.getElementById('modalEstado').innerHTML = `<span class="${estadoClass}">${estadoTexto}</span>`;
         
