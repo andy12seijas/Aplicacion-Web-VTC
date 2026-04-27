@@ -308,7 +308,7 @@ def reporte_instalador(request):
     # Filtrar por cuadrilla si se selecciona
     if cuadrilla_id:
         instalaciones_base = instalaciones_base.filter(asignacion__cuadrilla_id=cuadrilla_id)
-        soportes_base = soportes_base.filter(instalacion__asignacion__cuadrilla_id=cuadrilla_id)
+        soportes_base = soportes_base.filter(cuadrilla_id=cuadrilla_id)
     
     instalaciones_totales = instalaciones_base
     soportes_totales = soportes_base
@@ -321,9 +321,9 @@ def reporte_instalador(request):
     
     # Soportes
     total_soportes = soportes_totales.count()
-    soportes_completados = soportes_totales.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count()
-    soportes_pendientes = soportes_totales.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count()
-    soportes_en_proceso = soportes_totales.filter(estado=Soporte.EstadoSoporte.EN_PROCESO).count()
+    soportes_completados = soportes_totales.filter(estado='COMPLETADO').count()
+    soportes_pendientes = soportes_totales.filter(estado='PENDIENTE').count()
+    soportes_en_proceso = soportes_totales.filter(estado='EN_PROCESO').count()
     
     # ========== DATOS PARA GRÁFICAS ==========
     # Aplicar filtros de fecha a las gráficas
@@ -366,25 +366,40 @@ def reporte_instalador(request):
             instalaciones_totales_mes.append(item['total'])
             instalaciones_completadas_mes.append(item['completadas'])
     
-    # 3. Soportes por tipo
-    soportes_por_tipo = soportes_totales.values('tipo').annotate(count=Count('id'))
+    # 3. Soportes por tipo (obtener tipo desde el ticket asociado)
+    soportes_por_tipo = []
+    tipo_dict = {}
+    
+    for sop in soportes_totales:
+        try:
+            tipo = sop.asignacion.ticket.tipo_soporte
+            tipo_dict[tipo] = tipo_dict.get(tipo, 0) + 1
+        except:
+            pass
     
     soportes_tipo_labels = []
     soportes_tipo_values = []
-    soportes_tipo_colors = {'MUDANZA': '#3b82f6', 'RETIRO': '#f59e0b', 'RECABLEADO': '#8b5cf6'}
+    soportes_tipo_colors = {'MUDANZA': '#3b82f6', 'RETIRO': '#f59e0b', 'RECABLEADO': '#8b5cf6', 'SOPORTE': '#9e9e9e'}
     soportes_tipo_colors_list = []
     
-    for item in soportes_por_tipo:
-        soportes_tipo_labels.append(dict(Soporte.TipoSoporte.choices).get(item['tipo'], item['tipo']))
-        soportes_tipo_values.append(item['count'])
-        soportes_tipo_colors_list.append(soportes_tipo_colors.get(item['tipo'], '#9e9e9e'))
+    tipo_display = {
+        'MUDANZA': 'Mudanza',
+        'RETIRO': 'Retiro',
+        'RECABLEADO': 'Recableado',
+        'SOPORTE': 'Soporte Técnico'
+    }
+    
+    for tipo, count in tipo_dict.items():
+        soportes_tipo_labels.append(tipo_display.get(tipo, tipo))
+        soportes_tipo_values.append(count)
+        soportes_tipo_colors_list.append(soportes_tipo_colors.get(tipo, '#9e9e9e'))
     
     # 4. Soportes por estado
     soportes_estado_labels = ['Completados', 'Pendientes', 'En Proceso']
     soportes_estado_values = [
-        soportes_totales.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count(),
-        soportes_totales.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count(),
-        soportes_totales.filter(estado=Soporte.EstadoSoporte.EN_PROCESO).count()
+        soportes_totales.filter(estado='COMPLETADO').count(),
+        soportes_totales.filter(estado='PENDIENTE').count(),
+        soportes_totales.filter(estado='EN_PROCESO').count()
     ]
     soportes_estado_colors = ['#10b981', '#f59e0b', '#3b82f6']
     
@@ -440,22 +455,22 @@ def reporte_instalador(request):
     
     # Soportes COMPLETADOS en la semana
     soportes_completados_semana = soportes_totales.filter(
-        estado=Soporte.EstadoSoporte.COMPLETADO,
+        estado='COMPLETADO',
         fecha_actualizacion__date__gte=viernes_seleccionado,
         fecha_actualizacion__date__lte=jueves_seleccionado
-    ).select_related('instalacion__asignacion__cuadrilla')
+    ).select_related('asignacion__ticket', 'cuadrilla')
     
     # Soportes PENDIENTES creados en la semana
     soportes_pendientes_semana = soportes_totales.filter(
-        estado=Soporte.EstadoSoporte.PENDIENTE,
+        estado='PENDIENTE',
         fecha_creacion__date__gte=viernes_seleccionado,
         fecha_creacion__date__lte=jueves_seleccionado
     ).exclude(
         id__in=soportes_totales.filter(
-            estado=Soporte.EstadoSoporte.COMPLETADO,
+            estado='COMPLETADO',
             fecha_actualizacion__date__gt=jueves_seleccionado
         ).values_list('id', flat=True)
-    ).select_related('instalacion__asignacion__cuadrilla')
+    ).select_related('asignacion__ticket', 'cuadrilla')
     
     # Unir todas las instalaciones de la semana
     instalaciones_semana = list(instalaciones_completadas_semana) + list(instalaciones_pendientes_semana)
@@ -493,16 +508,16 @@ def reporte_instalador(request):
     acumulado_instalaciones_total = acumulado_instalaciones_completadas + acumulado_instalaciones_pendientes
     
     acumulado_soportes_completados = soportes_totales.filter(
-        estado=Soporte.EstadoSoporte.COMPLETADO,
+        estado='COMPLETADO',
         fecha_actualizacion__date__lte=jueves_seleccionado
     ).count()
     
     acumulado_soportes_pendientes = soportes_totales.filter(
-        estado=Soporte.EstadoSoporte.PENDIENTE,
+        estado='PENDIENTE',
         fecha_creacion__date__lte=jueves_seleccionado
     ).exclude(
         id__in=soportes_totales.filter(
-            estado=Soporte.EstadoSoporte.COMPLETADO,
+            estado='COMPLETADO',
             fecha_actualizacion__date__gt=jueves_seleccionado
         ).values_list('id', flat=True)
     ).count()
@@ -533,7 +548,9 @@ def reporte_instalador(request):
         'asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial'
     ).order_by('-fecha_creacion')[:10]
     
-    ultimos_soportes = soportes_totales.select_related('instalacion').order_by('-fecha_creacion')[:10]
+    ultimos_soportes = soportes_totales.select_related(
+        'asignacion__ticket', 'cuadrilla'
+    ).order_by('-fecha_creacion')[:10]
     
     # ========== OBTENER LISTAS PARA FILTROS ==========
     instaladores_lista = []

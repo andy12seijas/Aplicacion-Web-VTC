@@ -48,6 +48,7 @@ urlpatterns = [
     path('asignaciones/desasignar/<int:asignacion_id>/', desasignar_contrato, name='desasignar_contrato'),
     path('panel-estadisticas/', panel_estadisticas, name='panel_estadisticas'),
     path('usuarios/<int:user_id>/cambiar-estado/', cambiar_estado_usuario, name='cambiar_estado_usuario'),
+    path('contrato/<int:contrato_id>/reactivar/', reactivar_contrato, name='reactivar_contrato'),
     #URLS DE VENDEDORES
     path('lista_clientes/', lista_clientes, name='lista_clientes'),
     path('crear_cliente/', crear_cliente, name='crear_cliente'),
@@ -83,12 +84,19 @@ urlpatterns = [
     path('nomina/vendedor/<int:vendedor_id>/', detalle_nomina_vendedor, name='detalle_nomina_vendedor'),
     path('nomina/recalcular/', recalcular_nomina, name='recalcular_nomina'),
     #Soporte
-    path('soportes/', lista_soportes, name='lista_soportes'),
-    path('soporte/nuevo/', crear_soporte_unificado, name='crear_soporte_unificado'),
-    path('soporte/<int:soporte_id>/editar/', editar_soporte, name='editar_soporte'),
-    path('soporte/<int:soporte_id>/detalle-json/', detalle_soporte_json, name='detalle_soporte_json'),
-    #Soporte Admin
-    path('soporte/<int:soporte_id>/editar/', editar_soporte, name='editar_soporte'),
+    path('soportes/',gestion_soportes, name='gestion_soportes'),
+    
+    # Tickets
+    path('soportes/ticket/crear/', crear_ticket, name='crear_ticket'),
+    path('soportes/ticket/editar/<int:ticket_id>/',editar_ticket, name='editar_ticket'),
+    path('soportes/ticket/asignar/<int:ticket_id>/', asignar_ticket, name='asignar_ticket'),
+    path('soportes/ticket/desasignar/<int:asignacion_id>/', desasignar_ticket, name='desasignar_ticket'),
+    path('soportes/ticket/detalle/<int:ticket_id>/', ver_detalle_soporte, name='ver_detalle_soporte'),
+    path('ticket/crear-rapido/', crear_ticket_rapido, name='crear_ticket_rapido'),
+    
+    # Soporte técnico
+    path('soportes/registrar/<int:ticket_id>/', registrar_soporte, name='registrar_soporte'),
+
     
     # API: Obtener detalles de soporte en JSON (para el modal)
     path('soporte/<int:soporte_id>/detalle-json/', detalle_soporte_admin, name='detalle_soporte_json'),

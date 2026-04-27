@@ -1,0 +1,567 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Simple Fibra - {{ titulo }}{% endblock %}
+
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block page_subtitle %}Complete la información del ticket de soporte{% endblock %}
+
+{% block header_actions %}
+<a href="{% if referer %}{{ referer }}{% else %}{% url 'gestion_soportes' %}{% endif %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <!-- Pestañas de modo de ingreso -->
+        <div class="mode-tabs">
+            <button type="button" class="mode-tab active" data-mode="manual">
+                <span class="tab-icon">📝</span> Manual (Campo por campo)
+            </button>
+            <button type="button" class="mode-tab" data-mode="rapido">
+                <span class="tab-icon">⚡</span> Formato Rápido
+            </button>
+        </div>
+
+        <!-- MODO MANUAL - Formulario normal -->
+        <div id="modo-manual" class="mode-content active">
+            <form method="post" class="form-content" id="formManual">
+                {% csrf_token %}
+                {% if form.errors %}
+                <div class="alert-error" style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 10px; padding: 12px; margin-bottom: 20px;">
+                    <strong style="color: #ef4444;">❌ Por favor corrige los siguientes errores:</strong>
+                    <ul style="margin: 8px 0 0 20px; color: #991b1b;">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li><strong>{{ field }}:</strong> {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <input type="hidden" name="modo" value="manual">
+                
+                <div class="form-sections">
+                    <div class="form-section">
+                        <h3 class="section-title">📋 Información del Ticket</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="{{ form.ticket_padre.id_for_label }}">Ticket Padre <span class="required">*</span></label>
+                                {{ form.ticket_padre }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.tipo_soporte.id_for_label }}">Tipo de Soporte <span class="required">*</span></label>
+                                {{ form.tipo_soporte }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.fecha_requerida.id_for_label }}">Fecha requerida</label>
+                                {{ form.fecha_requerida }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3 class="section-title">👤 Datos del Cliente</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="{{ form.nombre.id_for_label }}">Nombre <span class="required">*</span></label>
+                                {{ form.nombre }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.apellido.id_for_label }}">Apellido <span class="required">*</span></label>
+                                {{ form.apellido }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.cedula.id_for_label }}">Cédula (solo números) <span class="required">*</span></label>
+                                {{ form.cedula }}
+                                <small class="help-text">Ingrese solo los números, sin V-, E-, etc.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.customer_id.id_for_label }}">Customer ID</label>
+                                {{ form.customer_id }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.telefono.id_for_label }}">Teléfono (solo números) <span class="required">*</span></label>
+                                {{ form.telefono }}
+                                <small class="help-text">Ingrese solo números, sin espacios ni guiones</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.telefono_alternativo.id_for_label }}">Teléfono Alternativo</label>
+                                {{ form.telefono_alternativo }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.correo_electronico.id_for_label }}">Correo Electrónico</label>
+                                {{ form.correo_electronico }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3 class="section-title">📍 Ubicación y Plan</h3>
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label for="{{ form.direccion.id_for_label }}">Dirección <span class="required">*</span></label>
+                                {{ form.direccion }}
+                            </div>
+                            <div class="form-group">
+                                <label for="{{ form.plan.id_for_label }}">Plan <span class="required">*</span></label>
+                                {{ form.plan }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3 class="section-title">⚠️ Falla o Solicitud</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="{{ form.falla.id_for_label }}">Falla/Solicitud <span class="required">*</span></label>
+                                {{ form.falla }}
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="{{ form.descripcion_falla.id_for_label }}">Descripción detallada</label>
+                                {{ form.descripcion_falla }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if not ticket %}
+                    <div class="form-section">
+                        <h3 class="section-title">🚚 Asignación (opcional)</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="{{ form.cuadrilla.id_for_label }}">Asignar a cuadrilla</label>
+                                {{ form.cuadrilla }}
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="{{ form.observaciones_asignacion.id_for_label }}">Observaciones de asignación</label>
+                                {{ form.observaciones_asignacion }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="form-section">
+                        <h3 class="section-title">📝 Observaciones</h3>
+                        <div class="form-group full-width">
+                            {{ form.observaciones }}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{% url 'gestion_soportes' %}" class="btn-outline">Cancelar</a>
+                    <button type="submit" class="btn-primary">{{ action }}</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- MODO RÁPIDO - Pegar texto formateado -->
+        <div id="modo-rapido" class="mode-content">
+            <div class="form-sections">
+                <div class="form-section">
+                    <h3 class="section-title">⚡ Pegar Formato de Ticket</h3>
+                    <div class="info-box">
+                        <p><strong>📌 Formato aceptado:</strong></p>
+                        <pre class="formato-ejemplo">
+Falla: Sin conexión a internet
+Ticket Padre: SIMPLETV-06319623
+Fecha y hora: 21/04/2026
+Nombre y apellido: Jhon Alber Rojas Castellanos
+Cédula: V-23424117
+Customer: 436378286
+Dirección: CARABOBO-VALENCIA-VALENCIA-URB. MIGUEL ACHE Av Aranzazu sector Andrés Eloy blanco,calle Andrés Eloy 3era calle,casa # 93/09
+Teléfono: 4144313051
+Plan: 200 mbps</pre>
+                        <p class="help-text">✔️ Puedes copiar y pegar el formato directamente</p>
+                        <p class="help-text">✔️ El sistema extraerá automáticamente todos los datos</p>
+                        <p class="help-text">✔️ La cédula se guardará solo con números (Ej: 23424117)</p>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label>Texto del Ticket <span class="required">*</span></label>
+                        <textarea id="textoRapido" class="form-input" rows="10" placeholder="Pega aquí el texto del ticket..."></textarea>
+                        <small class="help-text">Pega el texto completo del ticket y el sistema lo procesará automáticamente</small>
+                    </div>
+                    
+                    <button type="button" class="btn-preview" onclick="previsualizarDatos()">
+                        🔍 Previsualizar datos extraídos
+                    </button>
+                </div>
+                
+                <!-- Previsualización de datos extraídos -->
+                <div id="previsualizacion" class="preview-section" style="display: none;">
+                    <h3 class="section-title">📋 Datos Extraídos</h3>
+                    <div class="preview-grid">
+                        <div class="preview-item"><strong>Ticket Padre:</strong> <span id="preview_ticket">-</span></div>
+                        <div class="preview-item"><strong>Tipo:</strong> <span id="preview_tipo">-</span></div>
+                        <div class="preview-item full-width"><strong>Nombre Completo:</strong> <span id="preview_nombre">-</span></div>
+                        <div class="preview-item"><strong>Cédula (solo números):</strong> <span id="preview_cedula">-</span></div>
+                        <div class="preview-item"><strong>Customer ID:</strong> <span id="preview_customer">-</span></div>
+                        <div class="preview-item"><strong>Teléfono:</strong> <span id="preview_telefono">-</span></div>
+                        <div class="preview-item"><strong>Plan:</strong> <span id="preview_plan">-</span></div>
+                        <div class="preview-item full-width"><strong>Dirección:</strong> <span id="preview_direccion">-</span></div>
+                        <div class="preview-item full-width"><strong>Falla:</strong> <span id="preview_falla">-</span></div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h3 class="section-title">🚚 Asignación</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tipo_soporte_rapido">Tipo de Soporte <span class="required">*</span></label>
+                            <select id="tipo_soporte_rapido" class="form-input">
+                                <option value="SOPORTE">🛠️ Soporte Técnico</option>
+                                <option value="MUDANZA">🚚 Mudanza</option>
+                                <option value="RETIRO">📤 Retiro</option>
+                                <option value="RECABLEADO">🔧 Recableado</option>
+                            </select>
+                            <small class="help-text">Selecciona el tipo de soporte</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="cuadrilla_rapido">Asignar a cuadrilla (opcional)</label>
+                            <select id="cuadrilla_rapido" class="form-input">
+                                <option value="">--- Seleccione una cuadrilla ---</option>
+                                {% for cuadrilla in cuadrillas %}
+                                <option value="{{ cuadrilla.id }}">{{ cuadrilla.nombre }} - {{ cuadrilla.get_estado_display }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="help-text">Puedes asignar el ticket a una cuadrilla</small>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="obs_asignacion_rapido">Observaciones de asignación</label>
+                            <textarea id="obs_asignacion_rapido" class="form-input" rows="2" placeholder="Notas adicionales..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'gestion_soportes' %}" class="btn-outline">Cancelar</a>
+                <button type="button" class="btn-primary" onclick="procesarYGuardar()">Guardar Ticket</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-container { max-width: 1000px; margin: 0 auto; }
+    .form-card { background: white; border-radius: 20px; border: 1px solid var(--gray-border); overflow: hidden; }
+    
+    /* Pestañas */
+    .mode-tabs { display: flex; border-bottom: 1px solid var(--gray-border); background: var(--gray-bg); }
+    .mode-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 20px; background: none; border: none; font-size: 14px; font-weight: 500; color: var(--gray-text); cursor: pointer; transition: all 0.2s; }
+    .mode-tab:hover { background: var(--orange-light); color: var(--orange); }
+    .mode-tab.active { background: white; color: var(--orange); border-bottom: 3px solid var(--orange); }
+    .tab-icon { font-size: 18px; }
+    
+    .mode-content { display: none; }
+    .mode-content.active { display: block; }
+    
+    .form-sections { padding: 24px; }
+    .form-section { margin-bottom: 32px; }
+    .section-title { font-size: 16px; font-weight: 600; color: var(--orange); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--orange-light); }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .full-width { grid-column: 1 / -1; }
+    .form-group { margin-bottom: 0; }
+    .form-group label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: var(--dark-text); }
+    .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--gray-border); border-radius: 10px; font-size: 13px; transition: all 0.2s; }
+    .form-input:focus { outline: none; border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,107,0,0.1); }
+    textarea.form-input { resize: vertical; min-height: 80px; }
+    .required { color: var(--red); }
+    .help-text { display: block; font-size: 11px; color: var(--gray-text); margin-top: 4px; }
+    
+    .info-box { background: #e3f2fd; border-left: 4px solid var(--orange); padding: 16px; border-radius: 12px; margin-bottom: 20px; }
+    .formato-ejemplo { background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 8px; font-size: 12px; font-family: monospace; overflow-x: auto; margin: 12px 0; white-space: pre-wrap; }
+    
+    .btn-preview { background: var(--orange-light); border: 1px solid var(--orange); color: var(--orange); padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 500; margin-top: 10px; transition: all 0.2s; }
+    .btn-preview:hover { background: var(--orange); color: white; }
+    
+    .preview-section { margin-top: 20px; padding: 16px; background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .preview-item { font-size: 13px; }
+    .preview-item.full-width { grid-column: 1 / -1; }
+    .preview-item strong { color: var(--dark-text); }
+    .preview-item span { color: var(--orange); font-weight: 500; }
+    
+    .form-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 20px 24px; background: var(--gray-bg); border-top: 1px solid var(--gray-border); }
+    .btn-primary, .btn-outline, .btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; border: none; text-decoration: none; }
+    .btn-primary { background: var(--orange); color: white; }
+    .btn-primary:hover { background: #ff8c00; transform: translateY(-1px); }
+    .btn-outline { background: white; color: var(--gray-text); border: 1px solid var(--gray-border); }
+    .btn-outline:hover { border-color: var(--orange); color: var(--orange); }
+    
+    @media screen and (max-width: 768px) {
+        .form-sections { padding: 16px; }
+        .form-grid { grid-template-columns: 1fr; }
+        .form-actions { flex-direction: column-reverse; }
+        .btn-primary, .btn-outline { width: 100%; justify-content: center; }
+        .mode-tab { font-size: 12px; padding: 10px; }
+        .preview-grid { grid-template-columns: 1fr; }
+        .preview-item.full-width { grid-column: 1; }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // Cambiar entre pestañas
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            const mode = this.dataset.mode;
+            document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.mode-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(`modo-${mode}`).classList.add('active');
+        });
+    });
+
+    // Función para extraer datos del texto
+    function extraerDatos(texto) {
+        const datos = {
+            ticket_padre: '',
+            nombre_completo: '',
+            cedula: '',
+            customer_id: '',
+            telefono: '',
+            direccion: '',
+            plan: '',
+            falla: ''
+        };
+        
+        // Extraer Ticket Padre
+        let ticketMatch = texto.match(/(?:Ticket Padre|Ticket#?|ID Ticket)[:\s]*([A-Z0-9-]+)/i);
+        if (!ticketMatch) {
+            ticketMatch = texto.match(/SIMPLETV-\d+/i);
+        }
+        if (ticketMatch) datos.ticket_padre = ticketMatch[1] || ticketMatch[0];
+        
+        // Extraer Falla
+        const fallaMatch = texto.match(/(?:Falla|Problema|Issue)[:\s]*([^\n]+)/i);
+        if (fallaMatch) datos.falla = fallaMatch[1].trim();
+        
+        // Extraer Nombre completo
+        let nombreMatch = texto.match(/(?:Nombre y apellido|Nombre|Cliente)[:\s]*([^\n]+)/i);
+        if (nombreMatch) {
+            datos.nombre_completo = nombreMatch[1].trim();
+        }
+        
+        if (!datos.nombre_completo) {
+            const lines = texto.split('\n');
+            for (let line of lines) {
+                if (line.match(/[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+/) && !line.includes('Dirección') && !line.includes('Ticket')) {
+                    datos.nombre_completo = line.trim();
+                    break;
+                }
+            }
+        }
+        
+        // Extraer Cédula - SOLO NÚMEROS
+        let cedulaMatch = texto.match(/(?:Cédula|Cedula|CI)[:\s]*([VEJPG]?-?[\d]+)/i);
+        if (!cedulaMatch) {
+            cedulaMatch = texto.match(/[VEJPG]-\d+/i);
+        }
+        if (cedulaMatch) {
+            let cedulaRaw = cedulaMatch[1] || cedulaMatch[0];
+            datos.cedula = cedulaRaw.replace(/[^0-9]/g, '');
+        }
+        
+        // Extraer Customer ID
+        let customerMatch = texto.match(/(?:Customer|Customer ID|ID Cliente)[:\s]*(\d+)/i);
+        if (!customerMatch) {
+            customerMatch = texto.match(/Customer:\s*(\d+)/i);
+        }
+        if (customerMatch) datos.customer_id = customerMatch[1];
+        
+        // Extraer Teléfono - SOLO NÚMEROS
+        let telefonoMatch = texto.match(/(?:Teléfono|Telefono|Celular|Contacto)[:\s]*([\d\s-]+)/i);
+        if (!telefonoMatch) {
+            telefonoMatch = texto.match(/\b(?:04|02)\d{9}\b/);
+        }
+        if (telefonoMatch) {
+            let telefonoRaw = telefonoMatch[1] || telefonoMatch[0];
+            datos.telefono = telefonoRaw.replace(/[^0-9]/g, '');
+        }
+        
+        // Extraer Dirección
+        const direccionMatch = texto.match(/(?:Dirección|Direccion)[:\s]*([^\n]+(?:\n[^\n]+)*?)(?=\n(?:Teléfono|Plan|Falla|Ticket|Cédula|\n\n|$))/i);
+        if (direccionMatch) {
+            datos.direccion = direccionMatch[1].trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
+        }
+        
+        // Extraer Plan
+        let planMatch = texto.match(/(?:Plan|Velocidad)[:\s]*(\d+\s*(?:mbps|Mbps|MB|megas?))/i);
+        if (!planMatch) {
+            planMatch = texto.match(/(\d+)\s*(?:mbps|Mbps|MB|megas?)/i);
+        }
+        if (planMatch) {
+            let planText = planMatch[1].trim();
+            if (!planText.toLowerCase().includes('mbps')) planText += ' mbps';
+            datos.plan = planText;
+        }
+        
+        return datos;
+    }
+
+    // Previsualizar datos extraídos
+    function previsualizarDatos() {
+        const texto = document.getElementById('textoRapido').value;
+        if (!texto.trim()) {
+            Swal.fire('Error', 'Pega el texto del ticket primero', 'warning');
+            return;
+        }
+        
+        const datos = extraerDatos(texto);
+        const tipoSeleccionado = document.getElementById('tipo_soporte_rapido').value;
+        const tipoTexto = tipoSeleccionado === 'MUDANZA' ? 'Mudanza' : 
+                          tipoSeleccionado === 'RETIRO' ? 'Retiro' : 
+                          tipoSeleccionado === 'RECABLEADO' ? 'Recableado' : 'Soporte Técnico';
+        
+        document.getElementById('preview_ticket').textContent = datos.ticket_padre || '-';
+        document.getElementById('preview_tipo').textContent = tipoTexto;
+        document.getElementById('preview_nombre').textContent = datos.nombre_completo || '-';
+        document.getElementById('preview_cedula').textContent = datos.cedula || '-';
+        document.getElementById('preview_customer').textContent = datos.customer_id || '-';
+        document.getElementById('preview_telefono').textContent = datos.telefono || '-';
+        document.getElementById('preview_plan').textContent = datos.plan || '-';
+        document.getElementById('preview_direccion').textContent = datos.direccion || '-';
+        document.getElementById('preview_falla').textContent = datos.falla || '-';
+        
+        document.getElementById('previsualizacion').style.display = 'block';
+        window.datosExtraidos = datos;
+    }
+
+    // Procesar y guardar desde modo rápido
+    function procesarYGuardar() {
+        const texto = document.getElementById('textoRapido').value;
+        if (!texto.trim()) {
+            Swal.fire('Error', 'Pega el texto del ticket primero', 'warning');
+            return;
+        }
+        
+        const datos = extraerDatos(texto);
+        const tipoSoporte = document.getElementById('tipo_soporte_rapido').value;
+        
+        if (!datos.ticket_padre) {
+            Swal.fire('Error', 'No se encontró el Ticket Padre en el texto', 'error');
+            return;
+        }
+        if (!datos.nombre_completo) {
+            Swal.fire('Error', 'No se encontró el nombre completo del cliente', 'error');
+            return;
+        }
+        if (!datos.cedula) {
+            Swal.fire('Error', 'No se encontró la cédula del cliente', 'error');
+            return;
+        }
+        if (!datos.telefono) {
+            Swal.fire('Error', 'No se encontró el teléfono del cliente', 'error');
+            return;
+        }
+        
+        const cuadrillaId = document.getElementById('cuadrilla_rapido')?.value;
+        const observacionesAsignacion = document.getElementById('obs_asignacion_rapido')?.value || '';
+        
+        // Agregar el tipo de soporte seleccionado
+        datos.tipo = tipoSoporte;
+        
+        Swal.fire({
+            title: '¿Guardar ticket?',
+            html: `<strong>Ticket:</strong> ${datos.ticket_padre}<br>
+                   <strong>Tipo:</strong> ${tipoSoporte === 'MUDANZA' ? 'Mudanza' : tipoSoporte === 'RETIRO' ? 'Retiro' : tipoSoporte === 'RECABLEADO' ? 'Recableado' : 'Soporte Técnico'}<br>
+                   <strong>Cliente:</strong> ${datos.nombre_completo}<br>
+                   <strong>Cédula:</strong> ${datos.cedula}<br>
+                   <strong>Teléfono:</strong> ${datos.telefono}<br>
+                   <strong>Plan:</strong> ${datos.plan || 'No definido'}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            confirmButtonText: 'Sí, guardar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{% url 'crear_ticket_rapido' %}";
+                
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = 'csrfmiddlewaretoken';
+                csrf.value = '{{ csrf_token }}';
+                form.appendChild(csrf);
+                
+                const datosInput = document.createElement('input');
+                datosInput.type = 'hidden';
+                datosInput.name = 'datos_json';
+                datosInput.value = JSON.stringify(datos);
+                form.appendChild(datosInput);
+                
+                const tipoInput = document.createElement('input');
+                tipoInput.type = 'hidden';
+                tipoInput.name = 'tipo_soporte';
+                tipoInput.value = tipoSoporte;
+                form.appendChild(tipoInput);
+                
+                if (cuadrillaId && cuadrillaId !== '') {
+                    const cuadrillaInput = document.createElement('input');
+                    cuadrillaInput.type = 'hidden';
+                    cuadrillaInput.name = 'cuadrilla_id';
+                    cuadrillaInput.value = cuadrillaId;
+                    form.appendChild(cuadrillaInput);
+                    
+                    const obsInput = document.createElement('input');
+                    obsInput.type = 'hidden';
+                    obsInput.name = 'observaciones_asignacion';
+                    obsInput.value = observacionesAsignacion;
+                    form.appendChild(obsInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
+    // Script para modo manual
+    document.addEventListener('DOMContentLoaded', function() {
+        const tipoSoporteSelect = document.getElementById('{{ form.tipo_soporte.id_for_label }}');
+        const fallaInput = document.getElementById('{{ form.falla.id_for_label }}');
+        
+        if (tipoSoporteSelect && fallaInput) {
+            function actualizarPlaceholder() {
+                const tipoSeleccionado = tipoSoporteSelect.value;
+                if (tipoSeleccionado === 'MUDANZA') {
+                    fallaInput.placeholder = 'Ej: Mudanza de servicio a nueva dirección';
+                } else if (tipoSeleccionado === 'RETIRO') {
+                    fallaInput.placeholder = 'Ej: Retiro de equipo por cancelación';
+                } else if (tipoSeleccionado === 'RECABLEADO') {
+                    fallaInput.placeholder = 'Ej: Recableado de fibra óptica';
+                } else {
+                    fallaInput.placeholder = 'Ej: Sin conexión a internet, velocidad lenta, etc.';
+                }
+            }
+            tipoSoporteSelect.addEventListener('change', actualizarPlaceholder);
+            actualizarPlaceholder();
+        }
+        
+        // Limpiar cédula y teléfono en modo manual al enviar
+        const formManual = document.getElementById('formManual');
+        if (formManual) {
+            formManual.addEventListener('submit', function(e) {
+                const cedulaInput = document.getElementById('{{ form.cedula.id_for_label }}');
+                const telefonoInput = document.getElementById('{{ form.telefono.id_for_label }}');
+                
+                if (cedulaInput && cedulaInput.value) {
+                    cedulaInput.value = cedulaInput.value.replace(/[^0-9]/g, '');
+                }
+                if (telefonoInput && telefonoInput.value) {
+                    telefonoInput.value = telefonoInput.value.replace(/[^0-9]/g, '');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

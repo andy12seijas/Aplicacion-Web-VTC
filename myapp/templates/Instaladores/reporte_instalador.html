@@ -303,7 +303,7 @@
         </div>
     </div>
     
-    <!-- Soportes de la semana -->
+    <!-- Soportes de la semana - CORREGIDO -->
     <div class="soportes-semana">
         <h4 class="subtitulo">
             <i class="fas fa-headset"></i>
@@ -323,9 +323,21 @@
                 <tbody>
                     {% for soporte in semana_actual.soportes %}
                     <tr>
-                        <td data-label="Cliente">{{ soporte.nombre_cliente }}</td>
-                        <td data-label="Tipo">{{ soporte.get_tipo_display }}</td>
-                        <td data-label="Cuadrilla">{{ soporte.instalacion.asignacion.cuadrilla.nombre|default:"N/A" }}</td>
+                        <td data-label="Cliente">
+                            {% if soporte.asignacion and soporte.asignacion.ticket %}
+                                {{ soporte.asignacion.ticket.nombre_completo }}
+                            {% else %}
+                                Cliente no disponible
+                            {% endif %}
+                        </td>
+                        <td data-label="Tipo">
+                            {% if soporte.asignacion and soporte.asignacion.ticket %}
+                                {{ soporte.asignacion.ticket.get_tipo_soporte_display }}
+                            {% else %}
+                                Soporte
+                            {% endif %}
+                        </td>
+                        <td data-label="Cuadrilla">{{ soporte.cuadrilla.nombre|default:"N/A" }}</td>
                         <td data-label="Estado">
                             {% if soporte.estado == 'COMPLETADO' %}
                             <span class="badge-success-sm">✅ Completado</span>
@@ -529,7 +541,7 @@
     </div>
 </div>
 
-<!-- Últimos Soportes -->
+<!-- Últimos Soportes - CORREGIDO -->
 <div class="dashboard-card full-width">
     <div class="card-header">
         <h3 class="section-title">
@@ -551,9 +563,21 @@
             <tbody>
                 {% for soporte in ultimos_soportes %}
                 <tr>
-                    <td data-label="Cliente">{{ soporte.nombre_cliente }}</td>
-                    <td data-label="Tipo">{{ soporte.get_tipo_display }}</td>
-                    <td data-label="Cuadrilla">{{ soporte.instalacion.asignacion.cuadrilla.nombre|default:"N/A" }}</td>
+                    <td data-label="Cliente">
+                        {% if soporte.asignacion and soporte.asignacion.ticket %}
+                            {{ soporte.asignacion.ticket.nombre_completo }}
+                        {% else %}
+                            Cliente no disponible
+                        {% endif %}
+                    </td>
+                    <td data-label="Tipo">
+                        {% if soporte.asignacion and soporte.asignacion.ticket %}
+                            {{ soporte.asignacion.ticket.get_tipo_soporte_display|default:"Soporte" }}
+                        {% else %}
+                            Soporte
+                        {% endif %}
+                    </td>
+                    <td data-label="Cuadrilla">{{ soporte.cuadrilla.nombre|default:"N/A" }}</td>
                     <td data-label="Estado">
                         {% if soporte.estado == 'COMPLETADO' %}
                         <span class="badge-success-sm">✅ Completado</span>

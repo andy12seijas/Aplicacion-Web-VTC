@@ -114,6 +114,8 @@ def dashboard_vendedor(request):
 
 
 # ==================== DASHBOARD INSTALADOR ====================
+# ==================== DASHBOARD INSTALADOR ====================
+# ==================== DASHBOARD INSTALADOR ====================
 def dashboard_instalador(request):
     user = request.user
     
@@ -136,7 +138,7 @@ def dashboard_instalador(request):
     # Estadísticas
     total_asignaciones = asignaciones.count()
     instalaciones_completadas = instalaciones_realizadas.filter(completada=True).count()
-    instalaciones_pendientes = total_asignaciones - instalaciones_realizadas.filter(completada=True).count()
+    instalaciones_pendientes = total_asignaciones - instalaciones_completadas
     
     # Instalaciones por mes
     hoy = timezone.now().date()
@@ -168,15 +170,49 @@ def dashboard_instalador(request):
     ).order_by('-fecha_instalacion')[:10]
     
     # Soportes recientes
-    soportes_recientes = soportes_realizados.order_by('-fecha_creacion')[:5]
+    soportes_recientes = soportes_realizados.select_related(
+        'asignacion__ticket', 'cuadrilla'
+    ).order_by('-fecha_creacion')[:5]
     
-    # Materiales más usados (promedio)
-    materiales = instalaciones_realizadas.filter(completada=True).aggregate(
-        avg_conectores=Avg('conectores'),
-        avg_rosetas=Avg('rosetas'),
-        avg_patch_cord=Avg('patch_cord'),
-        avg_metros=Avg(F('inicio_fibra') - F('final_fibra'))
-    )
+    # Para cada soporte, agregar el tipo display manualmente
+    for soporte in soportes_recientes:
+        try:
+            if soporte.asignacion and soporte.asignacion.ticket:
+                soporte.tipo_display = soporte.asignacion.ticket.get_tipo_soporte_display()
+            else:
+                soporte.tipo_display = "Soporte"
+        except:
+            soporte.tipo_display = "Soporte"
+    
+    # ========== MATERIALES UTILIZADOS (CORREGIDO - sin usar propiedad) ==========
+    # Calcular promedios directamente con agregación de Django sobre campos reales
+    from django.db.models import Avg, F
+    
+    instalaciones_completadas_filter = instalaciones_realizadas.filter(completada=True)
+    
+    # Promedio de materiales usando los campos reales
+    avg_conectores = instalaciones_completadas_filter.aggregate(Avg('conectores'))['conectores__avg'] or 0
+    avg_rosetas = instalaciones_completadas_filter.aggregate(Avg('rosetas'))['rosetas__avg'] or 0
+    avg_patch_cord = instalaciones_completadas_filter.aggregate(Avg('patch_cord'))['patch_cord__avg'] or 0
+    avg_tensores = instalaciones_completadas_filter.aggregate(Avg('tensores'))['tensores__avg'] or 0
+    
+    # Para los metros, calcular manualmente porque es una propiedad (no campo de BD)
+    total_metros = 0
+    count_instalaciones = 0
+    for inst in instalaciones_completadas_filter:
+        if inst.inicio_fibra is not None and inst.final_fibra is not None:
+            total_metros += abs(inst.final_fibra - inst.inicio_fibra)
+            count_instalaciones += 1
+    
+    avg_metros = total_metros / count_instalaciones if count_instalaciones > 0 else 0
+    
+    materiales = {
+        'avg_conectores': avg_conectores,
+        'avg_rosetas': avg_rosetas,
+        'avg_patch_cord': avg_patch_cord,
+        'avg_tensores': avg_tensores,
+        'avg_metros': avg_metros,
+    }
     
     # Posición en el ranking de instaladores (si hay más de uno)
     ranking_posicion = None
@@ -214,7 +250,7 @@ def dashboard_instalador(request):
     
     return render(request, 'Inicio_De_Sesion/dashboard.html', context)
 
-
+# ==================== DASHBOARD ADMINISTRADOR ====================
 # ==================== DASHBOARD ADMINISTRADOR ====================
 def dashboard_administrador(request):
     user = request.user
@@ -256,19 +292,55 @@ def dashboard_administrador(request):
     instalaciones_values = [instalaciones_completadas, instalaciones_pendientes]
     instalaciones_colors = ['#10b981', '#f59e0b']
     
-    # ========== SOPORTES ==========
-    soportes_mudanza = Soporte.objects.filter(tipo=Soporte.TipoSoporte.MUDANZA).count()
-    soportes_retiro = Soporte.objects.filter(tipo=Soporte.TipoSoporte.RETIRO).count()
-    soportes_recableado = Soporte.objects.filter(tipo=Soporte.TipoSoporte.RECABLEADO).count()
-    total_soportes = soportes_mudanza + soportes_retiro + soportes_recableado
+    # ========== SOPORTES (CORREGIDO) ==========
+    total_soportes = Soporte.objects.count()
+    soportes_pendientes = Soporte.objects.filter(estado='PENDIENTE').count()
+    soportes_proceso = Soporte.objects.filter(estado='EN_PROCESO').count()
+    soportes_completados = Soporte.objects.filter(estado='COMPLETADO').count()
+    soportes_no_completados = Soporte.objects.filter(estado='NO_COMPLETADO').count()
     
-    soportes_pendientes = Soporte.objects.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count()
-    soportes_completados = Soporte.objects.filter(estado=Soporte.EstadoSoporte.COMPLETADO).count()
+    # Soportes por tipo (desde el ticket asociado)
+    soportes_tipo = Soporte.objects.exclude(asignacion__isnull=True).exclude(asignacion__ticket__isnull=True).values('asignacion__ticket__tipo_soporte').annotate(
+        count=Count('id')
+    ).order_by('-count')
     
-    # Datos para gráfica de torta de soportes por tipo
-    soportes_tipo_labels = ['Mudanza', 'Retiro', 'Recableado']
-    soportes_tipo_values = [soportes_mudanza, soportes_retiro, soportes_recableado]
-    soportes_tipo_colors = ['#3b82f6', '#f59e0b', '#8b5cf6']
+    soportes_tipo_labels = []
+    soportes_tipo_values = []
+    soportes_tipo_colors = []
+    
+    tipo_colors = {
+        'MUDANZA': '#3b82f6',
+        'RETIRO': '#f59e0b', 
+        'RECABLEADO': '#8b5cf6',
+        'SOPORTE': '#9e9e9e'
+    }
+    
+    tipo_display = {
+        'MUDANZA': 'Mudanza',
+        'RETIRO': 'Retiro',
+        'RECABLEADO': 'Recableado',
+        'SOPORTE': 'Soporte Técnico'
+    }
+    
+    for item in soportes_tipo:
+        tipo = item['asignacion__ticket__tipo_soporte']
+        if tipo:
+            soportes_tipo_labels.append(tipo_display.get(tipo, tipo))
+            soportes_tipo_values.append(item['count'])
+            soportes_tipo_colors.append(tipo_colors.get(tipo, '#9e9e9e'))
+    
+    # Si no hay soportes, mostrar datos vacíos
+    if not soportes_tipo_labels:
+        soportes_tipo_labels = ['Sin datos']
+        soportes_tipo_values = [0]
+        soportes_tipo_colors = ['#e5e7eb']
+    
+    # Asignaciones pendientes
+    asignaciones_pendientes = AsignacionContrato.objects.filter(
+        activo=True
+    ).exclude(
+        id__in=Instalacion.objects.values_list('asignacion_id', flat=True)
+    ).count()
     
     # ========== ÚLTIMOS CONTRATOS ==========
     ultimos_contratos = ContratoCliente.objects.select_related(
@@ -279,6 +351,16 @@ def dashboard_administrador(request):
     top_vendedores = User.objects.filter(groups__name='Vendedor').annotate(
         total_contratos=Count('contratos_creados', filter=Q(contratos_creados__estado=ContratoCliente.EstadoContrato.COMPLETADO))
     ).order_by('-total_contratos')[:5]
+    
+    # ========== ÚLTIMAS INSTALACIONES ==========
+    ultimas_instalaciones = Instalacion.objects.filter(
+        completada=True
+    ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial').order_by('-fecha_instalacion')[:5]
+    
+    # ========== ÚLTIMOS SOPORTES ==========
+    ultimos_soportes = Soporte.objects.filter(
+        estado='COMPLETADO'
+    ).select_related('asignacion__ticket', 'cuadrilla').order_by('-fecha_creacion')[:5]
     
     context = {
         'rol': 'administrador',
@@ -305,19 +387,22 @@ def dashboard_administrador(request):
         'instalaciones_values': json.dumps(instalaciones_values),
         'instalaciones_colors': json.dumps(instalaciones_colors),
         
-        # Soportes
+        # Soportes (CORREGIDO)
         'total_soportes': total_soportes,
-        'soportes_mudanza': soportes_mudanza,
-        'soportes_retiro': soportes_retiro,
-        'soportes_recableado': soportes_recableado,
         'soportes_pendientes': soportes_pendientes,
+        'soportes_proceso': soportes_proceso,
         'soportes_completados': soportes_completados,
         'soportes_tipo_labels': json.dumps(soportes_tipo_labels),
         'soportes_tipo_values': json.dumps(soportes_tipo_values),
         'soportes_tipo_colors': json.dumps(soportes_tipo_colors),
         
-        # Últimos contratos
+        # Asignaciones
+        'asignaciones_pendientes': asignaciones_pendientes,
+        
+        # Últimos
         'ultimos_contratos': ultimos_contratos,
+        'ultimas_instalaciones': ultimas_instalaciones,
+        'ultimos_soportes': ultimos_soportes,
         
         # Top vendedores
         'top_vendedores': top_vendedores,

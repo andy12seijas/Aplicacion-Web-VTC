@@ -898,210 +898,173 @@ class CambiarEstadoVentaForm(forms.Form):
     )    
     
     
-class SoporteForm(forms.ModelForm):
-    """Formulario para crear/editar soportes"""
+
+# forms.py
+from django import forms
+from django.utils import timezone
+from .models import Ticket, AsignacionSoporte, Soporte, Cuadrilla, Plan, ModeloModem
+
+class TicketConAsignacionForm(forms.ModelForm):
+    """Formulario para crear Ticket y asignarlo inmediatamente a una cuadrilla"""
     
-    # Campo para múltiples fotos
-    fotos_upload = MultipleFileField(
-        required=False,
-        label="Fotos del soporte",
-        help_text="Puedes seleccionar múltiples imágenes (JPG, PNG, GIF - Máx. 5MB cada una)"
+    cuadrilla = forms.ModelChoiceField(
+        queryset=Cuadrilla.objects.filter(activo=True),
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-input'}),
+        label="Asignar a cuadrilla"
     )
+    observaciones_asignacion = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-input', 'rows': 2, 'placeholder': 'Observaciones de la asignación'}),
+        label="Observaciones de asignación"
+    )
+    
+    class Meta:
+        model = Ticket
+        fields = [
+            'ticket_padre', 'tipo_soporte', 'nombre', 'apellido', 'cedula', 'customer_id',
+            'telefono', 
+            'direccion', 'plan', 'falla', 
+            'fecha_requerida', 'observaciones'
+        ]
+        widgets = {
+            'ticket_padre': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: SIMPLETV-06319623'}),
+            'tipo_soporte': forms.Select(attrs={'class': 'form-input'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Nombre del cliente'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Apellido del cliente'}),
+            'cedula': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'V-12345678'}),
+            'customer_id': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Customer ID'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '+58 412-1234567'}),
+           
+            'direccion': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Dirección completa del cliente'}),
+            'plan': forms.Select(attrs={'class': 'form-input'}),
+            'falla': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Ej: Sin conexión a internet, Mudanza, Retiro, etc.'}),
+          
+            'fecha_requerida': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-input', 'rows': 2, 'placeholder': 'Observaciones adicionales'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['plan'].queryset = Plan.objects.filter(activo=True)
+        self.fields['fecha_requerida'].required = False
+
+
+class TicketForm(forms.ModelForm):
+    """Formulario para editar Tickets existentes"""
+    
+    class Meta:
+        model = Ticket
+        fields = [
+            'ticket_padre', 'tipo_soporte', 'nombre', 'apellido', 'cedula', 'customer_id',
+            'telefono', 
+            'direccion', 'plan', 'falla', 
+            'fecha_requerida', 'observaciones', 'estado'
+        ]
+        widgets = {
+            'ticket_padre': forms.TextInput(attrs={'class': 'form-input'}),
+            'tipo_soporte': forms.Select(attrs={'class': 'form-input'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-input'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-input'}),
+            'cedula': forms.TextInput(attrs={'class': 'form-input'}),
+            'customer_id': forms.TextInput(attrs={'class': 'form-input'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-input'}),
+            
+            'direccion': forms.Textarea(attrs={'class': 'form-input', 'rows': 3}),
+            'plan': forms.Select(attrs={'class': 'form-input'}),
+            'falla': forms.TextInput(attrs={'class': 'form-input'}),
+            
+            'fecha_requerida': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-input', 'rows': 2}),
+            'estado': forms.Select(attrs={'class': 'form-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['plan'].queryset = Plan.objects.filter(activo=True)
+        self.fields['fecha_requerida'].required = False
+        if self.instance and self.instance.pk:
+            self.fields['estado'].required = False
+
+
+class AsignacionSoporteForm(forms.ModelForm):
+    """Formulario para asignar un ticket existente a una cuadrilla"""
+    
+    class Meta:
+        model = AsignacionSoporte
+        fields = ['cuadrilla', 'observaciones']
+        widgets = {
+            'cuadrilla': forms.Select(attrs={'class': 'form-input'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Observaciones de la asignación'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cuadrilla'].queryset = Cuadrilla.objects.filter(activo=True)
+
+
+class SoporteTecnicoForm(forms.ModelForm):
+    """Formulario para registrar la ejecución del soporte técnico"""
     
     class Meta:
         model = Soporte
         fields = [
-            'instalacion', 'tipo', 'fecha_hora_servicio',
-            'falla_encontrada', 'solucion',
-            'modelo_modem', 'sn_modem', 'mac_modem',  # ← NUEVOS CAMPOS
+            'fecha_hora_servicio', 'falla_encontrada', 'solucion',
+            'modelo_modem', 'sn_modem', 'mac_modem','modem_viejo','sn_modem_viejo','mac_modem_viejo',
             'inicio_fibra', 'final_fibra',
-            'conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos',
+            'conectores', 'rosetas', 'patch_cord', 'tensores', 
+            'conectores_malos', 'tirros',
+            'caja_nap_utilizada', 'puerto_nap_utilizado',
             'pin_ubicacion_lat', 'pin_ubicacion_lng',
-            'puerto_nap_utilizado', 'caja_nap_utilizada',
-            'observaciones'
+            'fotos', 'observaciones'
         ]
         widgets = {
-            'instalacion': forms.HiddenInput(),
-            'tipo': forms.Select(attrs={'class': 'form-control', 'id': 'id_tipo'}),
-            'fecha_hora_servicio': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-            'falla_encontrada': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la falla encontrada...'}),
-            'solucion': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la solución aplicada...'}),
-            'modelo_modem': forms.Select(attrs={'class': 'form-control'}),  # ← NUEVO
-            'sn_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Serial del módem (Ej: ABC123XYZ)'}),  # ← NUEVO
-            'mac_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'MAC Address (Ej: 00:1A:2B:3C:4D:5E)'}),  # ← NUEVO
-            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 100'}),
-            'final_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 115'}),
-            'conectores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores usados'}),
-            'rosetas': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de rosetas usadas'}),
-            'patch_cord': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de patch cord usados'}),
-            'tensores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de tensores usados'}),
-            'conectores_malos': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores malos'}),
-            'pin_ubicacion_lat': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: 10.123456', 'id': 'id_pin_lat'}),
-            'pin_ubicacion_lng': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: -66.123456', 'id': 'id_pin_lng'}),
-            'puerto_nap_utilizado': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: P1, P2, P3...'}),
-            'caja_nap_utilizada': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CAJA-001, NAP-002...'}),
-            'observaciones': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Observaciones adicionales...'}),
+            'fecha_hora_servicio': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
+            'falla_encontrada': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Describa la falla encontrada'}),
+            'solucion': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Describa la solución aplicada'}),
+            'modelo_modem': forms.Select(attrs={'class': 'form-input'}),
+            'sn_modem': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Serial del módem'}),
+            'mac_modem': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'MAC del módem'}),
+            'modem_viejo': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Modelo del Modem Viejo'}),
+            'sn_modem_viejo': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Serial del módem Viejo'}),
+            'mac_modem_viejo': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'MAC del módem Viejo'}),
+            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'Medición inicial'}),
+            'final_fibra': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'Medición final'}),
+            'conectores': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '0'}),
+            'rosetas': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '0'}),
+            'patch_cord': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '0'}),
+            'tensores': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '0'}),
+            'conectores_malos': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '0'}),
+            'tirros': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '0'}),
+            'caja_nap_utilizada': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Nomenclatura de la caja NAP'}),
+            'puerto_nap_utilizado': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Puerto utilizado'}),
+            'pin_ubicacion_lat': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'Latitud', 'step': 'any'}),
+            'pin_ubicacion_lng': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'Longitud', 'step': 'any'}),
+            'fotos': forms.Textarea(attrs={'class': 'form-input', 'rows': 2, 'placeholder': 'URLs de las fotos (una por línea)'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-input', 'rows': 2, 'placeholder': 'Observaciones adicionales'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Si es edición, cargar las fotos existentes
-        if self.instance and self.instance.pk and self.instance.fotos:
-            self.initial['fotos_upload'] = self.instance.fotos
-        
-        # Filtrar solo modelos activos
-        from myapp.models import ModeloModem
         self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
-        self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
+        self.fields['modelo_modem'].required = False
+        self.fields['fecha_hora_servicio'].required = False
+        
+        # Valores por defecto
+        for field in ['conectores', 'rosetas', 'patch_cord', 'tensores', 'conectores_malos', 'tirros']:
+            if not self.instance.pk:
+                self.fields[field].initial = 0
     
-  
+    def clean_fotos(self):
+        fotos = self.cleaned_data.get('fotos', '')
+        if isinstance(fotos, str):
+            if fotos.strip():
+                return [url.strip() for url in fotos.split('\n') if url.strip()]
+            return []
+        return fotos 
     
-    def clean(self):
-        cleaned_data = super().clean()
-        inicio_fibra = cleaned_data.get('inicio_fibra')
-        final_fibra = cleaned_data.get('final_fibra')
-        
-        if inicio_fibra and final_fibra and inicio_fibra <= final_fibra:
-            self.add_error('final_fibra', 'El valor FINAL debe ser menos que el  INICIO')
-        
-        # Validar que si se ingresa latitud, también se ingrese longitud
-        pin_lat = cleaned_data.get('pin_ubicacion_lat')
-        pin_lng = cleaned_data.get('pin_ubicacion_lng')
-        
-        if pin_lat and not pin_lng:
-            self.add_error('pin_ubicacion_lng', 'Debe ingresar la longitud junto con la latitud')
-        if pin_lng and not pin_lat:
-            self.add_error('pin_ubicacion_lat', 'Debe ingresar la latitud junto con la longitud')
-        
-        return cleaned_data
     
-    def save(self, commit=True):
-        soporte = super().save(commit=False)
-        
-        if commit:
-            soporte.save()
-            self.save_m2m()
-            
-            # Procesar las fotos subidas
-            fotos = self.cleaned_data.get('fotos_upload', [])
-            if fotos:
-                fotos_urls = []
-                from django.core.files.storage import default_storage
-                import os
-                from django.utils import timezone
-                
-                for foto in fotos:
-                    # Guardar foto
-                    extension = os.path.splitext(foto.name)[1].lower()
-                    nombre_archivo = f"soporte_{soporte.id}_{timezone.now().timestamp()}{extension}"
-                    ruta = os.path.join('soportes', nombre_archivo)
-                    
-                    saved_path = default_storage.save(ruta, foto)
-                    fotos_urls.append(default_storage.url(saved_path))
-                
-                # Actualizar el campo fotos del soporte
-                if soporte.fotos:
-                    soporte.fotos.extend(fotos_urls)
-                else:
-                    soporte.fotos = fotos_urls
-                soporte.save()
-        
-        return soporte
 
-class SoporteFotosForm(forms.Form):
-    """Formulario para subir fotos adicionales al soporte"""
-    fotos = MultipleFileField(
-        required=False,
-        label="Agregar más fotos"
-    )
-    
-    
-    
-class SoporteEditarForm(forms.ModelForm):
-    """Formulario específico para EDITAR soportes (estos campos no se modifican)"""
-    
-    # Campo para múltiples fotos NUEVAS (no afecta las existentes)
-    fotos_upload = MultipleFileField(
-        required=False,
-        label="Agregar más fotos",
-        help_text="Puedes seleccionar múltiples imágenes (JPG, PNG, GIF - Máx. 5MB cada una)"
-    )
-    
-    class Meta:
-        model = Soporte
-        # EXCLUIMOS los campos que NO deben modificarse en edición
-        exclude = [
-            'instalacion',      # No se puede cambiar la instalación original
-            'tipo',             # No se puede cambiar el tipo de soporte
-            'estado',           # El estado se maneja aparte
-            'instaladores',     # Los instaladores que realizaron el soporte
-            'fotos',            # Las fotos se manejan aparte (solo se agregan)
-            'creado_por',       # Quién lo creó
-            'fecha_creacion',   # Fecha de creación
-            'fecha_actualizacion' # Se actualiza automáticamente
-        ]
-        widgets = {
-            'fecha_hora_servicio': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
-            'falla_encontrada': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la falla encontrada...'}),
-            'solucion': forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Describa brevemente la solución aplicada...'}),
-            'modelo_modem': forms.Select(attrs={'class': 'form-control'}),
-            'sn_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Serial del módem (Ej: ABC123XYZ)'}),
-            'mac_modem': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'MAC Address (Ej: 00:1A:2B:3C:4D:5E)'}),
-            'inicio_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 100'}),
-            'final_fibra': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 85'}),
-            'conectores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores usados'}),
-            'rosetas': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de rosetas usadas'}),
-            'patch_cord': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de patch cord usados'}),
-            'tensores': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de tensores usados'}),
-            'conectores_malos': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Cantidad de conectores malos'}),
-            'pin_ubicacion_lat': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: 10.123456', 'id': 'id_pin_lat'}),
-            'pin_ubicacion_lng': forms.NumberInput(attrs={'class': 'form-control', 'step': 'any', 'placeholder': 'Ej: -66.123456', 'id': 'id_pin_lng'}),
-            'puerto_nap_utilizado': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: P1, P2, P3...'}),
-            'caja_nap_utilizada': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: CAJA-001, NAP-002...'}),
-            'observaciones': forms.Textarea(attrs={'rows': 2, 'class': 'form-control', 'placeholder': 'Observaciones adicionales...'}),
-        }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Filtrar solo modelos activos
-        self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
-        self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
-    
-   
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        inicio_fibra = cleaned_data.get('inicio_fibra')
-        final_fibra = cleaned_data.get('final_fibra')
-        
-        if inicio_fibra is not None and final_fibra is not None:
-            # FINAL debe ser MENOR o IGUAL que INICIO
-            if final_fibra > inicio_fibra:
-                self.add_error('final_fibra', 'Los metros finales no pueden ser mayores que los metros iniciales')
-        
-        # Validar coordenadas
-        pin_lat = cleaned_data.get('pin_ubicacion_lat')
-        pin_lng = cleaned_data.get('pin_ubicacion_lng')
-        
-        if pin_lat and not pin_lng:
-            self.add_error('pin_ubicacion_lng', 'Debe ingresar la longitud junto con la latitud')
-        if pin_lng and not pin_lat:
-            self.add_error('pin_ubicacion_lat', 'Debe ingresar la latitud junto con la longitud')
-        
-        return cleaned_data
-    
-    def save(self, commit=True):
-        """Guardar solo los campos editables, preservando los demás"""
-        soporte = super().save(commit=False)
-        
-        # NO modificamos: estado, instaladores, fotos (solo se agregan nuevas)
-        
-        if commit:
-            soporte.save()
-            self.save_m2m()
-        
-        return soporte
     
     
     

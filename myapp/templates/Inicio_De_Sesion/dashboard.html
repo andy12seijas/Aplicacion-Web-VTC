@@ -165,14 +165,14 @@
                                 <span class="user-avatar-sm">{{ contrato.nombre|first|upper }}{{ contrato.apellido|first|upper }}</span>
                                 {{ contrato.nombre_completo }}
                             </div>
-                        </td>
-                        <td>{{ contrato.plan_contratado.nombre }}</td>
+                        </div>
+                        <td>{{ contrato.plan_contratado.nombre }}</div>
                         <td>
                             <span class="badge {% if contrato.estado == 'COMPLETADO' %}badge-success{% elif contrato.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-danger{% endif %}">
                                 {{ contrato.get_estado_display }}
                             </span>
-                        </td>
-                        <td>{{ contrato.fecha_creacion|date:"d/m/Y" }}</td>
+                        </div>
+                        <td>{{ contrato.fecha_creacion|date:"d/m/Y" }}</div>
                         <td>
                             <button class="action-btn" onclick="verContrato({{ contrato.id }})">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -180,10 +180,10 @@
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
-                        </td>
+                        </div>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay contratos registrados</td>{% endfor %}
+                    <tr><td colspan="5" class="empty">No hay contratos registrados</div>{% endfor %}
                 </tbody>
             </table>
         </div>
@@ -328,7 +328,7 @@
                                 <span class="user-avatar-sm">{{ asignacion.cliente_nombre|slice:":2"|upper }}</span>
                                 {{ asignacion.cliente_nombre }}
                             </div>
-                        </td>
+                        </div>
                         <td>{{ asignacion.telefono_cliente }}</div>
                         <td class="direccion-cell">{{ asignacion.direccion|truncatechars:40 }}</div>
                         <td><span class="badge badge-info">{{ asignacion.plan }}</span></div>
@@ -341,7 +341,7 @@
                         </div>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay asignaciones pendientes 🎉</td>{% endfor %}
+                    <tr><td colspan="5" class="empty">No hay asignaciones pendientes 🎉</div>{% endfor %}
                 </tbody>
             </table>
         </div>
@@ -377,13 +377,21 @@
                 {% for soporte in soportes_recientes %}
                 <div class="soporte-item">
                     <div class="soporte-header">
-                        <span class="soporte-tipo">{{ soporte.get_tipo_display }}</span>
+                        <span class="soporte-tipo">{{ soporte.tipo_display|default:"Soporte" }}</span>
                         <span class="soporte-fecha">{{ soporte.fecha_creacion|date:"d/m/Y" }}</span>
                     </div>
-                    <div class="soporte-cliente">{{ soporte.nombre_cliente }}</div>
+                    <div class="soporte-cliente">
+                        {% if soporte.asignacion and soporte.asignacion.ticket %}
+                            {{ soporte.asignacion.ticket.nombre_completo }}
+                        {% else %}
+                            Cliente no disponible
+                        {% endif %}
+                    </div>
                     <div class="soporte-estado">
                         <span class="badge {% if soporte.estado == 'COMPLETADO' %}badge-success{% elif soporte.estado == 'EN_PROCESO' %}badge-warning{% else %}badge-secondary{% endif %}">
-                            {{ soporte.get_estado_display }}
+                            {% if soporte.estado == 'COMPLETADO' %}Completado
+                            {% elif soporte.estado == 'EN_PROCESO' %}En Proceso
+                            {% else %}Pendiente{% endif %}
                         </span>
                     </div>
                 </div>
@@ -446,7 +454,7 @@
             </div>
             <div class="stat-info">
                 <span class="stat-value">{{ total_soportes }}</span>
-                <span class="stat-label">Soportes</span>
+                <span class="stat-label">Total Soportes</span>
             </div>
         </div>
     </div>
@@ -507,7 +515,7 @@
                 </svg>
             </div>
             <div class="stat-info">
-                <span class="stat-value-sm">{{ soportes_pendientes }}</span>
+                <span class="stat-value-sm">{{ soportes_pendientes }} pendientes</span>
                 <span class="stat-label">Soportes Pendientes</span>
             </div>
         </div>
@@ -558,7 +566,7 @@
                 <span class="card-badge">{{ instalaciones_completadas }}/{{ total_instalaciones }} completadas</span>
             </div>
             <div class="chart-container">
-                <canvas id="instalacionesChart"></canvas>
+                <canvas id="instalacionesChartAdmin"></canvas>
             </div>
         </div>
         
@@ -629,9 +637,69 @@
                         <td>{{ contrato.fecha_creacion|date:"d/m/Y H:i" }}</div>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay contratos registrados</td>{% endfor %}
+                    <tr><td colspan="5" class="empty">No hay contratos registrados</div>{% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+    
+    <!-- Últimas Instalaciones - Admin -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>🔧 Últimas Instalaciones</h3>
+            <a href="{% url 'instalaciones_pendientes' %}" class="link-view">Ver todas →</a>
+        </div>
+        <div class="soportes-list">
+            {% for instalacion in ultimas_instalaciones %}
+            <div class="soporte-item">
+                <div class="soporte-header">
+                    <span class="soporte-tipo">Instalación</span>
+                    <span class="soporte-fecha">{{ instalacion.fecha_instalacion|date:"d/m/Y" }}</span>
+                </div>
+                <div class="soporte-cliente">{{ instalacion.nombre_cliente }}</div>
+                <div class="soporte-estado">
+                    <span class="badge badge-success">Completada</span>
+                </div>
+            </div>
+            {% empty %}
+            <p class="empty-text">No hay instalaciones registradas</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Últimos Soportes - Admin -->
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>🛠️ Últimos Soportes</h3>
+            <a href="{% url 'gestion_soportes' %}" class="link-view">Ver todos →</a>
+        </div>
+        <div class="soportes-list">
+            {% for soporte in ultimos_soportes %}
+            <div class="soporte-item">
+                <div class="soporte-header">
+                    <span class="soporte-tipo">
+                        {% if soporte.asignacion and soporte.asignacion.ticket %}
+                            {{ soporte.asignacion.ticket.get_tipo_soporte_display }}
+                        {% else %}
+                            Soporte
+                        {% endif %}
+                    </span>
+                    <span class="soporte-fecha">{{ soporte.fecha_creacion|date:"d/m/Y" }}</span>
+                </div>
+                <div class="soporte-cliente">
+                    {% if soporte.asignacion and soporte.asignacion.ticket %}
+                        {{ soporte.asignacion.ticket.nombre_completo }}
+                    {% else %}
+                        Cliente no disponible
+                    {% endif %}
+                </div>
+                <div class="soporte-estado">
+                    <span class="badge badge-success">Completado</span>
+                </div>
+            </div>
+            {% empty %}
+            <p class="empty-text">No hay soportes registrados</p>
+            {% endfor %}
         </div>
     </div>
     
@@ -790,13 +858,21 @@
             <div class="distribucion-container">
                 <canvas id="distribucionChart" width="400" height="200"></canvas>
                 <div class="distribucion-leyenda">
-                    {% for estado in distribucion_estados %}
                     <div class="leyenda-item">
-                        <span class="leyenda-color" style="background: {{ estado.color }}"></span>
-                        <span class="leyenda-label">{{ estado.estado }}</span>
-                        <span class="leyenda-valor">{{ estado.cantidad }}</span>
+                        <span class="leyenda-color" style="background: #10b981"></span>
+                        <span class="leyenda-label">Completados</span>
+                        <span class="leyenda-valor">{{ contratos_completados }}</span>
                     </div>
-                    {% endfor %}
+                    <div class="leyenda-item">
+                        <span class="leyenda-color" style="background: #f59e0b"></span>
+                        <span class="leyenda-label">En Proceso</span>
+                        <span class="leyenda-valor">{{ contratos_proceso }}</span>
+                    </div>
+                    <div class="leyenda-item">
+                        <span class="leyenda-color" style="background: #ef4444"></span>
+                        <span class="leyenda-label">No Completados</span>
+                        <span class="leyenda-valor">{{ contratos_no_completados }}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -913,7 +989,6 @@
     {% endif %}
     
 </div>
-
 <style>
     /* ===== VARIABLES ===== */
     :root {

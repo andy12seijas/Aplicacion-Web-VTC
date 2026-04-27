@@ -701,9 +701,10 @@ def mi_inventario(request):
     instalaciones_page = paginator_inst.get_page(page_inst)
     
     # ========== SOPORTES CON PAGINACIÓN ==========
+   # LÍNEA CORRECTA - elimina 'instalacion' que no existe
     soportes_all = Soporte.objects.filter(
         cuadrilla=cuadrilla
-    ).select_related('instalacion').order_by('-fecha_creacion')
+    ).select_related('asignacion', 'cuadrilla', 'modelo_modem').order_by('-fecha_creacion')
     
     paginator_sop = Paginator(soportes_all, 10)
     page_sop = request.GET.get('page_soportes', 1)

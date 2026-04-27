@@ -1001,99 +1001,384 @@ class NominaVendedor(models.Model):
         self.calcular_comision_y_bono()
         super().save(*args, **kwargs)        
         
-        
-class Soporte(models.Model):
-    """Modelo para registrar soportes técnicos (Mudanza, Retiro, Recableado)"""
+class Ticket(models.Model):
+    """Modelo para registrar tickets de soporte (fallas, problemas, etc.)"""
     
-    class TipoSoporte(models.TextChoices):
+    class EstadoTicket(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente'
+        ASIGNADO = 'ASIGNADO', 'Asignado'
+        EN_PROCESO = 'EN_PROCESO', 'En Proceso'
+        RESUELTO = 'RESUELTO', 'Resuelto'
+        CERRADO = 'CERRADO', 'Cerrado'
+        CANCELADO = 'CANCELADO', 'Cancelado'
+    
+    # Tipos de soporte
+    class TipoSoporteTicket(models.TextChoices):
         MUDANZA = 'MUDANZA', 'Mudanza'
         RETIRO = 'RETIRO', 'Retiro'
         RECABLEADO = 'RECABLEADO', 'Recableado'
+        SOPORTE = 'SOPORTE', 'Soporte Técnico'
     
-    class EstadoSoporte(models.TextChoices):
-        PENDIENTE = 'PENDIENTE', 'Pendiente'
-        EN_PROCESO = 'EN_PROCESO', 'En Proceso'
-        COMPLETADO = 'COMPLETADO', 'Completado'
-        INCOMPLETO = 'INCOMPLETO', 'Incompleto'
-        CANCELADO = 'CANCELADO', 'Cancelado'
-    
-    # Relación con la instalación previa
-    instalacion = models.ForeignKey(
-        'Instalacion',
-        on_delete=models.CASCADE,
-        related_name='soportes',
-        verbose_name="Instalación relacionada"
+    # Información del ticket padre
+    ticket_padre = models.CharField(
+        max_length=50,
+        verbose_name="Ticket Padre",
+        help_text="Ej: SIMPLETV-06319623",
+        db_index=True
     )
     
     # Tipo de soporte
-    tipo = models.CharField(
+    tipo_soporte = models.CharField(
         max_length=20,
-        choices=TipoSoporte.choices,
+        choices=TipoSoporteTicket.choices,
+        default=TipoSoporteTicket.SOPORTE,
         verbose_name="Tipo de Soporte",
         db_index=True
     )
     
-    # Estado del soporte
+    # Información del cliente
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name="Nombre"
+    )
+    apellido = models.CharField(
+        max_length=100,
+        verbose_name="Apellido"
+    )
+    cedula = models.CharField(
+        max_length=15,
+        verbose_name="Cédula",
+        db_index=True
+    )
+    customer_id = models.CharField(
+        max_length=50,
+        verbose_name="Customer ID",
+        blank=True,
+        null=True,
+        db_index=True
+    )
+    telefono = models.CharField(
+        max_length=20,
+        verbose_name="Teléfono"
+    )
+
+    
+    # Dirección completa (un solo campo)
+    direccion = models.TextField(
+        max_length=500,
+        verbose_name="Dirección",
+        help_text="Dirección completa del cliente (calle, avenida, urbanización, casa/edificio, referencia)"
+    )
+    
+    # Información del plan (usando la tabla Plan existente)
+    plan = models.ForeignKey(
+        'Plan',
+        on_delete=models.PROTECT,
+        related_name='tickets',
+        verbose_name="Plan Contratado"
+    )
+    
+    # Detalles de la falla/solicitud
+    falla = models.CharField(
+        max_length=255,
+        verbose_name="Falla o Solicitud",
+        help_text="Ej: Sin conexión a internet, Mudanza, Retiro de equipo, etc."
+    )
+    
+    
+    # Estado del ticket
     estado = models.CharField(
         max_length=20,
-        choices=EstadoSoporte.choices,
-        default=EstadoSoporte.PENDIENTE,
-        verbose_name="Estado del Soporte",
+        choices=EstadoTicket.choices,
+        default=EstadoTicket.PENDIENTE,
+        verbose_name="Estado del Ticket",
         db_index=True
     )
     
-    # Instaladores que realizaron el soporte (histórico)
+    # Fechas importantes
+    fecha_reporte = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Fecha y hora del reporte"
+    )
+    fecha_requerida = models.DateTimeField(
+        verbose_name="Fecha y hora requerida para el servicio",
+        blank=True,
+        null=True
+    )
+    
+    # Campos de control
+    creado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tickets_creados',
+        verbose_name="Creado por"
+    )
+    fecha_creacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de creación en sistema"
+    )
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización"
+    )
+    
+    # Observaciones generales
+    observaciones = models.TextField(
+        max_length=500,
+        verbose_name="Observaciones",
+        blank=True,
+        null=True
+    )
+    
+    class Meta:
+        verbose_name = "Ticket de Soporte"
+        verbose_name_plural = "Tickets de Soporte"
+        ordering = ['-fecha_reporte']
+        indexes = [
+            models.Index(fields=['ticket_padre']),
+            models.Index(fields=['cedula']),
+            models.Index(fields=['estado']),
+            models.Index(fields=['tipo_soporte']),
+            models.Index(fields=['fecha_reporte']),
+        ]
+    
+    def __str__(self):
+        return f"{self.ticket_padre} - {self.get_tipo_soporte_display()} - {self.nombre} {self.apellido} [{self.get_estado_display()}]"
+    
+    @property
+    def nombre_completo(self):
+        """Retorna el nombre completo del cliente"""
+        return f"{self.nombre} {self.apellido}".strip()
+    
+    @property
+    def es_mudanza(self):
+        return self.tipo_soporte == self.TipoSoporteTicket.MUDANZA
+    
+    @property
+    def es_retiro(self):
+        return self.tipo_soporte == self.TipoSoporteTicket.RETIRO
+    
+    @property
+    def es_recableado(self):
+        return self.tipo_soporte == self.TipoSoporteTicket.RECABLEADO
+    
+    @property
+    def es_soporte(self):
+        return self.tipo_soporte == self.TipoSoporteTicket.SOPORTE
+
+
+class AsignacionSoporte(models.Model):
+    """Modelo para asignar tickets a cuadrillas"""
+    
+    # Relación con Ticket
+    ticket = models.ForeignKey(
+        'Ticket',
+        on_delete=models.CASCADE,
+        related_name='asignaciones',
+        verbose_name="Ticket de Soporte"
+    )
+    
+    # Relación con Cuadrilla
+    cuadrilla = models.ForeignKey(
+        'Cuadrilla',
+        on_delete=models.CASCADE,
+        related_name='asignaciones_soporte',
+        verbose_name="Cuadrilla asignada"
+    )
+    
+    # Fecha de asignación
+    fecha_asignacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de asignación"
+    )
+    
+    # Quién realizó la asignación
+    asignado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='asignaciones_soporte_realizadas',
+        verbose_name="Asignado por"
+    )
+    
+    # Fecha límite para resolver
+    
+    
+    # Estado de la asignación
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Activo"
+    )
+    
+    # Observaciones de la asignación
+    observaciones = models.TextField(
+        max_length=500,
+        verbose_name="Observaciones",
+        blank=True,
+        null=True
+    )
+    
+    class Meta:
+        verbose_name = "Asignación de Soporte"
+        verbose_name_plural = "Asignaciones de Soporte"
+        ordering = ['-fecha_asignacion']
+        indexes = [
+            models.Index(fields=['activo']),
+            models.Index(fields=['fecha_asignacion']),
+            models.Index(fields=['ticket']),
+            models.Index(fields=['cuadrilla']),
+        ]
+    
+    def __str__(self):
+        return f"{self.ticket.ticket_padre} → {self.cuadrilla.nombre}"
+    
+    @property
+    def cliente_nombre(self):
+        """Obtiene el nombre del cliente"""
+        return self.ticket.nombre_completo
+    
+    @property
+    def cedula_cliente(self):
+        """Obtiene la cédula del cliente"""
+        return self.ticket.cedula
+    
+    @property
+    def telefono_cliente(self):
+        """Obtiene el teléfono del cliente"""
+        return self.ticket.telefono
+    
+    @property
+    def direccion(self):
+        """Obtiene la dirección del cliente"""
+        return self.ticket.direccion
+    
+    @property
+    def falla(self):
+        """Obtiene la falla reportada"""
+        return self.ticket.falla
+    
+    def save(self, *args, **kwargs):
+        """Al guardar la asignación, actualiza el estado del ticket a ASIGNADO"""
+        super().save(*args, **kwargs)
+        # Actualizar estado del ticket
+        if self.ticket.estado == 'PENDIENTE':
+            self.ticket.estado = 'ASIGNADO'
+            self.ticket.save(update_fields=['estado', 'fecha_actualizacion'])
+
+
+class Soporte(models.Model):
+    """Modelo para registrar la ejecución del soporte técnico por parte de los instaladores"""
+    
+    class EstadoEjecucion(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente'
+        EN_PROCESO = 'EN_PROCESO', 'En Proceso'
+        COMPLETADO = 'COMPLETADO', 'Completado'
+        NO_COMPLETADO = 'NO_COMPLETADO', 'No Completado'
+    
+    # Relación con la asignación de soporte
+    asignacion = models.OneToOneField(
+        'AsignacionSoporte',
+        on_delete=models.CASCADE,
+        related_name='soporte_ejecucion',
+        verbose_name="Asignación de Soporte",
+        null=True,  # <-- AGREGAR ESTO TEMPORALMENTE
+        blank=True
+    )
+    
+    # Instaladores que realizaron el soporte (historial)
     instaladores = models.ManyToManyField(
         User,
-        related_name='soportes_realizados',
+        related_name='soportes_tecnicos_realizados',
         verbose_name="Instaladores que realizaron el soporte"
     )
     
-    # Cuadrilla que realizó el soporte (para referencia histórica)
+    # Cuadrilla que realizó el soporte (para referencia)
     cuadrilla = models.ForeignKey(
         'Cuadrilla',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='soportes',
-        verbose_name="Cuadrilla que realizó el soporte"
+        related_name='soportes_tecnicos',
+        verbose_name="Cuadrilla ejecutora"
     )
     
-    # ===== CAMPOS OBLIGATORIOS DEL SOPORTE =====
+    # Estado de la ejecución
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoEjecucion.choices,
+        default=EstadoEjecucion.PENDIENTE,
+        verbose_name="Estado de la ejecución",
+        db_index=True
+    )
+    
+    # ===== CAMPOS DEL SERVICIO REALIZADO =====
     fecha_hora_servicio = models.DateTimeField(
         verbose_name="Fecha y hora del servicio realizado",
+        null=True,
+        blank=True,
         help_text="Fecha y hora en que se realizó el servicio"
     )
     
     falla_encontrada = models.TextField(
         max_length=500,
         verbose_name="Falla encontrada",
+        blank=True,
+        null=True,
         help_text="Breve descripción de la falla encontrada"
     )
     
     solucion = models.TextField(
         max_length=500,
-        verbose_name="Solución de la misma",
+        verbose_name="Solución aplicada",
+        blank=True,
+        null=True,
         help_text="Breve descripción de la solución aplicada"
     )
+    
+    # ===== DATOS TÉCNICOS DEL EQUIPO =====
     modelo_modem = models.ForeignKey(
         'ModeloModem',
-        on_delete=models.CASCADE,
-        related_name='soportes',
+        on_delete=models.PROTECT,
+        related_name='soportes_tecnicos',
         verbose_name="Modelo del Módem",
-        null=True, blank=True
+        null=True,
+        blank=True
     )
     sn_modem = models.CharField(
         max_length=50,
         verbose_name="Serial del Módem",
-        blank=True, null=True
+        blank=True,
+        null=True
     )
     mac_modem = models.CharField(
         max_length=50,
         verbose_name="MAC del Módem",
-        blank=True, null=True
+        blank=True,
+        null=True
     )
-    # ===== MATERIALES USADOS (igual que en Instalacion) =====
+    modem_viejo = models.CharField(
+        max_length=50,
+        verbose_name="Modelo del Módem viejo",
+        blank=True,
+        null=True
+    )
+    sn_modem_viejo = models.CharField(
+        max_length=50,
+        verbose_name="Serial del Módem Viejo",
+        blank=True,
+        null=True
+    )
+    mac_modem_viejo = models.CharField(
+        max_length=50,
+        verbose_name="MAC del Módem Viejo",
+        blank=True,
+        null=True
+    )
+    
+    # ===== MEDICIONES DE FIBRA =====
     inicio_fibra = models.PositiveIntegerField(
         null=True, blank=True,
         verbose_name="INICIO",
@@ -1105,6 +1390,14 @@ class Soporte(models.Model):
         help_text="Medición final de fibra"
     )
     
+    @property
+    def metros_utilizados(self):
+        """Calcula los metros utilizados (valor absoluto de la diferencia)"""
+        if self.inicio_fibra is not None and self.final_fibra is not None:
+            return abs(self.inicio_fibra - self.final_fibra)
+        return 0
+    
+    # ===== MATERIALES UTILIZADOS =====
     conectores = models.PositiveIntegerField(
         null=True, blank=True,
         verbose_name="CONECTORES",
@@ -1129,13 +1422,25 @@ class Soporte(models.Model):
         verbose_name="CONECTORES MALOS",
         default=0
     )
+    tirros = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name="TIRROS",
+        default=0,
+        help_text="Cantidad de tirros utilizados"
+    )
     
-    @property
-    def metros_utilizados(self):
-        """Calcula los metros utilizados (valor absoluto de la diferencia)"""
-        if self.inicio_fibra is not None and self.final_fibra is not None:
-            return abs(self.inicio_fibra - self.final_fibra)  # ← Usar abs() para valor absoluto
-        return 0
+    # ===== DATOS DE LA CAJA NAP =====
+    caja_nap_utilizada = models.CharField(
+        max_length=100,
+        verbose_name="Caja NAP utilizada",
+        blank=True, null=True,
+        help_text="Nomenclatura de la caja NAP"
+    )
+    puerto_nap_utilizado = models.CharField(
+        max_length=20,
+        verbose_name="Puerto en caja NAP utilizado",
+        blank=True, null=True
+    )
     
     # ===== UBICACIÓN (PIN) =====
     pin_ubicacion_lat = models.FloatField(
@@ -1156,32 +1461,28 @@ class Soporte(models.Model):
             return f"{self.pin_ubicacion_lat}, {self.pin_ubicacion_lng}"
         return ""
     
-    # Puerto en caja NAP utilizado
-    puerto_nap_utilizado = models.CharField(
-        max_length=20,
-        verbose_name="Puerto en caja NAP utilizado",
-        blank=True, null=True
-    )
-    
-    # Caja NAP utilizada (nomenclatura)
-    caja_nap_utilizada = models.CharField(
-        max_length=100,
-        verbose_name="Caja NAP utilizada (Nomenclatura)",
-        blank=True, null=True
-    )
-   
-    # Fotos del soporte (múltiples)
+    # ===== FOTOS =====
     fotos = models.JSONField(
         default=list,
         verbose_name="Soporte fotográfico",
         help_text="Lista de URLs de las fotos (equipos, material, falla, solución, speed test)"
     )
     
-    # Observaciones adicionales
+    # ===== OBSERVACIONES =====
     observaciones = models.TextField(
         max_length=500,
         verbose_name="Observaciones",
         blank=True, null=True
+    )
+    
+    # ===== FECHAS DE CONTROL =====
+    fecha_inicio = models.DateTimeField(
+        verbose_name="Fecha de inicio del servicio",
+        null=True, blank=True
+    )
+    fecha_fin = models.DateTimeField(
+        verbose_name="Fecha de finalización del servicio",
+        null=True, blank=True
     )
     
     # Campos de control
@@ -1189,7 +1490,7 @@ class Soporte(models.Model):
         User,
         on_delete=models.SET_NULL,
         null=True, blank=True,
-        related_name='soportes_creados',
+        related_name='soportes_tecnicos_creados',
         verbose_name="Creado por"
     )
     fecha_creacion = models.DateTimeField(
@@ -1202,24 +1503,20 @@ class Soporte(models.Model):
     )
     
     class Meta:
-        verbose_name = "Soporte"
-        verbose_name_plural = "Soportes"
+        verbose_name = "Soporte Técnico"
+        verbose_name_plural = "Soportes Técnicos"
         ordering = ['-fecha_creacion']
-        indexes = [
-            models.Index(fields=['tipo']),
-            models.Index(fields=['estado']),
-            models.Index(fields=['fecha_hora_servicio']),
-            models.Index(fields=['instalacion']),
-        ]
+        #    models.Index(fields=['estado']),
+         #   models.Index(fields=['fecha_hora_servicio']),
+         #   models.Index(fields=['asignacion']),
+        #]
     
     def __str__(self):
         try:
-            tipo = self.get_tipo_display()
-            nombre = self.instalacion.nombre_cliente
-            fecha = self.fecha_hora_servicio.strftime('%d/%m/%Y') if self.fecha_hora_servicio else "Fecha sin definir"
-            return f"{tipo} - {nombre} - {fecha}"
+            ticket = self.asignacion.ticket
+            return f"Soporte Técnico - {ticket.ticket_padre} - {ticket.nombre_completo}"
         except:
-            return f"Soporte #{self.id}"
+            return f"Soporte Técnico #{self.id}"
     
     @property
     def esta_completo(self):
@@ -1237,37 +1534,49 @@ class Soporte(models.Model):
     
     @property
     def nombre_cliente(self):
-        """Obtiene el nombre del cliente desde la instalación"""
-        return self.instalacion.nombre_cliente
+        """Obtiene el nombre del cliente desde el ticket"""
+        return self.asignacion.ticket.nombre_completo
     
     @property
     def cedula_cliente(self):
         """Obtiene la cédula del cliente"""
-        return self.instalacion.cedula_cliente
-    
-    @property
-    def direccion(self):
-        """Obtiene la dirección del cliente desde la instalación"""
-        if self.instalacion.asignacion.contrato:
-            return self.instalacion.asignacion.contrato.direccion_detallada
-        elif self.instalacion.asignacion.venta_directa:
-            return self.instalacion.asignacion.venta_directa.direccion if hasattr(self.instalacion.asignacion.venta_directa, 'direccion') else "N/A"
-        return "N/A"
+        return self.asignacion.ticket.cedula
     
     @property
     def customer_id(self):
         """Obtiene el customer ID"""
-        return self.instalacion.customer_id
+        return self.asignacion.ticket.customer_id
+    
+    @property
+    def direccion(self):
+        """Obtiene la dirección del cliente"""
+        return self.asignacion.ticket.direccion
     
     @property
     def plan(self):
         """Obtiene el plan contratado"""
-        return self.instalacion.plan
+        return self.asignacion.ticket.plan.nombre
     
     @property
-    def atr(self):
-        """Obtiene el ATR"""
-        return self.instalacion.atr        
+    def ticket_padre(self):
+        """Obtiene el número de ticket padre"""
+        return self.asignacion.ticket.ticket_padre
+    
+    def save(self, *args, **kwargs):
+        """Al guardar, actualizar el estado del ticket"""
+        super().save(*args, **kwargs)
+        
+        # Actualizar estado del ticket según el estado de ejecución
+        ticket = self.asignacion.ticket
+        
+        if self.estado == 'COMPLETADO':
+            ticket.estado = 'RESUELTO'
+        elif self.estado == 'EN_PROCESO':
+            ticket.estado = 'EN_PROCESO'
+        elif self.estado == 'NO_COMPLETADO':
+            ticket.estado = 'PENDIENTE'
+        
+        ticket.save(update_fields=['estado', 'fecha_actualizacion'])
     
     
 # ==================== INVENTARIO SIMPLIFICADO ====================

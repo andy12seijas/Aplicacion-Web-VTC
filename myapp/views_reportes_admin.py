@@ -229,26 +229,55 @@ def reporte_soportes_json(request):
     tipo_soporte = request.GET.get('tipo_soporte', '')
     estado = request.GET.get('estado', '')
     busqueda = request.GET.get('busqueda', '')
+    cuadrilla_id = request.GET.get('cuadrilla', '')
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
+    # Query base
     soportes = Soporte.objects.all()
     
+    # ========== APLICAR FILTROS ==========
+    
+    # Filtro por fecha (fecha_hora_servicio)
     if fecha_desde:
         soportes = soportes.filter(fecha_hora_servicio__date__gte=fecha_desde)
     if fecha_hasta:
         soportes = soportes.filter(fecha_hora_servicio__date__lte=fecha_hasta)
-    if tipo_soporte:
-        soportes = soportes.filter(tipo=tipo_soporte)
+    
+    # Filtro por estado
     if estado:
         soportes = soportes.filter(estado=estado)
+    
+    # Filtro por cuadrilla
+    if cuadrilla_id:
+        soportes = soportes.filter(cuadrilla_id=cuadrilla_id)
+    
+    # Filtro por tipo de soporte (desde el ticket asociado)
+    if tipo_soporte:
+        soportes = soportes.filter(asignacion__ticket__tipo_soporte=tipo_soporte)
+    
+    # Búsqueda por cliente, cédula o ticket
     if busqueda:
         soportes = soportes.filter(
-            Q(instalacion__nombre_cliente__icontains=busqueda) |
-            Q(instalacion__cedula_cliente__icontains=busqueda)
+            Q(asignacion__ticket__nombre__icontains=busqueda) |
+            Q(asignacion__ticket__apellido__icontains=busqueda) |
+            Q(asignacion__ticket__cedula__icontains=busqueda) |
+            Q(asignacion__ticket__ticket_padre__icontains=busqueda)
         )
     
+    # ========== CONTAR TOTALES ==========
     total_registros = soportes.count()
+    
+    # ========== ESTADÍSTICAS ==========
+    estadisticas = {
+        'total_soportes': total_registros,
+        'completados': soportes.filter(estado='COMPLETADO').count(),
+        'pendientes': soportes.filter(estado='PENDIENTE').count(),
+        'en_proceso': soportes.filter(estado='EN_PROCESO').count(),
+        'no_completados': soportes.filter(estado='NO_COMPLETADO').count(),
+    }
+    
+    # ========== PAGINACIÓN ==========
     paginator = Paginator(soportes, per_page)
     
     try:
@@ -256,33 +285,66 @@ def reporte_soportes_json(request):
     except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
     
+    # ========== CONSTRUIR DATOS PARA JSON ==========
     if tipo_reporte == 'simple':
-        data_list = [{
-            'id': s.id,
-            'cliente': s.nombre_cliente,
-            'cedula': s.cedula_cliente,
-            'tipo': s.get_tipo_display(),
-            'estado': s.get_estado_display(),
-            'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y'),
-            'falla': s.falla_encontrada[:50] + '...' if len(s.falla_encontrada) > 50 else s.falla_encontrada,
-        } for s in page_obj]
+        data_list = []
+        for s in page_obj:
+            # Obtener nombre del cliente de forma segura
+            try:
+                cliente_nombre = s.asignacion.ticket.nombre_completo if s.asignacion and s.asignacion.ticket else "N/A"
+                cedula = s.asignacion.ticket.cedula if s.asignacion and s.asignacion.ticket else "N/A"
+            except:
+                cliente_nombre = "N/A"
+                cedula = "N/A"
+            
+            # Obtener tipo de soporte
+            try:
+                tipo_display = s.asignacion.ticket.get_tipo_soporte_display() if s.asignacion and s.asignacion.ticket else "N/A"
+            except:
+                tipo_display = "N/A"
+            
+            data_list.append({
+                'id': s.id,
+                'cliente': cliente_nombre,
+                'cedula': cedula,
+                'tipo': tipo_display,
+                'estado': s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado,
+                'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y'),
+                'falla': (s.falla_encontrada[:50] + '...') if s.falla_encontrada and len(s.falla_encontrada) > 50 else (s.falla_encontrada or 'N/A'),
+                'cuadrilla': s.cuadrilla.nombre if s.cuadrilla else 'N/A',
+            })
     else:
-        data_list = [{
-            'id': s.id,
-            'cliente': s.nombre_cliente,
-            'cedula': s.cedula_cliente,
-            'tipo': s.get_tipo_display(),
-            'estado': s.get_estado_display(),
-            'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y %H:%M'),
-            'falla': s.falla_encontrada[:100] if s.falla_encontrada else 'N/A',
-            'solucion': s.solucion[:100] if s.solucion else 'N/A',
-        } for s in page_obj]
-    
-    estadisticas = {
-        'total_soportes': total_registros,
-        'completados': soportes.filter(estado='COMPLETADO').count(),
-        'pendientes': soportes.filter(estado__in=['PENDIENTE', 'EN_PROCESO']).count(),
-    }
+        data_list = []
+        for s in page_obj:
+            # Obtener nombre del cliente de forma segura
+            try:
+                cliente_nombre = s.asignacion.ticket.nombre_completo if s.asignacion and s.asignacion.ticket else "N/A"
+                cedula = s.asignacion.ticket.cedula if s.asignacion and s.asignacion.ticket else "N/A"
+                ticket_padre = s.asignacion.ticket.ticket_padre if s.asignacion and s.asignacion.ticket else "N/A"
+            except:
+                cliente_nombre = "N/A"
+                cedula = "N/A"
+                ticket_padre = "N/A"
+            
+            # Obtener tipo de soporte
+            try:
+                tipo_display = s.asignacion.ticket.get_tipo_soporte_display() if s.asignacion and s.asignacion.ticket else "N/A"
+            except:
+                tipo_display = "N/A"
+            
+            data_list.append({
+                'id': s.id,
+                'ticket_padre': ticket_padre,
+                'cliente': cliente_nombre,
+                'cedula': cedula,
+                'tipo': tipo_display,
+                'estado': s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado,
+                'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y %H:%M') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'falla': s.falla_encontrada[:100] if s.falla_encontrada else 'N/A',
+                'solucion': s.solucion[:100] if s.solucion else 'N/A',
+                'cuadrilla': s.cuadrilla.nombre if s.cuadrilla else 'N/A',
+                'instaladores': [inst.get_full_name() or inst.username for inst in s.instaladores.all()[:3]],
+            })
     
     return JsonResponse({
         'data': data_list,
@@ -292,7 +354,6 @@ def reporte_soportes_json(request):
         'pagina_actual': page_obj.number,
         'por_pagina': per_page,
     })
-
 
 @login_required
 @user_passes_test(es_admin)

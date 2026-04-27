@@ -44,6 +44,7 @@
             <option value="">Todos los estados</option>
             <option value="EN_PROCESO" {% if filtro_estado == 'EN_PROCESO' %}selected{% endif %}>En Proceso</option>
             <option value="COMPLETADO" {% if filtro_estado == 'COMPLETADO' %}selected{% endif %}>Completado</option>
+            <option value="NO_COMPLETADO" {% if filtro_estado == 'NO_COMPLETADO' %}selected{% endif %}>No Completado</option>
         </select>
         
         <!-- Botones de acción -->
@@ -69,17 +70,29 @@
     <div class="tabs-header">
         <button class="tab-btn {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}" onclick="cambiarTab('pendientes')" id="tab-pendientes-btn">
             <span class="tab-icon">⏳</span>
+            {% if mostrando_no_completados %}
+            Contratos No Completados
+            {% else %}
             Contratos Pendientes
-            <span class="tab-count">{{ contratos_pendientes_count }}</span>
+            {% endif %}
+            <span class="tab-count">
+                {% if mostrando_no_completados %}
+                {{ contratos_no_completados_count }}
+                {% else %}
+                {{ contratos_pendientes_count }}
+                {% endif %}
+            </span>
         </button>
+        {% if not mostrando_no_completados %}
         <button class="tab-btn {% if tab_activa == 'completados' %}active{% endif %}" onclick="cambiarTab('completados')" id="tab-completados-btn">
             <span class="tab-icon">✅</span>
             Contratos Completados
             <span class="tab-count">{{ contratos_completados_count }}</span>
         </button>
+        {% endif %}
     </div>
 
-    <!-- TAB: Contratos Pendientes -->
+    <!-- TAB: Contratos Pendientes (o No Completados) -->
     <div id="tab-pendientes" class="tab-content {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}">
         <div class="table-container">
             <table class="table">
@@ -114,6 +127,8 @@
                             <span class="badge proceso">En Proceso</span>
                             {% elif contrato.estado == 'COMPLETADO' %}
                             <span class="badge completado">Completado</span>
+                            {% elif contrato.estado == 'NO_COMPLETADO' %}
+                            <span class="badge no-completado">No Completado</span>
                             {% endif %}
                         </td>
                         <td>
@@ -129,8 +144,18 @@
                                 </svg>
                             </button>
                             
-                            <!-- Completar contrato - ADMIN y SUPERVISOR -->
-                            {% if es_admin or es_supervisor %}
+                            <!-- REACTIVAR CONTRATO - Solo para NO_COMPLETADO -->
+                            {% if contrato.estado == 'NO_COMPLETADO' and es_admin or es_supervisor %}
+                            <button class="action-btn reactivar-btn" onclick="reactivarContrato({{ contrato.id }})" title="Reactivar contrato (volver a En Proceso)">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                </svg>
+                                
+                            </button>
+                            {% endif %}
+                            
+                            <!-- Completar contrato - ADMIN y SUPERVISOR (solo si no es NO_COMPLETADO) -->
+                            {% if contrato.estado != 'NO_COMPLETADO' and es_admin or es_supervisor %}
                             <button class="action-btn" onclick="abrirModalCompletar({{ contrato.id }})" title="Completar contrato">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M20 6L9 17l-5-5"/>
@@ -138,8 +163,8 @@
                             </button>
                             {% endif %}
                             
-                            <!-- Marcar como No Completado - ADMIN y SUPERVISOR -->
-                            {% if es_admin or es_supervisor %}
+                            <!-- Marcar como No Completado - ADMIN y SUPERVISOR (solo si está EN_PROCESO) -->
+                            {% if contrato.estado == 'EN_PROCESO' and es_admin or es_supervisor %}
                             <button class="action-btn no-completado-btn" onclick="marcarNoCompletado({{ contrato.id }})" title="Marcar como No Completado">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="18" y1="6" x2="6" y2="18"/>
@@ -151,7 +176,13 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="empty">No hay contratos pendientes</td>
+                        <td colspan="8" class="empty">
+                            {% if mostrando_no_completados %}
+                            No hay contratos No Completados
+                            {% else %}
+                            No hay contratos pendientes
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -194,7 +225,8 @@
         {% endif %}
     </div>
 
-    <!-- TAB: Contratos Completados -->
+    <!-- TAB: Contratos Completados (solo si no estamos mostrando NO_COMPLETADOS) -->
+    {% if not mostrando_no_completados %}
     <div id="tab-completados" class="tab-content {% if tab_activa == 'completados' %}active{% endif %}">
         <div class="table-container">
             <table class="table">
@@ -328,6 +360,7 @@
         </div>
         {% endif %}
     </div>
+    {% endif %}
 </div>
 
 <!-- ========== MODALES ========== -->
@@ -685,6 +718,19 @@
         background: #fffaf5;
     }
 
+    /* Botón reactivar */
+    .reactivar-btn {
+        background: #e3f2fd;
+        color: #1976d2;
+        border-color: #bbdefb;
+    }
+    
+    .reactivar-btn:hover {
+        background: #1976d2;
+        color: white;
+        border-color: #1976d2;
+    }
+
     .address-cell {
         max-width: 200px;
         overflow: hidden;
@@ -765,7 +811,7 @@
         border-color: #ef9a9a;
     }
 
-    /* Resto de estilos igual que antes... */
+    /* Resto de estilos */
     .filters-container {
         margin-bottom: 20px;
     }
@@ -1561,6 +1607,72 @@
         });
     }
     
+    function reactivarContrato(contratoId) {
+        Swal.fire({
+            title: '¿Reactivar contrato?',
+            text: 'Este contrato volverá a estado "En Proceso" y aparecerá en la lista de pendientes.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            cancelButtonColor: '#666',
+            confirmButtonText: 'Sí, reactivar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Procesando...',
+                    text: 'Actualizando estado del contrato',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                fetch(`/contrato/${contratoId}/reactivar/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Contrato reactivado!',
+                            text: data.message || 'El contrato ahora está "En Proceso"',
+                            confirmButtonColor: '#ff6b00',
+                            timer: 2000,
+                            showConfirmButton: true
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.error || 'No se pudo reactivar el contrato',
+                            confirmButtonColor: '#ff6b00'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de conexión',
+                        text: 'Hubo un problema al comunicarse con el servidor. El contrato podría haberse reactivado igualmente. Recarga la página para verificar.',
+                        confirmButtonColor: '#ff6b00'
+                    }).then(() => {
+                        // Recargar para verificar el estado actual
+                        location.reload();
+                    });
+                });
+            }
+        });
+    }
+    
     async function copiarInfoContrato(id) {
         try {
             const response = await fetch(`/datos-contrato/${id}/`);
@@ -1859,6 +1971,9 @@ Vendedor(a): ${contrato.creado_por || '—'}`;
         if (estadoTexto === 'Completado' || estadoTexto === 'COMPLETADO') {
             estadoClass = 'badge completado';
             estadoTexto = 'Completado';
+        } else if (estadoTexto === 'NO_COMPLETADO') {
+            estadoClass = 'badge no-completado';
+            estadoTexto = 'No Completado';
         }
         document.getElementById('modalEstado').innerHTML = `<span class="${estadoClass}">${estadoTexto}</span>`;
         

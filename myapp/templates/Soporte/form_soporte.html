@@ -1,0 +1,1348 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}VTConexiones - Registrar Soporte Técnico{% endblock %}
+
+{% block page_title %}Registrar Soporte Técnico{% endblock %}
+{% block page_subtitle %}Complete los datos del servicio de soporte{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'gestion_soportes' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver a Gestión de Soportes
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 13px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .instaladores-container.readonly {
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .instalador-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .instalador-icon {
+        width: 24px;
+        height: 24px;
+        background: #fff2e6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ff6b00;
+    }
+
+    .instalador-nombre {
+        font-size: 13px;
+        color: #333;
+    }
+
+    .badge-current {
+        background: #e3f2fd;
+        color: #1976d2;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 12px;
+        margin-left: 6px;
+    }
+
+    .text-muted {
+        color: #666;
+        font-size: 13px;
+        margin: 0;
+    }
+
+    .form-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .form-card {
+        background: white;
+        border-radius: 24px;
+        border: 1px solid var(--gray-border, #e0e0e0);
+        overflow: hidden;
+        padding: 30px;
+    }
+    
+    .form-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #f0f0f0;
+    }
+    
+    .form-header-icon {
+        width: 64px;
+        height: 64px;
+        background: #fff2e6;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .form-header-text h2 {
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .form-header-text p {
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .cliente-info-card {
+        background: #fff2e6;
+        border: 1px solid #ff6b00;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .cliente-info-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .cliente-info-header h4 {
+        color: #333;
+        font-size: 16px;
+        font-weight: 600;
+    }
+    
+    .badge-verificado {
+        background: #4caf50;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .cliente-info-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+    }
+    
+    .info-item {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #ffe0cc;
+    }
+    
+    .info-label {
+        display: block;
+        font-size: 11px;
+        color: #999;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+    
+    .info-value {
+        font-size: 14px;
+        color: #333;
+        font-weight: 500;
+    }
+    
+    .form-section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 16px;
+        border: 1px solid #f0f0f0;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+    }
+    
+    .grid-2, .grid-3, .grid-4 {
+        display: grid;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #555;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+    }
+    
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 14px;
+        transition: all 0.2s;
+        background: white;
+    }
+    
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        outline: none;
+        border-color: #ff6b00;
+        box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+    }
+    
+    .btn-capture {
+        background: #ff6b00;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        transition: all 0.2s;
+    }
+    
+    .btn-capture:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+    }
+    
+    .fotos-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .galeria-fotos {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        flex: 1;
+    }
+    
+    .foto-item {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid #e0e0e0;
+        background: #f5f5f5;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .foto-item:hover {
+        transform: scale(1.02);
+        border-color: #ff6b00;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .foto-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .foto-item .eliminar-foto {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        width: 28px;
+        height: 28px;
+        background: rgba(0,0,0,0.6);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 2;
+        font-size: 14px;
+    }
+    
+    .foto-item:hover .eliminar-foto {
+        opacity: 1;
+    }
+    
+    .foto-item .eliminar-foto:hover {
+        background: #f44336;
+        transform: scale(1.1);
+    }
+    
+    .agregar-foto-btn {
+        width: 150px;
+        height: 150px;
+        border: 2px dashed #e0e0e0;
+        border-radius: 12px;
+        background: #fafafa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #999;
+    }
+    
+    .agregar-foto-btn:hover {
+        border-color: #ff6b00;
+        background: #fff2e6;
+        color: #ff6b00;
+    }
+    
+    .plus-icon {
+        font-size: 32px;
+        font-weight: 300;
+    }
+    
+    .resumen-section {
+        background: linear-gradient(135deg, #fff2e6 0%, #ffffff 100%);
+        border: 1px solid #ff6b00;
+    }
+    
+    .resumen-card {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 15px;
+        padding: 15px;
+        background: white;
+        border-radius: 12px;
+    }
+    
+    .resumen-item {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }
+    
+    .resumen-label {
+        font-size: 11px;
+        color: #999;
+        text-transform: uppercase;
+    }
+    
+    .resumen-value {
+        font-size: 20px;
+        font-weight: 600;
+        color: #ff6b00;
+    }
+    
+    /* Estilos para el inventario */
+    .inventario-section {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+        border: 1px solid #86efac;
+    }
+    
+    .inventario-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    
+    .inventario-card {
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.2s;
+    }
+    
+    .inventario-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: #86efac;
+    }
+    
+    .inventario-icon {
+        font-size: 28px;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f0fdf4;
+        border-radius: 12px;
+    }
+    
+    .inventario-info {
+        flex: 1;
+    }
+    
+    .inventario-cantidad {
+        display: block;
+        font-size: 24px;
+        font-weight: 700;
+        color: #22c55e;
+        line-height: 1.2;
+    }
+    
+    .inventario-cantidad.sin-stock {
+        color: #ef4444;
+    }
+    
+    .inventario-cantidad.poco-stock {
+        color: #f59e0b;
+    }
+    
+    .inventario-label {
+        display: block;
+        font-size: 11px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .inventario-help {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+        margin-top: 12px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .stock-alert {
+        animation: fadeOut 5s ease forwards;
+    }
+    
+    @keyframes fadeOut {
+        0% { opacity: 1; }
+        70% { opacity: 1; }
+        100% { opacity: 0; display: none; }
+    }
+    
+    .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .btn-primary, .btn-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 30px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+        min-width: 180px;
+        justify-content: center;
+    }
+    
+    .btn-primary {
+        background: #ff6b00;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #ff8c00;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.3);
+    }
+    
+    .btn-outline {
+        background: white;
+        color: #666;
+        border: 2px solid #e0e0e0;
+    }
+    
+    .btn-outline:hover {
+        border-color: #ff6b00;
+        color: #ff6b00;
+    }
+    
+    @media (max-width: 768px) {
+        .cliente-info-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .grid-2, .grid-3, .grid-4 {
+            grid-template-columns: 1fr;
+        }
+        
+        .foto-item, .agregar-foto-btn {
+            width: calc(33.33% - 10px);
+            height: auto;
+            aspect-ratio: 1;
+        }
+        
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+        
+        .btn-primary, .btn-outline {
+            width: 100%;
+        }
+        
+        .form-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .instaladores-container.readonly {
+            flex-direction: column;
+        }
+        
+        .instalador-item {
+            width: 100%;
+        }
+        
+        .inventario-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .cliente-info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .foto-item, .agregar-foto-btn {
+            width: calc(50% - 7.5px);
+        }
+        
+        .inventario-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-header">
+            <div class="form-header-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                    <path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"/>
+                    <polygon points="18 2 22 6 12 16 8 16 8 12 18 2"/>
+                </svg>
+            </div>
+            <div class="form-header-text">
+                <h2>Soporte Técnico #{{ ticket.ticket_padre }}</h2>
+                <p>Complete todos los campos del servicio de soporte</p>
+            </div>
+        </div>
+
+        <!-- Datos del ticket (solo lectura) -->
+        <div class="cliente-info-card">
+            <div class="cliente-info-header">
+                <h4>Datos del Ticket</h4>
+                <span class="badge-verificado">✓ No editable</span>
+            </div>
+            <div class="cliente-info-grid">
+                <div class="info-item">
+                    <span class="info-label">TICKET</span>
+                    <span class="info-value">{{ ticket.ticket_padre }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">TIPO</span>
+                    <span class="info-value">{{ ticket.get_tipo_soporte_display }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">NOMBRE DEL CLIENTE</span>
+                    <span class="info-value">{{ ticket.nombre }} {{ ticket.apellido }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CÉDULA</span>
+                    <span class="info-value">{{ ticket.cedula }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">TELÉFONO</span>
+                    <span class="info-value">{{ ticket.telefono }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CUSTOMER ID</span>
+                    <span class="info-value">{{ ticket.customer_id|default:"—" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">PLAN</span>
+                    <span class="info-value">{{ ticket.plan.nombre }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">CUADRILLA</span>
+                    <span class="info-value">{{ cuadrilla.nombre }}</span>
+                </div>
+            </div>
+            <div class="info-item" style="margin-top: 12px; background: white; grid-column: span 4;">
+                <span class="info-label">DIRECCIÓN</span>
+                <span class="info-value">{{ ticket.direccion }}</span>
+            </div>
+            <div class="info-item" style="margin-top: 6px; background: white; grid-column: span 4;">
+                <span class="info-label">FALLA REPORTADA</span>
+                <span class="info-value">{{ ticket.falla }}</span>
+            </div>
+        </div>
+
+        <form method="post" class="edit-form" id="registrarSoporteForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+            <div class="alert-error">
+                {% for error in form.non_field_errors %}
+                <p>❌ {{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- SECCIÓN: INSTALADORES DE LA CUADRILLA -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Instaladores de la Cuadrilla
+                </h3>
+                <div class="instaladores-container readonly">
+                    {% for instalador in instaladores_disponibles %}
+                    <div class="instalador-item">
+                        <div class="instalador-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <span class="instalador-nombre">
+                            {{ instalador.get_full_name|default:instalador.username }}
+                            {% if instalador == request.user %}
+                            <span class="badge-current">(Tú)</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">⚠️ No hay instaladores asignados a esta cuadrilla.</p>
+                    {% endfor %}
+                </div>
+                <small class="help-text">Estos son los instaladores que pertenecen a la cuadrilla asignada. Todos quedarán registrados como participantes del soporte.</small>
+            </div>
+
+            <input type="hidden" name="instaladores" id="instaladoresHidden" value="">
+
+            <!-- Datos del Servicio -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Datos del Servicio
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.fecha_hora_servicio.id_for_label }}">{{ form.fecha_hora_servicio.label }}</label>
+                        {{ form.fecha_hora_servicio }}
+                        <small class="help-text">Fecha y hora en que se realizó el servicio</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.estado.id_for_label }}">{{ form.estado.label }}</label>
+                        {{ form.estado }}
+                    </div>
+                </div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.falla_encontrada.id_for_label }}">{{ form.falla_encontrada.label }}</label>
+                        {{ form.falla_encontrada }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.solucion.id_for_label }}">{{ form.solucion.label }}</label>
+                        {{ form.solucion }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos Técnicos del Equipo -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    DATOS TÉCNICOS DEL EQUIPO
+                </h3>
+                
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.modelo_modem.id_for_label }}">{{ form.modelo_modem.label }}</label>
+                        {{ form.modelo_modem }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.sn_modem.id_for_label }}">{{ form.sn_modem.label }}</label>
+                        {{ form.sn_modem }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.mac_modem.id_for_label }}">{{ form.mac_modem.label }}</label>
+                        {{ form.mac_modem }}
+                    </div>
+                </div>
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.modem_viejo.id_for_label }}">{{ form.modem_viejo.label }}</label>
+                        {{ form.modem_viejo }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.sn_modem_viejo.id_for_label }}">{{ form.sn_modem_viejo.label }}</label>
+                        {{ form.sn_modem_viejo }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.mac_modem_viejo.id_for_label }}">{{ form.mac_modem_viejo.label }}</label>
+                        {{ form.mac_modem_viejo }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Materiales -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M20 7h-4.5L15 4h-6L8.5 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+                        <circle cx="12" cy="14" r="3"/>
+                    </svg>
+                    MATERIALES UTILIZADOS
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.inicio_fibra.id_for_label }}">{{ form.inicio_fibra.label }}</label>
+                        {{ form.inicio_fibra }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.final_fibra.id_for_label }}">{{ form.final_fibra.label }}</label>
+                        {{ form.final_fibra }}
+                    </div>
+                </div>
+                
+                <div class="grid-4">
+                    <div class="form-group">
+                        <label for="{{ form.conectores.id_for_label }}">{{ form.conectores.label }}</label>
+                        {{ form.conectores }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.rosetas.id_for_label }}">{{ form.rosetas.label }}</label>
+                        {{ form.rosetas }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.patch_cord.id_for_label }}">{{ form.patch_cord.label }}</label>
+                        {{ form.patch_cord }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.tensores.id_for_label }}">{{ form.tensores.label }}</label>
+                        {{ form.tensores }}
+                    </div>
+                </div>
+                
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="{{ form.conectores_malos.id_for_label }}">{{ form.conectores_malos.label }}</label>
+                        {{ form.conectores_malos }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.tirros.id_for_label }}">TIRROS</label>
+                        {{ form.tirros }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos de la Caja NAP -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                    </svg>
+                    DATOS DE LA CAJA NAP
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.caja_nap_utilizada.id_for_label }}">{{ form.caja_nap_utilizada.label }}</label>
+                        {{ form.caja_nap_utilizada }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.puerto_nap_utilizado.id_for_label }}">{{ form.puerto_nap_utilizado.label }}</label>
+                        {{ form.puerto_nap_utilizado }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ubicación (Pin) -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Ubicación del Servicio (PIN)
+                </h3>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="{{ form.pin_ubicacion_lat.id_for_label }}">{{ form.pin_ubicacion_lat.label }}</label>
+                        {{ form.pin_ubicacion_lat }}
+                    </div>
+                    <div class="form-group">
+                        <label for="{{ form.pin_ubicacion_lng.id_for_label }}">{{ form.pin_ubicacion_lng.label }}</label>
+                        {{ form.pin_ubicacion_lng }}
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px;">
+                    <button type="button" class="btn-capture" id="capturarUbicacionBtn" onclick="capturarUbicacion()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 8v4l3 3"/>
+                        </svg>
+                        Capturar ubicación actual
+                    </button>
+                    <small class="help-text">Presione el botón para capturar su ubicación actual donde se realizó el servicio</small>
+                </div>
+            </div>
+
+            <!-- Tarjeta de inventario disponible -->
+            <div class="form-section inventario-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                    📦 Inventario disponible en tu cuadrilla
+                </h3>
+                <div class="inventario-grid">
+                    <div class="inventario-card">
+                        <div class="inventario-icon">📡</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Modem <= 0 %}sin-stock{% elif inventario_cuadrilla.Modem < 5 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Modem|default:0 }}
+                            </span>
+                            <span class="inventario-label">Módems</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">🔌</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Conector <= 0 %}sin-stock{% elif inventario_cuadrilla.Conector < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Conector|default:0 }}
+                            </span>
+                            <span class="inventario-label">Conectores</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">🏠</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Roseta <= 0 %}sin-stock{% elif inventario_cuadrilla.Roseta < 5 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Roseta|default:0 }}
+                            </span>
+                            <span class="inventario-label">Rosetas</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">📀</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Patch_Cord <= 0 %}sin-stock{% elif inventario_cuadrilla.Patch_Cord < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Patch_Cord|default:0 }}
+                            </span>
+                            <span class="inventario-label">Patch Cord</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">⚙️</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Tensor <= 0 %}sin-stock{% elif inventario_cuadrilla.Tensor < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Tensor|default:0 }}
+                            </span>
+                            <span class="inventario-label">Tensores</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">🔧</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.Tirros <= 0 %}sin-stock{% elif inventario_cuadrilla.Tirros < 10 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.Tirros|default:0 }}
+                            </span>
+                            <span class="inventario-label">Tirros</span>
+                        </div>
+                    </div>
+                    <div class="inventario-card">
+                        <div class="inventario-icon">📏</div>
+                        <div class="inventario-info">
+                            <span class="inventario-cantidad {% if inventario_cuadrilla.metros <= 0 %}sin-stock{% elif inventario_cuadrilla.metros < 50 %}poco-stock{% endif %}">
+                                {{ inventario_cuadrilla.metros|default:0 }}
+                            </span>
+                            <span class="inventario-label">Metros de Fibra</span>
+                        </div>
+                    </div>
+                </div>
+                <small class="inventario-help">
+                    ⚠️ Los materiales que ingreses en este soporte se descontarán automáticamente de tu inventario.
+                    {% if inventario_cuadrilla.Modem <= 0 or inventario_cuadrilla.Conector <= 0 or inventario_cuadrilla.Roseta <= 0 %}
+                    <span style="color: #ef4444; display: block; margin-top: 8px;">
+                        ⚠️ Alerta: Tienes materiales con stock bajo o agotado. Contacta a tu supervisor para reabastecimiento.
+                    </span>
+                    {% endif %}
+                </small>
+            </div>
+
+            <!-- Fotos del Soporte -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <rect x="2" y="2" width="20" height="20" rx="2.18"/>
+                        <path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>
+                    </svg>
+                    SOPORTE FOTOGRÁFICO
+                </h3>
+                
+                <div class="fotos-container">
+                    <div class="galeria-fotos" id="galeria-fotos"></div>
+                    <div class="agregar-foto-btn" id="agregarFotoBtn" onclick="abrirSelectorFoto()">
+                        <div class="plus-icon">+</div>
+                        <span>Agregar fotos</span>
+                    </div>
+                </div>
+                
+                <input type="file" id="inputFoto" accept="image/*" multiple style="display: none;" onchange="procesarMultiplesFotos(this)">
+                <small class="help-text">Haz clic en el botón + para seleccionar múltiples fotos (Ctrl+Click o Shift+Click para seleccionar varias)</small>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                    </svg>
+                    OBSERVACIONES
+                </h3>
+                
+                <div class="form-group">
+                    {{ form.observaciones }}
+                </div>
+            </div>
+
+            <!-- Resumen de materiales -->
+            <div class="form-section resumen-section">
+                <h3 class="section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff6b00" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Resumen de Materiales
+                </h3>
+                
+                <div class="resumen-card" id="resumen-materiales">
+                    <div class="resumen-item">
+                        <span class="resumen-label">METROS</span>
+                        <span class="resumen-value" id="resumen-metros">{{ valores_actuales.inicio_fibra|default:0|add:"-0"|cut:"-" }}</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">CONECTORES</span>
+                        <span class="resumen-value" id="resumen-conectores">{{ valores_actuales.conectores|default:0 }}</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">CONECTORES MALOS</span>
+                        <span class="resumen-value" id="resumen-conectores-malos">{{ valores_actuales.conectores_malos|default:0 }}</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">ROSETAS</span>
+                        <span class="resumen-value" id="resumen-rosetas">{{ valores_actuales.rosetas|default:0 }}</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">PACH CORD</span>
+                        <span class="resumen-value" id="resumen-patch">{{ valores_actuales.patch_cord|default:0 }}</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">TENSORES</span>
+                        <span class="resumen-value" id="resumen-tensores">{{ valores_actuales.tensores|default:0 }}</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-label">TIROS</span>
+                        <span class="resumen-value" id="resumen-tirros">{{ valores_actuales.tirros|default:0 }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'gestion_soportes' %}" class="btn-outline">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn-primary" id="btn-submit">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    Guardar Soporte
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // ============================================================
+    // 1. LLENAR CAMPO OCULTO CON LOS INSTALADORES DE LA CUADRILLA
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtener todos los IDs de instaladores de la cuadrilla
+        const instaladoresSeleccionados = [
+            {% for inst in instaladores_disponibles %}
+                {{ inst.id }}{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        const hiddenInput = document.getElementById('instaladoresHidden');
+        if (hiddenInput && instaladoresSeleccionados.length > 0) {
+            hiddenInput.value = instaladoresSeleccionados.join(',');
+            console.log('✅ Instaladores cargados automáticamente:', instaladoresSeleccionados.length);
+        } else if (hiddenInput) {
+            hiddenInput.value = '{{ request.user.id }}';
+            console.log('⚠️ No hay instaladores en cuadrilla, usando usuario actual');
+        }
+        
+        cargarFotosExistentes();
+        
+        // ============================================================
+        // 7. ESTABLECER VALORES PREDETERMINADOS PARA MATERIALES
+        // ============================================================
+        const conectoresInput = document.getElementById('id_conectores');
+        const rosetasInput = document.getElementById('id_rosetas');
+        const patchCordInput = document.getElementById('id_patch_cord');
+        const tirrosInput = document.getElementById('id_tirros');
+        
+        if (conectoresInput && (conectoresInput.value === '' || conectoresInput.value === '0')) {
+            conectoresInput.value = '0';
+            conectoresInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (rosetasInput && (rosetasInput.value === '' || rosetasInput.value === '0')) {
+            rosetasInput.value = '0';
+            rosetasInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (patchCordInput && (patchCordInput.value === '' || patchCordInput.value === '0')) {
+            patchCordInput.value = '0';
+            patchCordInput.dispatchEvent(new Event('input'));
+        }
+        
+        if (tirrosInput && (tirrosInput.value === '' || tirrosInput.value === '0')) {
+            tirrosInput.value = '0';
+            tirrosInput.dispatchEvent(new Event('input'));
+        }
+    });
+    
+    // ============================================================
+    // 2. CAPTURAR UBICACIÓN
+    // ============================================================
+    function capturarUbicacion() {
+        if (!navigator.geolocation) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Tu navegador no soporta geolocalización', confirmButtonColor: '#ff6b00' });
+            return;
+        }
+        
+        Swal.fire({ title: 'Capturando ubicación...', text: 'Por favor espera', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                document.getElementById('id_pin_ubicacion_lat').value = lat.toFixed(6);
+                document.getElementById('id_pin_ubicacion_lng').value = lng.toFixed(6);
+                Swal.fire({ icon: 'success', title: 'Ubicación capturada', text: `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`, confirmButtonColor: '#ff6b00', timer: 2000 });
+            },
+            function(error) {
+                let mensaje = '';
+                switch(error.code) {
+                    case error.PERMISSION_DENIED: mensaje = 'Permiso denegado.'; break;
+                    case error.POSITION_UNAVAILABLE: mensaje = 'Ubicación no disponible.'; break;
+                    case error.TIMEOUT: mensaje = 'Tiempo agotado.'; break;
+                    default: mensaje = 'Error desconocido.';
+                }
+                Swal.fire({ icon: 'error', title: 'Error', text: mensaje, confirmButtonColor: '#ff6b00' });
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+    
+    // ============================================================
+    // 3. MANEJO DE FOTOS
+    // ============================================================
+    let fotosTemporales = [];
+    let fotosAEliminar = [];
+    
+    function cargarFotosExistentes() {
+        const fotosExistentes = {{ fotos_existentes|safe }};
+        const galeria = document.getElementById('galeria-fotos');
+        if (galeria && fotosExistentes && fotosExistentes.length > 0) {
+            galeria.innerHTML = '';
+            fotosExistentes.forEach(foto => agregarFotoAGaleria(foto, true));
+        }
+    }
+    
+    function abrirSelectorFoto() { document.getElementById('inputFoto').click(); }
+    
+    function procesarMultiplesFotos(input) {
+        const files = Array.from(input.files);
+        if (files.length === 0) return;
+        
+        let archivosValidos = [];
+        let errores = [];
+        
+        files.forEach(file => {
+            if (!file.type.startsWith('image/')) {
+                errores.push(`${file.name}: No es una imagen válida`);
+            } else if (file.size > 5 * 1024 * 1024) {
+                errores.push(`${file.name}: Excede 5MB`);
+            } else {
+                archivosValidos.push(file);
+            }
+        });
+        
+        if (errores.length > 0) {
+            Swal.fire({ icon: 'warning', title: 'Archivos no válidos', html: errores.join('<br>'), confirmButtonColor: '#ff6b00' });
+        }
+        
+        archivosValidos.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                agregarFotoAGaleria(e.target.result, false, file);
+                fotosTemporales.push(file);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        input.value = '';
+        if (archivosValidos.length > 0) mostrarToast(`✅ ${archivosValidos.length} foto(s) agregada(s)`, 'success');
+    }
+    
+    function agregarFotoAGaleria(url, esExistente = false, archivo = null) {
+        const galeria = document.getElementById('galeria-fotos');
+        if (!galeria) return;
+        
+        const fotoDiv = document.createElement('div');
+        fotoDiv.className = 'foto-item';
+        
+        const img = document.createElement('img');
+        img.src = url;
+        
+        const btnEliminar = document.createElement('div');
+        btnEliminar.className = 'eliminar-foto';
+        btnEliminar.innerHTML = '✕';
+        btnEliminar.onclick = function(e) {
+            e.stopPropagation();
+            fotoDiv.remove();
+            if (esExistente) {
+                fotosAEliminar.push(url);
+            } else if (archivo) {
+                const index = fotosTemporales.indexOf(archivo);
+                if (index > -1) fotosTemporales.splice(index, 1);
+            }
+            mostrarToast('✅ Foto eliminada', 'success');
+        };
+        
+        fotoDiv.appendChild(img);
+        fotoDiv.appendChild(btnEliminar);
+        fotoDiv.onclick = () => verFotoGrande(url);
+        galeria.appendChild(fotoDiv);
+    }
+    
+    function verFotoGrande(url) {
+        Swal.fire({ title: 'Foto del soporte', imageUrl: url, imageWidth: '90%', confirmButtonColor: '#ff6b00', confirmButtonText: 'Cerrar', width: '800px' });
+    }
+    
+    function mostrarToast(mensaje, tipo) {
+        const color = tipo === 'success' ? '#4caf50' : '#ff9800';
+        const toast = document.createElement('div');
+        toast.innerHTML = `<div style="position: fixed; bottom: 20px; right: 20px; background: ${color}; color: white; padding: 10px 20px; border-radius: 8px; z-index: 9999; font-size: 13px;">${mensaje}</div>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+    
+    // ============================================================
+    // 4. ACTUALIZAR RESUMEN DE MATERIALES
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const inicioFibra = document.getElementById('id_inicio_fibra');
+        const finalFibra = document.getElementById('id_final_fibra');
+        const conectores = document.getElementById('id_conectores');
+        const conectoresMalos = document.getElementById('id_conectores_malos');
+        const rosetas = document.getElementById('id_rosetas');
+        const patchCord = document.getElementById('id_patch_cord');
+        const tensores = document.getElementById('id_tensores');
+        const tirros = document.getElementById('id_tirros');
+        
+        function actualizarResumen() {
+            if (inicioFibra && finalFibra) {
+                const inicio = parseInt(inicioFibra.value) || 0;
+                const final = parseInt(finalFibra.value) || 0;
+                const resumenMetros = document.getElementById('resumen-metros');
+                if (resumenMetros) resumenMetros.textContent = Math.abs(final - inicio);
+            }
+            if (conectores) {
+                const resumenConectores = document.getElementById('resumen-conectores');
+                if (resumenConectores) resumenConectores.textContent = conectores.value || 0;
+            }
+            if (conectoresMalos) {
+                const resumenConectoresMalos = document.getElementById('resumen-conectores-malos');
+                if (resumenConectoresMalos) resumenConectoresMalos.textContent = conectoresMalos.value || 0;
+            }
+            if (rosetas) {
+                const resumenRosetas = document.getElementById('resumen-rosetas');
+                if (resumenRosetas) resumenRosetas.textContent = rosetas.value || 0;
+            }
+            if (patchCord) {
+                const resumenPatch = document.getElementById('resumen-patch');
+                if (resumenPatch) resumenPatch.textContent = patchCord.value || 0;
+            }
+            if (tensores) {
+                const resumenTensores = document.getElementById('resumen-tensores');
+                if (resumenTensores) resumenTensores.textContent = tensores.value || 0;
+            }
+            if (tirros) {
+                const resumenTirros = document.getElementById('resumen-tirros');
+                if (resumenTirros) resumenTirros.textContent = tirros.value || 0;
+            }
+        }
+        
+        if (inicioFibra) inicioFibra.addEventListener('input', actualizarResumen);
+        if (finalFibra) finalFibra.addEventListener('input', actualizarResumen);
+        if (conectores) conectores.addEventListener('input', actualizarResumen);
+        if (conectoresMalos) conectoresMalos.addEventListener('input', actualizarResumen);
+        if (rosetas) rosetas.addEventListener('input', actualizarResumen);
+        if (patchCord) patchCord.addEventListener('input', actualizarResumen);
+        if (tensores) tensores.addEventListener('input', actualizarResumen);
+        if (tirros) tirros.addEventListener('input', actualizarResumen);
+        
+        actualizarResumen();
+    });
+    
+    // ============================================================
+    // 5. ENVÍO DEL FORMULARIO
+    // ============================================================
+    document.getElementById('registrarSoporteForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        Swal.fire({ title: 'Guardando...', text: 'Por favor espera', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        const formData = new FormData(this);
+        fotosTemporales.forEach(foto => formData.append('fotos', foto));
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}', 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(async response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Error en el servidor');
+                return data;
+            }
+            throw new Error('Error en el servidor');
+        })
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Soporte registrado', text: data.message, confirmButtonColor: '#ff6b00' })
+                    .then(() => window.location.href = '{% url "gestion_soportes" %}');
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: data.error, confirmButtonColor: '#ff6b00' });
+            }
+        })
+        .catch(error => {
+            Swal.close();
+            Swal.fire({ icon: 'error', title: 'Error', text: error.message, confirmButtonColor: '#ff6b00' });
+        });
+    });
+</script>
+{% endblock %}

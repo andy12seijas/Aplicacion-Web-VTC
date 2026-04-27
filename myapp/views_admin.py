@@ -437,22 +437,37 @@ def gestionar_contratos(request):
     estado = request.GET.get('estado', '')
     tab_activa = request.GET.get('tab', 'pendientes')
     
-    # Base querysets - EXCLUIR contratos NO_COMPLETADO de pendientes
+    # ========== CONTRATOS PENDIENTES (EXCLUYE NO_COMPLETADO) ==========
     contratos_pendientes = ContratoCliente.objects.filter(
         Q(customer_id__isnull=True) | Q(customer_id='') |
         Q(ods__isnull=True) | Q(ods='')
     ).exclude(estado='NO_COMPLETADO').select_related('cliente_potencial', 'creado_por', 'plan_contratado')
     
+    # ========== CONTRATOS COMPLETADOS (EXCLUYE NO_COMPLETADO) ==========
     contratos_completados = ContratoCliente.objects.exclude(
         Q(customer_id__isnull=True) | Q(customer_id='') |
         Q(ods__isnull=True) | Q(ods='')
     ).exclude(estado='NO_COMPLETADO').select_related('cliente_potencial', 'creado_por', 'plan_contratado')
     
-    # Contratos NO COMPLETADOS (para estadísticas, no se muestran en las tablas)
-    contratos_no_completados = ContratoCliente.objects.filter(estado='NO_COMPLETADO').count()
+    # ========== CONTRATOS NO COMPLETADOS (SOLO PARA FILTRO) ==========
+    contratos_no_completados = ContratoCliente.objects.filter(estado='NO_COMPLETADO').select_related('cliente_potencial', 'creado_por', 'plan_contratado')
+    contratos_no_completados_count = contratos_no_completados.count()
     
-    # Aplicar filtros a ambos querysets
-    if busqueda:
+    # ========== APLICAR FILTROS ==========
+    # Contenedor para el queryset según el estado seleccionado
+    if estado == 'NO_COMPLETADO':
+        # Si el filtro es "No Completado", mostrar solo esos
+        contratos_activos = contratos_no_completados
+    else:
+        # Si no, usar los querysets normales según la pestaña
+        if tab_activa == 'pendientes':
+            contratos_activos = contratos_pendientes
+        else:
+            contratos_activos = contratos_completados
+    
+    # Aplicar búsqueda
+    if busqueda and estado != 'NO_COMPLETADO':
+        # Búsqueda normal
         contratos_pendientes = contratos_pendientes.filter(
             Q(cliente_potencial__nombre__icontains=busqueda) |
             Q(cliente_potencial__apellido__icontains=busqueda) |
@@ -471,42 +486,70 @@ def gestionar_contratos(request):
             Q(ods__icontains=busqueda) |
             Q(direccion_detallada__icontains=busqueda)
         )
+        contratos_no_completados = contratos_no_completados.filter(
+            Q(cliente_potencial__nombre__icontains=busqueda) |
+            Q(cliente_potencial__apellido__icontains=busqueda) |
+            Q(cliente_potencial__cedula__icontains=busqueda) |
+            Q(correo_electronico__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda) |
+            Q(ods__icontains=busqueda) |
+            Q(direccion_detallada__icontains=busqueda)
+        )
+    elif busqueda and estado == 'NO_COMPLETADO':
+        contratos_no_completados = contratos_no_completados.filter(
+            Q(cliente_potencial__nombre__icontains=busqueda) |
+            Q(cliente_potencial__apellido__icontains=busqueda) |
+            Q(cliente_potencial__cedula__icontains=busqueda) |
+            Q(correo_electronico__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda) |
+            Q(ods__icontains=busqueda) |
+            Q(direccion_detallada__icontains=busqueda)
+        )
     
-    if vendedor_id:
+    # Aplicar filtro por vendedor
+    if vendedor_id and estado != 'NO_COMPLETADO':
         contratos_pendientes = contratos_pendientes.filter(creado_por_id=vendedor_id)
         contratos_completados = contratos_completados.filter(creado_por_id=vendedor_id)
+    elif vendedor_id and estado == 'NO_COMPLETADO':
+        contratos_no_completados = contratos_no_completados.filter(creado_por_id=vendedor_id)
     
-    if estado:
-        contratos_pendientes = contratos_pendientes.filter(estado=estado)
-        contratos_completados = contratos_completados.filter(estado=estado)
-    
-    # Ordenar por fecha
+    # Ordenar
     contratos_pendientes = contratos_pendientes.order_by('-fecha_creacion')
     contratos_completados = contratos_completados.order_by('-fecha_creacion')
+    contratos_no_completados = contratos_no_completados.order_by('-fecha_creacion')
     
     # ===== PAGINACIÓN =====
     from django.core.paginator import Paginator
     
-    # Paginación para contratos pendientes
-    paginator_pendientes = Paginator(contratos_pendientes, 10)
-    page_pendientes = request.GET.get('page_pendientes', 1)
-    contratos_pendientes_page = paginator_pendientes.get_page(page_pendientes)
+    # Si el filtro es NO_COMPLETADO, mostrar en la pestaña pendientes
+    if estado == 'NO_COMPLETADO':
+        paginator_pendientes = Paginator(contratos_no_completados, 10)
+        page_pendientes = request.GET.get('page_pendientes', 1)
+        contratos_pendientes_page = paginator_pendientes.get_page(page_pendientes)
+        contratos_completados_page = []  # Vacío porque mostramos solo una tabla
+        # Forzar tab_activa a pendientes para mostrar la tabla
+        tab_activa = 'pendientes'
+    else:
+        # Paginación normal
+        paginator_pendientes = Paginator(contratos_pendientes, 10)
+        page_pendientes = request.GET.get('page_pendientes', 1)
+        contratos_pendientes_page = paginator_pendientes.get_page(page_pendientes)
+        
+        paginator_completados = Paginator(contratos_completados, 10)
+        page_completados = request.GET.get('page_completados', 1)
+        contratos_completados_page = paginator_completados.get_page(page_completados)
     
-    # Paginación para contratos completados
-    paginator_completados = Paginator(contratos_completados, 10)
-    page_completados = request.GET.get('page_completados', 1)
-    contratos_completados_page = paginator_completados.get_page(page_completados)
-    
-    # Obtener lista de vendedores para el filtro
+    # Obtener lista de vendedores
     from django.contrib.auth.models import User
     vendedores = User.objects.filter(is_active=True, groups__name='Vendedor').order_by('username')
     
     context = {
         'contratos_pendientes': contratos_pendientes_page,
         'contratos_pendientes_count': contratos_pendientes.count(),
-        'contratos_completados': contratos_completados_page,
+        'contratos_completados': contratos_completados_page if estado != 'NO_COMPLETADO' else [],
         'contratos_completados_count': contratos_completados.count(),
-        'contratos_no_completados_count': contratos_no_completados,
+        'contratos_no_completados_count': contratos_no_completados_count,
+        'contratos_no_completados': contratos_no_completados if estado == 'NO_COMPLETADO' else [],
         'vendedores': vendedores,
         'busqueda': busqueda,
         'filtro_vendedor': vendedor_id,
@@ -514,9 +557,66 @@ def gestionar_contratos(request):
         'tab_activa': tab_activa,
         'es_admin': es_admin,
         'es_supervisor': es_supervisor,
+        'mostrando_no_completados': estado == 'NO_COMPLETADO',
     }
     
     return render(request, 'Admin/gestionar_contratos.html', context)
+
+
+@login_required
+def reactivar_contrato(request, contrato_id):
+    """
+    Reactivar un contrato que estaba en estado NO_COMPLETADO a EN_PROCESO
+    Solo accesible para Administradores y Supervisores
+    """
+    import json
+    
+    # Verificar permisos (solo administradores y supervisores)
+    es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
+    es_supervisor = request.user.groups.filter(name='Supervisor').exists()
+    
+    if not (es_admin or es_supervisor):
+        return JsonResponse({
+            'success': False, 
+            'error': 'No tienes permisos para realizar esta acción'
+        }, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False, 
+            'error': 'Método no permitido'
+        }, status=405)
+    
+    try:
+        contrato = ContratoCliente.objects.get(id=contrato_id)
+        
+        # Verificar que el contrato esté en estado NO_COMPLETADO
+        if contrato.estado != 'NO_COMPLETADO':
+            return JsonResponse({
+                'success': False, 
+                'error': f'El contrato está en estado "{contrato.estado}", no en "No Completado"'
+            })
+        
+        # Cambiar estado a EN_PROCESO
+        contrato.estado = 'EN_PROCESO'
+        contrato.save()
+        
+        # Respuesta exitosa
+        return JsonResponse({
+            'success': True, 
+            'message': f'Contrato reactivado correctamente. Ahora está en estado "En Proceso".'
+        })
+        
+    except ContratoCliente.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'error': 'Contrato no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'error': f'Error al reactivar: {str(e)}'
+        }, status=500)
 
 
 @login_required
