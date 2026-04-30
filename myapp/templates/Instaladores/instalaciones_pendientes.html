@@ -1009,7 +1009,7 @@
                             {% else %}
                             <span class="badge badge-warning">Venta Directa</span>
                             {% endif %}
-                        </div>
+                        </td>
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
@@ -1017,19 +1017,19 @@
                                     <div class="user-name">{{ instalacion.nombre_cliente }}</div>
                                 </div>
                             </div>
-                        </div>
-                        <td>{{ instalacion.cedula_cliente }}</div>
+                        </td>
+                        <td>{{ instalacion.cedula_cliente }}</td>
                         <td>
                             <span class="badge completado">{{ instalacion.customer_id }}</span>
-                        </div>
+                        </td>
                         <td>
                             {% if instalacion.asignacion.contrato %}
                             <span class="badge" style="background: #2196f3; color: white;">{{ instalacion.orden_servicio }}</span>
                             {% else %}
                             <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
                             {% endif %}
-                        </div>
-                        <td>{{ instalacion.plan }}</div>
+                        </td>
+                        <td>{{ instalacion.plan }}</td>
                         <td class="cuadrilla-cell">
                             <div class="cuadrilla-nombre">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1041,8 +1041,8 @@
                             <div class="instaladores-lista">
                                 <small class="sin-instaladores">Instaladores asignados pendientes</small>
                             </div>
-                        </div>
-                        <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</div>
+                        </td>
+                        <td>{{ instalacion.asignacion.fecha_asignacion|date:"d/m/y H:i" }}</td>
                         {% if es_admin %}
                         <td>
                             {% if instalacion.asignacion.contrato %}
@@ -1054,7 +1054,7 @@
                                 {{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}
                             </span>
                             {% endif %}
-                        </div>
+                        </td>
                         {% endif %}
                         <td class="action-buttons">
                             <button class="action-btn info-btn" onclick="verInfoCliente({{ instalacion.id }})" title="Ver información del cliente y vendedor">
@@ -1073,7 +1073,7 @@
                                     <polyline points="10 9 9 9 8 9"/>
                                 </svg>
                             </a>
-                        </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -1087,7 +1087,7 @@
                             </svg>
                             <br>
                             No tienes instalaciones pendientes
-                        </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1283,6 +1283,11 @@
                         <div class="detalle-item"><span class="detalle-label">Estado:</span><span class="detalle-valor" id="detalleEstado">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">Fecha Instalación:</span><span class="detalle-valor" id="detalleFechaInstalacion">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">Fecha Asignación:</span><span class="detalle-valor" id="detalleFechaAsignacion">-</span></div>
+                        <!-- Campo SC agregado -->
+                        <div class="detalle-item" id="detalleScContainer" style="display: none;">
+                            <span class="detalle-label">Sc (Trabajo Interno):</span>
+                            <span class="detalle-valor" id="detalleSc">-</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -1399,6 +1404,11 @@
                         <div class="detalle-item"><span class="detalle-label">ATR:</span><span class="detalle-valor" id="infoClienteAtr">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">N° Orden / ODS:</span><span class="detalle-valor" id="infoClienteOrden">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">Cuadrilla:</span><span class="detalle-valor" id="infoClienteCuadrilla">-</span></div>
+                        <!-- Campo SC agregado -->
+                        <div class="detalle-item" id="infoClienteScContainer" style="display: none;">
+                            <span class="detalle-label">Sc (Trabajo Interno):</span>
+                            <span class="detalle-valor" id="infoClienteSc">-</span>
+                        </div>
                     </div>
                 </div>
                 
@@ -1550,6 +1560,23 @@
         document.getElementById('detalleTensores').textContent = data.tensores;
         document.getElementById('detalleConectoresMalos').textContent = data.conectores_malos;
         
+        // Mostrar campo SC en el modal de detalles solo si es admin
+        const esAdmin = {{ es_admin|lower }};
+        const scContainer = document.getElementById('detalleScContainer');
+        const scValue = document.getElementById('detalleSc');
+        
+        if (esAdmin) {
+            scContainer.style.display = 'flex';
+            const trabajoInterno = data.trabajo_interno === true || data.trabajo_interno === 'true';
+            if (trabajoInterno) {
+                scValue.innerHTML = '<span class="badge" style="background: #ff6b00; color: white;">✓ Sí (Sc)</span>';
+            } else {
+                scValue.innerHTML = '<span class="badge" style="background: #e0e0e0; color: #666;">✗ No</span>';
+            }
+        } else {
+            scContainer.style.display = 'none';
+        }
+        
         const instaladoresDiv = document.getElementById('detalleInstaladores');
         instaladoresDiv.innerHTML = '';
         if (data.instaladores && data.instaladores.length > 0) {
@@ -1654,7 +1681,7 @@
                 const inst = data.data;
                 document.getElementById('infoClienteNombre').textContent = inst.nombre_cliente || '-';
                 document.getElementById('infoClienteCedula').textContent = inst.cedula_cliente || '-';
-                document.getElementById('infoClienteTelefono').textContent = inst.telefono || 'No disponible';
+                document.getElementById('infoClienteTelefono').textContent = inst.telefono_cliente || 'No disponible';
                 document.getElementById('infoClienteDireccion').textContent = inst.direccion || 'No registrada';
                 document.getElementById('infoClientePlan').textContent = inst.plan || '-';
                 document.getElementById('infoClienteCustomerId').textContent = inst.customer_id || '-';
@@ -1665,6 +1692,24 @@
                 document.getElementById('infoClienteVendedorUsuario').textContent = inst.vendedor_usuario || '-';
                 document.getElementById('infoClienteVendedorTelefono').textContent = inst.vendedor_telefono || 'No registrado';
                 document.getElementById('infoClienteVendedorEmail').textContent = inst.vendedor_email || '-';
+                
+                // Mostrar campo SC solo si es admin
+                const esAdmin = {{ es_admin|lower }};
+                const scContainer = document.getElementById('infoClienteScContainer');
+                const scValue = document.getElementById('infoClienteSc');
+                
+                if (esAdmin) {
+                    scContainer.style.display = 'flex';
+                    const trabajoInterno = inst.trabajo_interno === true || inst.trabajo_interno === 'true';
+                    if (trabajoInterno) {
+                        scValue.innerHTML = '<span class="badge" style="background: #ff6b00; color: white;">✓ Sí (Sc)</span>';
+                    } else {
+                        scValue.innerHTML = '<span class="badge" style="background: #e0e0e0; color: #666;">✗ No</span>';
+                    }
+                } else {
+                    scContainer.style.display = 'none';
+                }
+                
                 contenido.style.display = 'block';
             } else {
                 Swal.fire({ icon: 'error', title: 'Error', text: data.error || 'No se pudieron cargar los datos', confirmButtonColor: '#ff6b00' });

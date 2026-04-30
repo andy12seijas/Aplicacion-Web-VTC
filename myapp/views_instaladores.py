@@ -705,9 +705,7 @@ def obtener_detalle_instalacion(request, instalacion_id):
             return JsonResponse({'error': 'No tienes permisos para ver esta instalación.'}, status=403)
         
         # Si es instalador, verificar que participó en la instalación
-        if es_instalador and not es_admin:
-            if request.user not in instalacion.instaladores.all():
-                return JsonResponse({'error': 'No tienes permiso para ver esta instalación.'}, status=403)
+        
         
         # ========== OBTENER DIRECCIÓN ==========
         direccion = "No registrada"
@@ -816,6 +814,7 @@ def obtener_detalle_instalacion(request, instalacion_id):
             'vendedor_usuario': vendedor_usuario,
             'vendedor_telefono': vendedor_telefono,
             'vendedor_email': vendedor_email,
+            'trabajo_interno': instalacion.asignacion.trabajo_interno or False,
         }
         
         return JsonResponse({'success': True, 'data': datos})

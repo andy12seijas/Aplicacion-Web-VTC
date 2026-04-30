@@ -37,36 +37,42 @@ def gestion_soportes(request):
     cuadrilla_del_instalador_nombre = None
     
     # ============================================================
-    # LÓGICA PARA INSTALADORES
+    # LÓGICA PARA INSTALADORES (CORREGIDA)
     # ============================================================
     if es_instalador:
-        # Obtener la cuadrilla del instalador
+        # Obtener la cuadrilla ACTUAL del instalador
         try:
             perfil = request.user.perfil
-            cuadrilla_del_instalador = perfil.cuadrillas.filter(activo=True).first()
-            if cuadrilla_del_instalador:
-                cuadrilla_del_instalador_id = cuadrilla_del_instalador.id
-                cuadrilla_del_instalador_nombre = cuadrilla_del_instalador.nombre
-                
-                # Obtener SOLO tickets que tienen asignación activa con SU cuadrilla
-                tickets_ids = AsignacionSoporte.objects.filter(
-                    cuadrilla=cuadrilla_del_instalador,
-                    activo=True
-                ).values_list('ticket_id', flat=True)
-                
-                # CRÍTICO: Convertir a lista y verificar si existe
-                tickets_ids_list = list(tickets_ids)
-                
-                if tickets_ids_list:
-                    tickets_query = Ticket.objects.filter(id__in=tickets_ids_list)
-                else:
-                    # NO usar Ticket.objects.none() porque a veces falla
-                    tickets_query = Ticket.objects.filter(id__in=[-1])  # IDs negativos no existen
-            else:
-                tickets_query = Ticket.objects.filter(id__in=[-1])
-        except Exception as e:
-            print(f"Error: {e}")
-            tickets_query = Ticket.objects.filter(id__in=[-1])
+            cuadrilla_actual = perfil.cuadrillas.filter(activo=True).first()
+            if cuadrilla_actual:
+                cuadrilla_del_instalador_id = cuadrilla_actual.id
+                cuadrilla_del_instalador_nombre = cuadrilla_actual.nombre
+        except:
+            cuadrilla_actual = None
+        
+        # ========== OBTENER TICKETS DE DOS FUENTES ==========
+        tickets_ids = set()
+        
+        # 1. Tickets donde el instalador PARTICIPÓ (HISTÓRICOS)
+        # Esto incluye tickets que ya completó aunque ya no esté en esa cuadrilla
+        tickets_donde_participo = Soporte.objects.filter(
+            instaladores=request.user
+        ).values_list('asignacion__ticket_id', flat=True)
+        tickets_ids.update(tickets_donde_participo)
+        
+        # 2. Tickets actualmente ASIGNADOS a su cuadrilla (activos)
+        if cuadrilla_actual:
+            tickets_asignados = AsignacionSoporte.objects.filter(
+                cuadrilla=cuadrilla_actual,
+                activo=True
+            ).values_list('ticket_id', flat=True)
+            tickets_ids.update(tickets_asignados)
+        
+        # Si no tiene tickets, no ve nada
+        if tickets_ids:
+            tickets_query = Ticket.objects.filter(id__in=list(tickets_ids))
+        else:
+            tickets_query = Ticket.objects.filter(id__in=[-1])  # IDs negativos no existen
     
     else:
         # Admin: ven todos los tickets
@@ -135,9 +141,21 @@ def gestion_soportes(request):
             ticket.asignacion_actual = AsignacionSoporte.objects.filter(
                 ticket=ticket, activo=True
             ).first()
-            # Para instaladores, siempre puede registrar porque SOLO ve tickets de su cuadrilla
+            
+            # Para instaladores: determinar si puede registrar soporte
             if es_instalador:
-                ticket.puede_registrar_soporte = True
+                puede_registrar = False
+                # Si tiene asignación activa y es su cuadrilla actual
+                if ticket.asignacion_actual and cuadrilla_del_instalador_id:
+                    if ticket.asignacion_actual.cuadrilla.id == cuadrilla_del_instalador_id:
+                        puede_registrar = True
+                # Si ya participó en este ticket (tiene soporte registrado)
+                if Soporte.objects.filter(
+                    asignacion__ticket=ticket,
+                    instaladores=request.user
+                ).exists():
+                    puede_registrar = True
+                ticket.puede_registrar_soporte = puede_registrar
             else:
                 ticket.puede_registrar_soporte = False
         except:

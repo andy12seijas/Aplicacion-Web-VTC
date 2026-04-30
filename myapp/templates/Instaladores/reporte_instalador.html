@@ -31,7 +31,7 @@
                 {% endfor %}
             </select>
         </div>
-        {% endif %}
+       
         
         <div class="filter-group">
             <label class="filter-label">Cuadrilla</label>
@@ -44,7 +44,7 @@
                 {% endfor %}
             </select>
         </div>
-        
+        {% endif %}
         <div class="filter-group">
             <label class="filter-label">Fecha Desde</label>
             <input type="date" id="fecha_desde" class="filter-input" value="{{ fecha_desde|default:'' }}">

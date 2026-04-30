@@ -236,6 +236,7 @@ def asignar_contrato(request, item_id):
         tipo = request.POST.get('tipo')
         cuadrilla_id = request.POST.get('cuadrilla')
         observaciones = request.POST.get('observaciones', '')
+        trabajo_interno = request.POST.get('trabajo_interno') == 'true'  # Convertir a booleano
         
         if not cuadrilla_id:
             messages.error(request, '❌ Debe seleccionar una cuadrilla')
@@ -255,12 +256,13 @@ def asignar_contrato(request, item_id):
                 messages.warning(request, f'⚠️ Este contrato ya está asignado a la cuadrilla {asignacion_existente.cuadrilla.nombre}')
                 return redirect('lista_asignaciones')
             
-            # Crear nueva asignación para contrato
+            # Crear nueva asignación para contrato con trabajo_interno
             AsignacionContrato.objects.create(
                 contrato=item,
                 cuadrilla=cuadrilla,
                 asignado_por=request.user,
-                observaciones=observaciones
+                observaciones=observaciones,
+                trabajo_interno=trabajo_interno  # Agregar este campo
             )
             mensaje = f'✅ Contrato de {item.nombre_completo} asignado correctamente a la cuadrilla {cuadrilla.nombre}'
             
@@ -276,12 +278,13 @@ def asignar_contrato(request, item_id):
                 messages.warning(request, f'⚠️ Esta venta directa ya está asignada a la cuadrilla {asignacion_existente.cuadrilla.nombre}')
                 return redirect('lista_asignaciones')
             
-            # Crear nueva asignación para venta directa
+            # Crear nueva asignación para venta directa con trabajo_interno
             AsignacionContrato.objects.create(
                 venta_directa=item,
                 cuadrilla=cuadrilla,
                 asignado_por=request.user,
-                observaciones=observaciones
+                observaciones=observaciones,
+                trabajo_interno=trabajo_interno  # Agregar este campo
             )
             mensaje = f'✅ Venta directa #{item.nro_orden} asignada correctamente a la cuadrilla {cuadrilla.nombre}'
         else:
@@ -293,6 +296,10 @@ def asignar_contrato(request, item_id):
             cuadrilla.estado = Cuadrilla.EstadoCuadrilla.OCUPADO
             cuadrilla.save(update_fields=['estado'])
             messages.info(request, f'📌 La cuadrilla {cuadrilla.nombre} ahora está OCUPADA')
+        
+        # Agregar mensaje adicional si es trabajo interno
+        if trabajo_interno:
+            messages.info(request, f'🏷️ Marcado como trabajo interno (Sc)')
         
         messages.success(request, mensaje)
         return redirect('lista_asignaciones')

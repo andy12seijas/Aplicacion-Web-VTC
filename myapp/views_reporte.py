@@ -23,8 +23,9 @@ def reporte_vendedor(request):
     es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
     es_vendedor = request.user.groups.filter(name='Vendedor').exists()
     es_supervisor = request.user.groups.filter(name='Supervisor').exists()
+    es_instalador = request.user.groups.filter(name='Instalador').exists()
     
-    if not (es_admin or es_vendedor or es_supervisor):
+    if not (es_admin or es_vendedor or es_supervisor or es_instalador):
         messages.error(request, 'No tienes permisos para acceder a esta página.')
         return redirect('dashboard')
     
@@ -210,8 +211,9 @@ def reporte_vendedor(request):
     # ========== LISTA DE VENDEDORES PARA FILTRO (SOLO ADMIN) ==========
     vendedores = []
     if es_admin:
-        vendedores = User.objects.filter(groups__name='Vendedor').distinct().order_by('first_name', 'username')
-    
+        vendedores = User.objects.filter(
+            groups__name__in=['Vendedor', 'Supervisor', 'Instalador']
+        ).distinct().order_by('first_name', 'username')
     context = {
         # Estadísticas generales
         'total_clientes': total_clientes,

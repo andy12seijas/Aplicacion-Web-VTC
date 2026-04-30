@@ -563,7 +563,7 @@ from .models import AsignacionContrato, Cuadrilla
 class AsignacionContratoForm(forms.ModelForm):
     class Meta:
         model = AsignacionContrato
-        fields = ['cuadrilla', 'observaciones']
+        fields = ['cuadrilla', 'observaciones','trabajo_interno']
         widgets = {
             'cuadrilla': forms.Select(attrs={
                 'class': 'form-select'
@@ -572,6 +572,11 @@ class AsignacionContratoForm(forms.ModelForm):
                 'class': 'form-textarea',
                 'rows': 3,
                 'placeholder': 'Observaciones adicionales...'
+            }),
+            'trabajo_interno': forms.CheckboxInput(attrs={
+                'class': 'form-checkbox',
+                'checked': False,
+                'placeholder':'Sc'
             }),
         }
     

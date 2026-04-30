@@ -350,7 +350,12 @@ class AsignacionContrato(models.Model):
         related_name='asignaciones',
         verbose_name="Cuadrilla"
     )
-    
+    trabajo_interno = models.BooleanField(
+        default=False,
+        verbose_name="Sc",
+        null=True,
+        blank=True,
+    )
     fecha_asignacion = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Fecha de asignación"
