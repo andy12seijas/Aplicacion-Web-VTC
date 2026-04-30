@@ -58,7 +58,6 @@
         box-shadow: var(--shadow-sm);
     }
     
-    /* Selector de reporte */
     .reporte-selector {
         background: white;
         border-radius: 16px;
@@ -110,7 +109,6 @@
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
     
-    /* Filtros dinámicos */
     .filters-container {
         margin-bottom: 20px;
     }
@@ -228,7 +226,6 @@
         color: var(--orange);
     }
 
-    /* Estadísticas */
     .stats-grid {
         display: flex;
         flex-wrap: wrap;
@@ -268,7 +265,6 @@
         font-size: 12px;
     }
 
-    /* Tipo de reporte (Simple/Avanzado) */
     .tipo-container {
         padding: 16px 20px;
         background: white;
@@ -305,7 +301,6 @@
         background: var(--orange-light);
     }
 
-    /* Tabla */
     .table-wrapper {
         overflow-x: auto;
         border-radius: 12px;
@@ -342,7 +337,6 @@
         background: var(--gray-bg);
     }
 
-    /* Badges */
     .badge {
         display: inline-block;
         padding: 3px 8px;
@@ -362,7 +356,7 @@
         color: #9b2c1d;
     }
 
-    .badge-info {
+    .badge-proceso {
         background: var(--info-light);
         color: #1e40af;
     }
@@ -372,7 +366,6 @@
         color: #dc2626;
     }
 
-    /* Botones de exportación */
     .export-buttons {
         display: flex;
         justify-content: flex-end;
@@ -415,7 +408,6 @@
         transform: translateY(-2px);
     }
 
-    /* Paginación */
     .pagination {
         display: flex;
         align-items: center;
@@ -460,19 +452,12 @@
         background: var(--gray-bg);
     }
 
-    .page-info {
-        font-size: 12px;
-        color: var(--gray-text);
-        margin: 0 8px;
-    }
-
     .empty {
         text-align: center;
         padding: 48px !important;
         color: var(--gray-text);
     }
 
-    /* Loading */
     .loading {
         text-align: center;
         padding: 40px;
@@ -492,12 +477,10 @@
         to { transform: rotate(360deg); }
     }
 
-    /* Filtros específicos por tipo */
     .filters-ventas, .filters-instalaciones, .filters-soportes, .filters-inventario {
         display: block;
     }
 
-    /* Responsive */
     @media (max-width: 768px) {
         .selector-grid {
             flex-direction: column;
@@ -556,7 +539,6 @@
     }
 </style>
 
-<!-- Selector de Reporte -->
 <div class="reporte-selector">
     <div class="selector-grid">
         <div class="selector-group">
@@ -571,7 +553,6 @@
     </div>
 </div>
 
-<!-- Estadísticas -->
 <div class="stats-grid">
     <div class="stat-card">
         <span class="stat-value" id="totalRegistros">0</span>
@@ -583,11 +564,10 @@
     </div>
     <div class="stat-card" id="statPendientes">
         <span class="stat-value" id="totalPendientes">0</span>
-        <span class="stat-label">Pendientes</span>
+        <span class="stat-label">En Proceso/Pendiente</span>
     </div>
 </div>
 
-<!-- Filtros Comunes -->
 <div class="filters-container">
     <div class="filters-grid">
         <div class="search-box">
@@ -598,7 +578,6 @@
             <input type="text" placeholder="Buscar..." id="searchInput">
         </div>
         
-        <!-- Filtros específicos por tipo de reporte -->
         <div id="filtrosVentas" class="filters-ventas">
             <select id="filterVendedor" class="filter-select">
                 <option value="">Todos los vendedores</option>
@@ -667,7 +646,6 @@
     </div>
 </div>
 
-<!-- Tipo de Reporte (Simple/Avanzado) -->
 <div class="tipo-container">
     <div class="tipo-buttons">
         <button class="tipo-btn active" onclick="cambiarNivelReporte('simple')" id="tipo-simple-btn">Reporte Simple</button>
@@ -675,11 +653,10 @@
     </div>
 </div>
 
-<!-- Tabla de resultados -->
 <div class="table-wrapper">
     <table class="table" id="tabla-resultados">
         <thead id="thead-resultados">
-            <tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
+            <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
         </thead>
         <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
     </table>
@@ -705,13 +682,11 @@
         tipoActual = select.value;
         paginaActual = 1;
         
-        // Ocultar/mostrar filtros según tipo
         document.getElementById('filtrosVentas').style.display = tipoActual === 'ventas' ? 'flex' : 'none';
         document.getElementById('filtrosInstalaciones').style.display = tipoActual === 'instalaciones' ? 'flex' : 'none';
         document.getElementById('filtrosSoportes').style.display = tipoActual === 'soportes' ? 'flex' : 'none';
         document.getElementById('filtrosInventario').style.display = tipoActual === 'inventario' ? 'flex' : 'none';
         
-        // Mostrar/ocultar estadísticas de completados/pendientes según tipo
         const statCompletados = document.getElementById('statCompletados');
         const statPendientes = document.getElementById('statPendientes');
         
@@ -769,7 +744,6 @@
         if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
         if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
         
-        // Filtros específicos
         if (tipoActual === 'ventas') {
             const vendedor = document.getElementById('filterVendedor')?.value || '';
             const plan = document.getElementById('filterPlan')?.value || '';
@@ -791,7 +765,7 @@
         }
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="20" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
         
         fetch(url)
             .then(response => response.json())
@@ -806,7 +780,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="20" class="empty">Error al cargar los datos</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
             });
     }
 
@@ -814,38 +788,51 @@
         const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="20" class="empty">No hay datos disponibles</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
             return;
         }
         
         if (tipoActual === 'ventas') {
             if (nivelActual === 'simple') {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.plan}</td>
-                        <td>${item.fecha}</td><td>${item.vendedor}</td><td>${item.customer_id}</td><td>${item.ods}</td>
-                        <td><span class="badge badge-completado">${item.estado}</span></td>
+                        <td>${item.cliente}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ods}</td>
+                        <td>${item.fecha}</td>
+                        <td>${item.vendedor}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.telefono || 'N/A'}</td>
-                        <td>${item.correo || 'N/A'}</td><td>${item.plan}</td><td>${item.fecha}</td>
-                        <td>${item.vendedor}</td><td>${item.customer_id}</td><td>${item.ods}</td>
-                        <td><span class="badge badge-completado">${item.estado}</span></td>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.telefono || 'N/A'}</td>
+                        <td>${item.correo || 'N/A'}</td>
+                        <td>${item.plan}</td>
+                        <td>${item.fecha}</td>
+                        <td>${item.vendedor}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ods}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
                     </tr>
                 `).join('');
             }
         } else if (tipoActual === 'instalaciones') {
             if (nivelActual === 'simple') {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th></td>';
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Cuadrilla</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.plan}</td>
-                        <td>${item.cuadrilla}</td><td>${item.fecha}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ods}</td>
+                        <td>${item.fecha}</td>
+                        <td>${item.cuadrilla}</td>
                         <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
                     </tr>
                 `).join('');
@@ -853,39 +840,57 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th><th>Modelo</th><th>Serial</th><th>Metros</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.direccion || 'N/A'}</td>
-                        <td>${item.plan}</td><td>${item.cuadrilla}</td><td>${item.fecha}</td>
+                        <td>${item.id}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.direccion || 'N/A'}</td>
+                        <td>${item.plan}</td>
+                        <td>${item.cuadrilla}</td>
+                        <td>${item.fecha}</td>
                         <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
-                        <td>${item.modelo || 'N/A'}</td><td>${item.serial || 'N/A'}</td><td>${item.metros || 0}m</td>
+                        <td>${item.modelo || 'N/A'}</td>
+                        <td>${item.serial || 'N/A'}</td>
+                        <td>${item.metros || 0}m</td>
                     </tr>
                 `).join('');
             }
         } else if (tipoActual === 'soportes') {
             if (nivelActual === 'simple') {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th></tr>';
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>Ticket Padre</th><th>Fecha</th><th>Cuadrilla</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.tipo}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
-                        <td>${item.fecha}</td><td>${item.falla || 'N/A'}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.customer_id}</td>
+                        <td>${item.ticket_padre}</td>
+                        <td>${item.fecha}</td>
+                        <td>${item.cuadrilla}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado}</span></td>
                     </tr>
                 `).join('');
             } else {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Ticket Padre</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.cliente}</td><td>${item.cedula}</td><td>${item.tipo}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
-                        <td>${item.fecha}</td><td>${item.falla || 'N/A'}</td><td>${item.solucion || 'N/A'}</td>
+                        <td>${item.id}</td>
+                        <td>${item.ticket_padre}</td>
+                        <td>${item.cliente}</td>
+                        <td>${item.cedula}</td>
+                        <td>${item.tipo}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado}</span></td>
+                        <td>${item.fecha}</td>
+                        <td>${item.falla || 'N/A'}</td>
+                        <td>${item.solucion || 'N/A'}</td>
                     </tr>
                 `).join('');
             }
         } else if (tipoActual === 'inventario') {
             if (nivelActual === 'simple') {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th></tr>';
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.material}</td><td>${item.cantidad}</td><td>${item.minimo}</td>
+                        <td>${item.material}</td>
+                        <td>${item.cantidad}</td>
+                        <td>${item.minimo}</td>
                         <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado}</span></td>
                     </tr>
                 `).join('');
@@ -893,9 +898,13 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th><th>Última Actualización</th><th>Actualizado Por</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td><td>${item.material}</td><td>${item.cantidad}</td><td>${item.minimo}</td>
+                        <td>${item.id}</td>
+                        <td>${item.material}</td>
+                        <td>${item.cantidad}</td>
+                        <td>${item.minimo}</td>
                         <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado}</span></td>
-                        <td>${item.ultima_actualizacion || 'N/A'}</td><td>${item.actualizado_por || 'Sistema'}</td>
+                        <td>${item.ultima_actualizacion || 'N/A'}</td>
+                        <td>${item.actualizado_por || 'Sistema'}</td>
                     </tr>
                 `).join('');
             }
@@ -959,8 +968,8 @@
         document.getElementById('totalRegistros').textContent = stats.total_ventas || stats.total_instalaciones || stats.total_soportes || stats.total_materiales || 0;
         
         if (tipoActual !== 'inventario') {
-            document.getElementById('totalCompletados').textContent = stats.completadas || stats.completados || 0;
-            document.getElementById('totalPendientes').textContent = stats.pendientes || 0;
+            document.getElementById('totalCompletados').textContent = stats.completados || stats.completadas || 0;
+            document.getElementById('totalPendientes').textContent = stats.pendientes || stats.en_proceso || 0;
         }
     }
 
@@ -975,7 +984,6 @@
         if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
         if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
         
-        // Filtros específicos
         if (tipoActual === 'ventas') {
             const vendedor = document.getElementById('filterVendedor')?.value || '';
             const plan = document.getElementById('filterPlan')?.value || '';
@@ -995,7 +1003,6 @@
         window.location.href = url;
     }
 
-    // Event listeners
     document.getElementById('selectReporte')?.addEventListener('change', cambiarReporte);
     document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') cargarReporte();
@@ -1010,7 +1017,6 @@
     document.getElementById('fecha_desde')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_hasta')?.addEventListener('change', cargarReporte);
 
-    // Cargar reporte inicial
     cargarReporte();
 </script>
 {% endblock %}

@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from myapp.views_admin import es_admin
 
-from .models import Instalacion, Soporte, ModeloModem, User, Cuadrilla
+from .models import AsignacionContrato, Instalacion, Soporte, ModeloModem, User, Cuadrilla
 
 
 def es_instalador_o_admin(user):
