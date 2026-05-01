@@ -26,7 +26,9 @@ def reportes_view(request):
     """Vista principal de reportes unificada"""
     from myapp.models import User, Plan, Cuadrilla, Material
     
-    vendedores = User.objects.filter(groups__name='Vendedor').distinct()
+    vendedores = User.objects.filter(
+            groups__name__in=['Vendedor', 'Supervisor', 'Instalador']
+        ).distinct().order_by('first_name', 'username',activo=True)
     planes = Plan.objects.filter(activo=True)
     cuadrillas = Cuadrilla.objects.filter(activo=True)
     materiales = Material.objects.filter(activo=True)
