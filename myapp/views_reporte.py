@@ -30,36 +30,30 @@ def reporte_vendedor(request):
         return redirect('dashboard')
     
     # ========== OBTENER EL VENDEDOR A MOSTRAR ==========
-    # Si es ADMIN, puede seleccionar cualquier vendedor
-    # Si es VENDEDOR o SUPERVISOR, SOLO ve sus propios datos
     vendedor_id = request.GET.get('vendedor', '')
     
     if es_admin:
-        # Admin puede seleccionar cualquier vendedor o ver todos
         if vendedor_id:
             vendedor_filtro_id = vendedor_id
         else:
             vendedor_filtro_id = None
     else:
-        # Vendedor o Supervisor: SOLO ven sus propios datos
         vendedor_filtro_id = request.user.id
-        vendedor_id = str(request.user.id)  # Para mantener en la URL
+        vendedor_id = str(request.user.id)
     
     # Filtros de fecha para gráficas
     fecha_desde = request.GET.get('fecha_desde', '')
     fecha_hasta = request.GET.get('fecha_hasta', '')
     semana_offset = int(request.GET.get('semana_offset', 0))
     
-    # ========== BASE DE DATOS ==========
+    # ========== BASE DE DATOS (con filtro de vendedor) ==========
     if es_admin and vendedor_filtro_id:
         clientes_totales = ClientePotencial.objects.filter(creado_por_id=vendedor_filtro_id)
         contratos_totales = ContratoCliente.objects.filter(creado_por_id=vendedor_filtro_id)
     elif es_admin and not vendedor_filtro_id:
-        # Admin viendo todos los vendedores
         clientes_totales = ClientePotencial.objects.all()
         contratos_totales = ContratoCliente.objects.all()
     else:
-        # Vendedor o Supervisor viendo sus propios datos
         clientes_totales = ClientePotencial.objects.filter(creado_por=request.user)
         contratos_totales = ContratoCliente.objects.filter(creado_por=request.user)
     
@@ -123,26 +117,22 @@ def reporte_vendedor(request):
             clientes_meses_labels.append(item['mes'].strftime('%b %Y'))
             clientes_meses_values.append(item['total'])
     
-    # ========== ACUMULATIVO SEMANAL ==========
-    # Calcular semana actual (viernes a jueves)
+    # ========== ACUMULATIVO SEMANAL (CORREGIDO CON fecha_completado) ==========
     hoy = timezone.now().date()
     dias_desde_viernes = (hoy.weekday() - 4) % 7
     viernes_actual = hoy - timedelta(days=dias_desde_viernes)
     
-    # Aplicar offset para navegar entre semanas
     viernes_seleccionado = viernes_actual - timedelta(weeks=semana_offset)
     jueves_seleccionado = viernes_seleccionado + timedelta(days=6)
     
-    from django.db.models import Q
-    
-    # Contratos COMPLETADOS en la semana (según fecha_actualizacion)
-    contratos_completados_semana = ContratoCliente.objects.filter(
+    # ===== CONTRATOS COMPLETADOS EN LA SEMANA (usando fecha_completado) =====
+    contratos_completados_semana = contratos_totales.filter(
         estado='COMPLETADO',
         fecha_completado__date__gte=viernes_seleccionado,
         fecha_completado__date__lte=jueves_seleccionado
     ).select_related('cliente_potencial', 'plan_contratado')
     
-    # Contratos EN_PROCESO creados en la semana (NO se han completado aún)
+    # ===== CONTRATOS EN PROCESO CREADOS EN LA SEMANA =====
     contratos_en_proceso_semana = contratos_totales.filter(
         estado='EN_PROCESO',
         fecha_creacion__date__gte=viernes_seleccionado,
@@ -150,11 +140,11 @@ def reporte_vendedor(request):
     ).exclude(
         id__in=contratos_totales.filter(
             estado='COMPLETADO',
-            fecha_actualizacion__date__gt=jueves_seleccionado
+            fecha_completado__date__gt=jueves_seleccionado
         ).values_list('id', flat=True)
     ).select_related('cliente_potencial', 'plan_contratado')
     
-    # Contratos NO_COMPLETADOS creados en la semana
+    # ===== CONTRATOS NO COMPLETADOS CREADOS EN LA SEMANA =====
     contratos_no_completados_semana = contratos_totales.filter(
         estado='NO_COMPLETADO',
         fecha_creacion__date__gte=viernes_seleccionado,
@@ -163,7 +153,7 @@ def reporte_vendedor(request):
     
     # Unir todos los contratos de la semana
     contratos_semana = list(contratos_completados_semana) + list(contratos_en_proceso_semana) + list(contratos_no_completados_semana)
-    contratos_semana.sort(key=lambda x: x.fecha_actualizacion if x.estado == 'COMPLETADO' else x.fecha_creacion, reverse=True)
+    contratos_semana.sort(key=lambda x: x.fecha_completado if x.estado == 'COMPLETADO' else x.fecha_creacion, reverse=True)
     
     # Totales de la semana
     total_contratos_semana = len(contratos_semana)
@@ -171,10 +161,10 @@ def reporte_vendedor(request):
     en_proceso_semana = contratos_en_proceso_semana.count()
     no_completados_semana = contratos_no_completados_semana.count()
     
-    # Acumulado hasta la semana
+    # ===== ACUMULADO HASTA LA SEMANA (CORREGIDO) =====
     acumulado_completados = contratos_totales.filter(
         estado='COMPLETADO',
-        fecha_actualizacion__date__lte=jueves_seleccionado
+        fecha_completado__date__lte=jueves_seleccionado
     ).count()
     
     acumulado_en_proceso = contratos_totales.filter(
@@ -183,7 +173,7 @@ def reporte_vendedor(request):
     ).exclude(
         id__in=contratos_totales.filter(
             estado='COMPLETADO',
-            fecha_actualizacion__date__gt=jueves_seleccionado
+            fecha_completado__date__lte=jueves_seleccionado
         ).values_list('id', flat=True)
     ).count()
     
@@ -214,8 +204,8 @@ def reporte_vendedor(request):
         vendedores = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor', 'Instalador']
         ).distinct().order_by('first_name', 'username')
+    
     context = {
-        # Estadísticas generales
         'total_clientes': total_clientes,
         'total_contratos': total_contratos,
         'contratos_completados': contratos_completados,
@@ -224,18 +214,15 @@ def reporte_vendedor(request):
         'tasa_conversion': round(tasa_conversion, 1),
         'clientes_con_contrato': clientes_con_contrato,
         
-        # Semana actual
         'semana_actual': semana_data,
         'es_semana_actual': semana_offset == 0,
         'semana_offset': semana_offset,
         
-        # Filtros para gráficas
         'vendedores': vendedores,
         'vendedor_seleccionado': vendedor_id if vendedor_id else '',
         'fecha_desde': fecha_desde,
         'fecha_hasta': fecha_hasta,
         
-        # Gráficas
         'interes_labels': json.dumps(interes_labels),
         'interes_values': json.dumps(interes_values),
         'interes_colors': json.dumps(interes_colors_list),
