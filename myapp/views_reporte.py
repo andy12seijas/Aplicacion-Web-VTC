@@ -136,10 +136,10 @@ def reporte_vendedor(request):
     from django.db.models import Q
     
     # Contratos COMPLETADOS en la semana (según fecha_actualizacion)
-    contratos_completados_semana = contratos_totales.filter(
+    contratos_completados_semana = ContratoCliente.objects.filter(
         estado='COMPLETADO',
-        fecha_actualizacion__date__gte=viernes_seleccionado,
-        fecha_actualizacion__date__lte=jueves_seleccionado
+        fecha_completado__date__gte=viernes_seleccionado,
+        fecha_completado__date__lte=jueves_seleccionado
     ).select_related('cliente_potencial', 'plan_contratado')
     
     # Contratos EN_PROCESO creados en la semana (NO se han completado aún)

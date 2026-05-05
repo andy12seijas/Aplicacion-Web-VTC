@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Q, Count, Sum
-from datetime import datetime
+from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -13,8 +13,12 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .models import ContratoCliente, Instalacion, Soporte, User, Plan, Cuadrilla, VentaDirecta, Material, MovimientoInventario, InventarioGlobal
-
+from .models import ContratoCliente, Instalacion, Soporte, TasaCambio, User, Plan, Cuadrilla, VentaDirecta, Material, MovimientoInventario, InventarioGlobal
+from django.http import JsonResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from django.core.management import call_command
+from django.views.decorators.csrf import csrf_exempt
+import json
 
 def es_admin(user):
     return user.is_authenticated and (user.is_superuser or user.groups.filter(name='Administrador').exists())
@@ -28,7 +32,7 @@ def reportes_view(request):
     
     vendedores = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor', 'Instalador']
-        ).distinct().order_by('first_name', 'username',activo=True)
+        ).distinct().order_by('first_name', 'username')
     planes = Plan.objects.filter(activo=True)
     cuadrillas = Cuadrilla.objects.filter(activo=True)
     materiales = Material.objects.filter(activo=True)
@@ -409,6 +413,256 @@ def reporte_inventario_json(request):
         'por_pagina': per_page,
     })
 
+@login_required
+@user_passes_test(es_admin)
+def reporte_vendedores_json(request):
+    """
+    API para obtener reporte de vendedores con contratos completados
+    por semana (viernes a jueves)
+    """
+    
+    from decimal import Decimal
+    
+    # Obtener parámetros
+    semana_fecha = request.GET.get('semana', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    page = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 15))
+    busqueda = request.GET.get('busqueda', '')
+    
+    # Calcular semana (viernes a jueves)
+    if semana_fecha:
+        try:
+            fecha_referencia = datetime.strptime(semana_fecha, '%Y-%m-%d').date()
+        except:
+            fecha_referencia = datetime.now().date()
+    else:
+        fecha_referencia = datetime.now().date()
+    
+    dias_desde_viernes = fecha_referencia.weekday() - 4
+    if dias_desde_viernes < 0:
+        dias_desde_viernes += 7
+    
+    viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
+    jueves_fin = viernes_inicio + timedelta(days=6)
+    
+    # ===== LÓGICA SIMPLIFICADA =====
+    # Usar fecha_completado directamente (mucho más simple y preciso)
+    contratos = ContratoCliente.objects.filter(
+        estado='COMPLETADO',
+        fecha_completado__date__gte=viernes_inicio,
+        fecha_completado__date__lte=jueves_fin
+    )
+    
+    # Filtrar por vendedor
+    if vendedor_id:
+        contratos = contratos.filter(creado_por_id=vendedor_id)
+    
+    # Obtener todos los vendedores
+    todos_vendedores = User.objects.filter(
+        groups__name__in=['Vendedor', 'Supervisor']
+    ).distinct().order_by('first_name', 'username')
+    
+    if vendedor_id:
+        todos_vendedores = todos_vendedores.filter(id=vendedor_id)
+    
+    if busqueda:
+        todos_vendedores = todos_vendedores.filter(
+            Q(first_name__icontains=busqueda) |
+            Q(username__icontains=busqueda) |
+            Q(last_name__icontains=busqueda)
+        )
+    
+    # Obtener tasa de cambio
+    tasa_obj = TasaCambio.objects.filter(activo=True).first()
+    if tasa_obj:
+        tasa = float(tasa_obj.tasa)
+        tasa_decimal = tasa_obj.tasa
+    else:
+        tasa = 0
+        tasa_decimal = Decimal('0')
+    
+    vendedores_data = []
+    
+    for vendedor in todos_vendedores:
+        # Contratos completados en esta semana para este vendedor
+        contratos_vendedor = contratos.filter(creado_por=vendedor)
+        total_contratos = contratos_vendedor.count()
+        
+        # Mostrar vendedor si tiene contratos o es el seleccionado
+        if total_contratos > 0 or not vendedor_id:
+            # Calcular comisión según rangos
+            if total_contratos >= 1 and total_contratos <= 5:
+                comision_por_contrato = 8
+                bono = 20
+                total_precio = total_contratos * 8
+                rango = "1-5 contratos"
+            elif total_contratos >= 6 and total_contratos <= 10:
+                comision_por_contrato = 10
+                bono = 40
+                total_precio = total_contratos * 10
+                rango = "6-10 contratos"
+            elif total_contratos >= 11:
+                comision_por_contrato = 10
+                bono = 60
+                total_precio = total_contratos * 10
+                rango = "11+ contratos"
+            else:
+                comision_por_contrato = 0
+                bono = 0
+                total_precio = 0
+                rango = "Sin contratos"
+            
+            total_con_bono = total_precio + bono
+            total_bs = total_con_bono * tasa
+            
+            # Detalle de contratos (mostrar fecha_completado real)
+            lista_contratos = []
+            for contrato in contratos_vendedor.order_by('-fecha_completado')[:5]:
+                lista_contratos.append({
+                    'id': contrato.id,
+                    'cliente': contrato.nombre_completo,
+                    'fecha_completado': contrato.fecha_completado.strftime('%d/%m/%Y %H:%M') if contrato.fecha_completado else 'N/A',
+                    'fecha_creacion': contrato.fecha_creacion.strftime('%d/%m/%Y'),
+                    'plan': contrato.plan_contratado.nombre,
+                    'customer_id': contrato.customer_id or 'N/A'
+                })
+            
+            vendedores_data.append({
+                'id': vendedor.id,
+                'vendedor': vendedor.get_full_name() or vendedor.username,
+                'username': vendedor.username,
+                'contratos': total_contratos,
+                'comision_por_contrato': f"${comision_por_contrato}",
+                'total_sin_bono': f"${total_precio}",
+                'bono': f"${bono}",
+                'total_con_bono': f"${total_con_bono}",
+                'total_bs': f"Bs {total_bs:,.2f}",
+                'rango': rango,
+                'contratos_detalle': lista_contratos
+            })
+    
+    # Ordenar por cantidad de contratos (mayor a menor)
+    vendedores_data.sort(key=lambda x: int(x['contratos']), reverse=True)
+    
+    # Paginación
+    total_registros = len(vendedores_data)
+    paginator = Paginator(vendedores_data, per_page)
+    
+    try:
+        page_obj = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.page(1)
+    
+    # Estadísticas
+    total_contratos_semana = sum(v['contratos'] for v in vendedores_data)
+    total_pagar_usd = sum(float(v['total_con_bono'].replace('$', '')) for v in vendedores_data)
+    total_pagar_bs = total_pagar_usd * tasa
+    
+    fecha_tasa = tasa_obj.fecha.strftime('%d/%m/%Y') if tasa_obj else 'No definida'
+    tasa_str = f"{float(tasa_decimal):,.2f}" if tasa_decimal else "0.00"
+    
+    estadisticas = {
+        'total_vendedores': len(vendedores_data),
+        'total_contratos_semana': total_contratos_semana,
+        'total_pagar_usd': f"${total_pagar_usd:,.2f}",
+        'total_pagar_bs': f"Bs {total_pagar_bs:,.2f}",
+        'semana_inicio': viernes_inicio.strftime('%d/%m/%Y'),
+        'semana_fin': jueves_fin.strftime('%d/%m/%Y'),
+        'tasa_cambio': f"1 USD = {tasa_str} Bs",
+        'fecha_actualizacion_tasa': fecha_tasa
+    }
+    
+    return JsonResponse({
+        'data': list(page_obj),
+        'estadisticas': estadisticas,
+        'total_registros': total_registros,
+        'total_paginas': paginator.num_pages,
+        'pagina_actual': page_obj.number,
+        'por_pagina': per_page,
+        'semana_inicio': viernes_inicio.strftime('%Y-%m-%d'),
+        'semana_fin': jueves_fin.strftime('%Y-%m-%d')
+    })
+
+
+
+
+@staff_member_required
+@csrf_exempt
+def api_actualizar_tasa(request):
+    """API para actualizar la tasa de cambio manualmente"""
+    if request.method == 'POST':
+        try:
+            # Ejecutar el comando
+            call_command('actualizar_tasa')
+            return JsonResponse({
+                'success': True,
+                'message': 'Tasa actualizada correctamente'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+@login_required
+@user_passes_test(es_admin)
+def semanas_disponibles_api(request):
+    """API para obtener las semanas disponibles con contratos completados"""
+    
+    # Obtener todas las semanas donde hay contratos completados
+    contratos = ContratoCliente.objects.filter(estado='COMPLETADO').order_by('fecha_creacion')
+    
+    semanas = []
+    fechas_procesadas = set()
+    
+    for contrato in contratos:
+        fecha = contrato.fecha_creacion.date()
+        
+        # Calcular semana (viernes a jueves)
+        dias_desde_viernes = fecha.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        clave = viernes_inicio.strftime('%Y-%m-%d')
+        
+        if clave not in fechas_procesadas:
+            fechas_procesadas.add(clave)
+            semanas.append({
+                'value': viernes_inicio.strftime('%Y-%m-%d'),
+                'label': f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
+            })
+    
+    # Ordenar por fecha descendente
+    semanas.sort(key=lambda x: x['value'], reverse=True)
+    
+    # Agregar semana actual
+    hoy = datetime.now().date()
+    dias_desde_viernes = hoy.weekday() - 4
+    if dias_desde_viernes < 0:
+        dias_desde_viernes += 7
+    
+    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
+    jueves_actual = viernes_actual + timedelta(days=6)
+    semana_actual_clave = viernes_actual.strftime('%Y-%m-%d')
+    
+    semana_actual = {
+        'value': semana_actual_clave,
+        'label': f"Semana Actual ({viernes_actual.strftime('%d/%m/%Y')} - {jueves_actual.strftime('%d/%m/%Y')})"
+    }
+    
+    # Verificar si la semana actual ya está en la lista
+    if not any(s['value'] == semana_actual_clave for s in semanas):
+        semanas.insert(0, semana_actual)
+    
+    return JsonResponse({'semanas': semanas})
+
+
 
 @login_required
 @user_passes_test(es_admin)
@@ -430,20 +684,21 @@ def exportar_reporte(request):
     tipo_soporte = request.GET.get('tipo_soporte', '')
     estado_soporte = request.GET.get('estado_soporte', '')
     material = request.GET.get('material', '')
+    semana = request.GET.get('semana', '')
     
     if formato == 'excel':
         return exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta, 
                               busqueda, vendedor, plan, cuadrilla, estado, 
-                              tipo_soporte, estado_soporte, material)
+                              tipo_soporte, estado_soporte, material, semana)
     else:
         return exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                             busqueda, vendedor, plan, cuadrilla, estado,
-                            tipo_soporte, estado_soporte, material)
+                            tipo_soporte, estado_soporte, material, semana)
 
 
 def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                    busqueda, vendedor, plan, cuadrilla, estado,
-                   tipo_soporte, estado_soporte, material):
+                   tipo_soporte, estado_soporte, material, semana):
     """Exportar datos a Excel con filtros"""
     
     wb = Workbook()
@@ -664,7 +919,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     s.cuadrilla.nombre if s.cuadrilla else 'N/A'
                 ])
     
-    else:  # inventario
+    elif tipo == 'inventario':
         ws = wb.active
         ws.title = "Reporte de Inventario"
         
@@ -697,44 +952,232 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 item.actualizado_por.get_full_name() or item.actualizado_por.username if item.actualizado_por else 'Sistema'
             ] for item in inventario]
     
-    # Estilos para todas las hojas
-    header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
-    header_font = Font(color="FFFFFF", bold=True)
-    border = Border(
-        left=Side(style='thin'), right=Side(style='thin'),
-        top=Side(style='thin'), bottom=Side(style='thin')
-    )
-    
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal='center', vertical='center')
-        cell.border = border
-    
-    for row_idx, row_data in enumerate(data, 2):
-        for col_idx, value in enumerate(row_data, 1):
-            cell = ws.cell(row=row_idx, column=col_idx, value=value)
-            cell.border = border
-            cell.alignment = Alignment(horizontal='left', vertical='center')
+    else:  # vendedores
+        ws = wb.active
+        ws.title = "Reporte de Vendedores"
+        
+        # Calcular semana
+        from datetime import timedelta
+        
+        if semana:
+            try:
+                fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
+            except:
+                fecha_referencia = datetime.now().date()
+        else:
+            fecha_referencia = datetime.now().date()
+        
+        # Calcular límites de semana (viernes a jueves)
+        dias_desde_viernes = fecha_referencia.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        # Contratos completados
+        contratos = ContratoCliente.objects.filter(
+            estado='COMPLETADO',
+            fecha_creacion__date__gte=viernes_inicio,
+            fecha_creacion__date__lte=jueves_fin
+        )
+        
+        if vendedor:
+            contratos = contratos.filter(creado_por_id=vendedor)
+        
+        # Obtener vendedores
+        vendedores = User.objects.filter(
+            groups__name__in=['Vendedor', 'Supervisor']
+        ).distinct()
+        
+        if vendedor:
+            vendedores = vendedores.filter(id=vendedor)
+        
+        if busqueda:
+            vendedores = vendedores.filter(
+                Q(first_name__icontains=busqueda) |
+                Q(username__icontains=busqueda) |
+                Q(last_name__icontains=busqueda)
+            )
+        
+        # Obtener tasa
+        tasa = TasaCambio.get_tasa_activa()
+        
+        # Construir datos
+        data_vendedores = []
+        total_contratos_general = 0
+        total_pagar_usd_general = 0
+        
+        for vendedor_obj in vendedores:
+            contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
+            total_contratos = contratos_vendedor.count()
             
-            # Colorear según estado (columna Estado)
-            if headers[col_idx-1] == 'Estado':
-                if value == 'Completado' or value == 'Completada' or value == 'Normal':
-                    cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-                    if value == 'Normal':
-                        cell.font = Font(color="006100")
-                elif value == 'En Proceso' or value == 'Pendiente' or value == 'Bajo stock':
-                    if value == 'Bajo stock':
-                        cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-                        cell.font = Font(color="9C0006")
-                    else:
-                        cell.fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
-                        cell.font = Font(color="9C6500")
+            if total_contratos > 0 or not vendedor:
+                if total_contratos >= 1 and total_contratos <= 5:
+                    comision_por_contrato = 8
+                    bono = 20
+                    total_precio = total_contratos * 8
+                elif total_contratos >= 6 and total_contratos <= 10:
+                    comision_por_contrato = 10
+                    bono = 40
+                    total_precio = total_contratos * 10
+                elif total_contratos >= 11:
+                    comision_por_contrato = 10
+                    bono = 60
+                    total_precio = total_contratos * 10
+                else:
+                    comision_por_contrato = 0
+                    bono = 0
+                    total_precio = 0
+                
+                total_con_bono = total_precio + bono
+                total_bs = total_con_bono * tasa
+                
+                data_vendedores.append([
+                    vendedor_obj.get_full_name() or vendedor_obj.username,
+                    total_contratos,
+                    f"${comision_por_contrato}",
+                    f"${total_precio}",
+                    f"${bono}",
+                    f"${total_con_bono}",
+                    f"Bs {total_bs:,.2f}"
+                ])
+                
+                total_contratos_general += total_contratos
+                total_pagar_usd_general += total_con_bono
+        
+        total_pagar_bs_general = total_pagar_usd_general * tasa
+        
+        # Hoja de resumen
+        ws_resumen = wb.create_sheet("Resumen Semanal")
+        resumen_data = [
+            ['REPORTE DE VENDEDORES', ''],
+            ['', ''],
+            ['Período:', f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"],
+            ['Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
+            ['Tasa de cambio:', f"1 USD = {tasa:,.2f} Bs"],
+            ['', ''],
+            ['ESTADÍSTICAS:', ''],
+            ['Total vendedores con ventas:', len(data_vendedores)],
+            ['Total contratos en período:', total_contratos_general],
+            ['Total a pagar (USD):', f"${total_pagar_usd_general:,.2f}"],
+            ['Total a pagar (Bs):', f"Bs {total_pagar_bs_general:,.2f}"],
+        ]
+        
+        for row_idx, row_data in enumerate(resumen_data, 1):
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws_resumen.cell(row=row_idx, column=col_idx, value=value)
+                if row_idx == 1:
+                    cell.font = Font(bold=True, size=14, color="FF6B00")
+                elif row_idx == 7:
+                    cell.font = Font(bold=True)
+        
+        ws_resumen.column_dimensions['A'].width = 25
+        ws_resumen.column_dimensions['B'].width = 30
+        
+        # Hoja de datos principal
+        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs']
+        data = data_vendedores
+        
+        # Hoja de detalles de contratos
+        ws_detalles = wb.create_sheet("Detalle Contratos")
+        detalles_headers = ['Vendedor', 'Cliente', 'Fecha', 'Plan', 'Customer ID']
+        detalles_data = []
+        
+        for vendedor_obj in vendedores:
+            contratos_vendedor = contratos.filter(creado_por=vendedor_obj).order_by('-fecha_creacion')
+            nombre_vendedor = vendedor_obj.get_full_name() or vendedor_obj.username
+            
+            for contrato in contratos_vendedor:
+                detalles_data.append([
+                    nombre_vendedor,
+                    contrato.nombre_completo,
+                    contrato.fecha_creacion.strftime('%d/%m/%Y'),
+                    contrato.plan_contratado.nombre,
+                    contrato.customer_id or 'N/A'
+                ])
+        
+        # Aplicar estilos a la hoja de detalles
+        for col_idx, header in enumerate(detalles_headers, 1):
+            cell = ws_detalles.cell(row=1, column=col_idx, value=header)
+            cell.fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
+            cell.font = Font(color="FFFFFF", bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        for row_idx, row_data in enumerate(detalles_data, 2):
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws_detalles.cell(row=row_idx, column=col_idx, value=value)
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+        
+        for col_idx in range(1, len(detalles_headers) + 1):
+            max_length = max(len(detalles_headers[col_idx-1]), max([len(str(row[col_idx-1])) for row in detalles_data[:100]] or [0]))
+            ws_detalles.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 30)
     
-    for col in range(1, len(headers) + 1):
-        max_length = max(len(str(headers[col-1])), max([len(str(row[col-1])) for row in data[:100]] or [0]))
-        ws.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 50)
+    # Estilos para todas las hojas (solo si no es vendedores que ya tiene sus propios estilos)
+    if tipo != 'vendedores':
+        header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+        border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin')
+        )
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+        
+        for row_idx, row_data in enumerate(data, 2):
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = border
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+                
+                # Colorear según estado (columna Estado)
+                if headers[col_idx-1] == 'Estado':
+                    if value == 'Completado' or value == 'Completada' or value == 'Normal':
+                        cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+                        if value == 'Normal':
+                            cell.font = Font(color="006100")
+                    elif value == 'En Proceso' or value == 'Pendiente' or value == 'Bajo stock':
+                        if value == 'Bajo stock':
+                            cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+                            cell.font = Font(color="9C0006")
+                        else:
+                            cell.fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+                            cell.font = Font(color="9C6500")
+        
+        for col in range(1, len(headers) + 1):
+            max_length = max(len(str(headers[col-1])), max([len(str(row[col-1])) for row in data[:100]] or [0]))
+            ws.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 50)
+    
+    else:
+        # Estilos para reporte de vendedores
+        header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+        border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin')
+        )
+        
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=header)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+        
+        for row_idx, row_data in enumerate(data, 2):
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = border
+                cell.alignment = Alignment(horizontal='left' if col_idx == 1 else 'center', vertical='center')
+        
+        for col in range(1, len(headers) + 1):
+            max_length = max(len(str(headers[col-1])), max([len(str(row[col-1])) for row in data[:100]] or [0]))
+            ws.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 30)
     
     filename = f"reporte_{tipo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -743,14 +1186,14 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     
     return response
 
-
 def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                  busqueda, vendedor, plan, cuadrilla, estado,
-                 tipo_soporte, estado_soporte, material):
+                 tipo_soporte, estado_soporte, material, semana):
     """Exportar datos a PDF con filtros"""
     
     import io
     from reportlab.lib.pagesizes import A4, landscape
+    from datetime import timedelta
     
     if tipo == 'ventas':
         titulo = "Reporte de Ventas"
@@ -933,7 +1376,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     (s.solucion[:80] + '...') if s.solucion and len(s.solucion) > 80 else (s.solucion or 'N/A')
                 ])
     
-    else:  # inventario
+    elif tipo == 'inventario':
         titulo = "Reporte de Inventario"
         
         datos = InventarioGlobal.objects.select_related('material')
@@ -968,6 +1411,104 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 item.actualizado_por.get_full_name() or item.actualizado_por.username if item.actualizado_por else 'Sistema'
             ] for item in datos]
     
+    else:  # vendedores
+        titulo = "Reporte de Vendedores"
+        
+        # Calcular semana
+        if semana:
+            try:
+                fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
+            except:
+                fecha_referencia = datetime.now().date()
+        else:
+            fecha_referencia = datetime.now().date()
+        
+        # Calcular límites de semana (viernes a jueves)
+        dias_desde_viernes = fecha_referencia.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        # Contratos completados
+        contratos = ContratoCliente.objects.filter(
+            estado='COMPLETADO',
+            fecha_creacion__date__gte=viernes_inicio,
+            fecha_creacion__date__lte=jueves_fin
+        )
+        
+        if vendedor:
+            contratos = contratos.filter(creado_por_id=vendedor)
+        
+        # Obtener vendedores
+        vendedores = User.objects.filter(
+            groups__name__in=['Vendedor', 'Supervisor']
+        ).distinct()
+        
+        if vendedor:
+            vendedores = vendedores.filter(id=vendedor)
+        
+        if busqueda:
+            vendedores = vendedores.filter(
+                Q(first_name__icontains=busqueda) |
+                Q(username__icontains=busqueda) |
+                Q(last_name__icontains=busqueda)
+            )
+        
+        tasa = TasaCambio.get_tasa_activa()
+        
+        # Construir datos
+        rows = []
+        total_contratos_general = 0
+        total_pagar_usd_general = 0
+        
+        for vendedor_obj in vendedores:
+            contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
+            total_contratos = contratos_vendedor.count()
+            
+            if total_contratos > 0 or not vendedor:
+                if total_contratos >= 1 and total_contratos <= 5:
+                    comision_por_contrato = 8
+                    bono = 20
+                    total_precio = total_contratos * 8
+                elif total_contratos >= 6 and total_contratos <= 10:
+                    comision_por_contrato = 10
+                    bono = 40
+                    total_precio = total_contratos * 10
+                elif total_contratos >= 11:
+                    comision_por_contrato = 10
+                    bono = 60
+                    total_precio = total_contratos * 10
+                else:
+                    comision_por_contrato = 0
+                    bono = 0
+                    total_precio = 0
+                
+                total_con_bono = total_precio + bono
+                total_bs = total_con_bono * tasa
+                
+                rows.append([
+                    vendedor_obj.get_full_name() or vendedor_obj.username,
+                    str(total_contratos),
+                    f"${comision_por_contrato}",
+                    f"${total_precio}",
+                    f"${bono}",
+                    f"${total_con_bono}",
+                    f"Bs {total_bs:,.2f}"
+                ])
+                
+                total_contratos_general += total_contratos
+                total_pagar_usd_general += total_con_bono
+        
+        total_pagar_bs_general = total_pagar_usd_general * tasa
+        
+        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs']
+        
+        total_registros = len(rows)
+        completados = total_contratos_general
+        en_proceso = 0
+    
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
     styles = getSampleStyleSheet()
@@ -977,7 +1518,10 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     
     date_style = ParagraphStyle('DateStyle', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER)
     fecha_texto = f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-    if fecha_desde or fecha_hasta:
+    if tipo == 'vendedores':
+        fecha_texto += f" | Período: {viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
+        fecha_texto += f" | Tasa: 1 USD = {tasa:,.2f} Bs"
+    elif fecha_desde or fecha_hasta:
         fecha_texto += f" | Periodo: {fecha_desde or 'inicio'} al {fecha_hasta or 'actual'}"
     fecha_paragraph = Paragraph(fecha_texto, date_style)
     
@@ -1002,14 +1546,22 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             ['En proceso:', str(en_proceso)],
             ['Pendientes:', str(pendientes)],
         ])
-    else:
+    elif tipo == 'inventario':
         stats_data.extend([
             ['Total materiales:', str(total_registros)],
             ['Total unidades:', str(total_unidades)],
             ['Bajo stock:', str(bajo_stock)],
         ])
+    else:  # vendedores
+        stats_data.extend([
+            ['Período:', f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"],
+            ['Total vendedores:', str(len(rows))],
+            ['Total contratos en período:', str(total_contratos_general)],
+            ['Total a pagar (USD):', f"${total_pagar_usd_general:,.2f}"],
+            ['Total a pagar (Bs):', f"Bs {total_pagar_bs_general:,.2f}"],
+        ])
     
-    stats_table = Table(stats_data, colWidths=[150, 100])
+    stats_table = Table(stats_data, colWidths=[150, 150])
     stats_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FF6B00')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -1047,10 +1599,10 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]
             
-            # Colorear según estado (última columna)
-            if tipo != 'inventario':
+            # Colorear según estado (solo para reportes que no son vendedores)
+            if tipo != 'vendedores' and tipo != 'inventario':
                 for i, row in enumerate(page_rows, 1):
-                    estado = row[-1]  # Última columna es Estado
+                    estado = row[-1]
                     col_idx = len(headers) - 1
                     if estado == 'Completado' or estado == 'Completada':
                         table_style.append(('BACKGROUND', (col_idx, i), (col_idx, i), colors.HexColor('#C6EFCE')))

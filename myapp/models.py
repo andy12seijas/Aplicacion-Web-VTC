@@ -206,7 +206,13 @@ class ContratoCliente(models.Model):
     creado_por = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name='contratos_creados',verbose_name="Creado por")
     fecha_creacion = models.DateTimeField(auto_now_add=True,verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True,verbose_name="Última actualización")
-    
+    # models.py - Agrega esto a tu modelo ContratoCliente
+    fecha_completado = models.DateTimeField(
+        null=True, 
+        blank=True, 
+        verbose_name="Fecha de completado",
+        help_text="Fecha y hora en que el contrato cambió a COMPLETADO por primera vez"
+    )
     class Meta:
         verbose_name = "Contrato de Cliente"
         verbose_name_plural = "Contratos de Clientes"
@@ -1732,3 +1738,27 @@ class MovimientoInventario(models.Model):
     def __str__(self):
         signo = "+" if self.cantidad > 0 else ""
         return f"{signo}{self.cantidad} {self.material.nombre} - {self.fecha_movimiento.strftime('%d/%m/%Y %H:%M')}"    
+    
+    
+# models.py - Agrega este signal al final del archivo
+
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+@receiver(pre_save, sender=ContratoCliente)
+def actualizar_fecha_completado(sender, instance, **kwargs):
+    """Actualiza fecha_completado SOLO la primera vez que cambia a COMPLETADO"""
+    if instance.pk:
+        try:
+            old_instance = sender.objects.get(pk=instance.pk)
+            # Si cambiò a COMPLETADO y antes NO estaba completado
+            if old_instance.estado != 'COMPLETADO' and instance.estado == 'COMPLETADO':
+                # Solo si no tiene fecha_completado (para no sobrescribir)
+                if not instance.fecha_completado:
+                    instance.fecha_completado = timezone.now()
+        except sender.DoesNotExist:
+            pass
+    else:
+        # Contrato nuevo que ya está COMPLETADO desde el inicio
+        if instance.estado == 'COMPLETADO' and not instance.fecha_completado:
+            instance.fecha_completado = timezone.now()    

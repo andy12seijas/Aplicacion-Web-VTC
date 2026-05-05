@@ -119,6 +119,9 @@ urlpatterns = [
     path('api/reporte-soportes/', reporte_soportes_json, name='reporte_soportes_json'),
     path('api/reporte-inventario/', reporte_inventario_json, name='reporte_inventario_json'),
     path('exportar-reporte/', exportar_reporte, name='exportar_reporte'),
+    path('api/reporte-vendedores/', reporte_vendedores_json, name='reporte_vendedores_json'),
+    path('api/semanas-disponibles/', semanas_disponibles_api, name='semanas_disponibles_api'),
+    path('api/actualizar-tasa/', api_actualizar_tasa, name='api_actualizar_tasa'),
     #URLS DE INVENTARIO
     # URLs de Inventario
     path('inventario/', inventario_global_lista, name='inventario_global_lista'),

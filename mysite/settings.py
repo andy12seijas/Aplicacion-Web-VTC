@@ -34,7 +34,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_crontab',
+    'django_apscheduler',
     'myapp'
+]
+
+CRONJOBS = [
+    ('0 9 * * *', 'django.core.management.call_command', ['actualizar_tasa']),
 ]
 
 MIDDLEWARE = [

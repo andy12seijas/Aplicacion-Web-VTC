@@ -1,0 +1,2 @@
+[console_scripts]
+get_bcv_exchange = bcv_exchange.command:get_bcv_exchange

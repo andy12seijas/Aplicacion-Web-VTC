@@ -4,7 +4,7 @@
 {% block title %}Simple Fibra - Reportes{% endblock %}
 
 {% block page_title %}Reportes{% endblock %}
-{% block page_subtitle %}Generación de reportes de ventas, instalaciones, soportes e inventario{% endblock %}
+{% block page_subtitle %}Generación de reportes de ventas, instalaciones, soportes, inventario y vendedores{% endblock %}
 
 {% block header_actions %}
 <a href="{% url 'panel_administrativo' %}" class="btn-orange">
@@ -477,8 +477,47 @@
         to { transform: rotate(360deg); }
     }
 
-    .filters-ventas, .filters-instalaciones, .filters-soportes, .filters-inventario {
-        display: block;
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .notification-success {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 12px;
+        color: white;
+        font-size: 14px;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        background: #10b981;
+    }
+
+    .notification-error {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 12px;
+        color: white;
+        font-size: 14px;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        background: #ef4444;
+    }
+
+    .filters-ventas, .filters-instalaciones, .filters-soportes, .filters-inventario, .filters-vendedores {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
     }
 
     @media (max-width: 768px) {
@@ -536,6 +575,10 @@
         .table th, .table td {
             padding: 8px 12px;
         }
+        
+        .filters-ventas, .filters-instalaciones, .filters-soportes, .filters-inventario, .filters-vendedores {
+            flex-direction: column;
+        }
     }
 </style>
 
@@ -548,6 +591,7 @@
                 <option value="instalaciones">Reporte de Instalaciones</option>
                 <option value="soportes">Reporte de Soportes</option>
                 <option value="inventario">Reporte de Inventario</option>
+                <option value="vendedores">Reporte de Vendedores</option>
             </select>
         </div>
     </div>
@@ -630,6 +674,18 @@
                 {% endfor %}
             </select>
         </div>
+
+        <div id="filtrosVendedores" class="filters-vendedores" style="display: none;">
+            <select id="filterVendedorNomina" class="filter-select">
+                <option value="">Todos los vendedores</option>
+                {% for v in vendedores %}
+                <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
+                {% endfor %}
+            </select>
+            <select id="filterSemana" class="filter-select">
+                <option value="">Semana actual</option>
+            </select>
+        </div>
         
         <div class="date-filter">
             <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde">
@@ -646,7 +702,7 @@
     </div>
 </div>
 
-<div class="tipo-container">
+<div class="tipo-container" id="tipoContainer">
     <div class="tipo-buttons">
         <button class="tipo-btn active" onclick="cambiarNivelReporte('simple')" id="tipo-simple-btn">Reporte Simple</button>
         <button class="tipo-btn" onclick="cambiarNivelReporte('avanzado')" id="tipo-avanzado-btn">Reporte Avanzado</button>
@@ -658,7 +714,8 @@
         <thead id="thead-resultados">
             <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
         </thead>
-        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr></tbody>
+        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>
+        </tbody>
     </table>
 </div>
 
@@ -686,21 +743,59 @@
         document.getElementById('filtrosInstalaciones').style.display = tipoActual === 'instalaciones' ? 'flex' : 'none';
         document.getElementById('filtrosSoportes').style.display = tipoActual === 'soportes' ? 'flex' : 'none';
         document.getElementById('filtrosInventario').style.display = tipoActual === 'inventario' ? 'flex' : 'none';
+        document.getElementById('filtrosVendedores').style.display = tipoActual === 'vendedores' ? 'flex' : 'none';
+        
+        // Ocultar/mostrar selectores de fecha según reporte
+        const dateFilters = document.querySelectorAll('.date-filter');
+        const tipoContainer = document.getElementById('tipoContainer');
+        
+        if (tipoActual === 'vendedores') {
+            dateFilters.forEach(el => el.style.display = 'none');
+            tipoContainer.style.display = 'none';
+            cargarSemanasDisponibles();
+        } else if (tipoActual === 'inventario') {
+            dateFilters.forEach(el => el.style.display = 'none');
+            tipoContainer.style.display = 'flex';
+        } else {
+            dateFilters.forEach(el => el.style.display = 'block');
+            tipoContainer.style.display = 'flex';
+        }
         
         const statCompletados = document.getElementById('statCompletados');
         const statPendientes = document.getElementById('statPendientes');
         
-        if (tipoActual === 'inventario') {
+        if (tipoActual === 'inventario' || tipoActual === 'vendedores') {
             statCompletados.style.display = 'none';
             statPendientes.style.display = 'none';
-            document.getElementById('totalCompletados').textContent = '0';
-            document.getElementById('totalPendientes').textContent = '0';
+            if (tipoActual === 'vendedores') {
+                document.getElementById('totalRegistros').textContent = '0';
+                document.getElementById('totalCompletados').textContent = '0';
+                document.getElementById('totalPendientes').textContent = '0';
+            }
         } else {
             statCompletados.style.display = 'flex';
             statPendientes.style.display = 'flex';
         }
         
         cargarReporte();
+    }
+
+    function cargarSemanasDisponibles() {
+        fetch('/api/semanas-disponibles/')
+            .then(response => response.json())
+            .then(data => {
+                const selectSemana = document.getElementById('filterSemana');
+                if (selectSemana) {
+                    selectSemana.innerHTML = '<option value="">Semana actual</option>';
+                    data.semanas.forEach(semana => {
+                        const option = document.createElement('option');
+                        option.value = semana.value;
+                        option.textContent = semana.label;
+                        selectSemana.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error cargando semanas:', error));
     }
 
     function cambiarNivelReporte(nivel) {
@@ -727,6 +822,8 @@
         document.getElementById('filterTipoSoporte').value = '';
         document.getElementById('filterEstadoSoporte').value = '';
         document.getElementById('filterMaterial').value = '';
+        document.getElementById('filterVendedorNomina').value = '';
+        document.getElementById('filterSemana').value = '';
         document.getElementById('fecha_desde').value = '';
         document.getElementById('fecha_hasta').value = '';
         paginaActual = 1;
@@ -734,6 +831,11 @@
     }
 
     function cargarReporte() {
+        if (tipoActual === 'vendedores') {
+            cargarReporteVendedores();
+            return;
+        }
+        
         const busqueda = document.getElementById('searchInput')?.value || '';
         const fechaDesde = document.getElementById('fecha_desde')?.value || '';
         const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
@@ -782,6 +884,238 @@
                 console.error('Error:', error);
                 tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
             });
+    }
+
+    function cargarReporteVendedores() {
+        const busqueda = document.getElementById('searchInput')?.value || '';
+        const vendedor = document.getElementById('filterVendedorNomina')?.value || '';
+        const semana = document.getElementById('filterSemana')?.value || '';
+        
+        let url = `/api/reporte-vendedores/?page=${paginaActual}&per_page=${itemsPorPagina}`;
+        
+        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (vendedor) url += `&vendedor=${vendedor}`;
+        if (semana) url += `&semana=${semana}`;
+        
+        const tbody = document.getElementById('tbody-resultados');
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                datosActuales = data.data || [];
+                totalPaginas = data.total_paginas || 1;
+                paginaActual = data.pagina_actual || 1;
+                
+                actualizarEstadisticasVendedores(data.estadisticas);
+                actualizarTablaVendedores();
+                actualizarPaginacion();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
+            });
+    }
+
+    function actualizarEstadisticasVendedores(stats) {
+        if (!stats) return;
+        document.getElementById('totalRegistros').textContent = stats.total_contratos_semana || 0;
+        
+        document.getElementById('totalCompletados').textContent = stats.total_pagar_usd || '$0';
+        document.getElementById('totalPendientes').textContent = stats.total_pagar_bs || 'Bs 0';
+        document.getElementById('statCompletados').querySelector('.stat-label').textContent = 'Total a Pagar (USD)';
+        document.getElementById('statPendientes').querySelector('.stat-label').textContent = 'Total a Pagar (Bs)';
+        
+        const statsGrid = document.querySelector('.stats-grid');
+        let semanaInfo = document.getElementById('semanaInfo');
+        if (!semanaInfo) {
+            semanaInfo = document.createElement('div');
+            semanaInfo.id = 'semanaInfo';
+            semanaInfo.className = 'stat-card';
+            semanaInfo.style.flex = '2';
+            statsGrid.appendChild(semanaInfo);
+        }
+        
+        // Agregar botón de actualizar tasa dentro de la tarjeta de información
+        semanaInfo.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <div style="font-size: 12px; color: #6b7280;">📅 Período</div>
+                    <div style="font-size: 14px; font-weight: 600;">${stats.semana_inicio || ''} - ${stats.semana_fin || ''}</div>
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">💱 ${stats.tasa_cambio || ''}</div>
+                    <div style="font-size: 10px; color: #999;">Actualización: ${stats.fecha_actualizacion_tasa || ''}</div>
+                </div>
+                <button onclick="actualizarTasaManual()" 
+                    style="background: #ff6b00; color: white; border: none; border-radius: 30px; padding: 8px 16px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                    </svg>
+                    Actualizar Tasa
+                </button>
+            </div>
+        `;
+    }
+
+    function actualizarTablaVendedores() {
+        const tbody = document.getElementById('tbody-resultados');
+        
+        if (!datosActuales || datosActuales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
+            return;
+        }
+        
+        document.getElementById('thead-resultados').innerHTML = `
+            <tr>
+                <th>Vendedor</th>
+                <th>Contratos</th>
+                <th>Comisión x Contrato</th>
+                <th>Total sin Bono</th>
+                <th>Bono</th>
+                <th>Total con Bono</th>
+                <th>Total en Bs</th>
+                <th>Rango</th>
+                <th>Detalle</th>
+            </tr>
+        `;
+        
+        tbody.innerHTML = datosActuales.map(item => `
+            <tr>
+                <td><strong>${item.vendedor}</strong><br><small style="color:#666">@${item.username}</small></td>
+                <td style="text-align:center; font-weight: bold; font-size: 18px;">${item.contratos}</td>
+                <td style="text-align:center">${item.comision_por_contrato}</td>
+                <td style="text-align:center">${item.total_sin_bono}</td>
+                <td style="text-align:center">${item.bono}</td>
+                <td style="text-align:center; font-weight: bold; color: #ff6b00;">${item.total_con_bono}</td>
+                <td style="text-align:center">${item.total_bs}</td>
+                <td style="text-align:center"><span class="badge ${item.contratos > 0 ? 'badge-completado' : 'badge-pendiente'}">${item.rango}</span></td>
+                <td style="text-align:center">
+                    <button onclick="verDetalleVendedor(${item.id}, '${item.vendedor}', ${item.contratos})" 
+                        style="background: #ff6b00; color: white; border: none; padding: 4px 10px; border-radius: 15px; cursor: pointer; font-size: 11px;">
+                        Ver contratos
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function verDetalleVendedor(vendedorId, vendedorNombre, totalContratos) {
+        const semana = document.getElementById('filterSemana')?.value || '';
+        
+        let url = `/api/reporte-vendedores/?vendedor=${vendedorId}&per_page=100`;
+        if (semana) url += `&semana=${semana}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const vendedorData = data.data.find(v => v.id == vendedorId);
+                if (vendedorData && vendedorData.contratos_detalle && vendedorData.contratos_detalle.length > 0) {
+                    let detalleHtml = `
+                        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+                            <div style="background: white; border-radius: 16px; max-width: 600px; width: 90%; max-height: 80%; overflow: auto; padding: 20px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                    <h3 style="margin: 0;">📋 Contratos de ${vendedorNombre}</h3>
+                                    <button onclick="this.closest('div').parentElement.remove()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+                                </div>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background: #ff6b00; color: white;">
+                                            <th style="padding: 8px; text-align: left;">Cliente</th>
+                                            <th style="padding: 8px; text-align: left;">Fecha</th>
+                                            <th style="padding: 8px; text-align: left;">Plan</th>
+                                            <th style="padding: 8px; text-align: left;">Customer ID</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${vendedorData.contratos_detalle.map(c => `
+                                            <tr style="border-bottom: 1px solid #e5e7eb;">
+                                                <td style="padding: 8px;">${c.cliente}</td>
+                                                <td style="padding: 8px;">${c.fecha}</td>
+                                                <td style="padding: 8px;">${c.plan}</td>
+                                                <td style="padding: 8px;">${c.customer_id}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                                ${vendedorData.contratos > vendedorData.contratos_detalle.length ? 
+                                    `<p style="margin-top: 16px; color: #666; text-align: center;">... y ${vendedorData.contratos - vendedorData.contratos_detalle.length} contratos más</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', detalleHtml);
+                } else {
+                    alert('No hay contratos detallados para mostrar');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+    }
+
+    function actualizarTasaManual() {
+        if (!confirm('¿Estás seguro de actualizar la tasa de cambio del dólar desde el BCV?')) {
+            return;
+        }
+        
+        // Mostrar loading en el botón
+        const button = document.querySelector('#semanaInfo button');
+        const originalText = button?.innerHTML || 'Actualizar Tasa';
+        if (button) {
+            button.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0;"></div> Actualizando...';
+            button.disabled = true;
+        }
+        
+        fetch('/api/actualizar-tasa/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarNotificacion('✅ Tasa actualizada correctamente', 'success');
+                // Recargar el reporte para mostrar la nueva tasa
+                cargarReporteVendedores();
+            } else {
+                mostrarNotificacion('❌ Error: ' + data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarNotificacion('❌ Error al actualizar la tasa', 'error');
+        })
+        .finally(() => {
+            if (button) {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function mostrarNotificacion(mensaje, tipo) {
+        const notification = document.createElement('div');
+        notification.className = tipo === 'success' ? 'notification-success' : 'notification-error';
+        notification.textContent = mensaje;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
     function actualizarTabla() {
@@ -911,6 +1245,16 @@
         }
     }
 
+    function actualizarEstadisticas(stats) {
+        if (!stats) return;
+        document.getElementById('totalRegistros').textContent = stats.total_ventas || stats.total_instalaciones || stats.total_soportes || stats.total_materiales || 0;
+        
+        if (tipoActual !== 'inventario') {
+            document.getElementById('totalCompletados').textContent = stats.completados || stats.completadas || 0;
+            document.getElementById('totalPendientes').textContent = stats.pendientes || stats.en_proceso || 0;
+        }
+    }
+
     function actualizarPaginacion() {
         const paginationDiv = document.getElementById('pagination-resultados');
         
@@ -963,17 +1307,22 @@
         document.querySelector('.table-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function actualizarEstadisticas(stats) {
-        if (!stats) return;
-        document.getElementById('totalRegistros').textContent = stats.total_ventas || stats.total_instalaciones || stats.total_soportes || stats.total_materiales || 0;
-        
-        if (tipoActual !== 'inventario') {
-            document.getElementById('totalCompletados').textContent = stats.completados || stats.completadas || 0;
-            document.getElementById('totalPendientes').textContent = stats.pendientes || stats.en_proceso || 0;
-        }
-    }
-
     function exportarReporte(formato) {
+        if (tipoActual === 'vendedores') {
+            const busqueda = document.getElementById('searchInput')?.value || '';
+            const vendedor = document.getElementById('filterVendedorNomina')?.value || '';
+            const semana = document.getElementById('filterSemana')?.value || '';
+            
+            let url = `/exportar-reporte/?formato=${formato}&tipo=vendedores`;
+            
+            if (busqueda) url += `&busqueda=${busqueda}`;
+            if (vendedor) url += `&vendedor=${vendedor}`;
+            if (semana) url += `&semana=${semana}`;
+            
+            window.location.href = url;
+            return;
+        }
+        
         const busqueda = document.getElementById('searchInput')?.value || '';
         const fechaDesde = document.getElementById('fecha_desde')?.value || '';
         const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
@@ -994,7 +1343,9 @@
             if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
         } else if (tipoActual === 'soportes') {
             const tipoSoporte = document.getElementById('filterTipoSoporte')?.value || '';
+            const estadoSoporte = document.getElementById('filterEstadoSoporte')?.value || '';
             if (tipoSoporte) url += `&tipo_soporte=${tipoSoporte}`;
+            if (estadoSoporte) url += `&estado_soporte=${estadoSoporte}`;
         } else if (tipoActual === 'inventario') {
             const material = document.getElementById('filterMaterial')?.value || '';
             if (material) url += `&material=${material}`;
@@ -1003,6 +1354,7 @@
         window.location.href = url;
     }
 
+    // Event listeners
     document.getElementById('selectReporte')?.addEventListener('change', cambiarReporte);
     document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') cargarReporte();
@@ -1014,9 +1366,12 @@
     document.getElementById('filterTipoSoporte')?.addEventListener('change', cargarReporte);
     document.getElementById('filterEstadoSoporte')?.addEventListener('change', cargarReporte);
     document.getElementById('filterMaterial')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterVendedorNomina')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterSemana')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_desde')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_hasta')?.addEventListener('change', cargarReporte);
 
+    // Inicializar
     cargarReporte();
 </script>
 {% endblock %}
