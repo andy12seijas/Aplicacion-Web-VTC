@@ -202,12 +202,20 @@ def mapa_usuarios(request):
                 if instalacion_activa:
                     instalador_tarea = "Instalación"
                 else:
-                    soporte_activo = Soporte.objects.filter(
-                        asignacion__in=asignaciones_instalador, 
+                     asignaciones_soporte = AsignacionSoporte.objects.filter(
+                        cuadrilla=cuadrilla,
+                        activo=True
+                    )
+                soporte_activo = Soporte.objects.filter(
+                        asignacion__in=asignaciones_soporte,
                         estado__in=['PENDIENTE', 'EN_PROCESO']
                     ).first()
-                    if soporte_activo:
-                        instalador_tarea = f"Soporte: {soporte_activo.get_tipo_display()}"
+                if soporte_activo:
+                        try:
+                            tipo_soporte = soporte_activo.asignacion.ticket.tipo_soporte if soporte_activo.asignacion and soporte_activo.asignacion.ticket else 'SOPORTE'
+                            instalador_tarea = f"Soporte: {tipo_soporte}"
+                        except:
+                            instalador_tarea = "Soporte"
             
             try:
                 ubicacion = UbicacionUsuario.objects.get(usuario=instalador.usuario)
