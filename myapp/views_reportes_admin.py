@@ -13,7 +13,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .models import ContratoCliente, Instalacion, Soporte, TasaCambio, User, Plan, Cuadrilla, VentaDirecta, Material, MovimientoInventario, InventarioGlobal
+from .models import ContratoCliente, Instalacion, PerfilUsuario, Soporte, TasaCambio, User, Plan, Cuadrilla, VentaDirecta, Material, MovimientoInventario, InventarioGlobal
 from django.http import JsonResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.management import call_command
@@ -29,7 +29,8 @@ def es_admin(user):
 def reportes_view(request):
     """Vista principal de reportes unificada"""
     from myapp.models import User, Plan, Cuadrilla, Material
-    
+    # En reportes_view, agrega:
+    instaladores = User.objects.filter(groups__name='Instalador').distinct().order_by('first_name', 'username')
     vendedores = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor', 'Instalador']
         ).distinct().order_by('first_name', 'username')
@@ -42,6 +43,7 @@ def reportes_view(request):
         'planes': planes,
         'cuadrillas': cuadrillas,
         'materiales': materiales,
+         'instaladores': instaladores,
     }
     return render(request, 'Admin/reporte.html', context)
 
@@ -663,6 +665,417 @@ def semanas_disponibles_api(request):
     return JsonResponse({'semanas': semanas})
 
 
+@login_required
+@user_passes_test(es_admin)
+def reporte_instaladores_json(request):
+    """
+    API para obtener reporte de CUADRILLAS con:
+    - Instalaciones: $15 c/u (usando fecha_creacion) - por instaladores históricos
+    - Soportes: según tipo (Soporte: $10, Retiro: $8, Mudanza: $15, Recableado: $15) - por instaladores históricos
+    - Contratos (ventas): $10 c/u - por contratos CREADOS por instaladores de la cuadrilla
+    Por semana (viernes a jueves)
+    """
+    
+    from decimal import Decimal
+    from collections import defaultdict
+    
+    # Obtener parámetros
+    semana_fecha = request.GET.get('semana', '')
+    instalador_id = request.GET.get('instalador', '')
+    cuadrilla_id = request.GET.get('cuadrilla', '')
+    page = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 15))
+    busqueda = request.GET.get('busqueda', '')
+    
+    # Calcular semana (viernes a jueves)
+    if semana_fecha:
+        try:
+            fecha_referencia = datetime.strptime(semana_fecha, '%Y-%m-%d').date()
+        except:
+            fecha_referencia = datetime.now().date()
+    else:
+        fecha_referencia = datetime.now().date()
+    
+    dias_desde_viernes = fecha_referencia.weekday() - 4
+    if dias_desde_viernes < 0:
+        dias_desde_viernes += 7
+    
+    viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
+    jueves_fin = viernes_inicio + timedelta(days=6)
+    
+    # Precios
+    PRECIO_INSTALACION = 15
+    PRECIO_CONTRATO = 10
+    PRECIOS_SOPORTES = {
+        'SOPORTE': 10,
+        'RETIRO': 8,
+        'MUDANZA': 15,
+        'RECABLEADO': 15,
+    }
+    
+    # Obtener todas las cuadrillas activas
+    todas_cuadrillas = Cuadrilla.objects.filter(activo=True)
+    
+    # Filtrar por cuadrilla si se especifica
+    if cuadrilla_id:
+        todas_cuadrillas = todas_cuadrillas.filter(id=cuadrilla_id)
+    
+    # ===== DICCIONARIO PARA AGRUPAR POR CUADRILLA =====
+    cuadrillas_dict = defaultdict(lambda: {
+        'id': None,
+        'cuadrilla': '',
+        'instalaciones': 0,
+        'monto_instalaciones': 0,
+        'soportes': 0,
+        'monto_soportes': 0,
+        'contratos': 0,
+        'monto_contratos': 0,
+        'instaladores_set': set(),
+        'instaladores_ids': [],
+        'instalaciones_detalle': [],
+        'soportes_detalle': [],
+        'contratos_detalle': []
+    })
+    
+    # Primero, registrar todas las cuadrillas en el diccionario
+    for cuadrilla in todas_cuadrillas:
+        cuadrillas_dict[cuadrilla.nombre]['id'] = cuadrilla.id
+        cuadrillas_dict[cuadrilla.nombre]['cuadrilla'] = cuadrilla.nombre
+        
+        # Obtener los instaladores de esta cuadrilla (a través de PerfilUsuario)
+        perfiles = cuadrilla.instaladores.all()
+        for perfil in perfiles:
+            if perfil.usuario:
+                cuadrillas_dict[cuadrilla.nombre]['instaladores_set'].add(perfil.usuario.id)
+                cuadrillas_dict[cuadrilla.nombre]['instaladores_ids'].append(perfil.usuario.id)
+    
+    # ========== 1. INSTALACIONES (usando el campo histórico instaladores) ==========
+    instalaciones = Instalacion.objects.filter(
+        completada=True,
+        fecha_creacion__date__gte=viernes_inicio,
+        fecha_creacion__date__lte=jueves_fin
+    ).select_related('asignacion__cuadrilla')
+    
+    for inst in instalaciones:
+        # Obtener la cuadrilla de la instalación
+        cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
+        if not cuadrilla_obj:
+            continue
+        
+        nombre_cuadrilla = cuadrilla_obj.nombre
+        if nombre_cuadrilla not in cuadrillas_dict:
+            continue
+        
+        # Verificar si algún instalador histórico coincide con los filtros
+        instaladores_hist = inst.instaladores.all()
+        tiene_instalador_filtro = False
+        
+        for inst_hist in instaladores_hist:
+            if instalador_id and str(inst_hist.id) != instalador_id:
+                continue
+            if busqueda and busqueda.lower() not in (inst_hist.get_full_name() or inst_hist.username).lower():
+                continue
+            tiene_instalador_filtro = True
+            break
+        
+        if instalador_id or busqueda:
+            if not tiene_instalador_filtro:
+                continue
+        
+        cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
+        cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
+        
+        # Detalle
+        if len(cuadrillas_dict[nombre_cuadrilla]['instalaciones_detalle']) < 5:
+            cliente_nombre = inst.nombre_cliente if hasattr(inst, 'nombre_cliente') else 'N/A'
+            customer_id = inst.customer_id if hasattr(inst, 'customer_id') else 'N/A'
+            cuadrillas_dict[nombre_cuadrilla]['instalaciones_detalle'].append({
+                'cliente': cliente_nombre,
+                'customer_id': customer_id,
+                'fecha': inst.fecha_creacion.strftime('%d/%m/%Y') if inst.fecha_creacion else 'N/A'
+            })
+    
+    # ========== 2. SOPORTES (usando el campo histórico instaladores) ==========
+    soportes = Soporte.objects.filter(
+        estado='COMPLETADO',
+        fecha_creacion__date__gte=viernes_inicio,
+        fecha_creacion__date__lte=jueves_fin
+    ).select_related('cuadrilla')
+    
+    for sop in soportes:
+        if not sop.cuadrilla:
+            continue
+        
+        nombre_cuadrilla = sop.cuadrilla.nombre
+        if nombre_cuadrilla not in cuadrillas_dict:
+            continue
+        
+        # Verificar si algún instalador histórico coincide con los filtros
+        instaladores_hist = sop.instaladores.all()
+        tiene_instalador_filtro = False
+        
+        for inst_hist in instaladores_hist:
+            if instalador_id and str(inst_hist.id) != instalador_id:
+                continue
+            if busqueda and busqueda.lower() not in (inst_hist.get_full_name() or inst_hist.username).lower():
+                continue
+            tiene_instalador_filtro = True
+            break
+        
+        if instalador_id or busqueda:
+            if not tiene_instalador_filtro:
+                continue
+        
+        # Calcular monto según tipo
+        try:
+            tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
+            precio = PRECIOS_SOPORTES.get(tipo, 10)
+        except:
+            precio = 10
+            tipo = 'SOPORTE'
+        
+        cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
+        cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
+        
+        # Detalle
+        if len(cuadrillas_dict[nombre_cuadrilla]['soportes_detalle']) < 5:
+            cliente_nombre = 'N/A'
+            try:
+                if sop.asignacion and sop.asignacion.ticket:
+                    cliente_nombre = sop.asignacion.ticket.nombre_completo
+            except:
+                pass
+            cuadrillas_dict[nombre_cuadrilla]['soportes_detalle'].append({
+                'ticket_padre': sop.asignacion.ticket.ticket_padre if sop.asignacion and sop.asignacion.ticket else 'N/A',
+                'cliente': cliente_nombre,
+                'tipo': tipo,
+                'precio': precio,
+                'fecha': sop.fecha_creacion.strftime('%d/%m/%Y') if sop.fecha_creacion else 'N/A'
+            })
+    
+    # ========== 3. CONTRATOS (creados por INSTALADORES de la cuadrilla) ==========
+    # Obtener todos los usuarios Instaladores
+    instaladores_users = User.objects.filter(groups__name='Instalador')
+    
+    # Filtrar por instalador específico si se necesita
+    if instalador_id:
+        instaladores_users = instaladores_users.filter(id=instalador_id)
+    
+    # Buscar contratos creados por estos instaladores en la semana
+    for instalador in instaladores_users:
+        # Encontrar a qué cuadrilla pertenece este instalador
+        perfil = PerfilUsuario.objects.filter(usuario=instalador).first()
+        if not perfil:
+            continue
+        
+        cuadrillas_del_instalador = perfil.cuadrillas.all()
+        if not cuadrillas_del_instalador.exists():
+            continue
+        
+        # Para cada cuadrilla del instalador
+        for cuadrilla_inst in cuadrillas_del_instalador:
+            nombre_cuadrilla = cuadrilla_inst.nombre
+            if nombre_cuadrilla not in cuadrillas_dict:
+                continue
+            
+            # Buscar contratos creados por este instalador en la semana
+            contratos_instalador = ContratoCliente.objects.filter(
+                estado='COMPLETADO',
+                creado_por=instalador,
+                fecha_completado__date__gte=viernes_inicio,
+                fecha_completado__date__lte=jueves_fin
+            )
+            
+            # Aplicar búsqueda si es necesario
+            if busqueda:
+                contratos_instalador = contratos_instalador.filter(
+                    Q(cliente_potencial__nombre__icontains=busqueda) |
+                    Q(cliente_potencial__apellido__icontains=busqueda) |
+                    Q(cliente_potencial__cedula__icontains=busqueda) |
+                    Q(customer_id__icontains=busqueda)
+                )
+            
+            for contrato in contratos_instalador:
+                cuadrillas_dict[nombre_cuadrilla]['contratos'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_contratos'] += PRECIO_CONTRATO
+                
+                # Detalle
+                if len(cuadrillas_dict[nombre_cuadrilla]['contratos_detalle']) < 5:
+                    cuadrillas_dict[nombre_cuadrilla]['contratos_detalle'].append({
+                        'cliente': contrato.nombre_completo,
+                        'plan': contrato.plan_contratado.nombre,
+                        'customer_id': contrato.customer_id or 'N/A',
+                        'fecha_completado': contrato.fecha_completado.strftime('%d/%m/%Y') if contrato.fecha_completado else 'N/A'
+                    })
+    
+    # ===== CONSTRUIR LISTA FINAL =====
+    cuadrillas_data = []
+    for nombre, data in cuadrillas_dict.items():
+        total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
+        
+        # Obtener nombres de instaladores
+        nombres_instaladores = []
+        for inst_id in data['instaladores_set']:
+            try:
+                inst = User.objects.get(id=inst_id)
+                nombres_instaladores.append(inst.get_full_name() or inst.username)
+            except:
+                pass
+        
+        # Solo incluir cuadrillas que tengan al menos una actividad o si se filtró por alguna
+        if (data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla_id):
+            cuadrillas_data.append({
+                'id': data['id'],
+                'cuadrilla': data['cuadrilla'],
+                'instalaciones': data['instalaciones'],
+                'monto_instalaciones': f"${data['monto_instalaciones']}",
+                'soportes': data['soportes'],
+                'monto_soportes': f"${data['monto_soportes']}",
+                'contratos': data['contratos'],
+                'monto_contratos': f"${data['monto_contratos']}",
+                'total_usd': f"${total_usd}",
+                'instaladores_list': nombres_instaladores,
+                'instalaciones_detalle': data['instalaciones_detalle'],
+                'soportes_detalle': data['soportes_detalle'],
+                'contratos_detalle': data['contratos_detalle'],
+            })
+    
+    # Ordenar por total de trabajos
+    cuadrillas_data.sort(key=lambda x: x['instalaciones'] + x['soportes'] + x['contratos'], reverse=True)
+    
+    # Obtener tasa de cambio
+    tasa_obj = TasaCambio.objects.filter(activo=True).first()
+    if tasa_obj:
+        tasa = float(tasa_obj.tasa)
+        tasa_decimal = tasa_obj.tasa
+    else:
+        tasa = 0
+        tasa_decimal = Decimal('0')
+    
+    # Agregar total_bs a cada elemento
+    for item in cuadrillas_data:
+        total_usd_num = float(item['total_usd'].replace('$', ''))
+        item['total_bs'] = f"Bs {total_usd_num * tasa:,.2f}"
+    
+    # Paginación
+    total_registros = len(cuadrillas_data)
+    paginator = Paginator(cuadrillas_data, per_page)
+    
+    try:
+        page_obj = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.page(1)
+    
+    # Estadísticas
+    total_instalaciones_semana = sum(v['instalaciones'] for v in cuadrillas_data)
+    total_soportes_semana = sum(v['soportes'] for v in cuadrillas_data)
+    total_contratos_semana = sum(v['contratos'] for v in cuadrillas_data)
+    total_pagar_usd = sum(float(v['total_usd'].replace('$', '')) for v in cuadrillas_data)
+    total_pagar_bs = total_pagar_usd * tasa
+    
+    fecha_tasa = tasa_obj.fecha.strftime('%d/%m/%Y') if tasa_obj else 'No definida'
+    tasa_str = f"{float(tasa_decimal):,.2f}" if tasa_decimal else "0.00"
+    
+    estadisticas = {
+        'total_cuadrillas': len(cuadrillas_data),
+        'total_instalaciones_semana': total_instalaciones_semana,
+        'total_soportes_semana': total_soportes_semana,
+        'total_contratos_semana': total_contratos_semana,
+        'total_pagar_usd': f"${total_pagar_usd:,.2f}",
+        'total_pagar_bs': f"Bs {total_pagar_bs:,.2f}",
+        'semana_inicio': viernes_inicio.strftime('%d/%m/%Y'),
+        'semana_fin': jueves_fin.strftime('%d/%m/%Y'),
+        'tasa_cambio': f"1 USD = {tasa_str} Bs",
+        'fecha_actualizacion_tasa': fecha_tasa,
+        'precio_instalacion': f"${PRECIO_INSTALACION}",
+        'precio_contrato': f"${PRECIO_CONTRATO}",
+    }
+    
+    return JsonResponse({
+        'data': list(page_obj),
+        'estadisticas': estadisticas,
+        'total_registros': total_registros,
+        'total_paginas': paginator.num_pages,
+        'pagina_actual': page_obj.number,
+        'por_pagina': per_page,
+        'semana_inicio': viernes_inicio.strftime('%Y-%m-%d'),
+        'semana_fin': jueves_fin.strftime('%Y-%m-%d')
+    })
+    
+    
+@login_required
+@user_passes_test(es_admin)
+def semanas_disponibles_instaladores_api(request):
+    """API para obtener las semanas disponibles con actividad de instaladores"""
+    
+    from datetime import timedelta
+    
+    # Obtener fechas de instalaciones, soportes y contratos
+    fechas = []
+    
+    # Instalaciones
+    instalaciones = Instalacion.objects.filter(completada=True).exclude(fecha_instalacion__isnull=True)
+    for inst in instalaciones:
+        if inst.fecha_instalacion:
+            fechas.append(inst.fecha_instalacion.date())
+    
+    # Soportes
+    soportes = Soporte.objects.filter(estado='COMPLETADO').exclude(fecha_hora_servicio__isnull=True)
+    for sop in soportes:
+        if sop.fecha_hora_servicio:
+            fechas.append(sop.fecha_hora_servicio.date())
+    
+    # Contratos completados
+    contratos = ContratoCliente.objects.filter(estado='COMPLETADO').exclude(fecha_completado__isnull=True)
+    for con in contratos:
+        if con.fecha_completado:
+            fechas.append(con.fecha_completado.date())
+    
+    semanas = []
+    fechas_procesadas = set()
+    
+    for fecha in fechas:
+        # Calcular semana (viernes a jueves)
+        dias_desde_viernes = fecha.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        clave = viernes_inicio.strftime('%Y-%m-%d')
+        
+        if clave not in fechas_procesadas:
+            fechas_procesadas.add(clave)
+            semanas.append({
+                'value': viernes_inicio.strftime('%Y-%m-%d'),
+                'label': f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
+            })
+    
+    # Ordenar por fecha descendente
+    semanas.sort(key=lambda x: x['value'], reverse=True)
+    
+    # Agregar semana actual
+    hoy = datetime.now().date()
+    dias_desde_viernes = hoy.weekday() - 4
+    if dias_desde_viernes < 0:
+        dias_desde_viernes += 7
+    
+    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
+    jueves_actual = viernes_actual + timedelta(days=6)
+    semana_actual_clave = viernes_actual.strftime('%Y-%m-%d')
+    
+    semana_actual = {
+        'value': semana_actual_clave,
+        'label': f"Semana Actual ({viernes_actual.strftime('%d/%m/%Y')} - {jueves_actual.strftime('%d/%m/%Y')})"
+    }
+    
+    if not any(s['value'] == semana_actual_clave for s in semanas):
+        semanas.insert(0, semana_actual)
+    
+    return JsonResponse({'semanas': semanas})    
+
+
 
 @login_required
 @user_passes_test(es_admin)
@@ -685,20 +1098,21 @@ def exportar_reporte(request):
     estado_soporte = request.GET.get('estado_soporte', '')
     material = request.GET.get('material', '')
     semana = request.GET.get('semana', '')
+    instalador = request.GET.get('instalador', '')  # Para reporte de instaladores
     
     if formato == 'excel':
         return exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta, 
                               busqueda, vendedor, plan, cuadrilla, estado, 
-                              tipo_soporte, estado_soporte, material, semana)
+                              tipo_soporte, estado_soporte, material, semana, instalador)
     else:
         return exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                             busqueda, vendedor, plan, cuadrilla, estado,
-                            tipo_soporte, estado_soporte, material, semana)
+                            tipo_soporte, estado_soporte, material, semana, instalador)
 
 
 def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                    busqueda, vendedor, plan, cuadrilla, estado,
-                   tipo_soporte, estado_soporte, material, semana):
+                   tipo_soporte, estado_soporte, material, semana, instalador):
     """Exportar datos a Excel con filtros"""
     
     wb = Workbook()
@@ -918,7 +1332,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     (s.solucion[:100] + '...') if s.solucion and len(s.solucion) > 100 else (s.solucion or 'N/A'),
                     s.cuadrilla.nombre if s.cuadrilla else 'N/A'
                 ])
-    
+        
     elif tipo == 'inventario':
         ws = wb.active
         ws.title = "Reporte de Inventario"
@@ -952,11 +1366,10 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 item.actualizado_por.get_full_name() or item.actualizado_por.username if item.actualizado_por else 'Sistema'
             ] for item in inventario]
     
-    else:  # vendedores
+    elif tipo == 'vendedores':
         ws = wb.active
         ws.title = "Reporte de Vendedores"
         
-        # Calcular semana
         from datetime import timedelta
         
         if semana:
@@ -967,7 +1380,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         else:
             fecha_referencia = datetime.now().date()
         
-        # Calcular límites de semana (viernes a jueves)
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
             dias_desde_viernes += 7
@@ -975,17 +1387,15 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Contratos completados
         contratos = ContratoCliente.objects.filter(
             estado='COMPLETADO',
-            fecha_creacion__date__gte=viernes_inicio,
-            fecha_creacion__date__lte=jueves_fin
+            fecha_completado__date__gte=viernes_inicio,
+            fecha_completado__date__lte=jueves_fin
         )
         
         if vendedor:
             contratos = contratos.filter(creado_por_id=vendedor)
         
-        # Obtener vendedores
         vendedores = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor']
         ).distinct()
@@ -1000,13 +1410,10 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 Q(last_name__icontains=busqueda)
             )
         
-        # Obtener tasa
-        tasa = TasaCambio.get_tasa_activa()
+        tasa_obj = TasaCambio.objects.filter(activo=True).first()
+        tasa = float(tasa_obj.tasa) if tasa_obj else 0
         
-        # Construir datos
         data_vendedores = []
-        total_contratos_general = 0
-        total_pagar_usd_general = 0
         
         for vendedor_obj in vendedores:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
@@ -1017,45 +1424,52 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     comision_por_contrato = 8
                     bono = 20
                     total_precio = total_contratos * 8
+                    rango = "1-5 contratos"
                 elif total_contratos >= 6 and total_contratos <= 10:
                     comision_por_contrato = 10
                     bono = 40
                     total_precio = total_contratos * 10
+                    rango = "6-10 contratos"
                 elif total_contratos >= 11:
                     comision_por_contrato = 10
                     bono = 60
                     total_precio = total_contratos * 10
+                    rango = "11+ contratos"
                 else:
                     comision_por_contrato = 0
                     bono = 0
                     total_precio = 0
+                    rango = "Sin contratos"
                 
                 total_con_bono = total_precio + bono
                 total_bs = total_con_bono * tasa
                 
-                data_vendedores.append([
-                    vendedor_obj.get_full_name() or vendedor_obj.username,
-                    total_contratos,
-                    f"${comision_por_contrato}",
-                    f"${total_precio}",
-                    f"${bono}",
-                    f"${total_con_bono}",
-                    f"Bs {total_bs:,.2f}"
-                ])
-                
-                total_contratos_general += total_contratos
-                total_pagar_usd_general += total_con_bono
+                data_vendedores.append({
+                    'vendedor': vendedor_obj.get_full_name() or vendedor_obj.username,
+                    'contratos': total_contratos,
+                    'comision_por_contrato': comision_por_contrato,
+                    'total_sin_bono': total_precio,
+                    'bono': bono,
+                    'total_con_bono': total_con_bono,
+                    'total_bs': total_bs,
+                    'rango': rango
+                })
         
+        data_vendedores.sort(key=lambda x: x['contratos'], reverse=True)
+        
+        total_contratos_general = sum(v['contratos'] for v in data_vendedores)
+        total_pagar_usd_general = sum(v['total_con_bono'] for v in data_vendedores)
         total_pagar_bs_general = total_pagar_usd_general * tasa
         
-        # Hoja de resumen
         ws_resumen = wb.create_sheet("Resumen Semanal")
+        tasa_str = f"{tasa:,.2f}" if tasa else "0.00"
+        
         resumen_data = [
             ['REPORTE DE VENDEDORES', ''],
             ['', ''],
             ['Período:', f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"],
             ['Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
-            ['Tasa de cambio:', f"1 USD = {tasa:,.2f} Bs"],
+            ['Tasa de cambio:', f"1 USD = {tasa_str} Bs"],
             ['', ''],
             ['ESTADÍSTICAS:', ''],
             ['Total vendedores con ventas:', len(data_vendedores)],
@@ -1075,29 +1489,35 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         ws_resumen.column_dimensions['A'].width = 25
         ws_resumen.column_dimensions['B'].width = 30
         
-        # Hoja de datos principal
-        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs']
-        data = data_vendedores
+        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs', 'Rango']
+        data = [[
+            v['vendedor'],
+            v['contratos'],
+            f"${v['comision_por_contrato']}",
+            f"${v['total_sin_bono']}",
+            f"${v['bono']}",
+            f"${v['total_con_bono']}",
+            f"Bs {v['total_bs']:,.2f}",
+            v['rango']
+        ] for v in data_vendedores]
         
-        # Hoja de detalles de contratos
         ws_detalles = wb.create_sheet("Detalle Contratos")
-        detalles_headers = ['Vendedor', 'Cliente', 'Fecha', 'Plan', 'Customer ID']
+        detalles_headers = ['Vendedor', 'Cliente', 'Fecha Completado', 'Plan', 'Customer ID']
         detalles_data = []
         
         for vendedor_obj in vendedores:
-            contratos_vendedor = contratos.filter(creado_por=vendedor_obj).order_by('-fecha_creacion')
+            contratos_vendedor = contratos.filter(creado_por=vendedor_obj).order_by('-fecha_completado')
             nombre_vendedor = vendedor_obj.get_full_name() or vendedor_obj.username
             
             for contrato in contratos_vendedor:
                 detalles_data.append([
                     nombre_vendedor,
                     contrato.nombre_completo,
-                    contrato.fecha_creacion.strftime('%d/%m/%Y'),
+                    contrato.fecha_completado.strftime('%d/%m/%Y %H:%M') if contrato.fecha_completado else 'N/A',
                     contrato.plan_contratado.nombre,
                     contrato.customer_id or 'N/A'
                 ])
         
-        # Aplicar estilos a la hoja de detalles
         for col_idx, header in enumerate(detalles_headers, 1):
             cell = ws_detalles.cell(row=1, column=col_idx, value=header)
             cell.fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
@@ -1113,8 +1533,170 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             max_length = max(len(detalles_headers[col_idx-1]), max([len(str(row[col_idx-1])) for row in detalles_data[:100]] or [0]))
             ws_detalles.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 30)
     
-    # Estilos para todas las hojas (solo si no es vendedores que ya tiene sus propios estilos)
-    if tipo != 'vendedores':
+    else:  # instaladores (NUEVO)
+        ws = wb.active
+        ws.title = "Reporte de Instaladores"
+        
+        from datetime import timedelta
+        from collections import defaultdict
+        
+        PRECIO_INSTALACION = 15
+        PRECIO_CONTRATO = 10
+        PRECIOS_SOPORTES = {
+            'SOPORTE': 10,
+            'RETIRO': 8,
+            'MUDANZA': 15,
+            'RECABLEADO': 15,
+        }
+        
+        if semana:
+            try:
+                fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
+            except:
+                fecha_referencia = datetime.now().date()
+        else:
+            fecha_referencia = datetime.now().date()
+        
+        dias_desde_viernes = fecha_referencia.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        todas_cuadrillas = Cuadrilla.objects.filter(activo=True)
+        
+        if cuadrilla:
+            todas_cuadrillas = todas_cuadrillas.filter(id=cuadrilla)
+        
+        cuadrillas_dict = defaultdict(lambda: {
+            'id': None,
+            'cuadrilla': '',
+            'instalaciones': 0,
+            'monto_instalaciones': 0,
+            'soportes': 0,
+            'monto_soportes': 0,
+            'contratos': 0,
+            'monto_contratos': 0,
+            'instaladores_list': []
+        })
+        
+        for cuadrilla_obj in todas_cuadrillas:
+            cuadrillas_dict[cuadrilla_obj.nombre]['id'] = cuadrilla_obj.id
+            cuadrillas_dict[cuadrilla_obj.nombre]['cuadrilla'] = cuadrilla_obj.nombre
+            
+            perfiles = cuadrilla_obj.instaladores.all()
+            nombres_instaladores = []
+            for perfil in perfiles:
+                if perfil.usuario:
+                    nombres_instaladores.append(perfil.usuario.get_full_name() or perfil.usuario.username)
+            cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
+        
+        # Instalaciones
+        instalaciones = Instalacion.objects.filter(
+            completada=True,
+            fecha_creacion__date__gte=viernes_inicio,
+            fecha_creacion__date__lte=jueves_fin
+        ).select_related('asignacion__cuadrilla')
+        
+        for inst in instalaciones:
+            cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
+            if not cuadrilla_obj:
+                continue
+            nombre_cuadrilla = cuadrilla_obj.nombre
+            if nombre_cuadrilla in cuadrillas_dict:
+                cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
+        
+        # Soportes
+        soportes = Soporte.objects.filter(
+            estado='COMPLETADO',
+            fecha_creacion__date__gte=viernes_inicio,
+            fecha_creacion__date__lte=jueves_fin
+        ).select_related('cuadrilla')
+        
+        for sop in soportes:
+            if not sop.cuadrilla:
+                continue
+            nombre_cuadrilla = sop.cuadrilla.nombre
+            if nombre_cuadrilla in cuadrillas_dict:
+                try:
+                    tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
+                    precio = PRECIOS_SOPORTES.get(tipo, 10)
+                except:
+                    precio = 10
+                
+                cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
+        
+        # Contratos (creados por instaladores)
+        instaladores_users = User.objects.filter(groups__name='Instalador')
+        
+        if instalador:
+            instaladores_users = instaladores_users.filter(id=instalador)
+        
+        for instalador_user in instaladores_users:
+            perfil = PerfilUsuario.objects.filter(usuario=instalador_user).first()
+            if not perfil:
+                continue
+            
+            cuadrillas_del_instalador = perfil.cuadrillas.all()
+            if not cuadrillas_del_instalador.exists():
+                continue
+            
+            contratos_instalador = ContratoCliente.objects.filter(
+                estado='COMPLETADO',
+                creado_por=instalador_user,
+                fecha_completado__date__gte=viernes_inicio,
+                fecha_completado__date__lte=jueves_fin
+            )
+            
+            for contrato in contratos_instalador:
+                for cuadrilla_inst in cuadrillas_del_instalador:
+                    nombre_cuadrilla = cuadrilla_inst.nombre
+                    if nombre_cuadrilla in cuadrillas_dict:
+                        cuadrillas_dict[nombre_cuadrilla]['contratos'] += 1
+                        cuadrillas_dict[nombre_cuadrilla]['monto_contratos'] += PRECIO_CONTRATO
+        
+        tasa_obj = TasaCambio.objects.filter(activo=True).first()
+        tasa = float(tasa_obj.tasa) if tasa_obj else 0
+        
+        data_cuadrillas = []
+        for nombre, data in cuadrillas_dict.items():
+            if data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla:
+                total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
+                total_bs = total_usd * tasa
+                data_cuadrillas.append({
+                    'cuadrilla': data['cuadrilla'],
+                    'instalaciones': data['instalaciones'],
+                    'monto_instalaciones': data['monto_instalaciones'],
+                    'soportes': data['soportes'],
+                    'monto_soportes': data['monto_soportes'],
+                    'contratos': data['contratos'],
+                    'monto_contratos': data['monto_contratos'],
+                    'total_usd': total_usd,
+                    'total_bs': total_bs,
+                    'instaladores_list': data['instaladores_list']
+                })
+        
+        data_cuadrillas.sort(key=lambda x: x['instalaciones'] + x['soportes'] + x['contratos'], reverse=True)
+        
+        headers = ['Cuadrilla', 'Instalaciones', 'Monto Instalaciones', 'Soportes', 'Monto Soportes', 'Contratos', 'Monto Contratos', 'Total USD', 'Total Bs', 'Instaladores']
+        data = [[
+            item['cuadrilla'],
+            item['instalaciones'],
+            f"${item['monto_instalaciones']}",
+            item['soportes'],
+            f"${item['monto_soportes']}",
+            item['contratos'],
+            f"${item['monto_contratos']}",
+            f"${item['total_usd']}",
+            f"Bs {item['total_bs']:,.2f}",
+            ', '.join(item['instaladores_list']) if item['instaladores_list'] else 'Sin instaladores'
+        ] for item in data_cuadrillas]
+    
+    # Aplicar estilos generales
+    if tipo not in ['vendedores', 'instaladores']:
         header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)
         border = Border(
@@ -1133,28 +1715,13 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.border = border
-                cell.alignment = Alignment(horizontal='left', vertical='center')
-                
-                # Colorear según estado (columna Estado)
-                if headers[col_idx-1] == 'Estado':
-                    if value == 'Completado' or value == 'Completada' or value == 'Normal':
-                        cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-                        if value == 'Normal':
-                            cell.font = Font(color="006100")
-                    elif value == 'En Proceso' or value == 'Pendiente' or value == 'Bajo stock':
-                        if value == 'Bajo stock':
-                            cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-                            cell.font = Font(color="9C0006")
-                        else:
-                            cell.fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
-                            cell.font = Font(color="9C6500")
+                cell.alignment = Alignment(horizontal='left' if col_idx == 1 else 'center', vertical='center')
         
         for col in range(1, len(headers) + 1):
             max_length = max(len(str(headers[col-1])), max([len(str(row[col-1])) for row in data[:100]] or [0]))
             ws.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 50)
     
     else:
-        # Estilos para reporte de vendedores
         header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)
         border = Border(
@@ -1186,14 +1753,16 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     
     return response
 
+
 def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                  busqueda, vendedor, plan, cuadrilla, estado,
-                 tipo_soporte, estado_soporte, material, semana):
+                 tipo_soporte, estado_soporte, material, semana, instalador):
     """Exportar datos a PDF con filtros"""
     
     import io
     from reportlab.lib.pagesizes import A4, landscape
     from datetime import timedelta
+    from collections import defaultdict
     
     if tipo == 'ventas':
         titulo = "Reporte de Ventas"
@@ -1411,10 +1980,9 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 item.actualizado_por.get_full_name() or item.actualizado_por.username if item.actualizado_por else 'Sistema'
             ] for item in datos]
     
-    else:  # vendedores
+    elif tipo == 'vendedores':
         titulo = "Reporte de Vendedores"
         
-        # Calcular semana
         if semana:
             try:
                 fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
@@ -1423,7 +1991,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         else:
             fecha_referencia = datetime.now().date()
         
-        # Calcular límites de semana (viernes a jueves)
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
             dias_desde_viernes += 7
@@ -1431,17 +1998,15 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Contratos completados
         contratos = ContratoCliente.objects.filter(
             estado='COMPLETADO',
-            fecha_creacion__date__gte=viernes_inicio,
-            fecha_creacion__date__lte=jueves_fin
+            fecha_completado__date__gte=viernes_inicio,
+            fecha_completado__date__lte=jueves_fin
         )
         
         if vendedor:
             contratos = contratos.filter(creado_por_id=vendedor)
         
-        # Obtener vendedores
         vendedores = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor']
         ).distinct()
@@ -1456,12 +2021,10 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 Q(last_name__icontains=busqueda)
             )
         
-        tasa = TasaCambio.get_tasa_activa()
+        tasa_obj = TasaCambio.objects.filter(activo=True).first()
+        tasa = float(tasa_obj.tasa) if tasa_obj else 0
         
-        # Construir datos
-        rows = []
-        total_contratos_general = 0
-        total_pagar_usd_general = 0
+        data_vendedores = []
         
         for vendedor_obj in vendedores:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
@@ -1472,42 +2035,203 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     comision_por_contrato = 8
                     bono = 20
                     total_precio = total_contratos * 8
+                    rango = "1-5 contratos"
                 elif total_contratos >= 6 and total_contratos <= 10:
                     comision_por_contrato = 10
                     bono = 40
                     total_precio = total_contratos * 10
+                    rango = "6-10 contratos"
                 elif total_contratos >= 11:
                     comision_por_contrato = 10
                     bono = 60
                     total_precio = total_contratos * 10
+                    rango = "11+ contratos"
                 else:
                     comision_por_contrato = 0
                     bono = 0
                     total_precio = 0
+                    rango = "Sin contratos"
                 
                 total_con_bono = total_precio + bono
                 total_bs = total_con_bono * tasa
                 
-                rows.append([
-                    vendedor_obj.get_full_name() or vendedor_obj.username,
-                    str(total_contratos),
-                    f"${comision_por_contrato}",
-                    f"${total_precio}",
-                    f"${bono}",
-                    f"${total_con_bono}",
-                    f"Bs {total_bs:,.2f}"
-                ])
-                
-                total_contratos_general += total_contratos
-                total_pagar_usd_general += total_con_bono
+                data_vendedores.append({
+                    'vendedor': vendedor_obj.get_full_name() or vendedor_obj.username,
+                    'contratos': total_contratos,
+                    'comision_por_contrato': comision_por_contrato,
+                    'total_sin_bono': total_precio,
+                    'bono': bono,
+                    'total_con_bono': total_con_bono,
+                    'total_bs': total_bs,
+                    'rango': rango
+                })
         
+        data_vendedores.sort(key=lambda x: x['contratos'], reverse=True)
+        
+        total_contratos_general = sum(v['contratos'] for v in data_vendedores)
+        total_pagar_usd_general = sum(v['total_con_bono'] for v in data_vendedores)
         total_pagar_bs_general = total_pagar_usd_general * tasa
         
-        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs']
+        rows = [[
+            v['vendedor'],
+            str(v['contratos']),
+            f"${v['comision_por_contrato']}",
+            f"${v['total_sin_bono']}",
+            f"${v['bono']}",
+            f"${v['total_con_bono']}",
+            f"Bs {v['total_bs']:,.2f}",
+            v['rango']
+        ] for v in data_vendedores]
+        
+        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs', 'Rango']
         
         total_registros = len(rows)
         completados = total_contratos_general
         en_proceso = 0
+    
+    else:  # instaladores
+        titulo = "Reporte de Instaladores"
+        
+        PRECIO_INSTALACION = 15
+        PRECIO_CONTRATO = 10
+        PRECIOS_SOPORTES = {
+            'SOPORTE': 10,
+            'RETIRO': 8,
+            'MUDANZA': 15,
+            'RECABLEADO': 15,
+        }
+        
+        if semana:
+            try:
+                fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
+            except:
+                fecha_referencia = datetime.now().date()
+        else:
+            fecha_referencia = datetime.now().date()
+        
+        dias_desde_viernes = fecha_referencia.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        todas_cuadrillas = Cuadrilla.objects.filter(activo=True)
+        
+        if cuadrilla:
+            todas_cuadrillas = todas_cuadrillas.filter(id=cuadrilla)
+        
+        cuadrillas_dict = defaultdict(lambda: {
+            'cuadrilla': '',
+            'instalaciones': 0,
+            'monto_instalaciones': 0,
+            'soportes': 0,
+            'monto_soportes': 0,
+            'contratos': 0,
+            'monto_contratos': 0,
+            'instaladores_list': []
+        })
+        
+        for cuadrilla_obj in todas_cuadrillas:
+            cuadrillas_dict[cuadrilla_obj.nombre]['cuadrilla'] = cuadrilla_obj.nombre
+            perfiles = cuadrilla_obj.instaladores.all()
+            nombres_instaladores = []
+            for perfil in perfiles:
+                if perfil.usuario:
+                    nombres_instaladores.append(perfil.usuario.get_full_name() or perfil.usuario.username)
+            cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
+        
+        instalaciones = Instalacion.objects.filter(
+            completada=True,
+            fecha_creacion__date__gte=viernes_inicio,
+            fecha_creacion__date__lte=jueves_fin
+        ).select_related('asignacion__cuadrilla')
+        
+        for inst in instalaciones:
+            cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
+            if cuadrilla_obj and cuadrilla_obj.nombre in cuadrillas_dict:
+                cuadrillas_dict[cuadrilla_obj.nombre]['instalaciones'] += 1
+                cuadrillas_dict[cuadrilla_obj.nombre]['monto_instalaciones'] += PRECIO_INSTALACION
+        
+        soportes = Soporte.objects.filter(
+            estado='COMPLETADO',
+            fecha_creacion__date__gte=viernes_inicio,
+            fecha_creacion__date__lte=jueves_fin
+        ).select_related('cuadrilla')
+        
+        for sop in soportes:
+            if sop.cuadrilla and sop.cuadrilla.nombre in cuadrillas_dict:
+                try:
+                    tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
+                    precio = PRECIOS_SOPORTES.get(tipo, 10)
+                except:
+                    precio = 10
+                cuadrillas_dict[sop.cuadrilla.nombre]['soportes'] += 1
+                cuadrillas_dict[sop.cuadrilla.nombre]['monto_soportes'] += precio
+        
+        instaladores_users = User.objects.filter(groups__name='Instalador')
+        
+        if instalador:
+            instaladores_users = instaladores_users.filter(id=instalador)
+        
+        for instalador_user in instaladores_users:
+            perfil = PerfilUsuario.objects.filter(usuario=instalador_user).first()
+            if not perfil:
+                continue
+            cuadrillas_del_instalador = perfil.cuadrillas.all()
+            if not cuadrillas_del_instalador.exists():
+                continue
+            contratos_instalador = ContratoCliente.objects.filter(
+                estado='COMPLETADO',
+                creado_por=instalador_user,
+                fecha_completado__date__gte=viernes_inicio,
+                fecha_completado__date__lte=jueves_fin
+            )
+            for contrato in contratos_instalador:
+                for cuadrilla_inst in cuadrillas_del_instalador:
+                    if cuadrilla_inst.nombre in cuadrillas_dict:
+                        cuadrillas_dict[cuadrilla_inst.nombre]['contratos'] += 1
+                        cuadrillas_dict[cuadrilla_inst.nombre]['monto_contratos'] += PRECIO_CONTRATO
+        
+        tasa_obj = TasaCambio.objects.filter(activo=True).first()
+        tasa = float(tasa_obj.tasa) if tasa_obj else 0
+        
+        data_cuadrillas = []
+        for nombre, data in cuadrillas_dict.items():
+            if data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla:
+                total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
+                total_bs = total_usd * tasa
+                data_cuadrillas.append({
+                    'cuadrilla': data['cuadrilla'],
+                    'instalaciones': data['instalaciones'],
+                    'monto_instalaciones': data['monto_instalaciones'],
+                    'soportes': data['soportes'],
+                    'monto_soportes': data['monto_soportes'],
+                    'contratos': data['contratos'],
+                    'monto_contratos': data['monto_contratos'],
+                    'total_usd': total_usd,
+                    'total_bs': total_bs,
+                    'instaladores_list': data['instaladores_list']
+                })
+        
+        data_cuadrillas.sort(key=lambda x: x['instalaciones'] + x['soportes'] + x['contratos'], reverse=True)
+        
+        rows = [[
+            item['cuadrilla'],
+            item['instalaciones'],
+            f"${item['monto_instalaciones']}",
+            item['soportes'],
+            f"${item['monto_soportes']}",
+            item['contratos'],
+            f"${item['monto_contratos']}",
+            f"${item['total_usd']}",
+            f"Bs {item['total_bs']:,.2f}",
+            ', '.join(item['instaladores_list']) if item['instaladores_list'] else 'Sin instaladores'
+        ] for item in data_cuadrillas]
+        
+        headers = ['Cuadrilla', 'Instalaciones', 'Monto Instalaciones', 'Soportes', 'Monto Soportes', 'Contratos', 'Monto Contratos', 'Total USD', 'Total Bs', 'Instaladores']
+        
+        total_registros = len(rows)
     
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
@@ -1518,15 +2242,20 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     
     date_style = ParagraphStyle('DateStyle', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER)
     fecha_texto = f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    
     if tipo == 'vendedores':
+        fecha_texto += f" | Período: {viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
+        fecha_texto += f" | Tasa: 1 USD = {tasa:,.2f} Bs"
+    elif tipo == 'instaladores':
         fecha_texto += f" | Período: {viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
         fecha_texto += f" | Tasa: 1 USD = {tasa:,.2f} Bs"
     elif fecha_desde or fecha_hasta:
         fecha_texto += f" | Periodo: {fecha_desde or 'inicio'} al {fecha_hasta or 'actual'}"
+    
     fecha_paragraph = Paragraph(fecha_texto, date_style)
     
-    # Estadísticas
     stats_data = [['ESTADÍSTICAS', '']]
+    
     if tipo == 'ventas':
         stats_data.extend([
             ['Total contratos:', str(len(rows))],
@@ -1552,16 +2281,37 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             ['Total unidades:', str(total_unidades)],
             ['Bajo stock:', str(bajo_stock)],
         ])
-    else:  # vendedores
+    elif tipo == 'vendedores':
         stats_data.extend([
             ['Período:', f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"],
-            ['Total vendedores:', str(len(rows))],
+            ['Total vendedores con ventas:', str(len(rows))],
             ['Total contratos en período:', str(total_contratos_general)],
             ['Total a pagar (USD):', f"${total_pagar_usd_general:,.2f}"],
             ['Total a pagar (Bs):', f"Bs {total_pagar_bs_general:,.2f}"],
+            ['Tasa de cambio:', f"1 USD = {tasa:,.2f} Bs"],
+        ])
+    else:  # instaladores
+        total_instalaciones = sum(r[1] for r in rows if isinstance(r[1], (int, float)))
+        total_soportes = sum(r[3] for r in rows if isinstance(r[3], (int, float)))
+        total_contratos = sum(r[5] for r in rows if isinstance(r[5], (int, float)))
+        total_pagar_usd = sum(float(r[7].replace('$', '').replace(',', '')) for r in rows)
+        total_pagar_bs = sum(float(r[8].replace('Bs ', '').replace('Bs', '').replace(',', '').strip()) for r in rows)
+        
+        stats_data.extend([
+            ['Período:', f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"],
+            ['Total cuadrillas:', str(len(rows))],
+            ['Instalaciones:', str(total_instalaciones)],
+            ['Soportes:', str(total_soportes)],
+            ['Contratos:', str(total_contratos)],
+            ['Total a pagar (USD):', f"${total_pagar_usd:,.2f}"],
+            ['Total a pagar (Bs):', f"Bs {total_pagar_bs:,.2f}"],
+            ['Tasa de cambio:', f"1 USD = {tasa:,.2f} Bs"],
+            ['Precio instalación:', f"${PRECIO_INSTALACION}"],
+            ['Precio contrato:', f"${PRECIO_CONTRATO}"],
+            ['Precios soportes:', 'Soporte: $10, Retiro: $8, Mudanza: $15, Recableado: $15'],
         ])
     
-    stats_table = Table(stats_data, colWidths=[150, 150])
+    stats_table = Table(stats_data, colWidths=[150, 200])
     stats_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FF6B00')),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -1574,8 +2324,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     elements = [title, Spacer(1, 12), fecha_paragraph, Spacer(1, 12), stats_table, Spacer(1, 20)]
     
     if rows:
-        # Dividir en múltiples páginas si es necesario
-        max_rows_per_page = 20
+        max_rows_per_page = 15
         num_pages = (len(rows) + max_rows_per_page - 1) // max_rows_per_page
         
         for page in range(num_pages):
@@ -1598,21 +2347,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 ('FONTSIZE', (0, 1), (-1, -1), 8),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]
-            
-            # Colorear según estado (solo para reportes que no son vendedores)
-            if tipo != 'vendedores' and tipo != 'inventario':
-                for i, row in enumerate(page_rows, 1):
-                    estado = row[-1]
-                    col_idx = len(headers) - 1
-                    if estado == 'Completado' or estado == 'Completada':
-                        table_style.append(('BACKGROUND', (col_idx, i), (col_idx, i), colors.HexColor('#C6EFCE')))
-                        table_style.append(('TEXTCOLOR', (col_idx, i), (col_idx, i), colors.HexColor('#006100')))
-                    elif estado == 'En Proceso' or estado == 'Pendiente':
-                        table_style.append(('BACKGROUND', (col_idx, i), (col_idx, i), colors.HexColor('#FFEB9C')))
-                        table_style.append(('TEXTCOLOR', (col_idx, i), (col_idx, i), colors.HexColor('#9C6500')))
-                    elif estado == 'Bajo stock':
-                        table_style.append(('BACKGROUND', (col_idx, i), (col_idx, i), colors.HexColor('#FFC7CE')))
-                        table_style.append(('TEXTCOLOR', (col_idx, i), (col_idx, i), colors.HexColor('#9C0006')))
             
             table.setStyle(TableStyle(table_style))
             elements.append(table)

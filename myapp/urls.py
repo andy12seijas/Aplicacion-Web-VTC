@@ -120,10 +120,13 @@ urlpatterns = [
     path('api/reporte-inventario/', reporte_inventario_json, name='reporte_inventario_json'),
     path('exportar-reporte/', exportar_reporte, name='exportar_reporte'),
     path('api/reporte-vendedores/', reporte_vendedores_json, name='reporte_vendedores_json'),
+    path('api/reporte-instaladores/', reporte_instaladores_json, name='reporte_instaladores_json'),
     path('api/semanas-disponibles/', semanas_disponibles_api, name='semanas_disponibles_api'),
+    # API para semanas disponibles de instaladores
+path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_api, name='semanas_disponibles_instaladores'),
     path('api/actualizar-tasa/', api_actualizar_tasa, name='api_actualizar_tasa'),
     #URLS DE INVENTARIO
-    # URLs de Inventario
+ 
     path('inventario/', inventario_global_lista, name='inventario_global_lista'),
     path('inventario/agregar/', inventario_global_agregar, name='inventario_global_agregar'),
     path('inventario/ajustar/<int:material_id>/', inventario_global_ajustar, name='inventario_global_ajustar'),
