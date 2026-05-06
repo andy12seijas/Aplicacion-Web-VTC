@@ -203,7 +203,7 @@ def mapa_usuarios(request):
                     instalador_tarea = "Instalación"
                 else:
                     soporte_activo = Soporte.objects.filter(
-                        instalacion__asignacion__in=asignaciones_instalador,
+                        asignacion__in=asignaciones_instalador, 
                         estado__in=['PENDIENTE', 'EN_PROCESO']
                     ).first()
                     if soporte_activo:
