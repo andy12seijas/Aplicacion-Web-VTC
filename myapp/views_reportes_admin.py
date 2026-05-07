@@ -670,8 +670,8 @@ def semanas_disponibles_api(request):
 def reporte_instaladores_json(request):
     """
     API para obtener reporte de CUADRILLAS con:
-    - Instalaciones: $15 c/u (usando fecha_creacion y el campo histórico instaladores)
-    - Soportes: según tipo (Soporte: $10, Retiro: $8, Mudanza: $15, Recableado: $15) - por instaladores históricos
+    - Instalaciones: $15 c/u (usando fecha_instalacion) - la cuadrilla se toma de asignacion__cuadrilla
+    - Soportes: según tipo (usando fecha_creacion) - la cuadrilla se toma del campo cuadrilla
     - Contratos (ventas): $10 c/u - por contratos CREADOS por instaladores de la cuadrilla
     Por semana (viernes a jueves)
     """
@@ -747,82 +747,65 @@ def reporte_instaladores_json(request):
         for perfil in perfiles:
             if perfil.usuario:
                 cuadrillas_dict[cuadrilla.nombre]['instaladores_set'].add(perfil.usuario.id)
-                cuadrillas_dict[cuadrilla.nombre]['instaladores_ids'].append(perfil.usuario.id)
     
-    # ========== 1. INSTALACIONES (usando el campo histórico instaladores) ==========
+    # ========== 1. INSTALACIONES COMPLETADAS ==========
+    # Usar fecha_instalacion (fecha cuando se completó la instalación)
     instalaciones = Instalacion.objects.filter(
         completada=True,
-        fecha_creacion__date__gte=viernes_inicio,
-        fecha_creacion__date__lte=jueves_fin
+        fecha_instalacion__date__gte=viernes_inicio,
+        fecha_instalacion__date__lte=jueves_fin
     ).select_related('asignacion__cuadrilla')
     
     for inst in instalaciones:
-        # Obtener los instaladores históricos de esta instalación
-        instaladores_hist = set(inst.instaladores.all().values_list('id', flat=True))
-        
-        if not instaladores_hist:
+        # Obtener la cuadrilla de la asignación (la cuadrilla que hizo el trabajo)
+        cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
+        if not cuadrilla_obj:
             continue
         
-        # Encontrar a qué cuadrilla pertenecen estos instaladores históricos
-        # Un instalador puede pertenecer a una sola cuadrilla (por su perfil)
-        cuadrilla_asignada = None
-        for inst_hist_id in instaladores_hist:
-            # Buscar el perfil del instalador
-            try:
-                perfil = PerfilUsuario.objects.filter(usuario_id=inst_hist_id).first()
-                if perfil:
-                    cuadrillas_del_instalador = perfil.cuadrillas.all()
-                    if cuadrillas_del_instalador.exists():
-                        cuadrilla_asignada = cuadrillas_del_instalador.first()
-                        break
-            except:
-                continue
-        
-        if not cuadrilla_asignada:
-            continue
-        
-        nombre_cuadrilla = cuadrilla_asignada.nombre
+        nombre_cuadrilla = cuadrilla_obj.nombre
         if nombre_cuadrilla not in cuadrillas_dict:
             continue
         
-        # Verificar filtros
-        tiene_instalador_filtro = False
-        if instalador_id:
-            if int(instalador_id) in instaladores_hist:
-                tiene_instalador_filtro = True
-        else:
-            tiene_instalador_filtro = True
+        # Obtener instaladores históricos de esta instalación (para filtros y detalle)
+        instaladores_hist = inst.instaladores.all()
         
-        if busqueda:
-            # Buscar si algún instalador histórico coincide con la búsqueda
-            for inst_hist_id in instaladores_hist:
-                try:
-                    inst_user = User.objects.get(id=inst_hist_id)
-                    if busqueda.lower() in (inst_user.get_full_name() or inst_user.username).lower():
-                        tiene_instalador_filtro = True
-                        break
-                except:
-                    pass
-            if not tiene_instalador_filtro:
+        # Verificar filtro por instalador específico
+        if instalador_id:
+            if not instaladores_hist.filter(id=instalador_id).exists():
                 continue
         
-        if not tiene_instalador_filtro and instalador_id:
-            continue
+        # Verificar búsqueda
+        if busqueda:
+            tiene_coincidencia = False
+            for inst_hist in instaladores_hist:
+                nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                if busqueda.lower() in nombre_completo.lower():
+                    tiene_coincidencia = True
+                    break
+            if not tiene_coincidencia:
+                continue
         
         cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
         cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
         
-        # Detalle
+        # Agregar instaladores históricos al set de la cuadrilla
+        for inst_hist in instaladores_hist:
+            cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
+        
+        # Detalle de instalación
         if len(cuadrillas_dict[nombre_cuadrilla]['instalaciones_detalle']) < 5:
             cliente_nombre = inst.nombre_cliente if hasattr(inst, 'nombre_cliente') else 'N/A'
             customer_id = inst.customer_id if hasattr(inst, 'customer_id') else 'N/A'
+            nombres_inst = [i.get_full_name() or i.username for i in instaladores_hist[:3]]
             cuadrillas_dict[nombre_cuadrilla]['instalaciones_detalle'].append({
                 'cliente': cliente_nombre,
                 'customer_id': customer_id,
-                'fecha': inst.fecha_creacion.strftime('%d/%m/%Y') if inst.fecha_creacion else 'N/A'
+                'fecha': inst.fecha_instalacion.strftime('%d/%m/%Y') if inst.fecha_instalacion else 'N/A',
+                'instaladores': ', '.join(nombres_inst)
             })
     
-    # ========== 2. SOPORTES (usando el campo histórico instaladores) ==========
+    # ========== 2. SOPORTES COMPLETADOS ==========
+    # Usar fecha_creacion para soportes (cuando se crea ya está completado)
     soportes = Soporte.objects.filter(
         estado='COMPLETADO',
         fecha_creacion__date__gte=viernes_inicio,
@@ -837,33 +820,26 @@ def reporte_instaladores_json(request):
         if nombre_cuadrilla not in cuadrillas_dict:
             continue
         
-        # Obtener los instaladores históricos de este soporte
-        instaladores_hist = set(sop.instaladores.all().values_list('id', flat=True))
+        # Obtener instaladores históricos de este soporte
+        instaladores_hist = sop.instaladores.all()
         
-        # Verificar filtros
-        tiene_instalador_filtro = False
+        # Verificar filtro por instalador específico
         if instalador_id:
-            if int(instalador_id) in instaladores_hist:
-                tiene_instalador_filtro = True
-        else:
-            tiene_instalador_filtro = True
-        
-        if busqueda:
-            for inst_hist_id in instaladores_hist:
-                try:
-                    inst_user = User.objects.get(id=inst_hist_id)
-                    if busqueda.lower() in (inst_user.get_full_name() or inst_user.username).lower():
-                        tiene_instalador_filtro = True
-                        break
-                except:
-                    pass
-            if not tiene_instalador_filtro:
+            if not instaladores_hist.filter(id=instalador_id).exists():
                 continue
         
-        if not tiene_instalador_filtro and instalador_id:
-            continue
+        # Verificar búsqueda
+        if busqueda:
+            tiene_coincidencia = False
+            for inst_hist in instaladores_hist:
+                nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                if busqueda.lower() in nombre_completo.lower():
+                    tiene_coincidencia = True
+                    break
+            if not tiene_coincidencia:
+                continue
         
-        # Calcular monto según tipo
+        # Calcular monto según tipo de soporte
         try:
             tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
             precio = PRECIOS_SOPORTES.get(tipo, 10)
@@ -874,7 +850,11 @@ def reporte_instaladores_json(request):
         cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
         cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
         
-        # Detalle
+        # Agregar instaladores históricos al set de la cuadrilla
+        for inst_hist in instaladores_hist:
+            cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
+        
+        # Detalle de soporte
         if len(cuadrillas_dict[nombre_cuadrilla]['soportes_detalle']) < 5:
             cliente_nombre = 'N/A'
             try:
@@ -882,12 +862,14 @@ def reporte_instaladores_json(request):
                     cliente_nombre = sop.asignacion.ticket.nombre_completo
             except:
                 pass
+            nombres_inst = [i.get_full_name() or i.username for i in instaladores_hist[:3]]
             cuadrillas_dict[nombre_cuadrilla]['soportes_detalle'].append({
                 'ticket_padre': sop.asignacion.ticket.ticket_padre if sop.asignacion and sop.asignacion.ticket else 'N/A',
                 'cliente': cliente_nombre,
                 'tipo': tipo,
                 'precio': precio,
-                'fecha': sop.fecha_creacion.strftime('%d/%m/%Y') if sop.fecha_creacion else 'N/A'
+                'fecha': sop.fecha_creacion.strftime('%d/%m/%Y') if sop.fecha_creacion else 'N/A',
+                'instaladores': ', '.join(nombres_inst)
             })
     
     # ========== 3. CONTRATOS (creados por INSTALADORES de la cuadrilla) ==========
@@ -897,6 +879,7 @@ def reporte_instaladores_json(request):
         instaladores_users = instaladores_users.filter(id=instalador_id)
     
     for instalador in instaladores_users:
+        # Encontrar a qué cuadrilla pertenece este instalador actualmente
         perfil = PerfilUsuario.objects.filter(usuario=instalador).first()
         if not perfil:
             continue
@@ -905,29 +888,34 @@ def reporte_instaladores_json(request):
         if not cuadrillas_del_instalador.exists():
             continue
         
-        for cuadrilla_inst in cuadrillas_del_instalador:
-            nombre_cuadrilla = cuadrilla_inst.nombre
-            if nombre_cuadrilla not in cuadrillas_dict:
-                continue
-            
-            contratos_instalador = ContratoCliente.objects.filter(
-                estado='COMPLETADO',
-                creado_por=instalador,
-                fecha_completado__date__gte=viernes_inicio,
-                fecha_completado__date__lte=jueves_fin
+        # Buscar contratos creados por este instalador en la semana (usando fecha_completado)
+        contratos_instalador = ContratoCliente.objects.filter(
+            estado='COMPLETADO',
+            creado_por=instalador,
+            fecha_completado__date__gte=viernes_inicio,
+            fecha_completado__date__lte=jueves_fin
+        )
+        
+        if busqueda:
+            contratos_instalador = contratos_instalador.filter(
+                Q(cliente_potencial__nombre__icontains=busqueda) |
+                Q(cliente_potencial__apellido__icontains=busqueda) |
+                Q(cliente_potencial__cedula__icontains=busqueda) |
+                Q(customer_id__icontains=busqueda)
             )
-            
-            if busqueda:
-                contratos_instalador = contratos_instalador.filter(
-                    Q(cliente_potencial__nombre__icontains=busqueda) |
-                    Q(cliente_potencial__apellido__icontains=busqueda) |
-                    Q(cliente_potencial__cedula__icontains=busqueda) |
-                    Q(customer_id__icontains=busqueda)
-                )
-            
-            for contrato in contratos_instalador:
+        
+        for contrato in contratos_instalador:
+            for cuadrilla_inst in cuadrillas_del_instalador:
+                nombre_cuadrilla = cuadrilla_inst.nombre
+                if nombre_cuadrilla not in cuadrillas_dict:
+                    continue
+                
+                if cuadrilla_id and int(cuadrilla_id) != cuadrillas_dict[nombre_cuadrilla]['id']:
+                    continue
+                
                 cuadrillas_dict[nombre_cuadrilla]['contratos'] += 1
                 cuadrillas_dict[nombre_cuadrilla]['monto_contratos'] += PRECIO_CONTRATO
+                cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(instalador.id)
                 
                 if len(cuadrillas_dict[nombre_cuadrilla]['contratos_detalle']) < 5:
                     cuadrillas_dict[nombre_cuadrilla]['contratos_detalle'].append({
@@ -942,6 +930,7 @@ def reporte_instaladores_json(request):
     for nombre, data in cuadrillas_dict.items():
         total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
         
+        # Obtener nombres de instaladores
         nombres_instaladores = []
         for inst_id in data['instaladores_set']:
             try:
@@ -950,6 +939,7 @@ def reporte_instaladores_json(request):
             except:
                 pass
         
+        # Solo incluir cuadrillas que tengan al menos una actividad
         if (data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla_id):
             cuadrillas_data.append({
                 'id': data['id'],
@@ -967,8 +957,10 @@ def reporte_instaladores_json(request):
                 'contratos_detalle': data['contratos_detalle'],
             })
     
+    # Ordenar por total de trabajos (mayor a menor)
     cuadrillas_data.sort(key=lambda x: x['instalaciones'] + x['soportes'] + x['contratos'], reverse=True)
     
+    # Obtener tasa de cambio
     tasa_obj = TasaCambio.objects.filter(activo=True).first()
     if tasa_obj:
         tasa = float(tasa_obj.tasa)
@@ -977,10 +969,12 @@ def reporte_instaladores_json(request):
         tasa = 0
         tasa_decimal = Decimal('0')
     
+    # Agregar total_bs a cada elemento
     for item in cuadrillas_data:
         total_usd_num = float(item['total_usd'].replace('$', ''))
         item['total_bs'] = f"Bs {total_usd_num * tasa:,.2f}"
     
+    # Paginación
     total_registros = len(cuadrillas_data)
     paginator = Paginator(cuadrillas_data, per_page)
     
@@ -989,6 +983,7 @@ def reporte_instaladores_json(request):
     except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
     
+    # Estadísticas generales
     total_instalaciones_semana = sum(v['instalaciones'] for v in cuadrillas_data)
     total_soportes_semana = sum(v['soportes'] for v in cuadrillas_data)
     total_contratos_semana = sum(v['contratos'] for v in cuadrillas_data)
