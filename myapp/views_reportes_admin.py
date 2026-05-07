@@ -1531,7 +1531,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             max_length = max(len(detalles_headers[col_idx-1]), max([len(str(row[col_idx-1])) for row in detalles_data[:100]] or [0]))
             ws_detalles.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 30)
     
-    else:  # instaladores (NUEVO)
+    else:  # instaladores - CORREGIDO con misma lógica que reporte_instaladores_json
         ws = wb.active
         ws.title = "Reporte de Instaladores"
         
@@ -1547,6 +1547,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             'RECABLEADO': 15,
         }
         
+        # Calcular semana (viernes a jueves)
         if semana:
             try:
                 fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
@@ -1562,11 +1563,13 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
+        # Obtener todas las cuadrillas activas
         todas_cuadrillas = Cuadrilla.objects.filter(activo=True)
         
         if cuadrilla:
             todas_cuadrillas = todas_cuadrillas.filter(id=cuadrilla)
         
+        # Diccionario para agrupar por cuadrilla
         cuadrillas_dict = defaultdict(lambda: {
             'id': None,
             'cuadrilla': '',
@@ -1576,9 +1579,11 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             'monto_soportes': 0,
             'contratos': 0,
             'monto_contratos': 0,
+            'instaladores_set': set(),
             'instaladores_list': []
         })
         
+        # Registrar cuadrillas
         for cuadrilla_obj in todas_cuadrillas:
             cuadrillas_dict[cuadrilla_obj.nombre]['id'] = cuadrilla_obj.id
             cuadrillas_dict[cuadrilla_obj.nombre]['cuadrilla'] = cuadrilla_obj.nombre
@@ -1588,25 +1593,48 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             for perfil in perfiles:
                 if perfil.usuario:
                     nombres_instaladores.append(perfil.usuario.get_full_name() or perfil.usuario.username)
+                    cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_set'].add(perfil.usuario.id)
             cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
         
-        # Instalaciones
+        # ========== 1. INSTALACIONES COMPLETADAS ==========
         instalaciones = Instalacion.objects.filter(
             completada=True,
-            fecha_creacion__date__gte=viernes_inicio,
-            fecha_creacion__date__lte=jueves_fin
+            fecha_instalacion__date__gte=viernes_inicio,
+            fecha_instalacion__date__lte=jueves_fin
         ).select_related('asignacion__cuadrilla')
         
         for inst in instalaciones:
             cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
             if not cuadrilla_obj:
                 continue
+            
             nombre_cuadrilla = cuadrilla_obj.nombre
-            if nombre_cuadrilla in cuadrillas_dict:
-                cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
-                cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
+            if nombre_cuadrilla not in cuadrillas_dict:
+                continue
+            
+            instaladores_hist = inst.instaladores.all()
+            
+            if instalador:
+                if not instaladores_hist.filter(id=instalador).exists():
+                    continue
+            
+            if busqueda:
+                tiene_coincidencia = False
+                for inst_hist in instaladores_hist:
+                    nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                    if busqueda.lower() in nombre_completo.lower():
+                        tiene_coincidencia = True
+                        break
+                if not tiene_coincidencia:
+                    continue
+            
+            cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
+            cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
+            
+            for inst_hist in instaladores_hist:
+                cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Soportes
+        # ========== 2. SOPORTES COMPLETADOS ==========
         soportes = Soporte.objects.filter(
             estado='COMPLETADO',
             fecha_creacion__date__gte=viernes_inicio,
@@ -1616,18 +1644,41 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         for sop in soportes:
             if not sop.cuadrilla:
                 continue
+            
             nombre_cuadrilla = sop.cuadrilla.nombre
-            if nombre_cuadrilla in cuadrillas_dict:
-                try:
-                    tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
-                    precio = PRECIOS_SOPORTES.get(tipo, 10)
-                except:
-                    precio = 10
-                
-                cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
-                cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
+            if nombre_cuadrilla not in cuadrillas_dict:
+                continue
+            
+            instaladores_hist = sop.instaladores.all()
+            
+            if instalador:
+                if not instaladores_hist.filter(id=instalador).exists():
+                    continue
+            
+            if busqueda:
+                tiene_coincidencia = False
+                for inst_hist in instaladores_hist:
+                    nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                    if busqueda.lower() in nombre_completo.lower():
+                        tiene_coincidencia = True
+                        break
+                if not tiene_coincidencia:
+                    continue
+            
+            try:
+                tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
+                precio = PRECIOS_SOPORTES.get(tipo, 10)
+            except:
+                precio = 10
+                tipo = 'SOPORTE'
+            
+            cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
+            cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
+            
+            for inst_hist in instaladores_hist:
+                cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Contratos (creados por instaladores)
+        # ========== 3. CONTRATOS (creados por instaladores) ==========
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -1655,15 +1706,28 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     if nombre_cuadrilla in cuadrillas_dict:
                         cuadrillas_dict[nombre_cuadrilla]['contratos'] += 1
                         cuadrillas_dict[nombre_cuadrilla]['monto_contratos'] += PRECIO_CONTRATO
+                        cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(instalador_user.id)
         
+        # Obtener tasa de cambio
         tasa_obj = TasaCambio.objects.filter(activo=True).first()
         tasa = float(tasa_obj.tasa) if tasa_obj else 0
         
+        # Construir datos finales
         data_cuadrillas = []
         for nombre, data in cuadrillas_dict.items():
             if data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla:
                 total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
                 total_bs = total_usd * tasa
+                
+                # Actualizar lista de instaladores
+                nombres_instaladores_final = []
+                for inst_id in data['instaladores_set']:
+                    try:
+                        inst = User.objects.get(id=inst_id)
+                        nombres_instaladores_final.append(inst.get_full_name() or inst.username)
+                    except:
+                        pass
+                
                 data_cuadrillas.append({
                     'cuadrilla': data['cuadrilla'],
                     'instalaciones': data['instalaciones'],
@@ -1674,7 +1738,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     'monto_contratos': data['monto_contratos'],
                     'total_usd': total_usd,
                     'total_bs': total_bs,
-                    'instaladores_list': data['instaladores_list']
+                    'instaladores_list': nombres_instaladores_final or data['instaladores_list']
                 })
         
         data_cuadrillas.sort(key=lambda x: x['instalaciones'] + x['soportes'] + x['contratos'], reverse=True)
@@ -1759,7 +1823,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     
     import io
     from reportlab.lib.pagesizes import A4, landscape
-    from datetime import timedelta
+    from datetime import timedelta 
     from collections import defaultdict
     
     if tipo == 'ventas':
@@ -2087,7 +2151,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         completados = total_contratos_general
         en_proceso = 0
     
-    else:  # instaladores
+    else:  # instaladores - CORREGIDO con misma lógica que reporte_instaladores_json
         titulo = "Reporte de Instaladores"
         
         PRECIO_INSTALACION = 15
@@ -2127,30 +2191,57 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             'monto_soportes': 0,
             'contratos': 0,
             'monto_contratos': 0,
+            'instaladores_set': set(),
             'instaladores_list': []
         })
         
         for cuadrilla_obj in todas_cuadrillas:
             cuadrillas_dict[cuadrilla_obj.nombre]['cuadrilla'] = cuadrilla_obj.nombre
+            
             perfiles = cuadrilla_obj.instaladores.all()
             nombres_instaladores = []
             for perfil in perfiles:
                 if perfil.usuario:
                     nombres_instaladores.append(perfil.usuario.get_full_name() or perfil.usuario.username)
+                    cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_set'].add(perfil.usuario.id)
             cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
         
+        # Instalaciones
         instalaciones = Instalacion.objects.filter(
             completada=True,
-            fecha_creacion__date__gte=viernes_inicio,
-            fecha_creacion__date__lte=jueves_fin
+            fecha_instalacion__date__gte=viernes_inicio,
+            fecha_instalacion__date__lte=jueves_fin
         ).select_related('asignacion__cuadrilla')
         
         for inst in instalaciones:
             cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
-            if cuadrilla_obj and cuadrilla_obj.nombre in cuadrillas_dict:
-                cuadrillas_dict[cuadrilla_obj.nombre]['instalaciones'] += 1
-                cuadrillas_dict[cuadrilla_obj.nombre]['monto_instalaciones'] += PRECIO_INSTALACION
+            if not cuadrilla_obj:
+                continue
+            nombre_cuadrilla = cuadrilla_obj.nombre
+            if nombre_cuadrilla in cuadrillas_dict:
+                instaladores_hist = inst.instaladores.all()
+                
+                if instalador:
+                    if not instaladores_hist.filter(id=instalador).exists():
+                        continue
+                
+                if busqueda:
+                    tiene_coincidencia = False
+                    for inst_hist in instaladores_hist:
+                        nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                        if busqueda.lower() in nombre_completo.lower():
+                            tiene_coincidencia = True
+                            break
+                    if not tiene_coincidencia:
+                        continue
+                
+                cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
+                
+                for inst_hist in instaladores_hist:
+                    cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
+        # Soportes
         soportes = Soporte.objects.filter(
             estado='COMPLETADO',
             fecha_creacion__date__gte=viernes_inicio,
@@ -2158,15 +2249,39 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         ).select_related('cuadrilla')
         
         for sop in soportes:
-            if sop.cuadrilla and sop.cuadrilla.nombre in cuadrillas_dict:
+            if not sop.cuadrilla:
+                continue
+            nombre_cuadrilla = sop.cuadrilla.nombre
+            if nombre_cuadrilla in cuadrillas_dict:
+                instaladores_hist = sop.instaladores.all()
+                
+                if instalador:
+                    if not instaladores_hist.filter(id=instalador).exists():
+                        continue
+                
+                if busqueda:
+                    tiene_coincidencia = False
+                    for inst_hist in instaladores_hist:
+                        nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                        if busqueda.lower() in nombre_completo.lower():
+                            tiene_coincidencia = True
+                            break
+                    if not tiene_coincidencia:
+                        continue
+                
                 try:
                     tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
                     precio = PRECIOS_SOPORTES.get(tipo, 10)
                 except:
                     precio = 10
-                cuadrillas_dict[sop.cuadrilla.nombre]['soportes'] += 1
-                cuadrillas_dict[sop.cuadrilla.nombre]['monto_soportes'] += precio
+                
+                cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
+                
+                for inst_hist in instaladores_hist:
+                    cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
+        # Contratos
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -2187,9 +2302,11 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             )
             for contrato in contratos_instalador:
                 for cuadrilla_inst in cuadrillas_del_instalador:
-                    if cuadrilla_inst.nombre in cuadrillas_dict:
-                        cuadrillas_dict[cuadrilla_inst.nombre]['contratos'] += 1
-                        cuadrillas_dict[cuadrilla_inst.nombre]['monto_contratos'] += PRECIO_CONTRATO
+                    nombre_cuadrilla = cuadrilla_inst.nombre
+                    if nombre_cuadrilla in cuadrillas_dict:
+                        cuadrillas_dict[nombre_cuadrilla]['contratos'] += 1
+                        cuadrillas_dict[nombre_cuadrilla]['monto_contratos'] += PRECIO_CONTRATO
+                        cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(instalador_user.id)
         
         tasa_obj = TasaCambio.objects.filter(activo=True).first()
         tasa = float(tasa_obj.tasa) if tasa_obj else 0
@@ -2199,6 +2316,15 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             if data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla:
                 total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
                 total_bs = total_usd * tasa
+                
+                nombres_instaladores_final = []
+                for inst_id in data['instaladores_set']:
+                    try:
+                        inst = User.objects.get(id=inst_id)
+                        nombres_instaladores_final.append(inst.get_full_name() or inst.username)
+                    except:
+                        pass
+                
                 data_cuadrillas.append({
                     'cuadrilla': data['cuadrilla'],
                     'instalaciones': data['instalaciones'],
@@ -2209,7 +2335,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                     'monto_contratos': data['monto_contratos'],
                     'total_usd': total_usd,
                     'total_bs': total_bs,
-                    'instaladores_list': data['instaladores_list']
+                    'instaladores_list': nombres_instaladores_final or data['instaladores_list']
                 })
         
         data_cuadrillas.sort(key=lambda x: x['instalaciones'] + x['soportes'] + x['contratos'], reverse=True)
