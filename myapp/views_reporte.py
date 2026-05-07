@@ -283,16 +283,19 @@ def reporte_instalador(request):
     semana_offset = int(request.GET.get('semana_offset', 0))
     
     # ========== BASE DE DATOS ==========
-    # Base para instalaciones
+    # Base para instalaciones - usar histórico de instaladores
     if es_admin and instalador_id:
         instalaciones_base = Instalacion.objects.filter(instaladores__id=instalador_id)
         soportes_base = Soporte.objects.filter(instaladores__id=instalador_id)
+        contratos_base = ContratoCliente.objects.filter(creado_por_id=instalador_id)
     elif es_instalador:
         instalaciones_base = Instalacion.objects.filter(instaladores=request.user)
         soportes_base = Soporte.objects.filter(instaladores=request.user)
+        contratos_base = ContratoCliente.objects.filter(creado_por=request.user)
     else:
         instalaciones_base = Instalacion.objects.all()
         soportes_base = Soporte.objects.all()
+        contratos_base = ContratoCliente.objects.all()
     
     # Filtrar por cuadrilla si se selecciona
     if cuadrilla_id:
@@ -301,6 +304,7 @@ def reporte_instalador(request):
     
     instalaciones_totales = instalaciones_base
     soportes_totales = soportes_base
+    contratos_totales = contratos_base
     
     # ========== ESTADÍSTICAS GENERALES ==========
     total_instalaciones = instalaciones_totales.count()
@@ -313,6 +317,9 @@ def reporte_instalador(request):
     soportes_completados = soportes_totales.filter(estado='COMPLETADO').count()
     soportes_pendientes = soportes_totales.filter(estado='PENDIENTE').count()
     soportes_en_proceso = soportes_totales.filter(estado='EN_PROCESO').count()
+    
+    # Contratos (ventas realizadas por el instalador)
+    total_contratos = contratos_totales.filter(estado='COMPLETADO').count()
     
     # ========== DATOS PARA GRÁFICAS ==========
     # Aplicar filtros de fecha a las gráficas
@@ -356,7 +363,6 @@ def reporte_instalador(request):
             instalaciones_completadas_mes.append(item['completadas'])
     
     # 3. Soportes por tipo (obtener tipo desde el ticket asociado)
-    soportes_por_tipo = []
     tipo_dict = {}
     
     for sop in soportes_totales:
@@ -423,30 +429,25 @@ def reporte_instalador(request):
     viernes_seleccionado = viernes_actual - timedelta(weeks=semana_offset)
     jueves_seleccionado = viernes_seleccionado + timedelta(days=6)
     
-    # Instalaciones COMPLETADAS en la semana
+    # CORREGIDO: Instalaciones COMPLETADAS en la semana (usando fecha_instalacion)
     instalaciones_completadas_semana = instalaciones_totales.filter(
         completada=True,
         fecha_instalacion__date__gte=viernes_seleccionado,
         fecha_instalacion__date__lte=jueves_seleccionado
     ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial')
     
-    # Instalaciones PENDIENTES creadas en la semana
+    # Instalaciones PENDIENTES creadas en la semana (usando fecha_creacion)
     instalaciones_pendientes_semana = instalaciones_totales.filter(
         completada=False,
         fecha_creacion__date__gte=viernes_seleccionado,
         fecha_creacion__date__lte=jueves_seleccionado
-    ).exclude(
-        id__in=instalaciones_totales.filter(
-            completada=True,
-            fecha_instalacion__date__gt=jueves_seleccionado
-        ).values_list('id', flat=True)
     ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial')
     
-    # Soportes COMPLETADOS en la semana
+    # CORREGIDO: Soportes COMPLETADOS en la semana (usando fecha_creacion)
     soportes_completados_semana = soportes_totales.filter(
         estado='COMPLETADO',
-        fecha_actualizacion__date__gte=viernes_seleccionado,
-        fecha_actualizacion__date__lte=jueves_seleccionado
+        fecha_creacion__date__gte=viernes_seleccionado,
+        fecha_creacion__date__lte=jueves_seleccionado
     ).select_related('asignacion__ticket', 'cuadrilla')
     
     # Soportes PENDIENTES creados en la semana
@@ -454,11 +455,6 @@ def reporte_instalador(request):
         estado='PENDIENTE',
         fecha_creacion__date__gte=viernes_seleccionado,
         fecha_creacion__date__lte=jueves_seleccionado
-    ).exclude(
-        id__in=soportes_totales.filter(
-            estado='COMPLETADO',
-            fecha_actualizacion__date__gt=jueves_seleccionado
-        ).values_list('id', flat=True)
     ).select_related('asignacion__ticket', 'cuadrilla')
     
     # Unir todas las instalaciones de la semana
@@ -467,7 +463,7 @@ def reporte_instalador(request):
     
     # Unir todos los soportes de la semana
     soportes_semana = list(soportes_completados_semana) + list(soportes_pendientes_semana)
-    soportes_semana.sort(key=lambda x: x.fecha_actualizacion if x.estado == 'COMPLETADO' else x.fecha_creacion, reverse=True)
+    soportes_semana.sort(key=lambda x: x.fecha_creacion, reverse=True)
     
     # Totales de la semana
     total_instalaciones_semana = len(instalaciones_semana)
@@ -478,7 +474,7 @@ def reporte_instalador(request):
     soportes_completados_semana_count = soportes_completados_semana.count()
     soportes_pendientes_semana_count = soportes_pendientes_semana.count()
     
-    # Acumulado hasta la semana
+    # CORREGIDO: Acumulado hasta la semana (usando fecha_instalacion para completadas)
     acumulado_instalaciones_completadas = instalaciones_totales.filter(
         completada=True,
         fecha_instalacion__date__lte=jueves_seleccionado
@@ -487,28 +483,18 @@ def reporte_instalador(request):
     acumulado_instalaciones_pendientes = instalaciones_totales.filter(
         completada=False,
         fecha_creacion__date__lte=jueves_seleccionado
-    ).exclude(
-        id__in=instalaciones_totales.filter(
-            completada=True,
-            fecha_instalacion__date__gt=jueves_seleccionado
-        ).values_list('id', flat=True)
     ).count()
     
     acumulado_instalaciones_total = acumulado_instalaciones_completadas + acumulado_instalaciones_pendientes
     
     acumulado_soportes_completados = soportes_totales.filter(
         estado='COMPLETADO',
-        fecha_actualizacion__date__lte=jueves_seleccionado
+        fecha_creacion__date__lte=jueves_seleccionado
     ).count()
     
     acumulado_soportes_pendientes = soportes_totales.filter(
         estado='PENDIENTE',
         fecha_creacion__date__lte=jueves_seleccionado
-    ).exclude(
-        id__in=soportes_totales.filter(
-            estado='COMPLETADO',
-            fecha_actualizacion__date__gt=jueves_seleccionado
-        ).values_list('id', flat=True)
     ).count()
     
     acumulado_soportes_total = acumulado_soportes_completados + acumulado_soportes_pendientes
@@ -559,6 +545,7 @@ def reporte_instalador(request):
         'soportes_completados': soportes_completados,
         'soportes_pendientes': soportes_pendientes,
         'soportes_en_proceso': soportes_en_proceso,
+        'total_contratos': total_contratos,
         
         # Semana actual
         'semana_actual': semana_data,
