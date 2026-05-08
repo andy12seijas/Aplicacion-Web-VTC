@@ -19,7 +19,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.core.management import call_command
 from django.views.decorators.csrf import csrf_exempt
 import json
-
+from django.db.models import Q
 def es_admin(user):
     return user.is_authenticated and (user.is_superuser or user.groups.filter(name='Administrador').exists())
 
@@ -65,11 +65,27 @@ def reporte_ventas_json(request):
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
     
-    # Usar fecha_creacion para filtrar (fecha cuando se creó el contrato)
-    if fecha_desde:
-        ventas = ventas.filter(fecha_creacion__date__gte=fecha_desde)
-    if fecha_hasta:
-        ventas = ventas.filter(fecha_creacion__date__lte=fecha_hasta)
+    # ===== FILTRAR POR FECHA DE COMPLETADO =====
+    # Solo aplicar filtro de fecha si se especifica
+    if fecha_desde and fecha_hasta:
+        # Filtrar contratos COMPLETADOS por fecha_completado
+        # Filtrar contratos EN_PROCESO por fecha_creacion (no tienen fecha_completado)
+       
+        ventas = ventas.filter(
+            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde, fecha_completado__date__lte=fecha_hasta) |
+            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde, fecha_creacion__date__lte=fecha_hasta)
+        )
+    elif fecha_desde:
+        ventas = ventas.filter(
+            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde) |
+            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde)
+        )
+    elif fecha_hasta:
+        ventas = ventas.filter(
+            Q(estado='COMPLETADO', fecha_completado__date__lte=fecha_hasta) |
+            Q(estado='EN_PROCESO', fecha_creacion__date__lte=fecha_hasta)
+        )
+    
     if vendedor_id:
         ventas = ventas.filter(creado_por_id=vendedor_id)
     if plan_id:
@@ -97,7 +113,7 @@ def reporte_ventas_json(request):
             'cliente': v.nombre_completo,
             'customer_id': v.customer_id or 'N/A',
             'ods': v.ods or 'N/A',
-            # Mostrar fecha_completado si está COMPLETADO, sino fecha_creacion
+            # Mostrar la fecha que corresponde
             'fecha': v.fecha_completado.strftime('%d/%m/%Y') if v.estado == 'COMPLETADO' and v.fecha_completado else v.fecha_creacion.strftime('%d/%m/%Y'),
             'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
             'estado': v.get_estado_display(),
