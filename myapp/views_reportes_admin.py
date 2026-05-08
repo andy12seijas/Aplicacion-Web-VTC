@@ -65,6 +65,7 @@ def reporte_ventas_json(request):
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
     
+    # Usar fecha_creacion para filtrar (fecha cuando se creó el contrato)
     if fecha_desde:
         ventas = ventas.filter(fecha_creacion__date__gte=fecha_desde)
     if fecha_hasta:
@@ -96,7 +97,8 @@ def reporte_ventas_json(request):
             'cliente': v.nombre_completo,
             'customer_id': v.customer_id or 'N/A',
             'ods': v.ods or 'N/A',
-            'fecha': v.fecha_creacion.strftime('%d/%m/%Y'),
+            # Mostrar fecha_completado si está COMPLETADO, sino fecha_creacion
+            'fecha': v.fecha_completado.strftime('%d/%m/%Y') if v.estado == 'COMPLETADO' and v.fecha_completado else v.fecha_creacion.strftime('%d/%m/%Y'),
             'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
             'estado': v.get_estado_display(),
         } for v in page_obj]
@@ -110,7 +112,7 @@ def reporte_ventas_json(request):
             'correo': v.correo_electronico,
             'direccion': v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
             'plan': v.plan_contratado.nombre,
-            'fecha': v.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+            'fecha': v.fecha_completado.strftime('%d/%m/%Y %H:%M') if v.estado == 'COMPLETADO' and v.fecha_completado else v.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
             'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
             'customer_id': v.customer_id or 'N/A',
             'ods': v.ods or 'N/A',
