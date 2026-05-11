@@ -1126,6 +1126,10 @@ def exportar_reporte(request):
                             tipo_soporte, estado_soporte, material, semana, instalador)
 
 
+
+
+
+
 def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                    busqueda, vendedor, plan, cuadrilla, estado,
                    tipo_soporte, estado_soporte, material, semana, instalador):
@@ -1137,13 +1141,14 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         ws = wb.active
         ws.title = "Reporte de Ventas"
         
-        # Incluir COMPLETADO y EN_PROCESO
-        ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
+        # SOLO contratos COMPLETADOS, filtrados por FECHA_COMPLETADO
+        ventas = ContratoCliente.objects.filter(estado='COMPLETADO')
         
+        # Filtrar por FECHA_COMPLETADO (NO por fecha_creacion)
         if fecha_desde:
-            ventas = ventas.filter(fecha_creacion__date__gte=fecha_desde)
+            ventas = ventas.filter(fecha_completado__date__gte=fecha_desde)
         if fecha_hasta:
-            ventas = ventas.filter(fecha_creacion__date__lte=fecha_hasta)
+            ventas = ventas.filter(fecha_completado__date__lte=fecha_hasta)
         if vendedor:
             ventas = ventas.filter(creado_por_id=vendedor)
         if plan:
@@ -1156,20 +1161,20 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 Q(customer_id__icontains=busqueda)
             )
         
-        ventas = ventas.order_by('-fecha_creacion')
+        ventas = ventas.order_by('-fecha_completado')
         
         if reporte_tipo == 'simple':
-            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Vendedor', 'Estado']
+            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha Completado', 'Vendedor', 'Estado']
             data = [[
                 v.nombre_completo,
                 v.customer_id or 'N/A',
                 v.ods or 'N/A',
-                v.fecha_creacion.strftime('%d/%m/%Y'),
+                v.fecha_completado.strftime('%d/%m/%Y') if v.fecha_completado else 'N/A',
                 v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
                 v.get_estado_display()
             ] for v in ventas]
         else:
-            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Correo', 'Dirección', 'Plan', 'Fecha', 'Vendedor', 'Customer ID', 'ODS', 'ATR', 'Estado']
+            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Correo', 'Dirección', 'Plan', 'Fecha Completado', 'Fecha Creación', 'Vendedor', 'Customer ID', 'ODS', 'ATR', 'Estado']
             data = [[
                 v.id,
                 v.nombre_completo,
@@ -1178,6 +1183,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 v.correo_electronico,
                 v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
                 v.plan_contratado.nombre,
+                v.fecha_completado.strftime('%d/%m/%Y %H:%M') if v.fecha_completado else 'N/A',
                 v.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
                 v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
                 v.customer_id or 'N/A',
@@ -1189,18 +1195,14 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         # Hoja de resumen
         ws_resumen = wb.create_sheet("Resumen")
         total_registros = ventas.count()
-        completados = ventas.filter(estado='COMPLETADO').count()
-        en_proceso = ventas.filter(estado='EN_PROCESO').count()
         
         resumen_data = [
-            ['REPORTE DE VENTAS', ''],
+            ['REPORTE DE VENTAS (COMPLETADOS)', ''],
             ['', ''],
             ['Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
             ['', ''],
             ['ESTADÍSTICAS:', ''],
-            ['Total de contratos:', total_registros],
-            ['Completados:', completados],
-            ['En proceso:', en_proceso],
+            ['Total de contratos completados:', total_registros],
         ]
         
         for row_idx, row_data in enumerate(resumen_data, 1):
@@ -1211,7 +1213,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 elif row_idx == 5:
                     cell.font = Font(bold=True)
         
-        ws_resumen.column_dimensions['A'].width = 25
+        ws_resumen.column_dimensions['A'].width = 30
         
     elif tipo == 'instalaciones':
         ws = wb.active
@@ -1403,6 +1405,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
+        # Usar fecha_completado para filtrar contratos completados en la semana
         contratos = ContratoCliente.objects.filter(
             estado='COMPLETADO',
             fecha_completado__date__gte=viernes_inicio,
@@ -1549,7 +1552,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             max_length = max(len(detalles_headers[col_idx-1]), max([len(str(row[col_idx-1])) for row in detalles_data[:100]] or [0]))
             ws_detalles.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 30)
     
-    else:  # instaladores - CORREGIDO con misma lógica que reporte_instaladores_json
+    else:  # instaladores
         ws = wb.active
         ws.title = "Reporte de Instaladores"
         
@@ -1565,7 +1568,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             'RECABLEADO': 15,
         }
         
-        # Calcular semana (viernes a jueves)
         if semana:
             try:
                 fecha_referencia = datetime.strptime(semana, '%Y-%m-%d').date()
@@ -1581,13 +1583,11 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Obtener todas las cuadrillas activas
         todas_cuadrillas = Cuadrilla.objects.filter(activo=True)
         
         if cuadrilla:
             todas_cuadrillas = todas_cuadrillas.filter(id=cuadrilla)
         
-        # Diccionario para agrupar por cuadrilla
         cuadrillas_dict = defaultdict(lambda: {
             'id': None,
             'cuadrilla': '',
@@ -1601,7 +1601,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             'instaladores_list': []
         })
         
-        # Registrar cuadrillas
         for cuadrilla_obj in todas_cuadrillas:
             cuadrillas_dict[cuadrilla_obj.nombre]['id'] = cuadrilla_obj.id
             cuadrillas_dict[cuadrilla_obj.nombre]['cuadrilla'] = cuadrilla_obj.nombre
@@ -1688,7 +1687,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 precio = PRECIOS_SOPORTES.get(tipo, 10)
             except:
                 precio = 10
-                tipo = 'SOPORTE'
             
             cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
             cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
@@ -1696,7 +1694,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
             for inst_hist in instaladores_hist:
                 cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # ========== 3. CONTRATOS (creados por instaladores) ==========
+        # ========== 3. CONTRATOS (creados por instaladores) usando fecha_completado ==========
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -1726,18 +1724,15 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                         cuadrillas_dict[nombre_cuadrilla]['monto_contratos'] += PRECIO_CONTRATO
                         cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(instalador_user.id)
         
-        # Obtener tasa de cambio
         tasa_obj = TasaCambio.objects.filter(activo=True).first()
         tasa = float(tasa_obj.tasa) if tasa_obj else 0
         
-        # Construir datos finales
         data_cuadrillas = []
         for nombre, data in cuadrillas_dict.items():
             if data['instalaciones'] > 0 or data['soportes'] > 0 or data['contratos'] > 0 or cuadrilla:
                 total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
                 total_bs = total_usd * tasa
                 
-                # Actualizar lista de instaladores
                 nombres_instaladores_final = []
                 for inst_id in data['instaladores_set']:
                     try:
@@ -1834,6 +1829,12 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     return response
 
 
+
+
+
+
+
+ 
 def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                  busqueda, vendedor, plan, cuadrilla, estado,
                  tipo_soporte, estado_soporte, material, semana, instalador):
@@ -1845,14 +1846,16 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     from collections import defaultdict
     
     if tipo == 'ventas':
-        titulo = "Reporte de Ventas"
+        titulo = "Reporte de Ventas (Completados)"
         
-        datos = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
+        # SOLO contratos COMPLETADOS, filtrados por FECHA_COMPLETADO
+        datos = ContratoCliente.objects.filter(estado='COMPLETADO')
         
+        # Filtrar por FECHA_COMPLETADO (NO por fecha_creacion)
         if fecha_desde:
-            datos = datos.filter(fecha_creacion__date__gte=fecha_desde)
+            datos = datos.filter(fecha_completado__date__gte=fecha_desde)
         if fecha_hasta:
-            datos = datos.filter(fecha_creacion__date__lte=fecha_hasta)
+            datos = datos.filter(fecha_completado__date__lte=fecha_hasta)
         if vendedor:
             datos = datos.filter(creado_por_id=vendedor)
         if plan:
@@ -1865,29 +1868,28 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 Q(customer_id__icontains=busqueda)
             )
         
-        datos = datos.order_by('-fecha_creacion')
+        datos = datos.order_by('-fecha_completado')
         total_registros = datos.count()
-        completados = datos.filter(estado='COMPLETADO').count()
-        en_proceso = datos.filter(estado='EN_PROCESO').count()
         
         if reporte_tipo == 'simple':
-            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Vendedor', 'Estado']
+            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha Completado', 'Vendedor', 'Estado']
             rows = [[
                 v.nombre_completo,
                 v.customer_id or 'N/A',
                 v.ods or 'N/A',
-                v.fecha_creacion.strftime('%d/%m/%Y'),
+                v.fecha_completado.strftime('%d/%m/%Y') if v.fecha_completado else 'N/A',
                 v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
                 v.get_estado_display()
             ] for v in datos]
         else:
-            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Plan', 'Fecha', 'Vendedor', 'Customer ID', 'ODS', 'Estado']
+            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Plan', 'Fecha Completado', 'Fecha Creación', 'Vendedor', 'Customer ID', 'ODS', 'Estado']
             rows = [[
                 str(v.id),
                 v.nombre_completo,
                 v.cedula,
                 v.telefono_principal,
                 v.plan_contratado.nombre,
+                v.fecha_completado.strftime('%d/%m/%Y') if v.fecha_completado else 'N/A',
                 v.fecha_creacion.strftime('%d/%m/%Y'),
                 v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
                 v.customer_id or 'N/A',
@@ -2078,6 +2080,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
+        # Usar fecha_completado para filtrar contratos completados en la semana
         contratos = ContratoCliente.objects.filter(
             estado='COMPLETADO',
             fecha_completado__date__gte=viernes_inicio,
@@ -2169,7 +2172,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         completados = total_contratos_general
         en_proceso = 0
     
-    else:  # instaladores - CORREGIDO con misma lógica que reporte_instaladores_json
+    else:  # instaladores
         titulo = "Reporte de Instaladores"
         
         PRECIO_INSTALACION = 15
@@ -2299,7 +2302,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
                 for inst_hist in instaladores_hist:
                     cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Contratos
+        # Contratos - Usar fecha_completado
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -2375,6 +2378,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
         
         total_registros = len(rows)
     
+    # Construcción del PDF (igual que antes)
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=landscape(A4))
     styles = getSampleStyleSheet()
@@ -2400,9 +2404,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde, fecha_hasta,
     
     if tipo == 'ventas':
         stats_data.extend([
-            ['Total contratos:', str(len(rows))],
-            ['Completados:', str(completados)],
-            ['En proceso:', str(en_proceso)],
+            ['Total contratos completados:', str(len(rows))],
         ])
     elif tipo == 'instalaciones':
         stats_data.extend([
