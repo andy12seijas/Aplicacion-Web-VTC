@@ -106,6 +106,17 @@
             <div class="button-arrow">→</div>
         </a>
         {% endif %}
+
+        {% if mostrar_todos %}
+        <a href="{% url 'gestion_soportes_cliente' %}" class="admin-button">
+            <div class="button-icon">🔧</div>
+            <div class="button-content">
+                <h3>Gestión Soportes de Clientes</h3>
+                <p>Administra soportes de clientes interno e externo</p>
+            </div>
+            <div class="button-arrow">→</div>
+        </a>
+        {% endif %}
         
         <!-- Botón Gestión de Instalaciones (SOLO ADMIN) -->
         {% if mostrar_todos %}
@@ -140,6 +151,7 @@
     <div class="button-arrow">→</div>
 </a>
 {% endif %}
+
     </div>
     
     <!-- Estadísticas rápidas (SOLO ADMIN) -->

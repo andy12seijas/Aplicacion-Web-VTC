@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>SimpleFibra x VTConexiones - Reportar Pago</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --orange: #ff6b00;
+            --orange-dark: #e05a00;
+            --orange-light: #fff2e6;
+            --dark: #0f0f1a;
+            --dark-gray: #1a1a2e;
+            --light-gray: #f8f9fa;
+            --text-gray: #6c757d;
+            --gray-border: #e0e0e0;
+            --success: #10b981;
+            --success-light: #d1fae5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Botones flotantes */
+        .floating-buttons {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .btn-floating {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--orange);
+            border-radius: 50px;
+            padding: 10px 20px;
+            color: var(--orange);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn-floating:hover {
+            background: var(--orange);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-history {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .btn-history:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        /* Card principal */
+        .card-modern {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease;
+            max-width: 580px;
+            margin: 0 auto;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Header */
+        .card-header-modern {
+            background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header-modern::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .logo-icon {
+            font-size: 55px;
+            color: white;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-main {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-sub {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Body */
+        .card-body-modern {
+            padding: 35px;
+        }
+
+        /* Formulario */
+        .form-group-modern {
+            margin-bottom: 25px;
+        }
+
+        .form-label-modern {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: block;
+        }
+
+        .form-control-modern {
+            width: 100%;
+            border: 2px solid var(--gray-border);
+            border-radius: 14px;
+            padding: 14px 16px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .form-control-modern:focus {
+            border-color: var(--orange);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+        }
+
+        /* Botones */
+        .btn-primary-modern {
+            background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+            border: none;
+            border-radius: 14px;
+            padding: 14px 30px;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn-primary-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+        }
+
+        .btn-secondary-modern {
+            background: white;
+            border: 2px solid var(--gray-border);
+            border-radius: 14px;
+            padding: 12px 24px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-secondary-modern:hover {
+            border-color: var(--orange);
+            color: var(--orange);
+        }
+
+        /* Step Indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 35px;
+            position: relative;
+        }
+
+        .step-indicator::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gray-border);
+            z-index: 0;
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-circle {
+            width: 42px;
+            height: 42px;
+            background: white;
+            border: 2px solid var(--gray-border);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: var(--text-gray);
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+
+        .step.active .step-circle {
+            background: var(--orange);
+            border-color: var(--orange);
+            color: white;
+            box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.2);
+        }
+
+        .step.completed .step-circle {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 12px;
+            margin-top: 10px;
+            color: var(--text-gray);
+            font-weight: 500;
+        }
+
+        .step.active .step-label {
+            color: var(--orange);
+            font-weight: 600;
+        }
+
+        /* Tarjeta de info de cliente */
+        .info-card {
+            background: var(--orange-light);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 25px;
+            border: 1px solid var(--orange);
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-weight: 700;
+            color: var(--orange);
+            font-size: 18px;
+            margin-top: 4px;
+        }
+
+        /* Método de pago */
+        .method-card {
+            border: 2px solid var(--gray-border);
+            border-radius: 18px;
+            padding: 22px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .method-card:hover {
+            border-color: var(--orange);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        .method-card.selected {
+            border-color: var(--orange);
+            background: var(--orange-light);
+        }
+
+        .method-icon {
+            font-size: 45px;
+            margin-bottom: 12px;
+        }
+
+        .method-card h6 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        /* Modal */
+        .modal-content-modern {
+            border-radius: 24px;
+            border: none;
+        }
+
+        .modal-header-modern {
+            background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+            color: white;
+            border-radius: 24px 24px 0 0;
+            padding: 22px;
+        }
+
+        .btn-close-white {
+            filter: brightness(0) invert(1);
+        }
+
+        /* Pantalla de confirmación */
+        .confirmation-card {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .confirmation-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .confirmation-icon i {
+            font-size: 45px;
+            color: var(--success);
+        }
+
+        .confirmation-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 15px;
+        }
+
+        .confirmation-message {
+            color: var(--text-gray);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .timer-card {
+            background: var(--orange-light);
+            border-radius: 16px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .timer-icon {
+            font-size: 30px;
+            color: var(--orange);
+            margin-bottom: 10px;
+        }
+
+        .timer-text {
+            font-size: 14px;
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .report-number {
+            background: var(--light-gray);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 20px 0;
+        }
+
+        .report-number small {
+            color: var(--text-gray);
+            font-size: 11px;
+        }
+
+        .report-number strong {
+            font-size: 18px;
+            color: var(--orange);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .card-body-modern {
+                padding: 25px;
+            }
+
+            .title-main {
+                font-size: 24px;
+            }
+
+            .logo-icon {
+                font-size: 45px;
+            }
+
+            .floating-buttons {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            .btn-floating {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+
+            .step-circle {
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+
+            .step-label {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botones flotantes -->
+    <div class="floating-buttons">
+        <a href="/" class="btn-floating">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+        <a href="#" class="btn-floating btn-history" id="btnHistorial" onclick="return false;">
+            <i class="fas fa-history"></i> Historial
+        </a>
+    </div>
+
+    <div class="container" style="padding-top: 80px;">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-7">
+                <div class="card-modern">
+                    <div class="card-header-modern">
+                        <div class="logo-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <h1 class="title-main">Reportar Pago</h1>
+                        <p class="title-sub">Registra tu pago de forma rápida y segura</p>
+                    </div>
+                    
+                    <div class="card-body-modern">
+                        <!-- Step 1: Identificación -->
+                        <div id="step1Content">
+                            <div class="step-indicator" id="stepIndicator1">
+                                <div class="step active" id="step1_1">
+                                    <div class="step-circle">1</div>
+                                    <div class="step-label">Identificación</div>
+                                </div>
+                                <div class="step" id="step1_2">
+                                    <div class="step-circle">2</div>
+                                    <div class="step-label">Datos del Pago</div>
+                                </div>
+                                <div class="step" id="step1_3">
+                                    <div class="step-circle">3</div>
+                                    <div class="step-label">Confirmación</div>
+                                </div>
+                            </div>
+                            
+                            <form id="identificacionForm">
+                                {% csrf_token %}
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-id-card"></i> Cédula de Identidad
+                                    </label>
+                                    <input type="text" name="cedula" class="form-control-modern" id="inputCedula"
+                                           placeholder="Ej: V-12345678" required>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-envelope"></i> Correo Electrónico
+                                    </label>
+                                    <input type="email" name="correo" class="form-control-modern" id="inputCorreo"
+                                           placeholder="usuario@ejemplo.com" required>
+                                </div>
+                                
+                                <button type="submit" class="btn-primary-modern" id="btnBuscarCliente">
+                                    <i class="fas fa-search"></i> Buscar Cliente
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Step 2: Datos del Pago -->
+                        <div id="step2Content" style="display: none;">
+                            <div class="step-indicator" id="stepIndicator2">
+                                <div class="step completed" id="step2_1">
+                                    <div class="step-circle"><i class="fas fa-check"></i></div>
+                                    <div class="step-label">Identificación</div>
+                                </div>
+                                <div class="step active" id="step2_2">
+                                    <div class="step-circle">2</div>
+                                    <div class="step-label">Datos del Pago</div>
+                                </div>
+                                <div class="step" id="step2_3">
+                                    <div class="step-circle">3</div>
+                                    <div class="step-label">Confirmación</div>
+                                </div>
+                            </div>
+                            
+                            <div class="info-card" id="clienteInfo">
+                                <div class="info-label">Cliente identificado</div>
+                                <div class="info-value" id="clienteNombre"></div>
+                                <div class="info-label mt-2">Documento</div>
+                                <div class="info-value" id="clienteCedula"></div>
+                            </div>
+                            
+                            <form id="pagoForm">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-money-bill-wave"></i> Monto (Bs)
+                                    </label>
+                                    <input type="number" name="monto" class="form-control-modern" id="inputMonto"
+                                           step="0.01" placeholder="0.00" required>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-calendar"></i> Fecha del Pago
+                                    </label>
+                                    <input type="date" name="fecha_pago" class="form-control-modern" id="inputFechaPago" required>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-credit-card"></i> Método de Pago
+                                    </label>
+                                    <div class="row g-3">
+                                        <div class="col-6">
+                                            <div class="method-card" onclick="selectMethod('movil')" id="methodMovil">
+                                                <i class="fas fa-mobile-alt method-icon" style="color: var(--orange);"></i>
+                                                <h6>Pago Móvil</h6>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="method-card" onclick="selectMethod('transferencia')" id="methodTransferencia">
+                                                <i class="fas fa-university method-icon" style="color: var(--orange);"></i>
+                                                <h6>Transferencia</h6>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="medio_pago" id="medioPago" required>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-comment"></i> Observaciones (opcional)
+                                    </label>
+                                    <textarea name="observacion_cliente" class="form-control-modern" id="inputObservacion"
+                                              rows="3" placeholder="Notas adicionales..."></textarea>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-image"></i> Comprobante de Pago
+                                    </label>
+                                    <input type="file" name="comprobante" class="form-control-modern" id="inputComprobante" accept="image/*" required>
+                                    <small class="text-muted">Formato: JPG, PNG (máx 5MB)</small>
+                                </div>
+                                
+                                <button type="button" class="btn-primary-modern" onclick="showPaymentDetails()">
+                                    <i class="fas fa-arrow-right"></i> Continuar
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Step 3: Confirmación -->
+                        <div id="step3Content" style="display: none;">
+                            <div class="step-indicator" id="stepIndicator3">
+                                <div class="step completed" id="step3_1">
+                                    <div class="step-circle"><i class="fas fa-check"></i></div>
+                                    <div class="step-label">Identificación</div>
+                                </div>
+                                <div class="step completed" id="step3_2">
+                                    <div class="step-circle"><i class="fas fa-check"></i></div>
+                                    <div class="step-label">Datos del Pago</div>
+                                </div>
+                                <div class="step active" id="step3_3">
+                                    <div class="step-circle">3</div>
+                                    <div class="step-label">Confirmación</div>
+                                </div>
+                            </div>
+                            
+                            <div class="confirmation-card">
+                                <div class="confirmation-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h3 class="confirmation-title">¡Pago Reportado!</h3>
+                                <p class="confirmation-message">
+                                    Tu comprobante ha sido recibido exitosamente. Nuestro equipo lo validará en breve.
+                                </p>
+                                
+                                <div class="timer-card">
+                                    <div class="timer-icon">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <p class="timer-text">
+                                        <strong>Tiempo estimado de verificación:</strong><br>
+                                        10 a 30 minutos
+                                    </p>
+                                </div>
+                                
+                                <div class="report-number" id="reporteNumero">
+                                    <small>Número de reporte</small><br>
+                                    <strong id="reporteId">-</strong>
+                                </div>
+                                
+                                <button class="btn-primary-modern" onclick="resetForm()">
+                                    <i class="fas fa-plus"></i> Reportar otro pago
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Pago Móvil - MODIFICADO: Banco Emisor + Banco Receptor filtrado -->
+    <div class="modal fade" id="modalPagoMovil" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-modern">
+                <div class="modal-header modal-header-modern">
+                    <h5 class="modal-title"><i class="fas fa-mobile-alt"></i> Detalles Pago Móvil</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 30px;">
+                    <form id="pagoMovilForm">
+                        <div class="form-group-modern">
+                            <label>Banco Emisor (desde donde pagas)</label>
+                            <select name="banco_emisor" class="form-control-modern" required>
+                                <option value="">Seleccione...</option>
+                                {% for banco in bancos %}
+                                <option value="{{ banco.id }}">{{ banco.codigo }} - {{ banco.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Banco Receptor (nuestro banco)</label>
+                            <select name="banco_receptor" class="form-control-modern" required>
+                                <option value="">Seleccione...</option>
+                                <!-- Solo mostrar Banplus y Banco Nacional de Crédito -->
+                                {% for banco in bancos_receptores %}
+                                <option value="{{ banco.id }}">{{ banco.codigo }} - {{ banco.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Número de Teléfono</label>
+                            <input type="text" name="numero_telefono" class="form-control-modern" placeholder="+58 412-1234567" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Cédula del Titular</label>
+                            <input type="text" name="cedula_titular" class="form-control-modern" placeholder="V-12345678" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Número de Referencia</label>
+                            <input type="text" name="referencia" class="form-control-modern" placeholder="Ej: 1234567890" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary-modern" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-primary-modern" onclick="submitPagoMovil()">Enviar Pago</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Transferencia - MODIFICADO: Mostrar código del banco -->
+    <div class="modal fade" id="modalTransferencia" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-modern">
+                <div class="modal-header modal-header-modern">
+                    <h5 class="modal-title"><i class="fas fa-university"></i> Detalles Transferencia</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 30px;">
+                    <form id="transferenciaForm">
+                        <div class="form-group-modern">
+                            <label>Banco de Origen</label>
+                            <select name="banco_origen" class="form-control-modern" required>
+                                <option value="">Seleccione...</option>
+                                {% for banco in bancos %}
+                                <option value="{{ banco.id }}">{{ banco.codigo }} - {{ banco.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Banco de Destino</label>
+                            <select name="banco_destino" class="form-control-modern" required>
+                                <option value="">Seleccione...</option>
+                                {% for banco in bancos %}
+                                <option value="{{ banco.id }}">{{ banco.codigo }} - {{ banco.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Cédula del Titular</label>
+                            <input type="text" name="cedula_titular" class="form-control-modern" placeholder="V-12345678" required>
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Número de Cuenta Origen (opcional)</label>
+                            <input type="text" name="numero_cuenta_origen" class="form-control-modern" placeholder="Cuenta bancaria">
+                        </div>
+                        <div class="form-group-modern">
+                            <label>Número de Referencia</label>
+                            <input type="text" name="referencia" class="form-control-modern" placeholder="Ej: 1234567890" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary-modern" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-primary-modern" onclick="submitTransferencia()">Enviar Pago</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Registro Cliente Nuevo -->
+    <div class="modal fade" id="modalRegistroCliente" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content modal-content-modern">
+                <div class="modal-header modal-header-modern">
+                    <h5 class="modal-title"><i class="fas fa-user-plus"></i> Registro de Nuevo Cliente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 30px;">
+                    <form id="registroClienteForm">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Cédula</label>
+                                    <input type="text" name="cedula" class="form-control-modern" id="regCedula" readonly required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Correo</label>
+                                    <input type="email" name="correo" class="form-control-modern" id="regCorreo" readonly required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Nombre</label>
+                                    <input type="text" name="nombre" class="form-control-modern" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Apellido</label>
+                                    <input type="text" name="apellido" class="form-control-modern" required>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group-modern">
+                                    <label>Teléfono</label>
+                                    <input type="text" name="telefono" class="form-control-modern" required>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group-modern">
+                                    <label>Dirección</label>
+                                    <textarea name="direccion" class="form-control-modern" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary-modern" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-primary-modern" onclick="registrarCliente()">Registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentCliente = null;
+        let currentTipoPago = null;
+        let ultimoReporteId = null;
+        
+        // Identificación de cliente
+        document.getElementById('identificacionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const cedula = document.getElementById('inputCedula').value;
+            const correo = document.getElementById('inputCorreo').value;
+            
+            const btn = document.getElementById('btnBuscarCliente');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/buscar-cliente/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                    },
+                    body: JSON.stringify({ cedula, correo })
+                });
+                
+                const data = await response.json();
+                
+                if (data.exists) {
+                    currentCliente = data.cliente;
+                    document.getElementById('clienteNombre').innerText = data.cliente.nombre_completo;
+                    document.getElementById('clienteCedula').innerText = data.cliente.cedula;
+                    
+                    document.getElementById('step1Content').style.display = 'none';
+                    document.getElementById('step2Content').style.display = 'block';
+                } else {
+                    document.getElementById('regCedula').value = cedula;
+                    document.getElementById('regCorreo').value = correo;
+                    const modal = new bootstrap.Modal(document.getElementById('modalRegistroCliente'));
+                    modal.show();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', 'Error al buscar el cliente. Intente nuevamente.', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+        
+        function selectMethod(method) {
+            currentTipoPago = method;
+            document.getElementById('medioPago').value = method === 'movil' ? 'PAGO_MOVIL' : 'TRANSFERENCIA';
+            
+            document.getElementById('methodMovil').classList.remove('selected');
+            document.getElementById('methodTransferencia').classList.remove('selected');
+            
+            if (method === 'movil') {
+                document.getElementById('methodMovil').classList.add('selected');
+            } else {
+                document.getElementById('methodTransferencia').classList.add('selected');
+            }
+        }
+        
+        function showPaymentDetails() {
+            const medioPago = document.getElementById('medioPago').value;
+            const monto = document.getElementById('inputMonto').value;
+            const fechaPago = document.getElementById('inputFechaPago').value;
+            const comprobante = document.getElementById('inputComprobante').files[0];
+            
+            if (!medioPago) {
+                Swal.fire('Error', 'Por favor seleccione un método de pago', 'error');
+                return;
+            }
+            
+            if (!monto || monto <= 0) {
+                Swal.fire('Error', 'Por favor ingrese un monto válido', 'error');
+                return;
+            }
+            
+            if (!fechaPago) {
+                Swal.fire('Error', 'Por favor seleccione la fecha del pago', 'error');
+                return;
+            }
+            
+            if (!comprobante) {
+                Swal.fire('Error', 'Por favor seleccione el comprobante de pago', 'error');
+                return;
+            }
+            
+            if (medioPago === 'PAGO_MOVIL') {
+                new bootstrap.Modal(document.getElementById('modalPagoMovil')).show();
+            } else {
+                new bootstrap.Modal(document.getElementById('modalTransferencia')).show();
+            }
+        }
+        
+        function showConfirmation(reporteId) {
+            ultimoReporteId = reporteId;
+            document.getElementById('reporteId').innerText = '#' + reporteId;
+            document.getElementById('step2Content').style.display = 'none';
+            document.getElementById('step3Content').style.display = 'block';
+        }
+        
+        function resetForm() {
+            document.getElementById('inputCedula').value = '';
+            document.getElementById('inputCorreo').value = '';
+            document.getElementById('inputMonto').value = '';
+            document.getElementById('inputFechaPago').value = '';
+            document.getElementById('inputObservacion').value = '';
+            document.getElementById('inputComprobante').value = '';
+            document.getElementById('medioPago').value = '';
+            
+            document.getElementById('methodMovil').classList.remove('selected');
+            document.getElementById('methodTransferencia').classList.remove('selected');
+            
+            document.getElementById('step3Content').style.display = 'none';
+            document.getElementById('step1Content').style.display = 'block';
+            
+            currentCliente = null;
+            currentTipoPago = null;
+        }
+        
+        async function submitPagoMovil() {
+            const form = document.getElementById('pagoMovilForm');
+            const formData = new FormData();
+            
+            formData.append('medio_pago', 'PAGO_MOVIL');
+            formData.append('monto', document.getElementById('inputMonto').value);
+            formData.append('fecha_pago', document.getElementById('inputFechaPago').value);
+            formData.append('observacion_cliente', document.getElementById('inputObservacion').value);
+            formData.append('comprobante', document.getElementById('inputComprobante').files[0]);
+            
+            formData.append('tipo_cliente', currentCliente.tipo);
+            if (currentCliente.tipo === 'INTERNO') {
+                formData.append('contrato_id', currentCliente.id);
+            } else {
+                formData.append('cliente_externo_id', currentCliente.id);
+            }
+            
+            formData.append('banco_emisor', form.querySelector('[name="banco_emisor"]').value);
+            formData.append('banco_receptor', form.querySelector('[name="banco_receptor"]').value);
+            formData.append('numero_telefono', form.querySelector('[name="numero_telefono"]').value);
+            formData.append('cedula_titular', form.querySelector('[name="cedula_titular"]').value);
+            formData.append('referencia', form.querySelector('[name="referencia"]').value);
+            
+            const response = await fetch('/crear-reporte/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalPagoMovil')).hide();
+                showConfirmation(data.reporte_id);
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Pago reportado!',
+                    text: 'Tu comprobante ha sido recibido correctamente.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', data.error || 'Ocurrió un error', 'error');
+            }
+        }
+        
+        async function submitTransferencia() {
+            const form = document.getElementById('transferenciaForm');
+            const formData = new FormData();
+            
+            formData.append('medio_pago', 'TRANSFERENCIA');
+            formData.append('monto', document.getElementById('inputMonto').value);
+            formData.append('fecha_pago', document.getElementById('inputFechaPago').value);
+            formData.append('observacion_cliente', document.getElementById('inputObservacion').value);
+            formData.append('comprobante', document.getElementById('inputComprobante').files[0]);
+            
+            formData.append('tipo_cliente', currentCliente.tipo);
+            if (currentCliente.tipo === 'INTERNO') {
+                formData.append('contrato_id', currentCliente.id);
+            } else {
+                formData.append('cliente_externo_id', currentCliente.id);
+            }
+            
+            formData.append('banco_origen', form.querySelector('[name="banco_origen"]').value);
+            formData.append('banco_destino', form.querySelector('[name="banco_destino"]').value);
+            formData.append('cedula_titular', form.querySelector('[name="cedula_titular"]').value);
+            formData.append('numero_cuenta_origen', form.querySelector('[name="numero_cuenta_origen"]').value);
+            formData.append('referencia', form.querySelector('[name="referencia"]').value);
+            
+            const response = await fetch('/crear-reporte/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalTransferencia')).hide();
+                showConfirmation(data.reporte_id);
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Pago reportado!',
+                    text: 'Tu comprobante ha sido recibido correctamente.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Error', data.error || 'Ocurrió un error', 'error');
+            }
+        }
+        
+        async function registrarCliente() {
+            const form = document.getElementById('registroClienteForm');
+            const formData = new FormData(form);
+            
+            const response = await fetch('/registrar-cliente-externo/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentCliente = {
+                    tipo: 'EXTERNO',
+                    id: data.cliente_id,
+                    cedula: formData.get('cedula'),
+                    nombre_completo: formData.get('nombre') + ' ' + formData.get('apellido')
+                };
+                
+                bootstrap.Modal.getInstance(document.getElementById('modalRegistroCliente')).hide();
+                
+                document.getElementById('clienteNombre').innerText = currentCliente.nombre_completo;
+                document.getElementById('clienteCedula').innerText = currentCliente.cedula;
+                
+                document.getElementById('step1Content').style.display = 'none';
+                document.getElementById('step2Content').style.display = 'block';
+                
+                Swal.fire('Registro exitoso', 'Cliente registrado correctamente', 'success');
+            } else {
+                Swal.fire('Error', data.error || 'Error al registrar cliente', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

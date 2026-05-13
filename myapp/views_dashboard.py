@@ -440,7 +440,7 @@ def dashboard_datos_api(request):
             'total_contratos': ContratoCliente.objects.count(),
             'contratos_completados': ContratoCliente.objects.filter(estado=ContratoCliente.EstadoContrato.COMPLETADO).count(),
             'instalaciones_completadas': Instalacion.objects.filter(completada=True).count(),
-            'soportes_pendientes': Soporte.objects.filter(estado=Soporte.EstadoSoporte.PENDIENTE).count(),
+            
             'total_nomina_usd': NominaVendedor.objects.filter(semana_inicio=inicio_semana).aggregate(total=Sum('total_usd'))['total'] or 0,
         }
         

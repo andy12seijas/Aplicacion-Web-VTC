@@ -16,12 +16,17 @@ from myapp.views_soporte_admin import *
 from myapp.views_instalacion_admin import *
 from myapp.views_reportes_admin import * 
 from myapp.views_inventario import *
+from myapp.views_reportarpago import *
+from myapp.views_soportecliente import *
+from myapp.views_validacion_soporte import *
+
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
 
 urlpatterns = [
     #URLS DE INICIO
-    path('', login_view, name='login'),
+    path('', landing_page, name='landing'),
+    path('inicio/', login_view, name='login'),
     path('logout/', logout_view, name='logout'),
     path('dashboard/', dashboard, name='dashboard'),
     
@@ -139,6 +144,28 @@ path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_a
     path('inventario/panel/', panel_inventario, name='panel_inventario'),
     path('inventario/movimientos-cuadrilla/<int:cuadrilla_id>/', inventario_movimientos_cuadrilla, name='inventario_movimientos_cuadrilla'),
     path('mi-inventario/', mi_inventario, name='mi_inventario'),
+
+
+
+    path('reportar/', reportar_pago, name='reportar_pago'),
+    path('buscar-cliente/',buscar_cliente, name='buscar_cliente'),
+    path('registrar-cliente-externo/', registrar_cliente_externo, name='registrar_cliente_externo'),
+    path('crear-reporte/', crear_reporte, name='crear_reporte'),
+    
+    path('validacion-pagos/', validacion_pagos, name='validacion_pagos'),
+    path('obtener-detalle-pago/<int:reporte_id>/', obtener_detalle_pago, name='obtener_detalle_pago'),
+    path('aprobar-pago/<int:reporte_id>/', aprobar_pago, name='aprobar_pago'),
+    path('rechazar-pago/<int:reporte_id>/', rechazar_pago, name='rechazar_pago'),
+
+    path('reportar-soporte/', reportar_soporte, name='reportar_soporte'),
+    path('buscar-cliente-soporte/', buscar_cliente_soporte, name='buscar_cliente_soporte'),
+    path('registrar-cliente-externo-soporte/', registrar_cliente_externo_soporte, name='registrar_cliente_externo_soporte'),
+    path('crear-soporte-cliente/', crear_soporte_cliente, name='crear_soporte_cliente'),
+
+
+    path('gestion-soportes/', gestion_soportes, name='gestion_soportes_cliente'),
+    path('marcar-soporte-leido/<int:soporte_id>/', marcar_soporte_leido, name='marcar_soporte_leido'),
+    path('ver-detalle-soporte/<int:soporte_id>/',ver_detalle_soporte, name='ver_detalle_soporte'),
 
 ]
 

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>SimpleFibra x VTConexiones - Reportar Reclamo</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --orange: #ff6b00;
+            --orange-dark: #e05a00;
+            --orange-light: #fff2e6;
+            --dark: #0f0f1a;
+            --dark-gray: #1a1a2e;
+            --light-gray: #f8f9fa;
+            --text-gray: #6c757d;
+            --gray-border: #e0e0e0;
+            --success: #10b981;
+            --success-light: #d1fae5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Botones flotantes */
+        .floating-buttons {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .btn-floating {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--orange);
+            border-radius: 50px;
+            padding: 10px 20px;
+            color: var(--orange);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .btn-floating:hover {
+            background: var(--orange);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* Card principal */
+        .card-modern {
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Header */
+        .card-header-modern {
+            background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header-modern::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
+        .logo-icon {
+            font-size: 55px;
+            color: white;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-main {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-sub {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Body */
+        .card-body-modern {
+            padding: 35px;
+        }
+
+        /* Formulario */
+        .form-group-modern {
+            margin-bottom: 25px;
+        }
+
+        .form-label-modern {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-size: 14px;
+            display: block;
+        }
+
+        .form-control-modern {
+            width: 100%;
+            border: 2px solid var(--gray-border);
+            border-radius: 14px;
+            padding: 14px 16px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .form-control-modern:focus {
+            border-color: var(--orange);
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(255, 107, 0, 0.1);
+        }
+
+        .form-control-modern.is-invalid {
+            border-color: #dc2626;
+        }
+
+        /* Botones */
+        .btn-primary-modern {
+            background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+            border: none;
+            border-radius: 14px;
+            padding: 14px 30px;
+            font-weight: 600;
+            font-size: 16px;
+            color: white;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn-primary-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(255, 107, 0, 0.3);
+        }
+
+        .btn-secondary-modern {
+            background: white;
+            border: 2px solid var(--gray-border);
+            border-radius: 14px;
+            padding: 12px 24px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .btn-secondary-modern:hover {
+            border-color: var(--orange);
+            color: var(--orange);
+        }
+
+        /* Tarjeta de info de cliente */
+        .info-card {
+            background: var(--orange-light);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 25px;
+            border: 1px solid var(--orange);
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-weight: 700;
+            color: var(--orange);
+            font-size: 18px;
+            margin-top: 4px;
+        }
+
+        /* Pantalla de confirmación */
+        .confirmation-card {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .confirmation-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .confirmation-icon i {
+            font-size: 45px;
+            color: var(--success);
+        }
+
+        .confirmation-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 15px;
+        }
+
+        .confirmation-message {
+            color: var(--text-gray);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .ticket-number {
+            background: var(--light-gray);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .ticket-number small {
+            color: var(--text-gray);
+            font-size: 11px;
+        }
+
+        .ticket-number strong {
+            font-size: 22px;
+            color: var(--orange);
+        }
+
+        /* Modal */
+        .modal-content-modern {
+            border-radius: 24px;
+            border: none;
+        }
+
+        .modal-header-modern {
+            background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
+            color: white;
+            border-radius: 24px 24px 0 0;
+            padding: 22px;
+        }
+
+        .btn-close-white {
+            filter: brightness(0) invert(1);
+        }
+
+        .required {
+            color: #ef4444;
+        }
+
+        .help-text {
+            display: block;
+            color: #999;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .card-body-modern {
+                padding: 25px;
+            }
+
+            .title-main {
+                font-size: 24px;
+            }
+
+            .logo-icon {
+                font-size: 45px;
+            }
+
+            .floating-buttons {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            .btn-floating {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botones flotantes -->
+    <div class="floating-buttons">
+        <a href="/" class="btn-floating">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="container" style="padding-top: 80px;">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-7">
+                <div class="card-modern">
+                    <div class="card-header-modern">
+                        <div class="logo-icon">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <h1 class="title-main">Reportar Reclamo</h1>
+                        <p class="title-sub">Cuéntanos tu problema y te ayudaremos a resolverlo</p>
+                    </div>
+                    
+                    <div class="card-body-modern">
+                        <!-- Step 1: Identificación -->
+                        <div id="step1Content">
+                            <form id="identificacionForm">
+                                {% csrf_token %}
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-id-card"></i> Cédula de Identidad <span class="required">*</span>
+                                    </label>
+                                    <input type="text" name="cedula" class="form-control-modern" id="inputCedula"
+                                           placeholder="Ej: V-12345678" required>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-envelope"></i> Correo Electrónico <span class="required">*</span>
+                                    </label>
+                                    <input type="email" name="correo" class="form-control-modern" id="inputCorreo"
+                                           placeholder="usuario@ejemplo.com" required>
+                                </div>
+                                
+                                <button type="submit" class="btn-primary-modern" id="btnBuscarCliente">
+                                    <i class="fas fa-search"></i> Buscar Cliente
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Step 2: Datos del Reclamo -->
+                        <div id="step2Content" style="display: none;">
+                            <div class="info-card" id="clienteInfo">
+                                <div class="info-label">Cliente identificado</div>
+                                <div class="info-value" id="clienteNombre"></div>
+                                <div class="info-label mt-2">Documento</div>
+                                <div class="info-value" id="clienteCedula"></div>
+                            </div>
+                            
+                            <form id="soporteForm" enctype="multipart/form-data">
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-exclamation-triangle"></i> Reclamo <span class="required">*</span>
+                                    </label>
+                                    <textarea name="reclamo" class="form-control-modern" id="inputReclamo"
+                                              rows="5" placeholder="Describe detalladamente tu reclamo o problema..."></textarea>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-comment"></i> Observaciones (opcional)
+                                    </label>
+                                    <textarea name="observacion" class="form-control-modern" id="inputObservacion"
+                                              rows="3" placeholder="Información adicional..."></textarea>
+                                </div>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-image"></i> Foto (opcional)
+                                    </label>
+                                    <input type="file" name="foto" class="form-control-modern" id="inputFoto" accept="image/*">
+                                    <small class="help-text">Sube una foto como evidencia (JPG, PNG - máx 5MB)</small>
+                                </div>
+                                
+                                <button type="submit" class="btn-primary-modern" id="btnEnviarReclamo">
+                                    <i class="fas fa-paper-plane"></i> Enviar Reclamo
+                                </button>
+                            </form>
+                        </div>
+                        
+                        <!-- Step 3: Confirmación -->
+                        <div id="step3Content" style="display: none;">
+                            <div class="confirmation-card">
+                                <div class="confirmation-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h3 class="confirmation-title">¡Reclamo Reportado!</h3>
+                                <p class="confirmation-message">
+                                    Tu reclamo ha sido recibido exitosamente. Nuestro equipo lo revisará y te contactará a la brevedad.
+                                </p>
+                                
+                                <div class="ticket-number">
+                                    <small>Número de ticket</small><br>
+                                    <strong id="ticketId">-</strong>
+                                </div>
+                                
+                                <button class="btn-primary-modern" onclick="resetForm()">
+                                    <i class="fas fa-plus"></i> Reportar otro reclamo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Registro Cliente Nuevo -->
+    <div class="modal fade" id="modalRegistroCliente" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content modal-content-modern">
+                <div class="modal-header modal-header-modern">
+                    <h5 class="modal-title"><i class="fas fa-user-plus"></i> Registro de Nuevo Cliente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 30px;">
+                    <form id="registroClienteForm">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Cédula <span class="required">*</span></label>
+                                    <input type="text" name="cedula" class="form-control-modern" id="regCedula" readonly required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Correo <span class="required">*</span></label>
+                                    <input type="email" name="correo" class="form-control-modern" id="regCorreo" readonly required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Nombre <span class="required">*</span></label>
+                                    <input type="text" name="nombre" class="form-control-modern" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group-modern">
+                                    <label>Apellido <span class="required">*</span></label>
+                                    <input type="text" name="apellido" class="form-control-modern" required>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group-modern">
+                                    <label>Teléfono <span class="required">*</span></label>
+                                    <input type="text" name="telefono" class="form-control-modern" required>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="form-group-modern">
+                                    <label>Dirección</label>
+                                    <textarea name="direccion" class="form-control-modern" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary-modern" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn-primary-modern" onclick="registrarCliente()">Registrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentCliente = null;
+        
+        // Identificación de cliente
+        document.getElementById('identificacionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const cedula = document.getElementById('inputCedula').value;
+            const correo = document.getElementById('inputCorreo').value;
+            
+            const btn = document.getElementById('btnBuscarCliente');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/buscar-cliente-soporte/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                    },
+                    body: JSON.stringify({ cedula, correo })
+                });
+                
+                const data = await response.json();
+                
+                if (data.exists) {
+                    currentCliente = data.cliente;
+                    document.getElementById('clienteNombre').innerText = data.cliente.nombre_completo;
+                    document.getElementById('clienteCedula').innerText = data.cliente.cedula;
+                    
+                    document.getElementById('step1Content').style.display = 'none';
+                    document.getElementById('step2Content').style.display = 'block';
+                } else {
+                    document.getElementById('regCedula').value = cedula;
+                    document.getElementById('regCorreo').value = correo;
+                    const modal = new bootstrap.Modal(document.getElementById('modalRegistroCliente'));
+                    modal.show();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', 'Error al buscar el cliente. Intente nuevamente.', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+        
+        // Enviar reclamo
+        document.getElementById('soporteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const reclamo = document.getElementById('inputReclamo').value.trim();
+            
+            if (!reclamo) {
+                Swal.fire('Error', 'Por favor describe tu reclamo', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('btnEnviarReclamo');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            btn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('tipo_cliente', currentCliente.tipo);
+            
+            if (currentCliente.tipo === 'INTERNO') {
+                formData.append('contrato_id', currentCliente.id);
+            } else {
+                formData.append('cliente_externo_id', currentCliente.id);
+            }
+            
+            formData.append('reclamo', reclamo);
+            formData.append('observacion', document.getElementById('inputObservacion').value);
+            formData.append('foto', document.getElementById('inputFoto').files[0] || '');
+            
+            try {
+                const response = await fetch('/crear-soporte-cliente/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                    },
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('ticketId').innerText = '#' + data.soporte_id;
+                    document.getElementById('step2Content').style.display = 'none';
+                    document.getElementById('step3Content').style.display = 'block';
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Reclamo enviado!',
+                        text: 'Tu reclamo ha sido registrado correctamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire('Error', data.error || 'Error al enviar el reclamo', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                Swal.fire('Error', 'Error al enviar el reclamo', 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+        
+        async function registrarCliente() {
+            const form = document.getElementById('registroClienteForm');
+            const formData = new FormData(form);
+            
+            const response = await fetch('/registrar-cliente-externo-soporte/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
+                },
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                currentCliente = {
+                    tipo: 'EXTERNO',
+                    id: data.cliente_id,
+                    cedula: formData.get('cedula'),
+                    nombre_completo: formData.get('nombre') + ' ' + formData.get('apellido')
+                };
+                
+                bootstrap.Modal.getInstance(document.getElementById('modalRegistroCliente')).hide();
+                
+                document.getElementById('clienteNombre').innerText = currentCliente.nombre_completo;
+                document.getElementById('clienteCedula').innerText = currentCliente.cedula;
+                
+                document.getElementById('step1Content').style.display = 'none';
+                document.getElementById('step2Content').style.display = 'block';
+                
+                Swal.fire('Registro exitoso', 'Cliente registrado correctamente', 'success');
+            } else {
+                Swal.fire('Error', data.error || 'Error al registrar cliente', 'error');
+            }
+        }
+        
+        function resetForm() {
+            document.getElementById('inputCedula').value = '';
+            document.getElementById('inputCorreo').value = '';
+            document.getElementById('inputReclamo').value = '';
+            document.getElementById('inputObservacion').value = '';
+            document.getElementById('inputFoto').value = '';
+            
+            document.getElementById('step3Content').style.display = 'none';
+            document.getElementById('step1Content').style.display = 'block';
+            
+            currentCliente = null;
+        }
+    </script>
+</body>
+</html>

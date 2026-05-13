@@ -1109,3 +1109,153 @@ class InstalacionEditForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['modelo_modem'].queryset = ModeloModem.objects.filter(activo=True)
         self.fields['modelo_modem'].empty_label = "Seleccione un modelo"
+
+
+
+from django import forms
+from .models import ReportePago, DetallePagoMovil, DetalleTransferencia, ClienteExterno, Banco
+
+class IdentificacionForm(forms.Form):
+    cedula = forms.CharField(
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: V-12345678',
+            'id': 'cedula'
+        }),
+        label="Cédula de Identidad"
+    )
+    correo = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'usuario@ejemplo.com',
+            'id': 'correo'
+        }),
+        label="Correo Electrónico"
+    )
+
+
+class ClienteExternoForm(forms.ModelForm):
+    class Meta:
+        model = ClienteExterno
+        fields = ['cedula', 'nombre', 'apellido', 'telefono', 'correo', 'direccion']
+        widgets = {
+            'cedula': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Juan'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pérez'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+58 412-1234567'}),
+            'correo': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'usuario@ejemplo.com'}),
+            'direccion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Dirección completa'}),
+        }
+
+
+class PagoForm(forms.ModelForm):
+    class Meta:
+        model = ReportePago
+        fields = ['monto', 'fecha_pago', 'comprobante', 'observacion_cliente']
+        widgets = {
+            'monto': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': '0.00', 'step': '0.01'}),
+            'fecha_pago': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'comprobante': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'observacion_cliente': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Notas adicionales...'}),
+        }
+
+
+class PagoMovilForm(forms.ModelForm):
+    class Meta:
+        model = DetallePagoMovil
+        fields = ['banco_emisor', 'banco_receptor', 'numero_telefono', 'cedula_titular', 'referencia']
+        widgets = {
+            'banco_emisor': forms.Select(attrs={'class': 'form-control'}),
+            'banco_receptor': forms.Select(attrs={'class': 'form-control'}),
+            'numero_telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+58 412-1234567'}),
+            'cedula_titular': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'}),
+            'referencia': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de referencia'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['banco_emisor'].queryset = Banco.objects.filter(activo=True)
+        self.fields['banco_receptor'].queryset = Banco.objects.filter(activo=True)
+        self.fields['banco_emisor'].empty_label = "Seleccione banco emisor"
+        self.fields['banco_receptor'].empty_label = "Seleccione banco receptor"
+
+
+class TransferenciaForm(forms.ModelForm):
+    class Meta:
+        model = DetalleTransferencia
+        fields = ['banco_origen', 'banco_destino', 'cedula_titular', 'numero_cuenta_origen', 'referencia']
+        widgets = {
+            'banco_origen': forms.Select(attrs={'class': 'form-control'}),
+            'banco_destino': forms.Select(attrs={'class': 'form-control'}),
+            'cedula_titular': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'}),
+            'numero_cuenta_origen': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Cuenta de origen (opcional)'}),
+            'referencia': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de referencia'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['banco_origen'].queryset = Banco.objects.filter(activo=True)
+        self.fields['banco_destino'].queryset = Banco.objects.filter(activo=True)
+        self.fields['banco_origen'].empty_label = "Seleccione banco de origen"
+        self.fields['banco_destino'].empty_label = "Seleccione banco de destino"
+
+
+
+from django import forms
+from .models import SoporteCliente, ClienteExterno
+
+class IdentificacionSoporteForm(forms.Form):
+    cedula = forms.CharField(
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej: V-12345678',
+            'id': 'cedula'
+        }),
+        label="Cédula de Identidad"
+    )
+    correo = forms.EmailField(
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'usuario@ejemplo.com',
+            'id': 'correo'
+        }),
+        label="Correo Electrónico"
+    )
+
+
+class ClienteExternoForm(forms.ModelForm):
+    class Meta:
+        model = ClienteExterno
+        fields = ['cedula', 'nombre', 'apellido', 'telefono', 'correo', 'direccion']
+        widgets = {
+            'cedula': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Juan'}),
+            'apellido': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Pérez'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+58 412-1234567'}),
+            'correo': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'usuario@ejemplo.com'}),
+            'direccion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Dirección completa'}),
+        }
+
+
+class SoporteClienteForm(forms.ModelForm):
+    class Meta:
+        model = SoporteCliente
+        fields = ['reclamo', 'observacion', 'foto']
+        widgets = {
+            'reclamo': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'placeholder': 'Describe detalladamente tu reclamo o problema...'
+            }),
+            'observacion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Información adicional (opcional)...'
+            }),
+            'foto': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
+            }),
+        }                

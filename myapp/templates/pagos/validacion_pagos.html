@@ -1,0 +1,1486 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Call Center - Validación de Pagos{% endblock %}
+
+{% block page_title %}Validación de Pagos{% endblock %}
+{% block page_subtitle %}Revisa y valida los pagos reportados por los clientes{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 12px;
+        text-decoration: none;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    /* ===== ESTILOS BASE ===== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--orange);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--orange);
+        line-height: 1.2;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 4px;
+    }
+    
+    /* ===== PESTAÑAS ===== */
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        color: var(--orange);
+        border-bottom-color: var(--orange);
+        background: white;
+    }
+
+    .tab-icon {
+        font-size: 16px;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        margin-left: 5px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .btn-search, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-search {
+        background: var(--orange);
+        color: white;
+    }
+
+    .btn-search:hover {
+        background: var(--orange-dark);
+        transform: translateY(-2px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    /* ===== TABLA ===== */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: #666;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: #333;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    /* ===== BADGES ===== */
+    .badge-estado {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .badge-pendiente {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge-verificado {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .badge-rechazado {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .badge-aplicado {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .medio-pago-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+        background: #f0f0f0;
+        color: #555;
+    }
+
+    .monto-cell {
+        font-weight: 600;
+        color: var(--orange);
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    /* ===== ACCIONES ===== */
+    .actions-cell {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: #666;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .action-btn.approve {
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .action-btn.approve:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .action-btn.reject {
+        color: #ef4444;
+        border-color: #ef4444;
+    }
+
+    .action-btn.reject:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* ===== PAGINACIÓN ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: #666;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    /* ===== MODALES ===== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+    }
+    
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .modal-container {
+        position: relative;
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        z-index: 10000;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modalFadeIn 0.3s ease;
+    }
+    
+    .modal-container.modal-lg {
+        max-width: 800px;
+    }
+    
+    .modal-container.modal-md {
+        max-width: 500px;
+    }
+    
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 600;
+    }
+    
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--gray-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: white;
+        border-radius: 0 0 16px 16px;
+    }
+    
+    .modal-detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .modal-detalle-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .modal-detalle-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .modal-detalle-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .modal-detalle-value {
+        font-size: 14px;
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+    .comprobante-preview {
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    .comprobante-img {
+        max-width: 100%;
+        max-height: 200px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid var(--gray-border);
+        cursor: pointer;
+    }
+
+    .historial-validaciones {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--gray-border);
+    }
+
+    .historial-item {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        background: var(--gray-bg);
+        border-radius: 12px;
+        margin-bottom: 8px;
+    }
+
+    .historial-icon {
+        width: 32px;
+        height: 32px;
+        background: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .historial-content {
+        flex: 1;
+    }
+
+    .historial-accion {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .historial-fecha {
+        font-size: 11px;
+        color: var(--gray-text);
+        margin-top: 2px;
+    }
+
+    .historial-nota {
+        font-size: 12px;
+        color: var(--dark-text);
+        margin-top: 4px;
+        padding: 6px 10px;
+        background: white;
+        border-radius: 8px;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .btn-cancel, .btn-rechazar {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-cancel {
+        background: white;
+        border: 2px solid var(--gray-border);
+        color: #666;
+    }
+
+    .btn-cancel:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    .btn-rechazar {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-rechazar:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+    }
+
+    .modal-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .modal-section:last-child {
+        border-bottom: none;
+    }
+
+    .modal-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-border);
+        border-top-color: var(--orange);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        font-size: 14px;
+        transition: all 0.2s;
+        resize: vertical;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    .required {
+        color: #ef4444;
+    }
+    
+    .help-text {
+        display: block;
+        color: #999;
+        font-size: 11px;
+        margin-top: 4px;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .modal-detalle-grid {
+            grid-template-columns: 1fr;
+        }
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .search-box, .btn-search, .btn-clear {
+            width: 100%;
+        }
+        .tab-btn {
+            flex-direction: column;
+            font-size: 12px;
+            padding: 12px;
+        }
+        .tab-count {
+            margin-left: 0;
+        }
+        .actions-cell {
+            flex-direction: column;
+        }
+        .modal-container {
+            width: 95%;
+            margin: 10px;
+        }
+    }
+</style>
+
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.pendientes }}</div>
+        <div class="stat-label">Pendientes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.verificados }}</div>
+        <div class="stat-label">Verificados</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.rechazados }}</div>
+        <div class="stat-label">Rechazados</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_mes }}</div>
+        <div class="stat-label">Este mes</div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre, cédula o referencia..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <button class="btn-search" onclick="aplicarFiltros()">
+            <i class="fas fa-search"></i> Buscar
+        </button>
+        
+        <button class="btn-clear" onclick="limpiarFiltros()">
+            <i class="fas fa-times"></i> Limpiar
+        </button>
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}" onclick="cambiarTab('pendientes')">
+            <span class="tab-icon">⏳</span>
+            Pendientes
+            <span class="tab-count">{{ stats.pendientes }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'completados' %}active{% endif %}" onclick="cambiarTab('completados')">
+            <span class="tab-icon">✅</span>
+            Completados
+            <span class="tab-count">{{ stats.verificados|add:stats.rechazados|add:stats.aplicados }}</span>
+        </button>
+    </div>
+
+    <!-- TAB: Pagos Pendientes -->
+    <div id="tab-pendientes" class="tab-content {% if tab_activa == 'pendientes' or not tab_activa %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                        <th>Referencia</th>
+                        <th>Fecha Pago</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reporte in reportes_pendientes %}
+                    <tr>
+                        <td>#{{ reporte.id }}</td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ reporte.nombre_cliente|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ reporte.nombre_cliente }}</div>
+                                    <div style="font-size: 10px; color: #999;">{{ reporte.get_tipo_cliente_display }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ reporte.cedula_cliente }}</td>
+                        <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</td>
+                        <td>
+                            <span class="medio-pago-badge">
+                                {% if reporte.medio_pago == 'PAGO_MOVIL' %}
+                                <i class="fas fa-mobile-alt"></i> Pago Móvil
+                                {% else %}
+                                <i class="fas fa-university"></i> Transferencia
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if reporte.detalle_pago_movil %}
+                                {{ reporte.detalle_pago_movil.referencia|truncatechars:12 }}
+                            {% elif reporte.detalle_transferencia %}
+                                {{ reporte.detalle_transferencia.referencia|truncatechars:12 }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</td>
+                        <td class="actions-cell">
+                            <button class="action-btn" onclick="verDetallePago({{ reporte.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn approve" onclick="aprobarPago({{ reporte.id }})" title="Aprobar pago">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="action-btn reject" onclick="abrirModalRechazo({{ reporte.id }})" title="Rechazar pago">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay pagos pendientes de validación
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Pendientes -->
+        {% if reportes_pendientes.has_other_pages %}
+        <div class="pagination">
+            {% if reportes_pendientes.has_previous %}
+            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_pendientes={{ reportes_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ reportes_pendientes.number }} de {{ reportes_pendientes.paginator.num_pages }}
+            </span>
+            
+            {% if reportes_pendientes.has_next %}
+            <a href="?page_pendientes={{ reportes_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_pendientes={{ reportes_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB: Pagos Completados -->
+    <div id="tab-completados" class="tab-content {% if tab_activa == 'completados' %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                        <th>Referencia</th>
+                        <th>Fecha Pago</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for reporte in reportes_completados %}
+                    <tr>
+                        <td>#{{ reporte.id }}</td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ reporte.nombre_cliente|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ reporte.nombre_cliente }}</div>
+                                    <div style="font-size: 10px; color: #999;">{{ reporte.get_tipo_cliente_display }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ reporte.cedula_cliente }}</td>
+                        <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</td>
+                        <td>
+                            <span class="medio-pago-badge">
+                                {% if reporte.medio_pago == 'PAGO_MOVIL' %}
+                                <i class="fas fa-mobile-alt"></i> Pago Móvil
+                                {% else %}
+                                <i class="fas fa-university"></i> Transferencia
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if reporte.detalle_pago_movil %}
+                                {{ reporte.detalle_pago_movil.referencia|truncatechars:12 }}
+                            {% elif reporte.detalle_transferencia %}
+                                {{ reporte.detalle_transferencia.referencia|truncatechars:12 }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</td>
+                        <td>
+                            {% if reporte.estado == 'VERIFICADO' %}
+                            <span class="badge-estado badge-verificado">Verificado</span>
+                            {% elif reporte.estado == 'RECHAZADO' %}
+                            <span class="badge-estado badge-rechazado">Rechazado</span>
+                            {% elif reporte.estado == 'APLICADO' %}
+                            <span class="badge-estado badge-aplicado">Aplicado</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions-cell">
+                            <button class="action-btn" onclick="verDetallePago({{ reporte.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay pagos procesados
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Completados -->
+        {% if reportes_completados.has_other_pages %}
+        <div class="pagination">
+            {% if reportes_completados.has_previous %}
+            <a href="?page_completados=1&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_completados={{ reportes_completados.previous_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ reportes_completados.number }} de {{ reportes_completados.paginator.num_pages }}
+            </span>
+            
+            {% if reportes_completados.has_next %}
+            <a href="?page_completados={{ reportes_completados.next_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_completados={{ reportes_completados.paginator.num_pages }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Detalle de Pago -->
+<div id="modalDetallePago" class="modal" style="display: none;">
+    <div class="modal-container modal-lg">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalTitulo">Detalle del Pago</h2>
+                    <p id="modalSubtitulo"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div id="loadingDetalle" style="text-align: center; padding: 40px;">
+                <div class="spinner"></div>
+                <p>Cargando detalles...</p>
+            </div>
+            
+            <div id="contenidoDetalle" style="display: none;">
+                <!-- Información del Cliente -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-user"></i> Información del Cliente
+                    </h3>
+                    <div class="modal-detalle-grid">
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Nombre completo</span>
+                            <span class="modal-detalle-value" id="detalleNombre"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Cédula</span>
+                            <span class="modal-detalle-value" id="detalleCedula"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Teléfono</span>
+                            <span class="modal-detalle-value" id="detalleTelefono"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Correo electrónico</span>
+                            <span class="modal-detalle-value" id="detalleCorreo"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Plan</span>
+                            <span class="modal-detalle-value" id="detallePlan"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Tipo de cliente</span>
+                            <span class="modal-detalle-value" id="detalleTipoCliente"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Información del Pago -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-credit-card"></i> Información del Pago
+                    </h3>
+                    <div class="modal-detalle-grid">
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Método de pago</span>
+                            <span class="modal-detalle-value" id="detalleMedioPago"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Monto</span>
+                            <span class="modal-detalle-value" id="detalleMonto"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Fecha del pago</span>
+                            <span class="modal-detalle-value" id="detalleFechaPago"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Fecha del reporte</span>
+                            <span class="modal-detalle-value" id="detalleFechaReporte"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detalles específicos -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-receipt"></i> Detalles de la Transacción
+                    </h3>
+                    <div id="detallePagoContent"></div>
+                </div>
+                
+                <!-- Comprobante -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-image"></i> Comprobante de Pago
+                    </h3>
+                    <div id="comprobanteContainer" class="comprobante-preview">
+                        <div id="sinComprobante" style="text-align: center; padding: 20px; background: var(--gray-bg); border-radius: 12px;">
+                            <i class="fas fa-file-image" style="font-size: 40px; color: #ccc; margin-bottom: 10px; display: block;"></i>
+                            <p>No hay comprobante disponible</p>
+                        </div>
+                        <div id="conComprobante" style="display: none;">
+                            <img id="comprobanteImg" class="comprobante-img" alt="Comprobante de pago">
+                            <div style="margin-top: 12px;">
+                                <a id="downloadComprobante" href="#" download class="btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                                    <i class="fas fa-download"></i> Descargar comprobante
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Historial -->
+                <div class="modal-section historial-validaciones">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-history"></i> Historial de Validaciones
+                    </h3>
+                    <div id="historialContainer"></div>
+                </div>
+                
+                <!-- Observación -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-comment"></i> Observación del Cliente
+                    </h3>
+                    <div class="modal-detalle-item full-width">
+                        <span class="modal-detalle-value" id="detalleObservacion" style="background: var(--gray-bg); padding: 12px; border-radius: 12px;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="cerrarModalDetalle()">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Rechazo -->
+<div id="modalRechazo" class="modal" style="display: none;">
+    <div class="modal-container modal-md">
+        <div class="modal-header">
+            <h3><i class="fas fa-ban"></i> Rechazar Pago</h3>
+            <button class="modal-close" onclick="cerrarModalRechazo()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="motivoRechazo">Motivo del rechazo <span class="required">*</span></label>
+                <textarea id="motivoRechazo" class="form-input" rows="4" placeholder="Ej: Comprobante ilegible, referencia incorrecta, monto incorrecto..."></textarea>
+                <small class="help-text">Este motivo se guardará en el historial del reporte</small>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <div class="form-actions">
+                <button class="btn-cancel" onclick="cerrarModalRechazo()">Cancelar</button>
+                <button class="btn-rechazar" id="btnConfirmarRechazo">
+                    <i class="fas fa-check"></i> Confirmar Rechazo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let reporteSeleccionado = null;
+    
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const busqueda = document.getElementById('searchInput').value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completados');
+        
+        window.location.href = url.toString();
+    }
+    
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completados');
+        window.location.href = url.toString();
+    }
+    
+    function cambiarTab(tab) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        url.searchParams.delete('page_pendientes');
+        url.searchParams.delete('page_completados');
+        
+        const busqueda = document.getElementById('searchInput')?.value;
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        window.location.href = url.toString();
+    }
+    
+    function verDetallePago(id) {
+        reporteSeleccionado = id;
+        const modal = document.getElementById('modalDetallePago');
+        const loading = document.getElementById('loadingDetalle');
+        const contenido = document.getElementById('contenidoDetalle');
+        
+        modal.style.display = 'flex';
+        loading.style.display = 'block';
+        contenido.style.display = 'none';
+        
+        fetch(`/obtener-detalle-pago/${id}/`)
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                if (!data.error) {
+                    llenarModalDetalle(data);
+                    contenido.style.display = 'block';
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudieron cargar los detalles', 'error');
+                    cerrarModalDetalle();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                Swal.fire('Error', 'Error al cargar los detalles', 'error');
+                cerrarModalDetalle();
+            });
+    }
+    
+    function llenarModalDetalle(data) {
+        document.getElementById('modalAvatar').textContent = data.cliente_nombre.slice(0, 2).toUpperCase();
+        document.getElementById('modalTitulo').textContent = data.cliente_nombre;
+        document.getElementById('modalSubtitulo').innerHTML = `<i class="fas fa-money-bill-wave"></i> Bs ${data.monto.toFixed(2)} · <span class="badge-estado badge-${data.estado.toLowerCase()}">${data.estado_display}</span>`;
+        
+        document.getElementById('detalleNombre').textContent = data.cliente_nombre;
+        document.getElementById('detalleCedula').textContent = data.cliente_cedula;
+        document.getElementById('detalleTelefono').textContent = data.cliente_telefono || '—';
+        document.getElementById('detalleCorreo').textContent = data.cliente_correo || '—';
+        document.getElementById('detallePlan').textContent = data.plan;
+        document.getElementById('detalleTipoCliente').textContent = data.tipo_cliente;
+        
+        document.getElementById('detalleMedioPago').innerHTML = data.medio_pago === 'Pago Móvil' ? '<i class="fas fa-mobile-alt"></i> Pago Móvil' : '<i class="fas fa-university"></i> Transferencia';
+        document.getElementById('detalleMonto').innerHTML = `<strong>Bs ${data.monto.toFixed(2)}</strong>`;
+        document.getElementById('detalleFechaPago').textContent = data.fecha_pago;
+        document.getElementById('detalleFechaReporte').textContent = data.fecha_reporte;
+        
+        const detalleContainer = document.getElementById('detallePagoContent');
+        if (data.detalle && Object.keys(data.detalle).length > 0) {
+            let html = '<div class="modal-detalle-grid">';
+            for (const [key, value] of Object.entries(data.detalle)) {
+                let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `
+                    <div class="modal-detalle-item">
+                        <span class="modal-detalle-label">${label}</span>
+                        <span class="modal-detalle-value">${value || '—'}</span>
+                    </div>
+                `;
+            }
+            html += '</div>';
+            detalleContainer.innerHTML = html;
+        } else {
+            detalleContainer.innerHTML = '<p class="text-muted">No hay detalles adicionales</p>';
+        }
+        
+        const sinComprobante = document.getElementById('sinComprobante');
+        const conComprobante = document.getElementById('conComprobante');
+        const comprobanteImg = document.getElementById('comprobanteImg');
+        const downloadLink = document.getElementById('downloadComprobante');
+        
+        if (data.comprobante_url) {
+            sinComprobante.style.display = 'none';
+            conComprobante.style.display = 'block';
+            comprobanteImg.src = data.comprobante_url;
+            downloadLink.href = data.comprobante_url;
+            comprobanteImg.onclick = () => window.open(data.comprobante_url, '_blank');
+        } else {
+            sinComprobante.style.display = 'block';
+            conComprobante.style.display = 'none';
+        }
+        
+        document.getElementById('detalleObservacion').textContent = data.observacion_cliente || 'Sin observaciones';
+        
+        const historialContainer = document.getElementById('historialContainer');
+        if (data.validaciones && data.validaciones.length > 0) {
+            let html = '';
+            data.validaciones.forEach(v => {
+                let icon = '';
+                if (v.accion.includes('Verificado')) icon = '✅';
+                else if (v.accion.includes('Rechazado')) icon = '❌';
+                else icon = '📝';
+                
+                html += `
+                    <div class="historial-item">
+                        <div class="historial-icon">${icon}</div>
+                        <div class="historial-content">
+                            <div class="historial-accion">${v.accion}</div>
+                            <div class="historial-fecha">${v.fecha} · Por: ${v.validado_por}</div>
+                            <div class="historial-nota">${v.nota_interna}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            historialContainer.innerHTML = html;
+        } else {
+            historialContainer.innerHTML = '<p class="text-muted">No hay registros de validación previos</p>';
+        }
+    }
+    
+    function aprobarPago(id) {
+        Swal.fire({
+            title: '¿Aprobar este pago?',
+            text: 'El pago será marcado como VERIFICADO y se registrará en el historial.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '✅ Sí, aprobar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                fetch(`/aprobar-pago/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Pago aprobado', text: data.message, confirmButtonColor: '#ff6b00' })
+                            .then(() => { location.reload(); });
+                    } else {
+                        Swal.fire('Error', data.error || 'Error al aprobar el pago', 'error');
+                    }
+                })
+                .catch(() => { Swal.close(); Swal.fire('Error', 'Error de conexión', 'error'); });
+            }
+        });
+    }
+    
+    function abrirModalRechazo(id) {
+        reporteSeleccionado = id;
+        document.getElementById('motivoRechazo').value = '';
+        document.getElementById('modalRechazo').style.display = 'flex';
+    }
+    
+    function cerrarModalRechazo() {
+        document.getElementById('modalRechazo').style.display = 'none';
+        document.getElementById('motivoRechazo').value = '';
+    }
+    
+    function cerrarModalDetalle() {
+        document.getElementById('modalDetallePago').style.display = 'none';
+        reporteSeleccionado = null;
+    }
+    
+    // Event listener para el botón de confirmar rechazo
+    document.getElementById('btnConfirmarRechazo')?.addEventListener('click', function() {
+        const motivo = document.getElementById('motivoRechazo').value.trim();
+        
+        if (!motivo) {
+            Swal.fire('Error', 'Debes ingresar un motivo para el rechazo', 'error');
+            return;
+        }
+        
+        // CERRAR EL MODAL PRIMERO
+        document.getElementById('modalRechazo').style.display = 'none';
+        
+        Swal.fire({
+            title: '¿Rechazar este pago?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '❌ Sí, rechazar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                fetch(`/rechazar-pago/${reporteSeleccionado}/`, {
+                    method: 'POST',
+                    headers: { 
+                        'X-CSRFToken': getCookie('csrftoken'), 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ motivo: motivo })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Pago rechazado', text: data.message, confirmButtonColor: '#ff6b00' })
+                            .then(() => { 
+                                document.getElementById('motivoRechazo').value = '';
+                                reporteSeleccionado = null;
+                                location.reload(); 
+                            });
+                    } else {
+                        Swal.fire('Error', data.error || 'Error al rechazar el pago', 'error');
+                    }
+                })
+                .catch(() => { 
+                    Swal.close(); 
+                    Swal.fire('Error', 'Error de conexión', 'error'); 
+                });
+            } else {
+                // Si cancela, no limpiamos reporteSeleccionado pero cerramos el modal
+                document.getElementById('motivoRechazo').value = '';
+            }
+        });
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    document.addEventListener('keydown', function(e) { 
+        if (e.key === 'Escape') { 
+            cerrarModalDetalle(); 
+            cerrarModalRechazo(); 
+        } 
+    });
+    
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) { 
+        if (e.key === 'Enter') aplicarFiltros(); 
+    });
+</script>
+{% endblock %}

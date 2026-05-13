@@ -1762,3 +1762,567 @@ def actualizar_fecha_completado(sender, instance, **kwargs):
         # Contrato nuevo que ya está COMPLETADO desde el inicio
         if instance.estado == 'COMPLETADO' and not instance.fecha_completado:
             instance.fecha_completado = timezone.now()    
+
+
+
+
+#Call center
+# 
+# 
+# 
+# 
+#             
+# ==================== CALL CENTER - REPORTE DE PAGOS ====================
+
+# ==================== CALL CENTER - REPORTE DE PAGOS ====================
+
+class Banco(models.Model):
+    """Modelo para almacenar los bancos disponibles"""
+    
+    nombre = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="Nombre del Banco"
+    )
+    codigo = models.CharField(
+        max_length=10,
+        unique=True,
+        verbose_name="Código del Banco",
+        help_text="Ej: 0102, 0134, etc."
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Activo"
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = "Banco"
+        verbose_name_plural = "Bancos"
+        ordering = ['nombre']
+    
+    def __str__(self):
+        return self.nombre
+
+
+class ClienteExterno(models.Model):
+    """Modelo para clientes que NO están en el sistema principal (ContratoCliente)"""
+    
+    cedula = models.CharField(
+        max_length=15,
+        unique=True,
+        verbose_name="Cédula",
+        db_index=True
+    )
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name="Nombre"
+    )
+    apellido = models.CharField(
+        max_length=100,
+        verbose_name="Apellido"
+    )
+    telefono = models.CharField(
+        max_length=20,
+        verbose_name="Teléfono"
+    )
+    correo = models.EmailField(
+        verbose_name="Correo electrónico"
+    )
+    direccion = models.TextField(
+        max_length=500,
+        verbose_name="Dirección",
+        blank=True,
+        null=True
+    )
+    fecha_registro = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de registro"
+    )
+    
+    class Meta:
+        verbose_name = "Cliente Externo"
+        verbose_name_plural = "Clientes Externos"
+        ordering = ['-fecha_registro']
+    
+    def __str__(self):
+        return f"{self.nombre} {self.apellido} - {self.cedula}"
+    
+    @property
+    def nombre_completo(self):
+        return f"{self.nombre} {self.apellido}".strip()
+
+
+class DetallePagoMovil(models.Model):
+    """Detalles específicos para pagos realizados por Pago Móvil"""
+    
+    banco_emisor = models.ForeignKey(
+        Banco,
+        on_delete=models.PROTECT,
+        related_name='pagos_movil_emisor',
+        verbose_name="Banco emisor (desde donde pagas)"
+    )
+    banco_receptor = models.ForeignKey(
+        Banco,
+        on_delete=models.PROTECT,
+        related_name='pagos_movil_receptor',
+        verbose_name="Banco receptor (nuestro banco)"
+    )
+    numero_telefono = models.CharField(
+        max_length=20,
+        verbose_name="Número de teléfono",
+        help_text="Número desde donde se realizó el Pago Móvil"
+    )
+    cedula_titular = models.CharField(
+        max_length=15,
+        verbose_name="Cédula del titular",
+        help_text="Cédula de la persona que realizó el pago"
+    )
+    referencia = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Número de referencia"
+    )
+    
+    class Meta:
+        verbose_name = "Detalle Pago Móvil"
+        verbose_name_plural = "Detalles Pago Móvil"
+    
+    def __str__(self):
+        return f"Pago Móvil - {self.banco_emisor} → {self.banco_receptor} - Ref: {self.referencia}"
+
+
+class DetalleTransferencia(models.Model):
+    """Detalles específicos para pagos realizados por Transferencia Bancaria"""
+    
+    banco_origen = models.ForeignKey(
+        Banco,
+        on_delete=models.PROTECT,
+        related_name='transferencias_origen',
+        verbose_name="Banco de origen"
+    )
+    banco_destino = models.ForeignKey(
+        Banco,
+        on_delete=models.PROTECT,
+        related_name='transferencias_destino',
+        verbose_name="Banco de destino"
+    )
+    cedula_titular = models.CharField(
+        max_length=15,
+        verbose_name="Cédula del titular",
+        help_text="Cédula de la persona que realizó la transferencia"
+    )
+    numero_cuenta_origen = models.CharField(
+        max_length=20,
+        verbose_name="Número de cuenta origen",
+        blank=True,
+        null=True
+    )
+    referencia = models.CharField(
+        max_length=50,
+        unique=True,
+        verbose_name="Número de referencia"
+    )
+    
+    class Meta:
+        verbose_name = "Detalle Transferencia"
+        verbose_name_plural = "Detalles Transferencia"
+    
+    def __str__(self):
+        return f"Transferencia - {self.banco_origen} → {self.banco_destino} - Ref: {self.referencia}"
+
+
+class ReportePago(models.Model):
+    """Modelo principal para reportes de pago"""
+    
+    class EstadoReporte(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', 'Pendiente de validación'
+        VERIFICADO = 'VERIFICADO', 'Verificado'
+        RECHAZADO = 'RECHAZADO', 'Rechazado'
+        APLICADO = 'APLICADO', 'Aplicado al contrato'
+    
+    class MedioPago(models.TextChoices):
+        PAGO_MOVIL = 'PAGO_MOVIL', 'Pago Móvil'
+        TRANSFERENCIA = 'TRANSFERENCIA', 'Transferencia Bancaria'
+    
+    # ===== RELACIONES (UNA DE LAS DOS PUEDE ESTAR PRESENTE) =====
+    # Cliente interno (ya tiene contrato en tu sistema)
+    contrato = models.ForeignKey(
+        'ContratoCliente',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reportes_pago',
+        verbose_name="Contrato asociado (cliente interno)"
+    )
+    
+    # Cliente externo (no está en tu sistema)
+    cliente_externo = models.ForeignKey(
+        ClienteExterno,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reportes_pago',
+        verbose_name="Cliente externo (no está en sistema)"
+    )
+    
+    # Flag para saber de dónde viene
+    tipo_cliente = models.CharField(
+        max_length=10,
+        choices=[('INTERNO', 'Cliente interno'), ('EXTERNO', 'Cliente externo')],
+        verbose_name="Tipo de cliente"
+    )
+    
+    # ===== INFORMACIÓN DEL PAGO =====
+    medio_pago = models.CharField(
+        max_length=20,
+        choices=MedioPago.choices,
+        verbose_name="Medio de pago"
+    )
+    monto = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Monto pagado (Bs)"
+    )
+    fecha_pago = models.DateField(
+        verbose_name="Fecha del pago"
+    )
+    comprobante = models.ImageField(
+        upload_to='comprobantes_pagos/%Y/%m/',
+        verbose_name="Comprobante de pago"
+    )
+    observacion_cliente = models.TextField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Observaciones del cliente"
+    )
+    
+    # ===== DETALLES ESPECÍFICOS =====
+    detalle_pago_movil = models.OneToOneField(
+        DetallePagoMovil,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='reporte_pago',
+        verbose_name="Detalle Pago Móvil"
+    )
+    detalle_transferencia = models.OneToOneField(
+        DetalleTransferencia,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='reporte_pago',
+        verbose_name="Detalle Transferencia"
+    )
+    
+    # ===== ESTADO Y VALIDACIÓN =====
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoReporte.choices,
+        default=EstadoReporte.PENDIENTE,
+        verbose_name="Estado del reporte",
+        db_index=True
+    )
+    rechazo_motivo = models.TextField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Motivo de rechazo"
+    )
+    
+    # ===== METADATOS =====
+    fecha_reporte = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha del reporte"
+    )
+    fecha_verificacion = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de verificación"
+    )
+    verificado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reportes_verificados',
+        verbose_name="Verificado por"
+    )
+    
+    # Auditoría
+    ip_cliente = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name="IP del cliente"
+    )
+    user_agent = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Navegador/Dispositivo"
+    )
+    
+    class Meta:
+        verbose_name = "Reporte de Pago"
+        verbose_name_plural = "Reportes de Pagos"
+        ordering = ['-fecha_reporte']
+        indexes = [
+            models.Index(fields=['contrato']),
+            models.Index(fields=['cliente_externo']),
+            models.Index(fields=['estado']),
+            models.Index(fields=['fecha_reporte']),
+            models.Index(fields=['medio_pago']),
+            models.Index(fields=['tipo_cliente']),
+        ]
+    
+    def __str__(self):
+        if self.es_cliente_interno:
+            cliente_nombre = self.contrato.nombre_completo
+        elif self.es_cliente_externo:
+            cliente_nombre = self.cliente_externo.nombre_completo
+        else:
+            cliente_nombre = "Cliente sin identificar"
+        
+        return f"Reporte {self.id} - {cliente_nombre} - {self.monto} Bs [{self.get_estado_display()}]"
+    
+    @property
+    def nombre_cliente(self):
+        """Obtiene el nombre del cliente desde la relación correspondiente"""
+        if self.es_cliente_interno:
+            return self.contrato.nombre_completo
+        elif self.es_cliente_externo:
+            return self.cliente_externo.nombre_completo
+        return "N/A"
+    
+    @property
+    def cedula_cliente(self):
+        """Obtiene la cédula del cliente desde la relación correspondiente"""
+        if self.es_cliente_interno:
+            return self.contrato.cedula
+        elif self.es_cliente_externo:
+            return self.cliente_externo.cedula
+        return "N/A"
+    
+    @property
+    def telefono_cliente(self):
+        """Obtiene el teléfono del cliente desde la relación correspondiente"""
+        if self.es_cliente_interno:
+            return self.contrato.telefono_principal
+        elif self.es_cliente_externo:
+            return self.cliente_externo.telefono
+        return "N/A"
+    
+    @property
+    def correo_cliente(self):
+        """Obtiene el correo del cliente desde la relación correspondiente"""
+        if self.es_cliente_interno:
+            return self.contrato.correo_electronico
+        elif self.es_cliente_externo:
+            return self.cliente_externo.correo
+        return "N/A"
+    
+    @property
+    def es_cliente_interno(self):
+        return self.tipo_cliente == 'INTERNO' and self.contrato is not None
+    
+    @property
+    def es_cliente_externo(self):
+        return self.tipo_cliente == 'EXTERNO' and self.cliente_externo is not None
+
+
+class RegistroValidacionPago(models.Model):
+    """Registro de las validaciones realizadas por call center"""
+    
+    class AccionValidacion(models.TextChoices):
+        VERIFICADO = 'VERIFICADO', '✅ Verificado correcto'
+        RECHAZADO = 'RECHAZADO', '❌ Rechazado'
+        APLICADO = 'APLICADO', '📄 Aplicado a contrato'
+        CREAR_CONTRATO = 'CREAR_CONTRATO', '🆕 Crear contrato (externo → interno)'
+        NOTA_INTERNA = 'NOTA_INTERNA', '📝 Nota interna'
+    
+    reporte = models.ForeignKey(
+        ReportePago,
+        on_delete=models.CASCADE,
+        related_name='validaciones',
+        verbose_name="Reporte de pago"
+    )
+    
+    accion = models.CharField(
+        max_length=20,
+        choices=AccionValidacion.choices,
+        verbose_name="Acción"
+    )
+    
+    # Si se crea un contrato para un cliente nuevo, se guarda aquí
+    contrato_creado = models.ForeignKey(
+        'ContratoCliente',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='validaciones_pago',
+        verbose_name="Contrato creado (cliente externo migrado)"
+    )
+    
+    fecha_validacion = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de validación"
+    )
+    validado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='validaciones_realizadas',
+        verbose_name="Validado por"
+    )
+    nota_interna = models.TextField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Nota interna"
+    )
+    
+    class Meta:
+        verbose_name = "Registro de Validación"
+        verbose_name_plural = "Registros de Validaciones"
+        ordering = ['-fecha_validacion']
+        indexes = [
+            models.Index(fields=['reporte']),
+            models.Index(fields=['fecha_validacion']),
+            models.Index(fields=['accion']),
+        ]
+    
+    def __str__(self):
+        return f"{self.get_accion_display()} - {self.reporte} ({self.fecha_validacion.strftime('%d/%m/%Y %H:%M')})"
+
+
+
+# ==================== SOPORTE AL CLIENTE (VERSIÓN SIMPLE) ====================
+
+class SoporteCliente(models.Model):
+    """Modelo para registrar reclamos y soporte de clientes"""
+    
+    class EstadoSoporte(models.TextChoices):
+        NO_LEIDO = 'NO_LEIDO', 'No leído'
+        LEIDO = 'LEIDO', 'Leído'
+    
+    # Relaciones (una de las dos puede estar presente)
+    contrato = models.ForeignKey(
+        'ContratoCliente',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='soportes_cliente',
+        verbose_name="Contrato del cliente"
+    )
+    
+    cliente_externo = models.ForeignKey(
+        'ClienteExterno',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='soportes_cliente',
+        verbose_name="Cliente externo"
+    )
+    
+    tipo_cliente = models.CharField(
+        max_length=10,
+        choices=[('INTERNO', 'Cliente con contrato'), ('EXTERNO', 'Cliente externo')],
+        verbose_name="Tipo de cliente"
+    )
+    
+    # Información del soporte
+    reclamo = models.TextField(
+        max_length=1000,
+        verbose_name="Reclamo"
+    )
+    
+    observacion = models.TextField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Observaciones"
+    )
+    
+    foto = models.ImageField(
+        upload_to='soportes_clientes/%Y/%m/',
+        blank=True,
+        null=True,
+        verbose_name="Foto"
+    )
+    
+    # Estado
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoSoporte.choices,
+        default=EstadoSoporte.NO_LEIDO,
+        verbose_name="Estado",
+        db_index=True
+    )
+    
+    # Fecha en que fue leído por primera vez
+    fecha_leido = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Fecha de lectura",
+        help_text="Fecha y hora en que el soporte fue leído por primera vez por el personal"
+    )
+    
+    # Metadatos
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    creado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='soportes_cliente_creados',
+        verbose_name="Creado por"
+    )
+    
+    class Meta:
+        verbose_name = "Soporte a Cliente"
+        verbose_name_plural = "Soportes a Clientes"
+        ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['estado']),
+            models.Index(fields=['fecha_leido']),
+            models.Index(fields=['fecha_creacion']),
+        ]
+    
+    def __str__(self):
+        if self.contrato:
+            cliente = self.contrato.nombre_completo
+        elif self.cliente_externo:
+            cliente = self.cliente_externo.nombre_completo
+        else:
+            cliente = "Cliente sin identificar"
+        estado_display = self.get_estado_display()
+        return f"Soporte #{self.id} - {cliente} [{estado_display}]"
+    
+    @property
+    def nombre_cliente(self):
+        if self.contrato:
+            return self.contrato.nombre_completo
+        elif self.cliente_externo:
+            return self.cliente_externo.nombre_completo
+        return "N/A"
+    
+    @property
+    def fue_leido(self):
+        """Indica si el soporte ya fue leído (estado LEIDO)"""
+        return self.estado == self.EstadoSoporte.LEIDO
+    
+    def marcar_como_leido(self):
+        """Marca el soporte como leído con la fecha actual"""
+        if self.estado == self.EstadoSoporte.NO_LEIDO:
+            from django.utils import timezone
+            self.estado = self.EstadoSoporte.LEIDO
+            self.fecha_leido = timezone.now()
+            self.save(update_fields=['estado', 'fecha_leido'])
+    
+    def marcar_como_no_leido(self):
+        """Marca el soporte como no leído"""
+        if self.estado != self.EstadoSoporte.NO_LEIDO:
+            self.estado = self.EstadoSoporte.NO_LEIDO
+            self.fecha_leido = None
+            self.save(update_fields=['estado', 'fecha_leido'])

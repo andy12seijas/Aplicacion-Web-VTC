@@ -302,7 +302,7 @@
         }
 
         .submenu.show {
-            max-height: 200px;
+            max-height: 300px;
         }
 
         .submenu-item {
@@ -692,6 +692,24 @@
                     <li class="submenu-item" onclick="window.location.href='{% url 'gestion_soportes' %}'">Soporte</li>
                     <li class="submenu-item" onclick="window.location.href='{% url 'reporte_instalador' %}'">Reporte</li>
                     <li class="submenu-item" onclick="window.location.href='{% url 'mi_inventario' %}'">Inventario</li>
+                </ul>
+                {% endif %}
+                
+                <!-- SECCIÓN CALL CENTER - SOLO PARA ADMIN Y SUPERUSUARIO -->
+                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
+                <div class="menu-section">AYUDA</div>
+                
+                <div class="menu-item" onclick="toggleSubmenu(this, 'callcenterSubmenu')">
+                    <span class="menu-icon">📞</span>
+                    <span class="menu-title">Call Center</span>
+                    <i class="fas fa-chevron-down arrow"></i>
+                </div>
+         
+                <ul class="submenu" id="callcenterSubmenu">
+                    <li class="submenu-item" onclick="window.location.href='{% url 'validacion_pagos' %}'">Validación de Pagos</li>
+                    <!-- Aquí puedes agregar más opciones en el futuro como: -->
+                    <!-- <li class="submenu-item" >Historial de Validaciones</li> -->
+                    <!-- <li class="submenu-item" ">Reportes</li> -->
                 </ul>
                 {% endif %}
                 

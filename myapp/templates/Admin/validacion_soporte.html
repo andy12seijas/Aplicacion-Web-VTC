@@ -1,0 +1,1125 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Call Center - Gestión de Soportes{% endblock %}
+
+{% block page_title %}Gestión de Soportes{% endblock %}
+{% block page_subtitle %}Revisa los reclamos y soportes reportados por los clientes{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 12px;
+        text-decoration: none;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    /* ===== ESTILOS BASE ===== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--orange);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--orange);
+        line-height: 1.2;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+        color: var(--gray-text);
+        margin-top: 8px;
+    }
+    
+    /* ===== PESTAÑAS ===== */
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        color: var(--orange);
+        border-bottom-color: var(--orange);
+        background: white;
+    }
+
+    .tab-icon {
+        font-size: 16px;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        margin-left: 5px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* ===== FILTROS ===== */
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+        background: white;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 250px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .btn-search, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-search {
+        background: var(--orange);
+        color: white;
+    }
+
+    .btn-search:hover {
+        background: var(--orange-dark);
+        transform: translateY(-2px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    /* ===== TABLA ===== */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 500;
+        color: #666;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: #333;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    /* ===== BADGES ===== */
+    .badge-estado {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .badge-no-leido {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .badge-leido {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    /* ===== ACCIONES ===== */
+    .actions-cell {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: #666;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .action-btn.read {
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .action-btn.read:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .reclamo-preview {
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #555;
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: #666;
+        font-size: 14px;
+    }
+
+    /* ===== PAGINACIÓN ===== */
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: #666;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+    }
+    
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .modal-container {
+        position: relative;
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 700px;
+        max-height: 90vh;
+        overflow-y: auto;
+        z-index: 10000;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modalFadeIn 0.3s ease;
+    }
+    
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 16px 16px 0 0;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 600;
+    }
+    
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--gray-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: white;
+        border-radius: 0 0 16px 16px;
+    }
+    
+    .modal-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .modal-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+    
+    .modal-section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .modal-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+    
+    .modal-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .modal-item.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .modal-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .modal-value {
+        font-size: 14px;
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+    
+    .reclamo-content {
+        background: var(--gray-bg);
+        padding: 16px;
+        border-radius: 12px;
+        line-height: 1.6;
+    }
+    
+    .foto-preview {
+        text-align: center;
+        margin-top: 16px;
+    }
+    
+    .foto-img {
+        max-width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid var(--gray-border);
+        cursor: pointer;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-border);
+        border-top-color: var(--orange);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .btn-cancel {
+        background: white;
+        border: 2px solid var(--gray-border);
+        color: #666;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-cancel:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .modal-grid {
+            grid-template-columns: 1fr;
+        }
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .search-box, .btn-search, .btn-clear {
+            width: 100%;
+        }
+        .tab-btn {
+            flex-direction: column;
+            font-size: 12px;
+            padding: 12px;
+        }
+        .tab-count {
+            margin-left: 0;
+        }
+        .actions-cell {
+            flex-direction: column;
+        }
+        .reclamo-preview {
+            max-width: 150px;
+        }
+    }
+</style>
+
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.no_leidos }}</div>
+        <div class="stat-label">No leídos</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.leidos }}</div>
+        <div class="stat-label">Leídos</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Total</div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre, cédula o reclamo..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <button class="btn-search" onclick="aplicarFiltros()">
+            <i class="fas fa-search"></i> Buscar
+        </button>
+        
+        <button class="btn-clear" onclick="limpiarFiltros()">
+            <i class="fas fa-times"></i> Limpiar
+        </button>
+    </div>
+</div>
+
+<!-- Pestañas -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn {% if tab_activa == 'no_leidos' or not tab_activa %}active{% endif %}" onclick="cambiarTab('no_leidos')">
+            <span class="tab-icon">📋</span>
+            No leídos
+            <span class="tab-count">{{ stats.no_leidos }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'leidos' %}active{% endif %}" onclick="cambiarTab('leidos')">
+            <span class="tab-icon">✅</span>
+            Leídos
+            <span class="tab-count">{{ stats.leidos }}</span>
+        </button>
+    </div>
+
+    <!-- TAB: No leídos -->
+    <div id="tab-no_leidos" class="tab-content {% if tab_activa == 'no_leidos' or not tab_activa %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Reclamo</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for soporte in soportes_no_leidos %}
+                    <tr>
+                        <td>#{{ soporte.id }}</td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ soporte.nombre_cliente }}</div>
+                                    <div style="font-size: 10px; color: #999;">{{ soporte.tipo_cliente }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ soporte.cedula_cliente }}</td>
+                        <td class="reclamo-preview">{{ soporte.reclamo|truncatechars:50 }}</td>
+                        <td>{{ soporte.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td class="actions-cell">
+                            <button class="action-btn" onclick="verDetalleSoporte({{ soporte.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn read" onclick="marcarComoLeido({{ soporte.id }})" title="Marcar como leído">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay soportes no leídos
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación No leídos -->
+        {% if soportes_no_leidos.has_other_pages %}
+        <div class="pagination">
+            {% if soportes_no_leidos.has_previous %}
+            <a href="?page_no_leidos=1&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_no_leidos={{ soportes_no_leidos.previous_page_number }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ soportes_no_leidos.number }} de {{ soportes_no_leidos.paginator.num_pages }}
+            </span>
+            
+            {% if soportes_no_leidos.has_next %}
+            <a href="?page_no_leidos={{ soportes_no_leidos.next_page_number }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_no_leidos={{ soportes_no_leidos.paginator.num_pages }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB: Leídos -->
+    <div id="tab-leidos" class="tab-content {% if tab_activa == 'leidos' %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Cédula</th>
+                        <th>Reclamo</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for soporte in soportes_leidos %}
+                    <tr>
+                        <td>#{{ soporte.id }}</td>
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ soporte.nombre_cliente }}</div>
+                                    <div style="font-size: 10px; color: #999;">{{ soporte.tipo_cliente }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ soporte.cedula_cliente }}</td>
+                        <td class="reclamo-preview">{{ soporte.reclamo|truncatechars:50 }}</td>
+                        <td>{{ soporte.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td class="actions-cell">
+                            <button class="action-btn" onclick="verDetalleSoporte({{ soporte.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay soportes leídos
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Leídos -->
+        {% if soportes_leidos.has_other_pages %}
+        <div class="pagination">
+            {% if soportes_leidos.has_previous %}
+            <a href="?page_leidos=1&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_leidos={{ soportes_leidos.previous_page_number }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ soportes_leidos.number }} de {{ soportes_leidos.paginator.num_pages }}
+            </span>
+            
+            {% if soportes_leidos.has_next %}
+            <a href="?page_leidos={{ soportes_leidos.next_page_number }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_leidos={{ soportes_leidos.paginator.num_pages }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Detalle de Soporte -->
+<div id="modalDetalleSoporte" class="modal" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalTitulo">Detalle del Soporte</h2>
+                    <p id="modalSubtitulo"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div id="loadingDetalle" style="text-align: center; padding: 40px;">
+                <div class="spinner"></div>
+                <p>Cargando detalles...</p>
+            </div>
+            
+            <div id="contenidoDetalle" style="display: none;">
+                <!-- Información del Cliente -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-user"></i> Información del Cliente
+                    </h3>
+                    <div class="modal-grid">
+                        <div class="modal-item">
+                            <span class="modal-label">Nombre completo</span>
+                            <span class="modal-value" id="detalleNombre"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Cédula</span>
+                            <span class="modal-value" id="detalleCedula"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Teléfono</span>
+                            <span class="modal-value" id="detalleTelefono"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Correo electrónico</span>
+                            <span class="modal-value" id="detalleCorreo"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Plan</span>
+                            <span class="modal-value" id="detallePlan"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Tipo de cliente</span>
+                            <span class="modal-value" id="detalleTipoCliente"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Información del Reclamo -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-exclamation-triangle"></i> Detalle del Reclamo
+                    </h3>
+                    <div class="reclamo-content" id="detalleReclamo"></div>
+                </div>
+                
+                <!-- Observación -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-comment"></i> Observaciones
+                    </h3>
+                    <div class="reclamo-content" id="detalleObservacion" style="background: var(--orange-light);"></div>
+                </div>
+                
+                <!-- Foto -->
+                <div class="modal-section" id="fotoContainer" style="display: none;">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-image"></i> Evidencia Fotográfica
+                    </h3>
+                    <div class="foto-preview">
+                        <img id="detalleFoto" class="foto-img" alt="Foto del reclamo">
+                        <div style="margin-top: 12px;">
+                            <a id="downloadFoto" href="#" download class="btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                                <i class="fas fa-download"></i> Descargar foto
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Metadatos -->
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-info-circle"></i> Información del Reporte
+                    </h3>
+                    <div class="modal-grid">
+                        <div class="modal-item">
+                            <span class="modal-label">Estado</span>
+                            <span class="modal-value" id="detalleEstado"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Fecha de creación</span>
+                            <span class="modal-value" id="detalleFechaCreacion"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Fecha de lectura</span>
+                            <span class="modal-value" id="detalleFechaLectura"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Reportado por</span>
+                            <span class="modal-value" id="detalleCreadoPor"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let soporteSeleccionado = null;
+    
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const busqueda = document.getElementById('searchInput').value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        url.searchParams.delete('page_no_leidos');
+        url.searchParams.delete('page_leidos');
+        
+        window.location.href = url.toString();
+    }
+    
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('page_no_leidos');
+        url.searchParams.delete('page_leidos');
+        window.location.href = url.toString();
+    }
+    
+    function cambiarTab(tab) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        url.searchParams.delete('page_no_leidos');
+        url.searchParams.delete('page_leidos');
+        
+        const busqueda = document.getElementById('searchInput')?.value;
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        window.location.href = url.toString();
+    }
+    
+    function verDetalleSoporte(id) {
+        soporteSeleccionado = id;
+        const modal = document.getElementById('modalDetalleSoporte');
+        const loading = document.getElementById('loadingDetalle');
+        const contenido = document.getElementById('contenidoDetalle');
+        
+        modal.style.display = 'flex';
+        loading.style.display = 'block';
+        contenido.style.display = 'none';
+        
+        fetch(`/ver-detalle-soporte/${id}/`)
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                if (!data.error) {
+                    llenarModalDetalle(data);
+                    contenido.style.display = 'block';
+                } else {
+                    Swal.fire('Error', data.error || 'No se pudieron cargar los detalles', 'error');
+                    cerrarModalDetalle();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                Swal.fire('Error', 'Error al cargar los detalles', 'error');
+                cerrarModalDetalle();
+            });
+    }
+    
+    function llenarModalDetalle(data) {
+        document.getElementById('modalAvatar').textContent = data.cliente_nombre.slice(0, 2).toUpperCase();
+        document.getElementById('modalTitulo').textContent = data.cliente_nombre;
+        
+        let estadoBadge = data.estado === 'NO_LEIDO' ? 
+            '<span class="badge-estado badge-no-leido">No leído</span>' : 
+            '<span class="badge-estado badge-leido">Leído</span>';
+        document.getElementById('modalSubtitulo').innerHTML = `📝 Ticket #${data.id} · ${estadoBadge}`;
+        
+        document.getElementById('detalleNombre').textContent = data.cliente_nombre;
+        document.getElementById('detalleCedula').textContent = data.cliente_cedula;
+        document.getElementById('detalleTelefono').textContent = data.cliente_telefono || '—';
+        document.getElementById('detalleCorreo').textContent = data.cliente_correo || '—';
+        document.getElementById('detallePlan').textContent = data.plan;
+        document.getElementById('detalleTipoCliente').textContent = data.tipo_cliente;
+        
+        document.getElementById('detalleReclamo').innerHTML = data.reclamo.replace(/\n/g, '<br>');
+        document.getElementById('detalleObservacion').innerHTML = data.observacion || 'Sin observaciones adicionales';
+        
+        const fotoContainer = document.getElementById('fotoContainer');
+        const fotoImg = document.getElementById('detalleFoto');
+        const downloadLink = document.getElementById('downloadFoto');
+        
+        if (data.foto_url) {
+            fotoContainer.style.display = 'block';
+            fotoImg.src = data.foto_url;
+            downloadLink.href = data.foto_url;
+            fotoImg.onclick = () => window.open(data.foto_url, '_blank');
+        } else {
+            fotoContainer.style.display = 'none';
+        }
+        
+        let estadoTexto = data.estado_display;
+        let estadoClass = data.estado === 'NO_LEIDO' ? 'badge-no-leido' : 'badge-leido';
+        document.getElementById('detalleEstado').innerHTML = `<span class="badge-estado ${estadoClass}">${estadoTexto}</span>`;
+        document.getElementById('detalleFechaCreacion').textContent = data.fecha_creacion;
+        document.getElementById('detalleFechaLectura').textContent = data.fecha_leido || 'No leído aún';
+        document.getElementById('detalleCreadoPor').textContent = data.creado_por;
+    }
+    
+    function marcarComoLeido(id) {
+        Swal.fire({
+            title: '¿Marcar como leído?',
+            text: 'Este reclamo pasará a la lista de "Leídos". Esta acción no se puede deshacer.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '✅ Sí, marcar como leído',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                fetch(`/marcar-soporte-leido/${id}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Soporte marcado como leído', text: data.message, confirmButtonColor: '#ff6b00' })
+                            .then(() => { location.reload(); });
+                    } else {
+                        Swal.fire('Error', data.error || 'Error al marcar como leído', 'error');
+                    }
+                })
+                .catch(() => { Swal.close(); Swal.fire('Error', 'Error de conexión', 'error'); });
+            }
+        });
+    }
+    
+    function cerrarModalDetalle() {
+        document.getElementById('modalDetalleSoporte').style.display = 'none';
+        soporteSeleccionado = null;
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    document.addEventListener('keydown', function(e) { 
+        if (e.key === 'Escape') { 
+            cerrarModalDetalle(); 
+        } 
+    });
+    
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) { 
+        if (e.key === 'Enter') aplicarFiltros(); 
+    });
+</script>
+{% endblock %}

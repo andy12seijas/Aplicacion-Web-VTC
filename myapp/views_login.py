@@ -3,6 +3,14 @@ from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.contrib.auth.models import User
 #Funcion para enviar los datos para iniciar sesion
+
+from django.shortcuts import render
+
+def landing_page(request):
+    """Vista principal del landing page"""
+    return render(request, 'landing/index.html')
+
+
 def login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
