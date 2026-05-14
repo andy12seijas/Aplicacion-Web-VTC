@@ -1,4 +1,6 @@
+{% load static %}
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -41,14 +43,65 @@
             transition: all 0.3s ease;
         }
 
-        .navbar-brand {
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--orange) !important;
+        /* Logo container - izquierda */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
         }
 
-        .navbar-brand i {
-            margin-right: 6px;
+        .vtc-logo {
+            height: 40px;
+            width: auto;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .brand-divider {
+            width: 1px;
+            height: 30px;
+            background: linear-gradient(135deg, var(--orange) 0%, #ccc 100%);
+            margin: 0 4px;
+        }
+
+        .simplefibra-brand {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .simplefibra-brand .brand-main {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--orange);
+            letter-spacing: -0.5px;
+        }
+
+        .simplefibra-brand .brand-tag {
+            font-size: 9px;
+            color: var(--text-gray);
+            letter-spacing: 0.5px;
+        }
+
+        .navbar-brand-custom {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .vtc-logo {
+                height: 32px;
+            }
+            .simplefibra-brand .brand-main {
+                font-size: 14px;
+            }
+            .simplefibra-brand .brand-tag {
+                font-size: 7px;
+            }
+            .brand-divider {
+                height: 24px;
+            }
         }
 
         .navbar-toggler {
@@ -92,18 +145,6 @@
 
         .btn-login:hover {
             background: var(--orange);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn-report {
-            background: transparent;
-            border: 2px solid #10b981;
-            color: #10b981;
-        }
-
-        .btn-report:hover {
-            background: #10b981;
             color: white;
             transform: translateY(-2px);
         }
@@ -298,121 +339,137 @@
             font-size: 14px;
         }
 
-        /* Tarjetas de planes - Scroll horizontal en móvil */
+        /* Tarjetas de planes - Ahora solo 3 planes, centrados */
         .plans-section {
             background: var(--light-gray);
         }
 
-        .plans-wrapper {
-            overflow-x: auto;
-            padding: 10px 0 20px;
-            scrollbar-width: thin;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .plans-wrapper::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .plans-wrapper::-webkit-scrollbar-track {
-            background: #e0e0e0;
-            border-radius: 10px;
-        }
-
-        .plans-wrapper::-webkit-scrollbar-thumb {
-            background: var(--orange);
-            border-radius: 10px;
-        }
-
-        .plans-horizontal {
+        .plans-grid {
             display: flex;
-            gap: 15px;
-            padding: 5px 5px 10px;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 20px;
         }
 
         .plan-card {
             background: white;
-            border-radius: 20px;
-            padding: 20px 15px;
+            border-radius: 28px;
+            padding: 35px 25px;
             text-align: center;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
             position: relative;
             border: 1px solid #e0e0e0;
-            min-width: 180px;
-            width: 180px;
+            width: 280px;
             flex-shrink: 0;
         }
 
         .plan-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(255, 107, 0, 0.15);
+            transform: translateY(-10px);
+            box-shadow: 0 25px 45px rgba(255, 107, 0, 0.2);
             border-color: var(--orange);
         }
 
         .plan-card.popular {
             border: 2px solid var(--orange);
+            transform: scale(1.02);
+            background: linear-gradient(to bottom, #ffffff, #fffaf5);
+        }
+
+        .plan-card.popular:hover {
+            transform: scale(1.02) translateY(-10px);
         }
 
         .popular-badge {
             position: absolute;
-            top: -10px;
-            right: 10px;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
             background: var(--orange);
             color: white;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 600;
+            padding: 5px 18px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 700;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
         }
 
         .plan-name {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 15px;
             color: var(--dark);
+            letter-spacing: -0.5px;
         }
 
         .plan-price {
-            font-size: 28px;
+            font-size: 42px;
             font-weight: 800;
             color: var(--orange);
-            margin: 10px 0;
+            margin: 20px 0;
+            line-height: 1;
         }
 
         .plan-price span {
-            font-size: 12px;
+            font-size: 18px;
             font-weight: normal;
             color: var(--text-gray);
         }
 
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 8px 0;
+            font-size: 13px;
+            color: var(--dark-gray);
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-features li i {
+            color: var(--orange);
+            width: 20px;
+            font-size: 14px;
+        }
+
         .plan-phrase {
-            font-size: 11px;
+            font-size: 12px;
             color: white;
             background: var(--orange);
-            padding: 6px 10px;
-            border-radius: 30px;
-            margin: 10px 0;
-            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 40px;
+            margin: 15px 0;
+            font-weight: 600;
+            display: inline-block;
         }
 
         .btn-plan {
             background: transparent;
             border: 2px solid var(--orange);
             color: var(--orange);
-            padding: 8px 15px;
-            border-radius: 30px;
-            font-weight: 600;
-            font-size: 13px;
+            padding: 12px 20px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 15px;
             transition: all 0.3s ease;
             width: 100%;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 15px;
         }
 
         .btn-plan:hover {
             background: var(--orange);
             color: white;
+            transform: translateY(-2px);
         }
 
         /* Testimonios */
@@ -582,7 +639,7 @@
             font-size: 12px;
         }
 
-        /* Media Queries para Desktop */
+        /* Media Queries */
         @media (min-width: 768px) {
             .hero-title {
                 font-size: 56px;
@@ -612,21 +669,6 @@
                 margin-top: 0;
             }
             
-            .plan-card {
-                min-width: 220px;
-                width: 220px;
-                padding: 25px 20px;
-            }
-            
-            .nav-btn {
-                margin-left: 8px;
-                margin-top: 0;
-            }
-            
-            .navbar-nav {
-                gap: 4px;
-            }
-            
             .contact-info {
                 text-align: left;
             }
@@ -641,35 +683,6 @@
             
             .social-links {
                 justify-content: flex-start;
-            }
-        }
-
-        @media (min-width: 992px) {
-            .container {
-                max-width: 1140px;
-            }
-            
-            .section {
-                padding: 80px 0;
-            }
-            
-            .plan-card {
-                min-width: 240px;
-                width: 240px;
-            }
-            
-            .navbar-nav {
-                gap: 8px;
-            }
-            
-            .navbar-nav .nav-link {
-                padding: 8px 14px;
-                font-size: 14px;
-            }
-            
-            .nav-btn {
-                padding: 8px 18px;
-                font-size: 14px;
             }
         }
 
@@ -696,24 +709,42 @@
                 gap: 15px;
             }
             
-            .service-card {
-                padding: 25px 15px;
+            .plan-card {
+                width: 280px;
+                margin-bottom: 25px;
             }
             
-            .testimonial-card {
-                margin-bottom: 20px;
+            .plans-grid {
+                gap: 20px;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .container {
+                max-width: 1140px;
+            }
+            .section {
+                padding: 80px 0;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- Navbar -->
+    <!-- Navbar con logo VTC a la izquierda -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-wifi"></i> SimpleFibra x VTC
-            </a>
+            <div class="navbar-brand-custom">
+                <a class="logo-container" href="/">
+                    <!-- Logo VTC -->
+                    <img src="{% static 'cd.png' %}" alt="VTC" class="vtc-logo">
+                    <div class="brand-divider"></div>
+                    <div class="simplefibra-brand">
+                        <span class="brand-main"><i class="fas fa-wifi"></i> SimpleFibra</span>
+                        <span class="brand-tag">by VTConexiones</span>
+                    </div>
+                </a>
+            </div>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -736,11 +767,6 @@
                             <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
                         </a>
                     </li>
-                    <!--<li class="nav-item">
-                        <a class="nav-btn btn-report" href="{% url 'reportar_pago' %}">
-                            <i class="fas fa-credit-card"></i> Reportar Pago
-                        </a>
-                    </li>-->
                     <li class="nav-item">
                         <a class="nav-btn btn-soporte" href="{% url 'reportar_soporte' %}">
                             <i class="fas fa-headset"></i> Soporte
@@ -833,94 +859,60 @@
         </div>
     </section>
 
-    <!-- Planes Section -->
+    <!-- Planes Section - SOLO 3 PLANES: 400, 600 y 1 GIGA -->
     <section id="planes" class="section plans-section">
         <div class="container">
             <h2 class="section-title" data-aos="fade-up">Planes y <span style="color: var(--orange);">Precios</span></h2>
             <p class="section-subtitle" data-aos="fade-up">Elige el plan que mejor se adapte a tus necesidades</p>
             
-            <div class="plans-wrapper">
-                <div class="plans-horizontal">
-                    <!-- Plan 100 Mbps -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="100">
-                        <h3 class="plan-name">100 Mbps</h3>
-                        <div class="plan-price">100<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-rocket"></i> "Entrada a la fibra"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
+            <div class="plans-grid">
+                <!-- Plan 400 Mbps -->
+                <div class="plan-card" data-aos="fade-up" data-aos-delay="100">
+                    <h3 class="plan-name">400 Mbps</h3>
+                    <div class="plan-price">400<span> Mbps</span></div>
+                    <div class="plan-phrase">
+                        <i class="fas fa-tachometer-alt"></i> "Ideal para familias"
                     </div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check-circle"></i> Velocidad simétrica 400 Mbps</li>
+                        <li><i class="fas fa-check-circle"></i> Streaming 4K sin cortes</li>
+                        <li><i class="fas fa-check-circle"></i> Wi-Fi de alto rendimiento</li>
+                        <li><i class="fas fa-check-circle"></i> Instalación gratis</li>
+                    </ul>
+                    <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">¡Quiero este plan!</button>
+                </div>
 
-                    <!-- Plan 200 Mbps -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="150">
-                        <h3 class="plan-name">200 Mbps</h3>
-                        <div class="plan-price">200<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-chart-line"></i> "El doble de velocidad"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
+                <!-- Plan 600 Mbps - MÁS POPULAR -->
+                <div class="plan-card popular" data-aos="fade-up" data-aos-delay="200">
+                    <div class="popular-badge">⭐ Más Popular ⭐</div>
+                    <h3 class="plan-name">600 Mbps</h3>
+                    <div class="plan-price">600<span> Mbps</span></div>
+                    <div class="plan-phrase">
+                        <i class="fas fa-crown"></i> "El favorito de todos"
                     </div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check-circle"></i> Velocidad simétrica 600 Mbps</li>
+                        <li><i class="fas fa-check-circle"></i> Gaming sin lag</li>
+                        <li><i class="fas fa-check-circle"></i> Multiple dispositivos 4K</li>
+                        <li><i class="fas fa-check-circle"></i> Instalación + Router WiFi 6</li>
+                    </ul>
+                    <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">¡Lo quiero!</button>
+                </div>
 
-                    <!-- Plan 300 Mbps -->
-                    <div class="plan-card popular" data-aos="fade-up" data-aos-delay="200">
-                        <div class="popular-badge">Más Popular</div>
-                        <h3 class="plan-name">300 Mbps</h3>
-                        <div class="plan-price">300<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-crown"></i> "El favorito de todos"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
+                <!-- Plan 1 Giga -->
+                <div class="plan-card" data-aos="fade-up" data-aos-delay="300">
+                    <h3 class="plan-name">1 Giga</h3>
+                    <div class="plan-price">1000<span> Mbps</span></div>
+                    <div class="plan-phrase">
+                        <i class="fas fa-gem"></i> "La máxima potencia"
                     </div>
-
-                    <!-- Plan 400 Mbps -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="250">
-                        <h3 class="plan-name">400 Mbps</h3>
-                        <div class="plan-price">400<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-tv"></i> "4K sin límites"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
-                    </div>
-
-                    <!-- Plan 500 Mbps -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="300">
-                        <h3 class="plan-name">500 Mbps</h3>
-                        <div class="plan-price">500<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-download"></i> "Velocidad extrema"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
-                    </div>
-
-                    <!-- Plan 600 Mbps -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="350">
-                        <h3 class="plan-name">600 Mbps</h3>
-                        <div class="plan-price">600<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-server"></i> "Para power users"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
-                    </div>
-
-                    <!-- Plan 800 Mbps -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="400">
-                        <h3 class="plan-name">800 Mbps</h3>
-                        <div class="plan-price">800<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-bolt"></i> "Casi 1 Giga"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
-                    </div>
-
-                    <!-- Plan 1 Giga -->
-                    <div class="plan-card" data-aos="fade-up" data-aos-delay="450">
-                        <h3 class="plan-name">1 Giga</h3>
-                        <div class="plan-price">1000<span> Mbps</span></div>
-                        <div class="plan-phrase">
-                            <i class="fas fa-gem"></i> "La máxima velocidad"
-                        </div>
-                        <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar</button>
-                    </div>
+                    <ul class="plan-features">
+                        <li><i class="fas fa-check-circle"></i> Velocidad simétrica 1 Gbps</li>
+                        <li><i class="fas fa-check-circle"></i> Para Power Users y Empresas</li>
+                        <li><i class="fas fa-check-circle"></i> Prioridad en soporte técnico</li>
+                        <li><i class="fas fa-check-circle"></i> Equipo de alta gama incluido</li>
+                    </ul>
+                    <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar 1 Giga</button>
                 </div>
             </div>
         </div>
@@ -930,7 +922,7 @@
     <section id="testimonios" class="section">
         <div class="container">
             <h2 class="section-title" data-aos="fade-up">Lo que dicen <span style="color: var(--orange);">nuestros clientes</span></h2>
-            <p class="section-subtitle" data-aos="fade-up">Más de 500 familias confían en SimpleFibra</p>
+            <p class="section-subtitle" data-aos="fade-up">Más de 500 familias confían en SimpleFibra x VTC</p>
             <div class="row g-4">
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="100">
                     <div class="testimonial-card">
@@ -939,7 +931,7 @@
                         </div>
                         <p class="testimonial-text">"Excelente servicio, la velocidad es increíble y el soporte técnico responde rápidamente. 100% recomendados."</p>
                         <div class="testimonial-name">María González</div>
-                        <div class="testimonial-role">Cliente 500 Mbps</div>
+                        <div class="testimonial-role">Cliente 600 Mbps</div>
                     </div>
                 </div>
                 <div class="col-md-4" data-aos="fade-up" data-aos-delay="200">
@@ -959,7 +951,7 @@
                         </div>
                         <p class="testimonial-text">"La instalación fue rápida y el precio es justo para la calidad que ofrecen. Muy contentos con el servicio."</p>
                         <div class="testimonial-name">Ana Pérez</div>
-                        <div class="testimonial-role">Cliente 300 Mbps</div>
+                        <div class="testimonial-role">Cliente 400 Mbps</div>
                     </div>
                 </div>
             </div>
@@ -1047,7 +1039,7 @@
                     <ul class="footer-links">
                         <li><i class="fas fa-phone me-2"></i> +58 212-555-1212</li>
                         <li><i class="fas fa-envelope me-2"></i> info@simplefibra.com</li>
-                        <li><i class="fas fa-map-marker-alt me-2"></i> Caracas, Venezuela</li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i> Valencia , Venezuela</li>
                     </ul>
                 </div>
             </div>
