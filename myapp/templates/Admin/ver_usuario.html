@@ -44,6 +44,10 @@
             <span class="stat-label">Superv</span>
         </div>
         <div class="stat-card">
+            <span class="stat-value">{{ total_call_center }}</span>
+            <span class="stat-label">Call Center</span>
+        </div>
+        <div class="stat-card">
             <span class="stat-value">{{ usuarios_activos }}</span>
             <span class="stat-label">Activos</span>
         </div>
@@ -63,18 +67,27 @@
             
             <select id="filterRol" class="filter-select">
                 <option value="">Todos los roles</option>
-                <option value="super">Superusuario</option>
-                <option value="admin">Administrador</option>
-                <option value="ventas">Vendedor</option>
-                <option value="instal">Instalador</option>
-                <option value="supervisor">Supervisor</option>
+                <option value="super" {% if rol_filtro == 'super' %}selected{% endif %}>Superusuario</option>
+                <option value="admin" {% if rol_filtro == 'admin' %}selected{% endif %}>Administrador</option>
+                <option value="ventas" {% if rol_filtro == 'ventas' %}selected{% endif %}>Vendedor</option>
+                <option value="instal" {% if rol_filtro == 'instal' %}selected{% endif %}>Instalador</option>
+                <option value="supervisor" {% if rol_filtro == 'supervisor' %}selected{% endif %}>Supervisor</option>
+                <option value="call_center" {% if rol_filtro == 'call_center' %}selected{% endif %}>Call Center</option>
             </select>
             
             <select id="filterStatus" class="filter-select">
                 <option value="">Todos los estados</option>
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
+                <option value="activo" {% if status_filtro == 'activo' %}selected{% endif %}>Activo</option>
+                <option value="inactivo" {% if status_filtro == 'inactivo' %}selected{% endif %}>Inactivo</option>
             </select>
+            
+            <button class="btn-search" onclick="aplicarFiltros()">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            
+            <button class="btn-clear" onclick="limpiarFiltros()">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
         </div>
     </div>
 
@@ -112,8 +125,8 @@
                                     </div>
                                 </div>
                             </div>
-                            <td>{{ usuario.first_name }} {{ usuario.last_name|default:"—" }}</div>
-                            <td class="email-cell">{{ usuario.email|default:"—" }}</div>
+                            <td class="nombre-cell">{{ usuario.first_name }} {{ usuario.last_name|default:"—" }}</td>
+                            <td class="email-cell">{{ usuario.email|default:"—" }}</td>
                             <td>
                                 {% if usuario.is_superuser %}
                                 <span class="badge badge-super">Superusuario</span>
@@ -127,6 +140,8 @@
                                         <span class="badge badge-instal">Instalador</span>
                                         {% elif group.name == 'Supervisor' %}
                                         <span class="badge badge-supervisor">Supervisor</span>
+                                        {% elif group.name == 'Call Center' %}
+                                        <span class="badge badge-call-center">Call Center</span>
                                         {% endif %}
                                     {% endfor %}
                                 {% else %}
@@ -174,7 +189,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="empty">No hay usuarios registrados</div>
+                            <td colspan="7" class="empty">No hay usuarios registrados</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -217,6 +232,8 @@
                                     <span class="badge badge-instal">Instalador</span>
                                     {% elif group.name == 'Supervisor' %}
                                     <span class="badge badge-supervisor">Supervisor</span>
+                                    {% elif group.name == 'Call Center' %}
+                                    <span class="badge badge-call-center">Call Center</span>
                                     {% endif %}
                                 {% endfor %}
                             {% else %}
@@ -277,25 +294,17 @@
         <div class="pagination-controls">
             {% if page_obj.has_previous %}
             <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Primera página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-                </svg>
+                <i class="fas fa-angle-double-left"></i>
             </a>
             <a href="?page={{ page_obj.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Página anterior">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 18l-6-6 6-6"/>
-                </svg>
+                <i class="fas fa-angle-left"></i>
             </a>
             {% else %}
             <span class="page-link disabled">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/>
-                </svg>
+                <i class="fas fa-angle-double-left"></i>
             </span>
             <span class="page-link disabled">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M15 18l-6-6 6-6"/>
-                </svg>
+                <i class="fas fa-angle-left"></i>
             </span>
             {% endif %}
 
@@ -311,25 +320,17 @@
 
             {% if page_obj.has_next %}
             <a href="?page={{ page_obj.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Página siguiente">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
+                <i class="fas fa-angle-right"></i>
             </a>
             <a href="?page={{ page_obj.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if rol_filtro %}&rol={{ rol_filtro }}{% endif %}{% if status_filtro %}&status={{ status_filtro }}{% endif %}" class="page-link" title="Última página">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-                </svg>
+                <i class="fas fa-angle-double-right"></i>
             </a>
             {% else %}
             <span class="page-link disabled">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
+                <i class="fas fa-angle-right"></i>
             </span>
             <span class="page-link disabled">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
-                </svg>
+                <i class="fas fa-angle-double-right"></i>
             </span>
             {% endif %}
         </div>
@@ -362,9 +363,7 @@
                 </div>
             </div>
             <button class="modal-close" onclick="cerrarModal()">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
+                <i class="fas fa-times"></i>
             </button>
         </div>
         
@@ -469,6 +468,41 @@
         box-shadow: var(--shadow-sm);
     }
     
+    .btn-search, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition);
+        border: none;
+    }
+    
+    .btn-search {
+        background: var(--orange);
+        color: white;
+    }
+    
+    .btn-search:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+    
     /* ===== CONTENEDOR PRINCIPAL ===== */
     .usuarios-container {
         height: calc(100vh - 120px);
@@ -525,6 +559,7 @@
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+        align-items: center;
     }
     
     .search-box {
@@ -699,7 +734,7 @@
         font-size: 12px;
     }
     
-    .email-cell {
+    .nombre-cell, .email-cell {
         max-width: 180px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -727,6 +762,7 @@
     .badge-ventas { background: #e3f2fd; color: #1976d2; }
     .badge-instal { background: #e8f5e9; color: #2e7d32; }
     .badge-supervisor { background: #f3e5f5; color: #9c27b0; }
+    .badge-call-center { background: #fef3c7; color: #d97706; }
     
     /* Status */
     .status {
@@ -1198,7 +1234,9 @@
         }
         
         .search-box,
-        .filter-select {
+        .filter-select,
+        .btn-search,
+        .btn-clear {
             width: 100%;
         }
         
@@ -1272,9 +1310,6 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let searchTimeout;
-    let busquedaActual = '{{ busqueda|default:"" }}';
-    let rolFiltroActual = '{{ rol_filtro|default:"" }}';
-    let statusFiltroActual = '{{ status_filtro|default:"" }}';
 
     function aplicarFiltros() {
         const url = new URL(window.location.href);
@@ -1358,6 +1393,7 @@
         else if (usuario.rol === 'Vendedor') rolClass = 'badge-ventas';
         else if (usuario.rol === 'Instalador') rolClass = 'badge-instal';
         else if (usuario.rol === 'Supervisor') rolClass = 'badge-supervisor';
+        else if (usuario.rol === 'Call Center') rolClass = 'badge-call-center';
         
         document.getElementById('modalRolValue').innerHTML = `<span class="badge ${rolClass}">${usuario.rol}</span>`;
         document.getElementById('modalEstado').innerHTML = `<span class="status ${usuario.is_active ? 'active' : ''}">${usuario.is_active ? 'Activo' : 'Inactivo'}</span>`;
@@ -1437,6 +1473,7 @@
                 else if (rol === 'ventas') rolTexto = 'Vendedor';
                 else if (rol === 'instal') rolTexto = 'Instalador';
                 else if (rol === 'supervisor') rolTexto = 'Supervisor';
+                else if (rol === 'call_center') rolTexto = 'Call Center';
                 filtrosArray.push(`rol: ${rolTexto}`);
             }
             if (status) filtrosArray.push(`estado: ${status === 'activo' ? 'Activo' : 'Inactivo'}`);

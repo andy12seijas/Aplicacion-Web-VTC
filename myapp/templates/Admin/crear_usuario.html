@@ -164,34 +164,41 @@
                     </div>
                 </div>
                 
-                <!-- Info de roles -->
-                <div class="roles-info">
+                <!-- Roles info - Organizados en fila horizontal -->
+                <div class="roles-info-horizontal">
                     <div class="role-badge" data-role="admin">
                         <span class="role-icon">👑</span>
                         <div class="role-text">
                             <strong>Administrador</strong>
-                            <small>Gestión completa del sistema</small>
-                        </div>
-                    </div>
-                    <div class="role-badge" data-role="vendedor">
-                        <span class="role-icon">💰</span>
-                        <div class="role-text">
-                            <strong>Vendedor</strong>
-                            <small>Gestión de ventas y clientes</small>
-                        </div>
-                    </div>
-                    <div class="role-badge" data-role="instalador">
-                        <span class="role-icon">🔧</span>
-                        <div class="role-text">
-                            <strong>Instalador</strong>
-                            <small>Gestión de instalaciones</small>
+                            <small>Gestión completa</small>
                         </div>
                     </div>
                     <div class="role-badge" data-role="supervisor">
                         <span class="role-icon">📊</span>
                         <div class="role-text">
                             <strong>Supervisor</strong>
-                            <small>Supervisión de instalaciones y vendedores</small>
+                            <small>Supervisión general</small>
+                        </div>
+                    </div>
+                    <div class="role-badge" data-role="vendedor">
+                        <span class="role-icon">💰</span>
+                        <div class="role-text">
+                            <strong>Vendedor</strong>
+                            <small>Ventas y clientes</small>
+                        </div>
+                    </div>
+                    <div class="role-badge" data-role="instalador">
+                        <span class="role-icon">🔧</span>
+                        <div class="role-text">
+                            <strong>Instalador</strong>
+                            <small>Instalaciones</small>
+                        </div>
+                    </div>
+                    <div class="role-badge" data-role="callcenter">
+                        <span class="role-icon">📞</span>
+                        <div class="role-text">
+                            <strong>Call Center</strong>
+                            <small>Atención al cliente</small>
                         </div>
                     </div>
                 </div>
@@ -481,54 +488,37 @@
         font-size: 14px;
     }
 
-    /* Roles info */
-    .roles-info {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
+    /* Roles info - HORIZONTAL */
+    .roles-info-horizontal {
+        display: flex;
+        flex-wrap: wrap;
         gap: 12px;
         margin-top: 16px;
+        justify-content: flex-start;
     }
 
     .role-badge {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 12px;
+        padding: 10px 16px;
         background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #f0f0f0;
+        border-radius: 40px;
+        border: 2px solid #e8e8e8;
         transition: all 0.2s;
-        opacity: 0.7;
+        cursor: pointer;
+        flex: 0 0 auto;
     }
 
     .role-badge.selected {
-        opacity: 1;
-        border-width: 2px;
-    }
-
-    .role-badge[data-role="admin"].selected {
         border-color: #ff6b00;
         background: #fff2e6;
-    }
-
-    .role-badge[data-role="vendedor"].selected {
-        border-color: #2196f3;
-        background: #e3f2fd;
-    }
-
-    .role-badge[data-role="instalador"].selected {
-        border-color: #4caf50;
-        background: #e8f5e9;
-    }
-
-    .role-badge[data-role="supervisor"].selected {
-        border-color: #9C27B0;
-        background: #F3E5F5;
+        box-shadow: 0 2px 8px rgba(255, 107, 0, 0.15);
     }
 
     .role-icon {
-        font-size: 24px;
-        min-width: 40px;
+        font-size: 20px;
+        min-width: 32px;
         text-align: center;
     }
 
@@ -543,7 +533,7 @@
     }
 
     .role-text small {
-        font-size: 11px;
+        font-size: 10px;
         color: #999;
     }
 
@@ -619,8 +609,14 @@
             gap: 16px;
         }
 
-        .roles-info {
-            grid-template-columns: 1fr;
+        .roles-info-horizontal {
+            flex-wrap: wrap;
+        }
+        
+        .role-badge {
+            flex: 1;
+            min-width: calc(50% - 6px);
+            justify-content: center;
         }
 
         .form-actions {
@@ -642,6 +638,12 @@
             gap: 4px;
         }
     }
+
+    @media (max-width: 480px) {
+        .role-badge {
+            min-width: 100%;
+        }
+    }
 </style>
 
 <script>
@@ -657,12 +659,14 @@
             
             if (selected === 'Administrador') {
                 document.querySelector('.role-badge[data-role="admin"]').classList.add('selected');
+            } else if (selected === 'Supervisor') {
+                document.querySelector('.role-badge[data-role="supervisor"]').classList.add('selected');
             } else if (selected === 'Vendedor') {
                 document.querySelector('.role-badge[data-role="vendedor"]').classList.add('selected');
             } else if (selected === 'Instalador') {
                 document.querySelector('.role-badge[data-role="instalador"]').classList.add('selected');
-            } else if (selected === 'Supervisor') {
-                document.querySelector('.role-badge[data-role="supervisor"]').classList.add('selected');
+            } else if (selected === 'Call Center') {
+                document.querySelector('.role-badge[data-role="callcenter"]').classList.add('selected');
             }
         }
         
@@ -672,6 +676,28 @@
         // Actualizar al cambiar
         rolSelect.addEventListener('change', updateRoleHighlight);
     }
+    
+    // Hacer clic en los badges para seleccionar el rol
+    document.querySelectorAll('.role-badge').forEach(badge => {
+        badge.addEventListener('click', function() {
+            const role = this.getAttribute('data-role');
+            if (role === 'admin') {
+                rolSelect.value = 'Administrador';
+            } else if (role === 'supervisor') {
+                rolSelect.value = 'Supervisor';
+            } else if (role === 'vendedor') {
+                rolSelect.value = 'Vendedor';
+            } else if (role === 'instalador') {
+                rolSelect.value = 'Instalador';
+            } else if (role === 'callcenter') {
+                rolSelect.value = 'Call Center';
+            }
+            
+            // Disparar evento change
+            const event = new Event('change');
+            rolSelect.dispatchEvent(event);
+        });
+    });
 
     // Validación de contraseñas
     document.getElementById('userForm')?.addEventListener('submit', function(e) {

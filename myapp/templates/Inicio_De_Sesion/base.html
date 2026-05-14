@@ -696,8 +696,8 @@
                 {% endif %}
                 
                 <!-- SECCIÓN CALL CENTER - SOLO PARA ADMIN Y SUPERUSUARIO -->
-                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' %}
-                <div class="menu-section">AYUDA</div>
+                {% if user.is_superuser or user.groups.all.0.name == 'Administrador' or user.groups.all.0.name == 'Call Center' %}
+                <div class="menu-section">ATENCION</div>
                 
                 <div class="menu-item" onclick="toggleSubmenu(this, 'callcenterSubmenu')">
                     <span class="menu-icon">📞</span>

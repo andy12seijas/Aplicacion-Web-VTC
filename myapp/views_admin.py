@@ -18,30 +18,93 @@ def es_administrador(user):
     return user.groups.filter(name='Administrador').exists() or user.is_superuser
 
 
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.auth.models import User, Group
+from django.db.models import Q
+from django.shortcuts import render
+
+def es_administrador(user):
+    return user.is_superuser or user.groups.filter(name='Administrador').exists()
+
 @user_passes_test(es_administrador)
 @login_required
 def lista_usuarios(request):
     """Solo administradores pueden ver la lista de usuarios"""
+    
+    # Obtener parámetros de filtro
+    busqueda = request.GET.get('busqueda', '')
+    rol_filtro = request.GET.get('rol', '')
+    status_filtro = request.GET.get('status', '')
+    
+    # Diccionario de roles
+    ROLES_MAP = {
+        'super': {'filter': 'is_superuser', 'value': True},
+        'admin': {'group': 'Administrador'},
+        'ventas': {'group': 'Vendedor'},
+        'instal': {'group': 'Instalador'},
+        'supervisor': {'group': 'Supervisor'},
+        'call_center': {'group': 'Call Center'},
+    }
+    
+    # Base de consulta
     usuarios = User.objects.all().order_by('-date_joined')
     
-    # Estadísticas por rol
-    total_usuarios = usuarios.count()
-    usuarios_activos = usuarios.filter(is_active=True).count()
+    # Aplicar filtro de búsqueda
+    if busqueda:
+        usuarios = usuarios.filter(
+            Q(username__icontains=busqueda) |
+            Q(first_name__icontains=busqueda) |
+            Q(last_name__icontains=busqueda) |
+            Q(email__icontains=busqueda)
+        )
     
-    admin_group = Group.objects.get(name='Administrador')
-    vendedor_group = Group.objects.get(name='Vendedor')
-    instalador_group = Group.objects.get(name='Instalador')
-    supervisor_group = Group.objects.get(name='Supervisor')  # 👈 NUEVO
+    # Aplicar filtro por estado
+    if status_filtro == 'activo':
+        usuarios = usuarios.filter(is_active=True)
+    elif status_filtro == 'inactivo':
+        usuarios = usuarios.filter(is_active=False)
     
-    total_administradores = admin_group.user_set.count()
-    total_vendedores = vendedor_group.user_set.count()
-    total_instaladores = instalador_group.user_set.count()
-    total_supervisores = supervisor_group.user_set.count()  # 👈 NUEVO
+    # Aplicar filtro por rol
+    if rol_filtro and rol_filtro in ROLES_MAP:
+        rol_config = ROLES_MAP[rol_filtro]
+        if 'filter' in rol_config:
+            usuarios = usuarios.filter(**{rol_config['filter']: rol_config['value']})
+        elif 'group' in rol_config:
+            try:
+                group = Group.objects.get(name=rol_config['group'])
+                usuarios = usuarios.filter(groups=group)
+            except Group.DoesNotExist:
+                usuarios = usuarios.none()
+    
+    # Estadísticas por rol (siempre totales, sin filtrar)
+    total_usuarios = User.objects.all().count()
+    usuarios_activos = User.objects.filter(is_active=True).count()
+    
+    # Función para contar usuarios por grupo
+    def count_by_group(group_name):
+        try:
+            return Group.objects.get(name=group_name).user_set.count()
+        except Group.DoesNotExist:
+            return 0
+    
+    total_administradores = count_by_group('Administrador')
+    total_vendedores = count_by_group('Vendedor')
+    total_instaladores = count_by_group('Instalador')
+    total_supervisores = count_by_group('Supervisor')
+    total_call_center = count_by_group('Call Center')
     total_superusuarios = User.objects.filter(is_superuser=True).count()
     
-    paginator = Paginator(usuarios, 5)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Paginación
+    paginator = Paginator(usuarios, 10)
+    page_number = request.GET.get('page', 1)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except PageNotAnInteger:
+        page_obj = paginator.page(1)
+    except EmptyPage:
+        page_obj = paginator.page(paginator.num_pages)
     
     context = {
         'page_obj': page_obj,
@@ -50,8 +113,12 @@ def lista_usuarios(request):
         'total_administradores': total_administradores,
         'total_vendedores': total_vendedores,
         'total_instaladores': total_instaladores,
-        'total_supervisores': total_supervisores,  # 👈 NUEVO
+        'total_supervisores': total_supervisores,
         'total_superusuarios': total_superusuarios,
+        'total_call_center': total_call_center,
+        'busqueda': busqueda,
+        'rol_filtro': rol_filtro,
+        'status_filtro': status_filtro,
     }
     
     return render(request, 'Admin/ver_usuario.html', context)

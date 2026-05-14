@@ -10,7 +10,7 @@ from .models import SoporteCliente, ContratoCliente, ClienteExterno
 
 
 @staff_member_required
-def gestion_soportes(request):
+def gestion_soportes_cliente(request):
     """Vista para gestionar los soportes/reclamos de clientes (Call Center)"""
     
     # Obtener parámetros

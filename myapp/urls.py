@@ -89,7 +89,7 @@ urlpatterns = [
     path('nomina/vendedor/<int:vendedor_id>/', detalle_nomina_vendedor, name='detalle_nomina_vendedor'),
     path('nomina/recalcular/', recalcular_nomina, name='recalcular_nomina'),
     #Soporte
-    path('soportes/',gestion_soportes, name='gestion_soportes'),
+    path('soportes/interno/',gestion_soportes, name='gestion_soportes'),
     
     # Tickets
     path('soportes/ticket/crear/', crear_ticket, name='crear_ticket'),
@@ -163,7 +163,7 @@ path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_a
     path('crear-soporte-cliente/', crear_soporte_cliente, name='crear_soporte_cliente'),
 
 
-    path('gestion-soportes/', gestion_soportes, name='gestion_soportes_cliente'),
+    path('gestion-soportes/cliente/', gestion_soportes_cliente, name='gestion_soportes_cliente'),
     path('marcar-soporte-leido/<int:soporte_id>/', marcar_soporte_leido, name='marcar_soporte_leido'),
     path('ver-detalle-soporte/<int:soporte_id>/',ver_detalle_soporte, name='ver_detalle_soporte'),
 
