@@ -184,20 +184,30 @@ def reporte_instalaciones_json(request):
     """API para obtener datos de instalaciones"""
     
     tipo_reporte = request.GET.get('tipo', 'simple')
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
     cuadrilla_id = request.GET.get('cuadrilla', '')
     estado = request.GET.get('estado', '')
     busqueda = request.GET.get('busqueda', '')
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
+    # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
+    fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
+    fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
+    
+    # ¡MUY IMPORTANTE para la fecha HASTA!
+    # Queremos que el filtro incluya TODO el día.
+    if fecha_hasta_aware:
+        fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
+    
     instalaciones = Instalacion.objects.select_related('asignacion__cuadrilla', 'asignacion__contrato', 'asignacion__venta_directa', 'modelo_modem')
     
-    if fecha_desde:
-        instalaciones = instalaciones.filter(fecha_instalacion__date__gte=fecha_desde)
-    if fecha_hasta:
-        instalaciones = instalaciones.filter(fecha_instalacion__date__lte=fecha_hasta)
+    # ===== FILTRAR POR FECHA USANDO DATETIME AWARE =====
+    if fecha_desde_aware:
+        instalaciones = instalaciones.filter(fecha_instalacion__gte=fecha_desde_aware)
+    if fecha_hasta_aware:
+        instalaciones = instalaciones.filter(fecha_instalacion__lte=fecha_hasta_aware)
     if cuadrilla_id:
         instalaciones = instalaciones.filter(asignacion__cuadrilla_id=cuadrilla_id)
     if estado == 'completada':
@@ -294,8 +304,8 @@ def reporte_soportes_json(request):
     """API para obtener datos de soportes"""
     
     tipo_reporte = request.GET.get('tipo', 'simple')
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
     tipo_soporte = request.GET.get('tipo_soporte', '')
     estado = request.GET.get('estado', '')
     busqueda = request.GET.get('busqueda', '')
@@ -303,12 +313,22 @@ def reporte_soportes_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
+    # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
+    fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
+    fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
+    
+    # ¡MUY IMPORTANTE para la fecha HASTA!
+    # Queremos que el filtro incluya TODO el día.
+    if fecha_hasta_aware:
+        fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
+    
     soportes = Soporte.objects.all()
     
-    if fecha_desde:
-        soportes = soportes.filter(fecha_hora_servicio__date__gte=fecha_desde)
-    if fecha_hasta:
-        soportes = soportes.filter(fecha_hora_servicio__date__lte=fecha_hasta)
+    # ===== FILTRAR POR FECHA USANDO DATETIME AWARE =====
+    if fecha_desde_aware:
+        soportes = soportes.filter(fecha_hora_servicio__gte=fecha_desde_aware)
+    if fecha_hasta_aware:
+        soportes = soportes.filter(fecha_hora_servicio__lte=fecha_hasta_aware)
     if estado:
         soportes = soportes.filter(estado=estado)
     if cuadrilla_id:
