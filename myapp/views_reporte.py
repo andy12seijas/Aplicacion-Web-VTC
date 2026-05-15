@@ -42,10 +42,46 @@ def reporte_vendedor(request):
         vendedor_filtro_id = request.user.id
         vendedor_id = str(request.user.id)
     
-    # Filtros de fecha para gráficas
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
+    # Filtros de fecha para gráficas (RAW - pueden venir en dd/mm/yyyy o yyyy-mm-dd)
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
     semana_offset = int(request.GET.get('semana_offset', 0))
+    
+    # ========== FUNCIÓN PARA CONVERTIR FECHAS ==========
+    from datetime import datetime
+    
+    def convertir_fecha(fecha_str):
+        """
+        Convierte fecha desde formato dd/mm/yyyy o yyyy-mm-dd a formato yyyy-mm-dd (ISO)
+        Retorna la fecha en formato ISO string o None si no es válida
+        """
+        if not fecha_str:
+            return None
+        
+        # Intentar formato dd/mm/yyyy (ej: 14/05/2026)
+        try:
+            fecha_obj = datetime.strptime(fecha_str, '%d/%m/%Y')
+            return fecha_obj.strftime('%Y-%m-%d')  # Convertir a ISO
+        except ValueError:
+            pass
+        
+        # Intentar formato yyyy-mm-dd (ej: 2026-05-14)
+        try:
+            fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
+            return fecha_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            pass
+        
+        # Si no se pudo convertir, retornar None
+        return None
+    
+    # Convertir las fechas al formato ISO (yyyy-mm-dd)
+    fecha_desde_iso = convertir_fecha(fecha_desde_raw)
+    fecha_hasta_iso = convertir_fecha(fecha_hasta_raw)
+    
+    # Para mostrar en el template (mantener el formato original o mostrar el convertido)
+    fecha_desde_mostrar = fecha_desde_iso if fecha_desde_iso else fecha_desde_raw
+    fecha_hasta_mostrar = fecha_hasta_iso if fecha_hasta_iso else fecha_hasta_raw
     
     # ========== BASE DE DATOS (con filtro de vendedor) ==========
     if es_admin and vendedor_filtro_id:
@@ -71,14 +107,15 @@ def reporte_vendedor(request):
     
     tasa_conversion = (clientes_con_contrato / total_clientes * 100) if total_clientes > 0 else 0
     
-    # ========== DATOS PARA GRÁFICAS (CON FILTROS DE FECHA) ==========
-    if fecha_desde:
-        clientes_graficas = clientes_totales.filter(fecha_registro__gte=fecha_desde)
-    else:
-        clientes_graficas = clientes_totales
+    # ========== DATOS PARA GRÁFICAS (CON FILTROS DE FECHA CORREGIDOS) ==========
+    clientes_graficas = clientes_totales
     
-    if fecha_hasta:
-        clientes_graficas = clientes_graficas.filter(fecha_registro__lte=fecha_hasta)
+    # Usar las fechas en formato ISO para filtrar
+    if fecha_desde_iso:
+        clientes_graficas = clientes_graficas.filter(fecha_registro__date__gte=fecha_desde_iso)
+    
+    if fecha_hasta_iso:
+        clientes_graficas = clientes_graficas.filter(fecha_registro__date__lte=fecha_hasta_iso)
     
     # 1. Clientes por interés
     interes_data = clientes_graficas.values('interesado').annotate(
@@ -118,38 +155,58 @@ def reporte_vendedor(request):
             clientes_meses_labels.append(item['mes'].strftime('%b %Y'))
             clientes_meses_values.append(item['total'])
     
-    # ========== ACUMULATIVO SEMANAL (CORREGIDO CON fecha_completado) ==========
-    hoy = timezone.now().date()
-    dias_desde_viernes = (hoy.weekday() - 4) % 7
-    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
+    # ========== ACUMULATIVO SEMANAL ==========
+    from datetime import timedelta as td
+    import pytz
     
-    viernes_seleccionado = viernes_actual - timedelta(weeks=semana_offset)
-    jueves_seleccionado = viernes_seleccionado + timedelta(days=6)
+    # Zona horaria de Venezuela
+    ve_tz = pytz.timezone('America/Caracas')
+    hoy_ve = timezone.now().astimezone(ve_tz).date()
     
-    # ===== CONTRATOS COMPLETADOS EN LA SEMANA (usando fecha_completado) =====
+    # Calcular viernes (día 4 = viernes)
+    dias_desde_viernes = (hoy_ve.weekday() - 4) % 7
+    viernes_actual = hoy_ve - td(days=dias_desde_viernes)
+    
+    # Aplicar offset para navegar entre semanas
+    viernes_seleccionado = viernes_actual - td(weeks=semana_offset)
+    jueves_seleccionado = viernes_seleccionado + td(days=6)
+    
+    # Crear fechas aware para comparar
+    def crear_fecha_aware(fecha_date, es_inicio=True):
+        """Convierte una fecha date a datetime aware en zona Venezuela"""
+        if es_inicio:
+            fecha_dt = datetime.combine(fecha_date, datetime.min.time())
+        else:
+            fecha_dt = datetime.combine(fecha_date, datetime.max.time())
+        return ve_tz.localize(fecha_dt)
+    
+    fecha_inicio_semana = crear_fecha_aware(viernes_seleccionado, es_inicio=True)
+    fecha_fin_semana = crear_fecha_aware(jueves_seleccionado, es_inicio=False)
+    
+    # ===== CONTRATOS COMPLETADOS EN LA SEMANA =====
     contratos_completados_semana = contratos_totales.filter(
         estado='COMPLETADO',
-        fecha_completado__date__gte=viernes_seleccionado,
-        fecha_completado__date__lte=jueves_seleccionado
+        fecha_completado__gte=fecha_inicio_semana,
+        fecha_completado__lte=fecha_fin_semana
     ).select_related('cliente_potencial', 'plan_contratado')
     
     # ===== CONTRATOS EN PROCESO CREADOS EN LA SEMANA =====
     contratos_en_proceso_semana = contratos_totales.filter(
         estado='EN_PROCESO',
-        fecha_creacion__date__gte=viernes_seleccionado,
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__gte=fecha_inicio_semana,
+        fecha_creacion__lte=fecha_fin_semana
     ).exclude(
         id__in=contratos_totales.filter(
             estado='COMPLETADO',
-            fecha_completado__date__gt=jueves_seleccionado
+            fecha_completado__gt=fecha_fin_semana
         ).values_list('id', flat=True)
     ).select_related('cliente_potencial', 'plan_contratado')
     
     # ===== CONTRATOS NO COMPLETADOS CREADOS EN LA SEMANA =====
     contratos_no_completados_semana = contratos_totales.filter(
         estado='NO_COMPLETADO',
-        fecha_creacion__date__gte=viernes_seleccionado,
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__gte=fecha_inicio_semana,
+        fecha_creacion__lte=fecha_fin_semana
     ).select_related('cliente_potencial', 'plan_contratado')
     
     # Unir todos los contratos de la semana
@@ -162,25 +219,25 @@ def reporte_vendedor(request):
     en_proceso_semana = contratos_en_proceso_semana.count()
     no_completados_semana = contratos_no_completados_semana.count()
     
-    # ===== ACUMULADO HASTA LA SEMANA (CORREGIDO) =====
+    # ===== ACUMULADO HASTA LA SEMANA =====
     acumulado_completados = contratos_totales.filter(
         estado='COMPLETADO',
-        fecha_completado__date__lte=jueves_seleccionado
+        fecha_completado__lte=fecha_fin_semana
     ).count()
     
     acumulado_en_proceso = contratos_totales.filter(
         estado='EN_PROCESO',
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__lte=fecha_fin_semana
     ).exclude(
         id__in=contratos_totales.filter(
             estado='COMPLETADO',
-            fecha_completado__date__lte=jueves_seleccionado
+            fecha_completado__lte=fecha_fin_semana
         ).values_list('id', flat=True)
     ).count()
     
     acumulado_no_completados = contratos_totales.filter(
         estado='NO_COMPLETADO',
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__lte=fecha_fin_semana
     ).count()
     
     acumulado_total = acumulado_completados + acumulado_en_proceso + acumulado_no_completados
@@ -221,8 +278,8 @@ def reporte_vendedor(request):
         
         'vendedores': vendedores,
         'vendedor_seleccionado': vendedor_id if vendedor_id else '',
-        'fecha_desde': fecha_desde,
-        'fecha_hasta': fecha_hasta,
+        'fecha_desde': fecha_desde_mostrar,  # Mostrar la fecha convertida en el input
+        'fecha_hasta': fecha_hasta_mostrar,  # Mostrar la fecha convertida en el input
         
         'interes_labels': json.dumps(interes_labels),
         'interes_values': json.dumps(interes_values),
