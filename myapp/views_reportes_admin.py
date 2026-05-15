@@ -7,6 +7,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from io import BytesIO
+import pytz
 from reportlab.lib.pagesizes import landscape, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib import colors
@@ -20,6 +21,27 @@ from django.core.management import call_command
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.db.models import Q
+
+VE_TZ = pytz.timezone('America/Caracas')
+
+def convertir_a_datetime_aware(fecha_str):
+    """
+    Convierte "2026-05-01" (string) a un datetime object aware 
+    en la zona horaria de Venezuela, a las 00:00:00 horas.
+    """
+    if not fecha_str:
+        return None
+    try:
+        # 1. Parseamos el string a un objeto date
+        #    (formato YYYY-MM-DD, que es el que viene de tu template)
+        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        # 2. Combinamos la fecha con la hora 00:00:00 y la "localizamos"
+        #    en la zona horaria de Venezuela.
+        fecha_aware = VE_TZ.localize(datetime.combine(fecha_obj, datetime.min.time()))
+        return fecha_aware
+    except ValueError:
+        return None
+
 def es_admin(user):
     return user.is_authenticated and (user.is_superuser or user.groups.filter(name='Administrador').exists())
 
@@ -62,48 +84,35 @@ def reporte_ventas_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
-    # ========== CONVERTIR FECHAS A OBJETO DATE ==========
-    from datetime import datetime
+    # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
+    fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
+    fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
     
-    fecha_desde_obj = None
-    fecha_hasta_obj = None
-    
-    if fecha_desde_raw:
-        try:
-            fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d').date()
-        except ValueError:
-            try:
-                fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y').date()
-            except ValueError:
-                pass
-    
-    if fecha_hasta_raw:
-        try:
-            fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
-        except ValueError:
-            try:
-                fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y').date()
-            except ValueError:
-                pass
+    # ¡MUY IMPORTANTE para la fecha HASTA!
+    # Queremos que el filtro incluya TODO el día. Por ejemplo, si el usuario selecciona
+    # hasta el 6 de mayo, debe incluir los contratos hasta las 11:59:59 PM.
+    if fecha_hasta_aware:
+        # Sumamos 1 día y restamos 1 microsegundo para obtener el final del día.
+        fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
     
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
     
-    # ===== FILTRAR POR FECHA USANDO __date CON OBJETOS DATE =====
-    if fecha_desde_obj and fecha_hasta_obj:
+    # ===== FILTRAR POR FECHA USANDO DATETIME AWARE =====
+    if fecha_desde_aware and fecha_hasta_aware:
         ventas = ventas.filter(
-            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde_obj, fecha_completado__date__lte=fecha_hasta_obj) |
-            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde_obj, fecha_creacion__date__lte=fecha_hasta_obj)
+            Q(estado='COMPLETADO', fecha_completado__gte=fecha_desde_aware, fecha_completado__lte=fecha_hasta_aware) |
+            Q(estado='EN_PROCESO', fecha_creacion__gte=fecha_desde_aware, fecha_creacion__lte=fecha_hasta_aware)
         )
-    elif fecha_desde_obj:
+    elif fecha_desde_aware:
         ventas = ventas.filter(
-            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde_obj) |
-            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde_obj)
+            Q(estado='COMPLETADO', fecha_completado__gte=fecha_desde_aware) |
+            Q(estado='EN_PROCESO', fecha_creacion__gte=fecha_desde_aware)
         )
-    elif fecha_hasta_obj:
+    elif fecha_hasta_aware:
         ventas = ventas.filter(
-            Q(estado='COMPLETADO', fecha_completado__date__lte=fecha_hasta_obj) |
-            Q(estado='EN_PROCESO', fecha_creacion__date__lte=fecha_hasta_obj)
+            Q(estado='COMPLETADO', fecha_completado__lte=fecha_hasta_aware) |
+            Q(estado='EN_PROCESO', fecha_creacion__lte=fecha_hasta_aware)
         )
     
     if vendedor_id:
