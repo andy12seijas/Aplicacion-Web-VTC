@@ -496,15 +496,19 @@ def reporte_vendedores_json(request):
     per_page = int(request.GET.get('per_page', 15))
     busqueda = request.GET.get('busqueda', '')
     
-    # Calcular semana (viernes a jueves)
+    # ========== CONVERTIR FECHA DE SEMANA A DATETIME AWARE ==========
+    fecha_referencia = None
     if semana_fecha:
-        try:
-            fecha_referencia = datetime.strptime(semana_fecha, '%Y-%m-%d').date()
-        except:
-            fecha_referencia = datetime.now().date()
-    else:
-        fecha_referencia = datetime.now().date()
+        # Convertir usando la función auxiliar
+        fecha_referencia_aware = convertir_a_datetime_aware(semana_fecha)
+        if fecha_referencia_aware:
+            fecha_referencia = fecha_referencia_aware.date()
     
+    if not fecha_referencia:
+        # Usar fecha actual en zona Venezuela
+        fecha_referencia = VE_TZ.localize(datetime.now()).date()
+    
+    # Calcular semana (viernes a jueves) usando fechas naive (solo la fecha)
     dias_desde_viernes = fecha_referencia.weekday() - 4
     if dias_desde_viernes < 0:
         dias_desde_viernes += 7
@@ -512,12 +516,17 @@ def reporte_vendedores_json(request):
     viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
     jueves_fin = viernes_inicio + timedelta(days=6)
     
-    # ===== LÓGICA SIMPLIFICADA =====
-    # Usar fecha_completado directamente (mucho más simple y preciso)
+    # ===== CONVERTIR A DATETIME AWARE PARA FILTRAR =====
+    # Inicio del día (00:00:00) en zona Venezuela
+    fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
+    # Fin del día (23:59:59.999999) en zona Venezuela
+    fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
+    
+    # Usar fecha_completado directamente con datetime aware
     contratos = ContratoCliente.objects.filter(
         estado='COMPLETADO',
-        fecha_completado__date__gte=viernes_inicio,
-        fecha_completado__date__lte=jueves_fin
+        fecha_completado__gte=fecha_inicio_aware,
+        fecha_completado__lte=fecha_fin_aware
     )
     
     # Filtrar por vendedor
@@ -651,6 +660,70 @@ def reporte_vendedores_json(request):
     })
 
 
+@login_required
+@user_passes_test(es_admin)
+def semanas_disponibles_api(request):
+    """API para obtener las semanas disponibles con contratos completados"""
+    
+    # Obtener todas las semanas donde hay contratos completados
+    contratos = ContratoCliente.objects.filter(estado='COMPLETADO').order_by('fecha_creacion')
+    
+    semanas = []
+    fechas_procesadas = set()
+    
+    for contrato in contratos:
+        # Usar la fecha completado (si existe) o fecha_creacion
+        if contrato.fecha_completado:
+            fecha_utc = contrato.fecha_completado
+        else:
+            fecha_utc = contrato.fecha_creacion
+        
+        # Convertir la fecha UTC a zona Venezuela para obtener la fecha correcta
+        fecha_ve = fecha_utc.astimezone(VE_TZ)
+        fecha = fecha_ve.date()
+        
+        # Calcular semana (viernes a jueves)
+        dias_desde_viernes = fecha.weekday() - 4
+        if dias_desde_viernes < 0:
+            dias_desde_viernes += 7
+        
+        viernes_inicio = fecha - timedelta(days=dias_desde_viernes)
+        jueves_fin = viernes_inicio + timedelta(days=6)
+        
+        clave = viernes_inicio.strftime('%Y-%m-%d')
+        
+        if clave not in fechas_procesadas:
+            fechas_procesadas.add(clave)
+            semanas.append({
+                'value': viernes_inicio.strftime('%Y-%m-%d'),
+                'label': f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
+            })
+    
+    # Ordenar por fecha descendente
+    semanas.sort(key=lambda x: x['value'], reverse=True)
+    
+    # Agregar semana actual (en zona Venezuela)
+    ahora_ve = datetime.now().astimezone(VE_TZ)
+    hoy = ahora_ve.date()
+    dias_desde_viernes = hoy.weekday() - 4
+    if dias_desde_viernes < 0:
+        dias_desde_viernes += 7
+    
+    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
+    jueves_actual = viernes_actual + timedelta(days=6)
+    semana_actual_clave = viernes_actual.strftime('%Y-%m-%d')
+    
+    semana_actual = {
+        'value': semana_actual_clave,
+        'label': f"Semana Actual ({viernes_actual.strftime('%d/%m/%Y')} - {jueves_actual.strftime('%d/%m/%Y')})"
+    }
+    
+    # Verificar si la semana actual ya está en la lista
+    if not any(s['value'] == semana_actual_clave for s in semanas):
+        semanas.insert(0, semana_actual)
+    
+    return JsonResponse({'semanas': semanas})
+
 
 
 @staff_member_required
@@ -673,60 +746,7 @@ def api_actualizar_tasa(request):
     
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-@login_required
-@user_passes_test(es_admin)
-def semanas_disponibles_api(request):
-    """API para obtener las semanas disponibles con contratos completados"""
-    
-    # Obtener todas las semanas donde hay contratos completados
-    contratos = ContratoCliente.objects.filter(estado='COMPLETADO').order_by('fecha_creacion')
-    
-    semanas = []
-    fechas_procesadas = set()
-    
-    for contrato in contratos:
-        fecha = contrato.fecha_creacion.date()
-        
-        # Calcular semana (viernes a jueves)
-        dias_desde_viernes = fecha.weekday() - 4
-        if dias_desde_viernes < 0:
-            dias_desde_viernes += 7
-        
-        viernes_inicio = fecha - timedelta(days=dias_desde_viernes)
-        jueves_fin = viernes_inicio + timedelta(days=6)
-        
-        clave = viernes_inicio.strftime('%Y-%m-%d')
-        
-        if clave not in fechas_procesadas:
-            fechas_procesadas.add(clave)
-            semanas.append({
-                'value': viernes_inicio.strftime('%Y-%m-%d'),
-                'label': f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
-            })
-    
-    # Ordenar por fecha descendente
-    semanas.sort(key=lambda x: x['value'], reverse=True)
-    
-    # Agregar semana actual
-    hoy = datetime.now().date()
-    dias_desde_viernes = hoy.weekday() - 4
-    if dias_desde_viernes < 0:
-        dias_desde_viernes += 7
-    
-    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
-    jueves_actual = viernes_actual + timedelta(days=6)
-    semana_actual_clave = viernes_actual.strftime('%Y-%m-%d')
-    
-    semana_actual = {
-        'value': semana_actual_clave,
-        'label': f"Semana Actual ({viernes_actual.strftime('%d/%m/%Y')} - {jueves_actual.strftime('%d/%m/%Y')})"
-    }
-    
-    # Verificar si la semana actual ya está en la lista
-    if not any(s['value'] == semana_actual_clave for s in semanas):
-        semanas.insert(0, semana_actual)
-    
-    return JsonResponse({'semanas': semanas})
+
 
 
 @login_required
@@ -751,21 +771,28 @@ def reporte_instaladores_json(request):
     per_page = int(request.GET.get('per_page', 15))
     busqueda = request.GET.get('busqueda', '')
     
-    # Calcular semana (viernes a jueves)
+    # ========== CONVERTIR FECHA DE SEMANA A DATETIME AWARE ==========
+    fecha_referencia = None
     if semana_fecha:
-        try:
-            fecha_referencia = datetime.strptime(semana_fecha, '%Y-%m-%d').date()
-        except:
-            fecha_referencia = datetime.now().date()
-    else:
-        fecha_referencia = datetime.now().date()
+        fecha_referencia_aware = convertir_a_datetime_aware(semana_fecha)
+        if fecha_referencia_aware:
+            fecha_referencia = fecha_referencia_aware.date()
     
+    if not fecha_referencia:
+        # Usar fecha actual en zona Venezuela
+        fecha_referencia = VE_TZ.localize(datetime.now()).date()
+    
+    # Calcular semana (viernes a jueves)
     dias_desde_viernes = fecha_referencia.weekday() - 4
     if dias_desde_viernes < 0:
         dias_desde_viernes += 7
     
     viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
     jueves_fin = viernes_inicio + timedelta(days=6)
+    
+    # ===== CONVERTIR A DATETIME AWARE PARA FILTRAR =====
+    fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
+    fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
     
     # Precios
     PRECIO_INSTALACION = 15
@@ -812,11 +839,11 @@ def reporte_instaladores_json(request):
                 cuadrillas_dict[cuadrilla.nombre]['instaladores_set'].add(perfil.usuario.id)
     
     # ========== 1. INSTALACIONES COMPLETADAS (para PAGO) ==========
-    # Solo instalaciones COMPLETADAS en la semana (viernes a jueves)
+    # Usar datetime aware para filtrar
     instalaciones = Instalacion.objects.filter(
         completada=True,
-        fecha_instalacion__date__gte=viernes_inicio,
-        fecha_instalacion__date__lte=jueves_fin
+        fecha_instalacion__gte=fecha_inicio_aware,
+        fecha_instalacion__lte=fecha_fin_aware
     ).select_related('asignacion__cuadrilla')
     
     for inst in instalaciones:
@@ -866,10 +893,11 @@ def reporte_instaladores_json(request):
             })
     
     # ========== 2. SOPORTES COMPLETADOS ==========
+    # Usar datetime aware para filtrar
     soportes = Soporte.objects.filter(
         estado='COMPLETADO',
-        fecha_creacion__date__gte=viernes_inicio,
-        fecha_creacion__date__lte=jueves_fin
+        fecha_creacion__gte=fecha_inicio_aware,
+        fecha_creacion__lte=fecha_fin_aware
     ).select_related('cuadrilla')
     
     for sop in soportes:
@@ -941,11 +969,12 @@ def reporte_instaladores_json(request):
         if not cuadrillas_del_instalador.exists():
             continue
         
+        # Usar datetime aware para filtrar contratos
         contratos_instalador = ContratoCliente.objects.filter(
             estado='COMPLETADO',
             creado_por=instalador,
-            fecha_completado__date__gte=viernes_inicio,
-            fecha_completado__date__lte=jueves_fin
+            fecha_completado__gte=fecha_inicio_aware,
+            fecha_completado__lte=fecha_fin_aware
         )
         
         if busqueda:
@@ -1063,8 +1092,8 @@ def reporte_instaladores_json(request):
         'semana_inicio': viernes_inicio.strftime('%Y-%m-%d'),
         'semana_fin': jueves_fin.strftime('%Y-%m-%d')
     })
-    
-    
+
+
 @login_required
 @user_passes_test(es_admin)
 def semanas_disponibles_instaladores_api(request):
@@ -1075,23 +1104,27 @@ def semanas_disponibles_instaladores_api(request):
     # Obtener fechas de instalaciones, soportes y contratos
     fechas = []
     
-    # Instalaciones
+    # Instalaciones - convertir a zona Venezuela
     instalaciones = Instalacion.objects.filter(completada=True).exclude(fecha_instalacion__isnull=True)
     for inst in instalaciones:
         if inst.fecha_instalacion:
-            fechas.append(inst.fecha_instalacion.date())
+            # Convertir UTC a zona Venezuela
+            fecha_ve = inst.fecha_instalacion.astimezone(VE_TZ)
+            fechas.append(fecha_ve.date())
     
-    # Soportes
+    # Soportes - convertir a zona Venezuela
     soportes = Soporte.objects.filter(estado='COMPLETADO').exclude(fecha_hora_servicio__isnull=True)
     for sop in soportes:
         if sop.fecha_hora_servicio:
-            fechas.append(sop.fecha_hora_servicio.date())
+            fecha_ve = sop.fecha_hora_servicio.astimezone(VE_TZ)
+            fechas.append(fecha_ve.date())
     
-    # Contratos completados
+    # Contratos completados - convertir a zona Venezuela
     contratos = ContratoCliente.objects.filter(estado='COMPLETADO').exclude(fecha_completado__isnull=True)
     for con in contratos:
         if con.fecha_completado:
-            fechas.append(con.fecha_completado.date())
+            fecha_ve = con.fecha_completado.astimezone(VE_TZ)
+            fechas.append(fecha_ve.date())
     
     semanas = []
     fechas_procesadas = set()
@@ -1117,8 +1150,9 @@ def semanas_disponibles_instaladores_api(request):
     # Ordenar por fecha descendente
     semanas.sort(key=lambda x: x['value'], reverse=True)
     
-    # Agregar semana actual
-    hoy = datetime.now().date()
+    # Agregar semana actual (en zona Venezuela)
+    ahora_ve = datetime.now().astimezone(VE_TZ)
+    hoy = ahora_ve.date()
     dias_desde_viernes = hoy.weekday() - 4
     if dias_desde_viernes < 0:
         dias_desde_viernes += 7
@@ -1135,7 +1169,7 @@ def semanas_disponibles_instaladores_api(request):
     if not any(s['value'] == semana_actual_clave for s in semanas):
         semanas.insert(0, semana_actual)
     
-    return JsonResponse({'semanas': semanas})    
+    return JsonResponse({'semanas': semanas})   
 
 
 
