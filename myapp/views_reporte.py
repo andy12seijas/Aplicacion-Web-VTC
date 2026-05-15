@@ -335,10 +335,38 @@ def reporte_instalador(request):
     instalador_id = request.GET.get('instalador', request.user.id if not es_admin else '')
     cuadrilla_id = request.GET.get('cuadrilla', '')
     
-    # Filtros de fecha para gráficas
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
+    # Filtros de fecha para gráficas (RAW)
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
     semana_offset = int(request.GET.get('semana_offset', 0))
+    
+    # ========== CONVERTIR FECHAS (directamente aquí) ==========
+    from datetime import datetime, timedelta as td
+    import pytz
+    
+    fecha_desde_obj = None
+    fecha_hasta_obj = None
+    
+    if fecha_desde_raw:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d').date()
+        except ValueError:
+            try:
+                fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y').date()
+            except ValueError:
+                pass
+    
+    if fecha_hasta_raw:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
+        except ValueError:
+            try:
+                fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y').date()
+            except ValueError:
+                pass
+    
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
     
     # ========== BASE DE DATOS ==========
     # Base para instalaciones - usar histórico de instaladores
@@ -379,15 +407,14 @@ def reporte_instalador(request):
     # Contratos (ventas realizadas por el instalador)
     total_contratos = contratos_totales.filter(estado='COMPLETADO').count()
     
-    # ========== DATOS PARA GRÁFICAS ==========
-    # Aplicar filtros de fecha a las gráficas
-    if fecha_desde:
-        instalaciones_graficas = instalaciones_totales.filter(fecha_creacion__date__gte=fecha_desde)
-    else:
-        instalaciones_graficas = instalaciones_totales
+    # ========== DATOS PARA GRÁFICAS CON FILTROS CORREGIDOS ==========
+    instalaciones_graficas = instalaciones_totales
     
-    if fecha_hasta:
-        instalaciones_graficas = instalaciones_graficas.filter(fecha_creacion__date__lte=fecha_hasta)
+    if fecha_desde_obj:
+        instalaciones_graficas = instalaciones_graficas.filter(fecha_creacion__date__gte=fecha_desde_obj)
+    
+    if fecha_hasta_obj:
+        instalaciones_graficas = instalaciones_graficas.filter(fecha_creacion__date__lte=fecha_hasta_obj)
     
     # 1. Instalaciones por estado
     instalaciones_estado_labels = ['Completadas', 'Pendientes']
@@ -478,41 +505,49 @@ def reporte_instalador(request):
         'avg_metros': avg_metros,
     }
     
-    # ========== ACUMULATIVO SEMANAL ==========
+    # ========== ACUMULATIVO SEMANAL CORREGIDO ==========
+    # Obtener fecha actual en zona Venezuela
+    ahora_ve = datetime.now().astimezone(VE_TZ)
+    hoy_ve = ahora_ve.date()
+    
     # Calcular semana actual (viernes a jueves)
-    dias_desde_viernes = (hoy.weekday() - 4) % 7
-    viernes_actual = hoy - timedelta(days=dias_desde_viernes)
+    dias_desde_viernes = (hoy_ve.weekday() - 4) % 7
+    viernes_actual = hoy_ve - td(days=dias_desde_viernes)
     
     # Aplicar offset para navegar entre semanas
-    viernes_seleccionado = viernes_actual - timedelta(weeks=semana_offset)
-    jueves_seleccionado = viernes_seleccionado + timedelta(days=6)
+    viernes_seleccionado = viernes_actual - td(weeks=semana_offset)
+    jueves_seleccionado = viernes_seleccionado + td(days=6)
     
-    # CORREGIDO: Instalaciones COMPLETADAS en la semana (usando fecha_instalacion)
+    # Crear fechas aware para filtrar
+    fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_seleccionado, datetime.min.time()))
+    fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_seleccionado, datetime.max.time()))
+    
+    # Instalaciones COMPLETADAS en la semana (usando fecha_instalacion con datetime aware)
     instalaciones_completadas_semana = instalaciones_totales.filter(
         completada=True,
-        fecha_instalacion__date__gte=viernes_seleccionado,
-        fecha_instalacion__date__lte=jueves_seleccionado
+        fecha_instalacion__gte=fecha_inicio_aware,
+        fecha_instalacion__lte=fecha_fin_aware
     ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial')
     
-    # Instalaciones PENDIENTES creadas en la semana (usando fecha_creacion)
+    # Instalaciones PENDIENTES creadas en la semana (usando fecha_creacion con datetime aware)
     instalaciones_pendientes_semana = instalaciones_totales.filter(
         completada=False,
-        fecha_creacion__date__gte=viernes_seleccionado,
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__gte=fecha_inicio_aware,
+        fecha_creacion__lte=fecha_fin_aware
     ).select_related('asignacion__cuadrilla', 'asignacion__contrato__cliente_potencial')
     
-    # CORREGIDO: Soportes COMPLETADOS en la semana (usando fecha_creacion)
+    # Soportes COMPLETADOS en la semana (usando fecha_creacion con datetime aware)
     soportes_completados_semana = soportes_totales.filter(
         estado='COMPLETADO',
-        fecha_creacion__date__gte=viernes_seleccionado,
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__gte=fecha_inicio_aware,
+        fecha_creacion__lte=fecha_fin_aware
     ).select_related('asignacion__ticket', 'cuadrilla')
     
     # Soportes PENDIENTES creados en la semana
     soportes_pendientes_semana = soportes_totales.filter(
         estado='PENDIENTE',
-        fecha_creacion__date__gte=viernes_seleccionado,
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__gte=fecha_inicio_aware,
+        fecha_creacion__lte=fecha_fin_aware
     ).select_related('asignacion__ticket', 'cuadrilla')
     
     # Unir todas las instalaciones de la semana
@@ -532,27 +567,27 @@ def reporte_instalador(request):
     soportes_completados_semana_count = soportes_completados_semana.count()
     soportes_pendientes_semana_count = soportes_pendientes_semana.count()
     
-    # CORREGIDO: Acumulado hasta la semana (usando fecha_instalacion para completadas)
+    # Acumulado hasta la semana (con datetime aware)
     acumulado_instalaciones_completadas = instalaciones_totales.filter(
         completada=True,
-        fecha_instalacion__date__lte=jueves_seleccionado
+        fecha_instalacion__lte=fecha_fin_aware
     ).count()
     
     acumulado_instalaciones_pendientes = instalaciones_totales.filter(
         completada=False,
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__lte=fecha_fin_aware
     ).count()
     
     acumulado_instalaciones_total = acumulado_instalaciones_completadas + acumulado_instalaciones_pendientes
     
     acumulado_soportes_completados = soportes_totales.filter(
         estado='COMPLETADO',
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__lte=fecha_fin_aware
     ).count()
     
     acumulado_soportes_pendientes = soportes_totales.filter(
         estado='PENDIENTE',
-        fecha_creacion__date__lte=jueves_seleccionado
+        fecha_creacion__lte=fecha_fin_aware
     ).count()
     
     acumulado_soportes_total = acumulado_soportes_completados + acumulado_soportes_pendientes
@@ -592,6 +627,10 @@ def reporte_instalador(request):
     
     # Obtener cuadrillas para el filtro
     cuadrillas_lista = Cuadrilla.objects.filter(activo=True).order_by('nombre')
+    
+    # Para mostrar en el template (mantener las fechas originales o convertidas)
+    fecha_desde_mostrar = fecha_desde_raw
+    fecha_hasta_mostrar = fecha_hasta_raw
     
     context = {
         # Estadísticas generales
@@ -638,8 +677,8 @@ def reporte_instalador(request):
         'cuadrillas': cuadrillas_lista,
         'instalador_seleccionado': instalador_id,
         'cuadrilla_seleccionada': cuadrilla_id,
-        'fecha_desde': fecha_desde,
-        'fecha_hasta': fecha_hasta,
+        'fecha_desde': fecha_desde_mostrar,
+        'fecha_hasta': fecha_hasta_mostrar,
         'es_admin': es_admin,
     }
     
