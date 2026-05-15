@@ -62,54 +62,52 @@ def reporte_ventas_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
-    # ========== CONVERTIR FECHAS DE dd/mm/yyyy a yyyy-mm-dd ==========
-    fecha_desde = None
-    fecha_hasta = None
+    # ========== CONVERTIR FECHAS DE dd/mm/yyyy a OBJETO DATE ==========
+    from datetime import datetime
+    
+    fecha_desde_obj = None
+    fecha_hasta_obj = None
     
     if fecha_desde_raw:
         try:
             # Intentar formato dd/mm/yyyy
-            fecha_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y')
-            fecha_desde = fecha_obj.strftime('%Y-%m-%d')
+            fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y').date()
         except ValueError:
             try:
-                # Intentar formato yyyy-mm-dd (ISO)
-                fecha_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d')
-                fecha_desde = fecha_obj.strftime('%Y-%m-%d')
+                # Intentar formato yyyy-mm-dd
+                fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d').date()
             except ValueError:
-                fecha_desde = None
+                pass
     
     if fecha_hasta_raw:
         try:
             # Intentar formato dd/mm/yyyy
-            fecha_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y')
-            fecha_hasta = fecha_obj.strftime('%Y-%m-%d')
+            fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y').date()
         except ValueError:
             try:
-                # Intentar formato yyyy-mm-dd (ISO)
-                fecha_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d')
-                fecha_hasta = fecha_obj.strftime('%Y-%m-%d')
+                # Intentar formato yyyy-mm-dd
+                fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
             except ValueError:
-                fecha_hasta = None
+                pass
     
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
     
-    # ===== FILTRAR POR FECHA DE COMPLETADO (CON FECHAS CONVERTIDAS) =====
-    if fecha_desde and fecha_hasta:
+    # ===== FILTRAR POR FECHA USANDO OBJETOS DATE =====
+    if fecha_desde_obj and fecha_hasta_obj:
         ventas = ventas.filter(
-            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde, fecha_completado__date__lte=fecha_hasta) |
-            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde, fecha_creacion__date__lte=fecha_hasta)
+            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde_obj, fecha_completado__date__lte=fecha_hasta_obj) |
+            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde_obj, fecha_creacion__date__lte=fecha_hasta_obj)
         )
-    elif fecha_desde:
+    elif fecha_desde_obj:
         ventas = ventas.filter(
-            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde) |
-            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde)
+            Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde_obj) |
+            Q(estado='EN_PROCESO', fecha_creacion__date__gte=fecha_desde_obj)
         )
-    elif fecha_hasta:
+    elif fecha_hasta_obj:
         ventas = ventas.filter(
-            Q(estado='COMPLETADO', fecha_completado__date__lte=fecha_hasta) |
-            Q(estado='EN_PROCESO', fecha_creacion__date__lte=fecha_hasta)
+            Q(estado='COMPLETADO', fecha_completado__date__lte=fecha_hasta_obj) |
+            Q(estado='EN_PROCESO', fecha_creacion__date__lte=fecha_hasta_obj)
         )
     
     if vendedor_id:
