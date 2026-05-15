@@ -46,6 +46,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'myapp.middleware.ZonaHorariaMiddleware',
 ]
 
 # URLs de autenticación
@@ -117,9 +118,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+
 USE_I18N = True
+TIME_ZONE = 'America/Caracas'
 USE_TZ = True
+# Django usará la zona horaria de Venezuela automáticamente
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

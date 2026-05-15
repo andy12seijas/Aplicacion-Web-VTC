@@ -1,10 +1,9 @@
 {% load static %}
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>SimpleFibra x VTConexiones | Internet de Fibra Óptica</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -12,6 +11,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         :root {
             --orange: #ff6b00;
@@ -21,6 +22,7 @@
             --dark-gray: #2d2d44;
             --light-gray: #f8f9fa;
             --text-gray: #6c757d;
+            --green: #10b981;
         }
 
         * {
@@ -32,6 +34,13 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             overflow-x: hidden;
+            width: 100%;
+            position: relative;
+        }
+
+        html {
+            overflow-x: hidden;
+            width: 100%;
         }
 
         /* Navbar */
@@ -43,7 +52,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Logo container - izquierda */
         .logo-container {
             display: flex;
             align-items: center;
@@ -145,6 +153,18 @@
 
         .btn-login:hover {
             background: var(--orange);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .btn-pago {
+            background: transparent;
+            border: 2px solid var(--green);
+            color: var(--green);
+        }
+
+        .btn-pago:hover {
+            background: var(--green);
             color: white;
             transform: translateY(-2px);
         }
@@ -251,7 +271,6 @@
             50% { transform: translateY(-20px); }
         }
 
-        /* Botón principal */
         .btn-main {
             background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
             color: white;
@@ -272,7 +291,6 @@
             color: white;
         }
 
-        /* Secciones */
         .section {
             padding: 60px 0;
         }
@@ -292,7 +310,6 @@
             padding: 0 15px;
         }
 
-        /* Tarjetas de servicios */
         .service-card {
             background: white;
             border-radius: 20px;
@@ -339,7 +356,6 @@
             font-size: 14px;
         }
 
-        /* Tarjetas de planes - Ahora solo 3 planes, centrados */
         .plans-section {
             background: var(--light-gray);
         }
@@ -464,15 +480,17 @@
             width: 100%;
             cursor: pointer;
             margin-top: 15px;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .btn-plan:hover {
             background: var(--orange);
             color: white;
             transform: translateY(-2px);
+            text-decoration: none;
         }
 
-        /* Testimonios */
         .testimonial-card {
             background: white;
             border-radius: 20px;
@@ -514,7 +532,6 @@
             color: var(--text-gray);
         }
 
-        /* Contacto */
         .contacto-section {
             background: var(--light-gray);
         }
@@ -557,7 +574,6 @@
             text-align: center;
         }
 
-        /* Footer */
         .footer {
             background: var(--dark);
             color: white;
@@ -639,48 +655,37 @@
             font-size: 12px;
         }
 
-        /* Media Queries */
         @media (min-width: 768px) {
             .hero-title {
                 font-size: 56px;
             }
-            
             .hero-subtitle {
                 font-size: 18px;
             }
-            
             .section-title {
                 font-size: 36px;
             }
-            
             .section-subtitle {
                 font-size: 18px;
             }
-            
             .stat-number {
                 font-size: 32px;
             }
-            
             .hero-stats {
                 justify-content: flex-start;
             }
-            
             .hero-image {
                 margin-top: 0;
             }
-            
             .contact-info {
                 text-align: left;
             }
-            
             .contact-info h2 {
                 text-align: left;
             }
-            
             .footer h5 {
                 margin-top: 0;
             }
-            
             .social-links {
                 justify-content: flex-start;
             }
@@ -689,33 +694,35 @@
         @media (max-width: 767px) {
             .navbar-collapse {
                 padding: 15px 0;
+                max-height: 80vh;
+                overflow-y: auto;
             }
-            
             .nav-btn {
                 width: 100%;
                 text-align: center;
                 margin: 5px 0;
             }
-            
             .section {
                 padding: 40px 0;
             }
-            
             .hero {
                 padding: 80px 0 40px;
             }
-            
             .hero-stats {
                 gap: 15px;
             }
-            
             .plan-card {
-                width: 280px;
-                margin-bottom: 25px;
+                width: 100%;
+                max-width: 300px;
+                margin: 0 auto 25px;
             }
-            
             .plans-grid {
                 gap: 20px;
+                padding: 0 10px;
+            }
+            .container {
+                padding-left: 15px;
+                padding-right: 15px;
             }
         }
 
@@ -727,16 +734,37 @@
                 padding: 80px 0;
             }
         }
+
+        .row {
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        [class*="col-"] {
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+
+        /* Estilos para mensajes de error del formulario */
+        .errorlist {
+            color: #dc3545;
+            font-size: 12px;
+            list-style: none;
+            margin-top: 5px;
+            padding-left: 0;
+        }
+        
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Navbar con logo VTC a la izquierda -->
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <div class="navbar-brand-custom">
                 <a class="logo-container" href="/">
-                    <!-- Logo VTC -->
                     <img src="{% static 'cd.png' %}" alt="VTC" class="vtc-logo">
                     <div class="brand-divider"></div>
                     <div class="simplefibra-brand">
@@ -768,6 +796,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-btn btn-pago" href="{% url 'reportar_pago' %}">
+                            <i class="fas fa-credit-card"></i> Reportar Pago
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-btn btn-soporte" href="{% url 'reportar_soporte' %}">
                             <i class="fas fa-headset"></i> Soporte
                         </a>
@@ -782,10 +815,9 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <div class="row align-items-center">
+            <div class="row align-items-center g-0">
                 <div class="col-lg-6" data-aos="fade-right">
                     <h1 class="hero-title text-white">
                         Internet de <span>Fibra Óptica</span><br>
@@ -822,7 +854,6 @@
         </div>
     </section>
 
-    <!-- Servicios Section -->
     <section id="servicios" class="section">
         <div class="container">
             <h2 class="section-title" data-aos="fade-up">¿Por qué elegir <span style="color: var(--orange);">SimpleFibra</span>?</h2>
@@ -859,14 +890,12 @@
         </div>
     </section>
 
-    <!-- Planes Section - SOLO 3 PLANES: 400, 600 y 1 GIGA -->
     <section id="planes" class="section plans-section">
         <div class="container">
             <h2 class="section-title" data-aos="fade-up">Planes y <span style="color: var(--orange);">Precios</span></h2>
             <p class="section-subtitle" data-aos="fade-up">Elige el plan que mejor se adapte a tus necesidades</p>
             
             <div class="plans-grid">
-                <!-- Plan 400 Mbps -->
                 <div class="plan-card" data-aos="fade-up" data-aos-delay="100">
                     <h3 class="plan-name">400 Mbps</h3>
                     <div class="plan-price">400<span> Mbps</span></div>
@@ -879,10 +908,9 @@
                         <li><i class="fas fa-check-circle"></i> Wi-Fi de alto rendimiento</li>
                         <li><i class="fas fa-check-circle"></i> Instalación gratis</li>
                     </ul>
-                    <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">¡Quiero este plan!</button>
+                    <a class="btn-plan" href="#contacto">¡Quiero este plan!</a>
                 </div>
 
-                <!-- Plan 600 Mbps - MÁS POPULAR -->
                 <div class="plan-card popular" data-aos="fade-up" data-aos-delay="200">
                     <div class="popular-badge">⭐ Más Popular ⭐</div>
                     <h3 class="plan-name">600 Mbps</h3>
@@ -896,10 +924,9 @@
                         <li><i class="fas fa-check-circle"></i> Multiple dispositivos 4K</li>
                         <li><i class="fas fa-check-circle"></i> Instalación + Router WiFi 6</li>
                     </ul>
-                    <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">¡Lo quiero!</button>
+                    <a class="btn-plan" href="#contacto">¡Lo quiero!</a>
                 </div>
 
-                <!-- Plan 1 Giga -->
                 <div class="plan-card" data-aos="fade-up" data-aos-delay="300">
                     <h3 class="plan-name">1 Giga</h3>
                     <div class="plan-price">1000<span> Mbps</span></div>
@@ -912,13 +939,12 @@
                         <li><i class="fas fa-check-circle"></i> Prioridad en soporte técnico</li>
                         <li><i class="fas fa-check-circle"></i> Equipo de alta gama incluido</li>
                     </ul>
-                    <button class="btn-plan" onclick="window.location.href='{% url "login" %}'">Contratar 1 Giga</button>
+                    <a class="btn-plan" href="#contacto">Contratar 1 Giga</a>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Testimonios Section -->
     <section id="testimonios" class="section">
         <div class="container">
             <h2 class="section-title" data-aos="fade-up">Lo que dicen <span style="color: var(--orange);">nuestros clientes</span></h2>
@@ -958,14 +984,14 @@
         </div>
     </section>
 
-    <!-- Contacto Section -->
+    <!-- Contacto Section con formulario simplificado -->
     <section id="contacto" class="section contacto-section">
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-6" data-aos="fade-right">
                     <div class="contact-info">
                         <h2 class="section-title" style="text-align: left;">¿Listo para <span style="color: var(--orange);">conectarte</span>?</h2>
-                        <p>Contáctanos y uno de nuestros asesores te atenderá para ofrecerte el mejor plan para ti.</p>
+                        <p>Déjanos tus datos y uno de nuestros asesores se comunicará contigo para ofrecerte el mejor plan para ti.</p>
                         <div class="contact-details">
                             <div class="contact-item">
                                 <i class="fas fa-phone-alt"></i> <strong>Teléfono:</strong> +58 212-555-1212
@@ -987,18 +1013,44 @@
                 </div>
                 <div class="col-lg-6" data-aos="fade-left">
                     <div class="contact-card">
-                        <h4>Envíanos un mensaje</h4>
-                        <form>
+                        <h4><i class="fas fa-paper-plane"></i> Solicita información</h4>
+                        
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{% if message.tags == 'success' %}success{% else %}danger{% endif %} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <form method="POST" action="{% url 'landing' %}" id="contactoForm">
+                            {% csrf_token %}
                             <div class="mb-3">
-                                <input type="text" class="form-control" placeholder="Tu nombre">
+                                <label class="form-label">Nombre completo <span class="text-danger">*</span></label>
+                                {{ form.nombre }}
+                                {% if form.nombre.errors %}
+                                    <div class="errorlist">{{ form.nombre.errors }}</div>
+                                {% endif %}
                             </div>
                             <div class="mb-3">
-                                <input type="email" class="form-control" placeholder="Tu correo">
+                                <label class="form-label">Teléfono <span class="text-danger">*</span></label>
+                                {{ form.telefono }}
+                                {% if form.telefono.errors %}
+                                    <div class="errorlist">{{ form.telefono.errors }}</div>
+                                {% endif %}
+                                <small class="text-muted">Ej: 0412-1234567</small>
                             </div>
                             <div class="mb-3">
-                                <textarea class="form-control" rows="4" placeholder="Tu mensaje"></textarea>
+                                <label class="form-label">Mensaje</label>
+                                {{ form.mensaje }}
+                                {% if form.mensaje.errors %}
+                                    <div class="errorlist">{{ form.mensaje.errors }}</div>
+                                {% endif %}
                             </div>
-                            <button type="submit" class="btn-main w-100">Enviar mensaje</button>
+                            <button type="submit" class="btn-main w-100">
+                                <i class="fas fa-envelope"></i> Enviar mensaje
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -1006,7 +1058,6 @@
         </div>
     </section>
 
-    <!-- Footer -->
     <footer class="footer">
         <div class="container">
             <div class="row">
@@ -1039,7 +1090,7 @@
                     <ul class="footer-links">
                         <li><i class="fas fa-phone me-2"></i> +58 212-555-1212</li>
                         <li><i class="fas fa-envelope me-2"></i> info@simplefibra.com</li>
-                        <li><i class="fas fa-map-marker-alt me-2"></i> Valencia , Venezuela</li>
+                        <li><i class="fas fa-map-marker-alt me-2"></i> Valencia, Venezuela</li>
                     </ul>
                 </div>
             </div>
@@ -1058,7 +1109,6 @@
             offset: 50
         });
 
-        // Navbar scroll effect
         window.addEventListener('scroll', function() {
             const navbar = document.querySelector('.navbar');
             if (window.scrollY > 50) {
@@ -1068,6 +1118,26 @@
                 navbar.style.background = 'rgba(255, 255, 255, 0.95)';
                 navbar.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.1)';
             }
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                    const navbarCollapse = document.querySelector('.navbar-collapse');
+                    if (navbarCollapse.classList.contains('show')) {
+                        const bsCollapse = new bootstrap.Collapse(navbarCollapse, {
+                            toggle: false
+                        });
+                        bsCollapse.hide();
+                    }
+                }
+            });
         });
     </script>
 </body>

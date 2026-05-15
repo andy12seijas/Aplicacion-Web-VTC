@@ -1862,34 +1862,21 @@ class DetallePagoMovil(models.Model):
         related_name='pagos_movil_emisor',
         verbose_name="Banco emisor (desde donde pagas)"
     )
-    banco_receptor = models.ForeignKey(
-        Banco,
-        on_delete=models.PROTECT,
-        related_name='pagos_movil_receptor',
-        verbose_name="Banco receptor (nuestro banco)"
-    )
+    
     numero_telefono = models.CharField(
         max_length=20,
         verbose_name="Número de teléfono",
         help_text="Número desde donde se realizó el Pago Móvil"
     )
-    cedula_titular = models.CharField(
-        max_length=15,
-        verbose_name="Cédula del titular",
-        help_text="Cédula de la persona que realizó el pago"
-    )
-    referencia = models.CharField(
-        max_length=50,
-        unique=True,
-        verbose_name="Número de referencia"
-    )
+   
+    
     
     class Meta:
         verbose_name = "Detalle Pago Móvil"
         verbose_name_plural = "Detalles Pago Móvil"
     
     def __str__(self):
-        return f"Pago Móvil - {self.banco_emisor} → {self.banco_receptor} - Ref: {self.referencia}"
+        return f"Pago Móvil - {self.banco_emisor} → "
 
 
 class DetalleTransferencia(models.Model):
@@ -2326,3 +2313,83 @@ class SoporteCliente(models.Model):
             self.estado = self.EstadoSoporte.NO_LEIDO
             self.fecha_leido = None
             self.save(update_fields=['estado', 'fecha_leido'])
+
+
+
+class LeadInteresado(models.Model):
+    """Leads que llegan del landing page (interesados en internet)"""
+    
+    class EstadoLead(models.TextChoices):
+        NUEVO = 'NUEVO', '🆕 Nuevo (sin contacto)'
+        CONTACTADO = 'CONTACTADO', '📞 Contactado'
+        EN_SEGUIMIENTO = 'EN_SEGUIMIENTO', '⏳ En seguimiento'
+        CONVERTIDO = 'CONVERTIDO', '✅ Convertido a cliente'
+        PERDIDO = 'PERDIDO', '❌ Perdido/No interesado'
+    
+    # Datos básicos
+    nombre = models.CharField(max_length=100, verbose_name="Nombre")
+    telefono = models.CharField(max_length=20, verbose_name="Teléfono")
+    
+    # Mensaje del cliente
+    mensaje = models.TextField(max_length=1000, verbose_name="Mensaje", blank=True, null=True)
+    
+    # Estado del lead
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoLead.choices,
+        default=EstadoLead.NUEVO,
+        verbose_name="Estado",
+        db_index=True
+    )
+    
+    # Referencia al cliente potencial si se convirtió
+    cliente_potencial_convertido = models.OneToOneField(
+        'ClientePotencial',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='lead_origen',
+        verbose_name="Cliente potencial convertido"
+    )
+    
+    # Metadatos
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de registro")
+    fecha_contactado = models.DateTimeField(null=True, blank=True, verbose_name="Fecha de contacto")
+    
+    # Call center que lo contactó
+    contactado_por = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True,
+        related_name='leads_contactados',
+        verbose_name="Contactado por"
+    )
+    
+    # Notas del call center
+    notas_seguimiento = models.TextField(max_length=500, blank=True, null=True, verbose_name="Notas de seguimiento")
+    
+    class Meta:
+        verbose_name = "Lead Interesado (Web)"
+        verbose_name_plural = "Leads Interesados (Web)"
+        ordering = ['-fecha_creacion']
+        indexes = [
+            models.Index(fields=['estado']),
+            models.Index(fields=['fecha_creacion']),
+            models.Index(fields=['telefono']),
+        ]
+    
+    def __str__(self):
+        return f"{self.nombre} - {self.telefono} [{self.get_estado_display()}]"
+    
+    def marcar_contactado(self, usuario):
+        """Marca el lead como contactado"""
+        from django.utils import timezone
+        self.estado = self.EstadoLead.CONTACTADO
+        self.fecha_contactado = timezone.now()
+        self.contactado_por = usuario
+        self.save(update_fields=['estado', 'fecha_contactado', 'contactado_por'])
+    
+    def convertir_a_cliente_potencial(self, cliente_potencial):
+        """Convierte el lead en un cliente potencial"""
+        self.cliente_potencial_convertido = cliente_potencial
+        self.estado = self.EstadoLead.CONVERTIDO
+        self.save(update_fields=['cliente_potencial_convertido', 'estado'])            

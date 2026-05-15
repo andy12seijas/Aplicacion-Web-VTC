@@ -19,6 +19,7 @@ from myapp.views_inventario import *
 from myapp.views_reportarpago import *
 from myapp.views_soportecliente import *
 from myapp.views_validacion_soporte import *
+from myapp.views_leads import *
 
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
@@ -166,6 +167,12 @@ path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_a
     path('gestion-soportes/cliente/', gestion_soportes_cliente, name='gestion_soportes_cliente'),
     path('marcar-soporte-leido/<int:soporte_id>/', marcar_soporte_leido, name='marcar_soporte_leido'),
     path('ver-detalle-soporte/<int:soporte_id>/',ver_detalle_soporte, name='ver_detalle_soporte'),
+
+
+    path('panel-leads/', panel_leads, name='panel_leads'),
+    path('cambiar-estado-lead/<int:lead_id>/', cambiar_estado_lead, name='cambiar_estado_lead'),
+    path('agregar-nota-lead/<int:lead_id>/',agregar_nota_lead, name='agregar_nota_lead'),
+    path('ver-detalle-lead/<int:lead_id>/', ver_detalle_lead, name='ver_detalle_lead'),
 
 ]
 

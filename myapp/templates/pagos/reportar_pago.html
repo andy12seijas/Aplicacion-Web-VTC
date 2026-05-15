@@ -688,26 +688,8 @@
                             </select>
                         </div>
                         <div class="form-group-modern">
-                            <label>Banco Receptor (nuestro banco)</label>
-                            <select name="banco_receptor" class="form-control-modern" required>
-                                <option value="">Seleccione...</option>
-                                <!-- Solo mostrar Banplus y Banco Nacional de Crédito -->
-                                {% for banco in bancos_receptores %}
-                                <option value="{{ banco.id }}">{{ banco.codigo }} - {{ banco.nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group-modern">
                             <label>Número de Teléfono</label>
                             <input type="text" name="numero_telefono" class="form-control-modern" placeholder="+58 412-1234567" required>
-                        </div>
-                        <div class="form-group-modern">
-                            <label>Cédula del Titular</label>
-                            <input type="text" name="cedula_titular" class="form-control-modern" placeholder="V-12345678" required>
-                        </div>
-                        <div class="form-group-modern">
-                            <label>Número de Referencia</label>
-                            <input type="text" name="referencia" class="form-control-modern" placeholder="Ej: 1234567890" required>
                         </div>
                     </form>
                 </div>
@@ -971,10 +953,9 @@
             }
             
             formData.append('banco_emisor', form.querySelector('[name="banco_emisor"]').value);
-            formData.append('banco_receptor', form.querySelector('[name="banco_receptor"]').value);
+          
             formData.append('numero_telefono', form.querySelector('[name="numero_telefono"]').value);
-            formData.append('cedula_titular', form.querySelector('[name="cedula_titular"]').value);
-            formData.append('referencia', form.querySelector('[name="referencia"]').value);
+           
             
             const response = await fetch('/crear-reporte/', {
                 method: 'POST',

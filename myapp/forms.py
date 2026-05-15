@@ -1165,21 +1165,18 @@ class PagoForm(forms.ModelForm):
 class PagoMovilForm(forms.ModelForm):
     class Meta:
         model = DetallePagoMovil
-        fields = ['banco_emisor', 'banco_receptor', 'numero_telefono', 'cedula_titular', 'referencia']
+        fields = ['banco_emisor','numero_telefono']
         widgets = {
             'banco_emisor': forms.Select(attrs={'class': 'form-control'}),
-            'banco_receptor': forms.Select(attrs={'class': 'form-control'}),
+            
             'numero_telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+58 412-1234567'}),
-            'cedula_titular': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'V-12345678'}),
-            'referencia': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de referencia'}),
+           
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['banco_emisor'].queryset = Banco.objects.filter(activo=True)
-        self.fields['banco_receptor'].queryset = Banco.objects.filter(activo=True)
         self.fields['banco_emisor'].empty_label = "Seleccione banco emisor"
-        self.fields['banco_receptor'].empty_label = "Seleccione banco receptor"
 
 
 class TransferenciaForm(forms.ModelForm):
@@ -1260,3 +1257,30 @@ class SoporteClienteForm(forms.ModelForm):
                 'accept': 'image/*'
             }),
         }                
+
+
+
+from django import forms
+from .models import LeadInteresado
+
+class LeadInteresadoForm(forms.ModelForm):
+    class Meta:
+        model = LeadInteresado
+        fields = ['nombre', 'telefono', 'mensaje']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Tu nombre completo',
+                'required': True
+            }),
+            'telefono': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'Tu número de teléfono (Ej: 0412-1234567)',
+                'required': True
+            }),
+            'mensaje': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': '¿Qué plan te interesa? ¿Tienes alguna consulta?'
+            }),
+        }        

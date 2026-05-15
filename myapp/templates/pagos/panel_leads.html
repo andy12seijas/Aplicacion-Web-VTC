@@ -1,0 +1,1382 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Call Center - Gestión de Leads{% endblock %}
+
+{% block page_title %}Gestión de Leads{% endblock %}
+{% block page_subtitle %}Administra los clientes interesados que llegan de la página web{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'panel_administrativo' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        font-size: 12px;
+        text-decoration: none;
+    }
+    
+    .btn-secondary:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--gray-border);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--orange);
+        box-shadow: 0 4px 12px rgba(255, 107, 0, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--orange);
+        line-height: 1.2;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 4px;
+    }
+    
+    .tabs-container {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .tabs-header {
+        display: flex;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        flex-wrap: wrap;
+    }
+
+    .tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-width: 120px;
+    }
+
+    .tab-btn:hover {
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .tab-btn.active {
+        color: var(--orange);
+        border-bottom-color: var(--orange);
+        background: white;
+    }
+
+    .tab-count {
+        background: #e0e0e0;
+        color: #666;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        margin-left: 5px;
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--orange);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .filters-container {
+        margin-bottom: 20px;
+    }
+
+    .filters-grid {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        background: white;
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--gray-border);
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-group label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .search-box {
+        flex: 2;
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--gray-bg);
+        padding: 0 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        transition: all 0.2s;
+    }
+
+    .search-box:focus-within {
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+
+    .search-box input, .filter-select {
+        border: none;
+        padding: 10px 0;
+        width: 100%;
+        outline: none;
+        font-size: 13px;
+        background: transparent;
+    }
+
+    .filter-select {
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        padding: 10px 16px;
+        background: var(--gray-bg);
+        cursor: pointer;
+    }
+
+    .filter-select:focus {
+        border-color: var(--orange);
+        outline: none;
+    }
+
+    .btn-search, .btn-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 24px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+
+    .btn-search {
+        background: var(--orange);
+        color: white;
+    }
+
+    .btn-search:hover {
+        background: var(--orange-dark);
+        transform: translateY(-2px);
+    }
+
+    .btn-clear {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+    }
+
+    .btn-clear:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+
+    .table-container {
+        overflow-x: auto;
+        border-radius: 12px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        min-width: 600px;
+    }
+
+    .table th {
+        text-align: left;
+        padding: 14px 16px;
+        font-weight: 600;
+        color: #555;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--gray-border);
+        color: #333;
+        vertical-align: middle;
+    }
+
+    .table tbody tr:hover {
+        background: var(--gray-bg);
+    }
+
+    .badge-estado {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .badge-nuevo {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    .badge-contactado {
+        background: #fff3e0;
+        color: #ef6c00;
+    }
+
+    .badge-seguimiento {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .badge-convertido {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .badge-perdido {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .user-cell {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--orange);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .action-btn {
+        width: 32px;
+        height: 32px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 8px;
+        color: #666;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .action-btn.warning {
+        color: #f59e0b;
+        border-color: #f59e0b;
+    }
+
+    .action-btn.warning:hover {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .action-btn.success {
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .action-btn.success:hover {
+        background: #10b981;
+        color: white;
+    }
+
+    .action-btn.danger {
+        color: #ef4444;
+        border-color: #ef4444;
+    }
+
+    .action-btn.danger:hover {
+        background: #ef4444;
+        color: white;
+    }
+
+    .action-btn.info {
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .action-btn.info:hover {
+        background: #3b82f6;
+        color: white;
+    }
+
+    /* Toggle switch para el check de contactado */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.3s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: var(--orange);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+
+    .empty {
+        text-align: center;
+        padding: 48px !important;
+        color: #666;
+        font-size: 14px;
+    }
+
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+
+    .page-link {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        color: #666;
+        text-decoration: none;
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .page-link:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .page-info {
+        padding: 0 12px;
+        color: #666;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    /* Modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9998;
+    }
+    
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+    
+    .modal-container {
+        position: relative;
+        background: white;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        z-index: 10000;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: modalFadeIn 0.3s ease;
+    }
+    
+    @keyframes modalFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        border-radius: 16px 16px 0 0;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .modal-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .modal-avatar {
+        width: 48px;
+        height: 48px;
+        background: var(--orange);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: 600;
+    }
+    
+    .modal-close {
+        width: 36px;
+        height: 36px;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .modal-close:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .modal-body {
+        padding: 24px;
+    }
+    
+    .modal-footer {
+        padding: 16px 24px;
+        border-top: 1px solid var(--gray-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        background: white;
+        border-radius: 0 0 16px 16px;
+    }
+    
+    .modal-detalle-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+
+    .modal-detalle-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .modal-detalle-item.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .modal-detalle-label {
+        font-size: 11px;
+        color: var(--gray-text);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .modal-detalle-value {
+        font-size: 14px;
+        color: var(--dark-text);
+        font-weight: 500;
+        word-break: break-word;
+    }
+
+    .notas-container {
+        background: var(--gray-bg);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 16px;
+        white-space: pre-wrap;
+        font-size: 13px;
+        line-height: 1.5;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--gray-border);
+        border-radius: 10px;
+        font-size: 14px;
+        transition: all 0.2s;
+        resize: vertical;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-border);
+        border-top-color: var(--orange);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .modal-detalle-grid {
+            grid-template-columns: 1fr;
+        }
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filter-group {
+            width: 100%;
+        }
+        .search-box, .filter-select, .btn-search, .btn-clear {
+            width: 100%;
+        }
+        .tab-btn {
+            flex-direction: column;
+            font-size: 12px;
+            padding: 12px;
+        }
+        .tab-count {
+            margin-left: 0;
+        }
+        .actions-cell {
+            flex-direction: row;
+        }
+        .modal-container {
+            width: 95%;
+            margin: 10px;
+        }
+        .modal-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        .modal-header-info {
+            justify-content: center;
+        }
+    }
+</style>
+
+<!-- Estadísticas -->
+<div class="stats-grid">
+    <div class="stat-card" onclick="cambiarTab('nuevos')">
+        <div class="stat-value">{{ stats.nuevos|add:stats.contactados }}</div>
+        <div class="stat-label">🆕 Nuevos / Contactados</div>
+    </div>
+    <div class="stat-card" onclick="cambiarTab('seguimiento')">
+        <div class="stat-value">{{ stats.en_seguimiento }}</div>
+        <div class="stat-label">⏳ En Seguimiento</div>
+    </div>
+    <div class="stat-card" onclick="cambiarTab('convertidos')">
+        <div class="stat-value">{{ stats.convertidos }}</div>
+        <div class="stat-label">✅ Convertidos</div>
+    </div>
+    <div class="stat-card" onclick="mostrarPerdidos()">
+        <div class="stat-value">{{ stats.perdidos }}</div>
+        <div class="stat-label">❌ Perdidos</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">📊 Total Leads</div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="search-box" style="flex: 2;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input type="text" placeholder="Buscar por nombre o teléfono..." 
+                   id="searchInput" value="{{ busqueda }}">
+        </div>
+        
+        <div class="filter-group">
+            <label>Filtrar por estado</label>
+            <select id="estadoFilter" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="NUEVO" {% if filtro_estado == 'NUEVO' %}selected{% endif %}>Nuevo</option>
+                <option value="CONTACTADO" {% if filtro_estado == 'CONTACTADO' %}selected{% endif %}>Contactado</option>
+                <option value="EN_SEGUIMIENTO" {% if filtro_estado == 'EN_SEGUIMIENTO' %}selected{% endif %}>En Seguimiento</option>
+                <option value="CONVERTIDO" {% if filtro_estado == 'CONVERTIDO' %}selected{% endif %}>Convertido</option>
+                <option value="PERDIDO" {% if filtro_estado == 'PERDIDO' %}selected{% endif %}>Perdido</option>
+            </select>
+        </div>
+        
+        <div class="filter-group" style="flex-direction: row; gap: 8px;">
+            <button class="btn-search" onclick="aplicarFiltros()">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            
+            <button class="btn-clear" onclick="limpiarFiltros()">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pestañas principales -->
+<div class="tabs-container">
+    <div class="tabs-header">
+        <button class="tab-btn {% if tab_activa == 'nuevos' or not tab_activa %}active{% endif %}" onclick="cambiarTab('nuevos')">
+            <span class="tab-icon">🆕</span>
+            Nuevos / Contactados
+            <span class="tab-count">{{ stats.nuevos|add:stats.contactados }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'seguimiento' %}active{% endif %}" onclick="cambiarTab('seguimiento')">
+            <span class="tab-icon">⏳</span>
+            En Seguimiento
+            <span class="tab-count">{{ stats.en_seguimiento }}</span>
+        </button>
+        <button class="tab-btn {% if tab_activa == 'convertidos' %}active{% endif %}" onclick="cambiarTab('convertidos')">
+            <span class="tab-icon">✅</span>
+            Convertidos
+            <span class="tab-count">{{ stats.convertidos }}</span>
+        </button>
+    </div>
+
+    <!-- TAB 1: Nuevos / Contactados -->
+    <div id="tab-nuevos" class="tab-content {% if tab_activa == 'nuevos' or not tab_activa %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Mensaje</th>
+                        <th>Fecha</th>
+                        <th>Contactado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads_nuevos %}
+                    <tr data-id="{{ lead.id }}" data-estado="{{ lead.estado }}">
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ lead.nombre|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ lead.nombre }}</div>
+                                    <span class="badge-estado badge-{% if lead.estado == 'NUEVO' %}nuevo{% else %}contactado{% endif %}">
+                                        {% if lead.estado == 'NUEVO' %}🆕 Nuevo{% else %}📞 Contactado{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ lead.telefono }}</td>
+                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</td>
+                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" class="contactado-toggle" 
+                                       data-id="{{ lead.id }}"
+                                       {% if lead.estado == 'CONTACTADO' %}checked{% endif %}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td class="actions-cell">
+                            <button class="action-btn info" onclick="verDetalleLead({{ lead.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn warning" onclick="cambiarEstadoLead({{ lead.id }}, 'EN_SEGUIMIENTO')" title="Pasar a Seguimiento">
+                                <i class="fas fa-clock"></i>
+                            </button>
+                            <button class="action-btn danger" onclick="cambiarEstadoLead({{ lead.id }}, 'PERDIDO')" title="Marcar como Perdido">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay leads nuevos o contactados
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Nuevos -->
+        {% if leads_nuevos.has_other_pages %}
+        <div class="pagination">
+            {% if leads_nuevos.has_previous %}
+            <a href="?page_nuevos=1&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_nuevos={{ leads_nuevos.previous_page_number }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ leads_nuevos.number }} de {{ leads_nuevos.paginator.num_pages }}
+            </span>
+            
+            {% if leads_nuevos.has_next %}
+            <a href="?page_nuevos={{ leads_nuevos.next_page_number }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_nuevos={{ leads_nuevos.paginator.num_pages }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 2: En Seguimiento -->
+    <div id="tab-seguimiento" class="tab-content {% if tab_activa == 'seguimiento' %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Mensaje</th>
+                        <th>Fecha</th>
+                        <th>Última nota</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads_seguimiento %}
+                    <tr data-id="{{ lead.id }}">
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ lead.nombre|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ lead.nombre }}</div>
+                                    <span class="badge-estado badge-seguimiento">⏳ En Seguimiento</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ lead.telefono }}</td>
+                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</td>
+                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td>{{ lead.notas_seguimiento|truncatechars:40|default:"—" }}</td>
+                        <td class="actions-cell">
+                            <button class="action-btn info" onclick="verDetalleLead({{ lead.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn success" onclick="cambiarEstadoLead({{ lead.id }}, 'CONTACTADO')" title="Volver a Contactado">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
+                            <button class="action-btn danger" onclick="cambiarEstadoLead({{ lead.id }}, 'PERDIDO')" title="Marcar como Perdido">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay leads en seguimiento
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Seguimiento -->
+        {% if leads_seguimiento.has_other_pages %}
+        <div class="pagination">
+            {% if leads_seguimiento.has_previous %}
+            <a href="?page_seguimiento=1&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_seguimiento={{ leads_seguimiento.previous_page_number }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ leads_seguimiento.number }} de {{ leads_seguimiento.paginator.num_pages }}
+            </span>
+            
+            {% if leads_seguimiento.has_next %}
+            <a href="?page_seguimiento={{ leads_seguimiento.next_page_number }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_seguimiento={{ leads_seguimiento.paginator.num_pages }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 3: Convertidos -->
+    <div id="tab-convertidos" class="tab-content {% if tab_activa == 'convertidos' %}active{% endif %}">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Teléfono</th>
+                        <th>Mensaje</th>
+                        <th>Fecha registro</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lead in leads_convertidos %}
+                    <tr data-id="{{ lead.id }}">
+                        <td>
+                            <div class="user-cell">
+                                <span class="user-avatar">{{ lead.nombre|slice:":2"|upper }}</span>
+                                <div>
+                                    <div class="user-name">{{ lead.nombre }}</div>
+                                    <span class="badge-estado badge-convertido">✅ Convertido</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ lead.telefono }}</td>
+                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</td>
+                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td class="actions-cell">
+                            <button class="action-btn info" onclick="verDetalleLead({{ lead.id }})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="empty">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay leads convertidos aún
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación Convertidos -->
+        {% if leads_convertidos.has_other_pages %}
+        <div class="pagination">
+            {% if leads_convertidos.has_previous %}
+            <a href="?page_convertidos=1&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_convertidos={{ leads_convertidos.previous_page_number }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            <span class="page-info">
+                Página {{ leads_convertidos.number }} de {{ leads_convertidos.paginator.num_pages }}
+            </span>
+            
+            {% if leads_convertidos.has_next %}
+            <a href="?page_convertidos={{ leads_convertidos.next_page_number }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_convertidos={{ leads_convertidos.paginator.num_pages }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Detalle de Lead -->
+<div id="modalDetalleLead" class="modal" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <div class="modal-header-info">
+                <span class="modal-avatar" id="modalAvatar"></span>
+                <div>
+                    <h2 id="modalTitulo" style="margin: 0; font-size: 18px;">Detalle del Lead</h2>
+                    <p id="modalSubtitulo" style="margin: 4px 0 0; font-size: 13px;"></p>
+                </div>
+            </div>
+            <button class="modal-close" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="modal-body">
+            <div id="loadingDetalle" style="text-align: center; padding: 40px;">
+                <div class="spinner"></div>
+                <p>Cargando detalles...</p>
+            </div>
+            
+            <div id="contenidoDetalle" style="display: none;">
+                <div class="modal-detalle-grid">
+                    <div class="modal-detalle-item">
+                        <span class="modal-detalle-label">Nombre completo</span>
+                        <span class="modal-detalle-value" id="detalleNombre"></span>
+                    </div>
+                    <div class="modal-detalle-item">
+                        <span class="modal-detalle-label">Teléfono</span>
+                        <span class="modal-detalle-value" id="detalleTelefono"></span>
+                    </div>
+                    <div class="modal-detalle-item full-width">
+                        <span class="modal-detalle-label">Mensaje</span>
+                        <span class="modal-detalle-value" id="detalleMensaje"></span>
+                    </div>
+                    <div class="modal-detalle-item">
+                        <span class="modal-detalle-label">Fecha de registro</span>
+                        <span class="modal-detalle-value" id="detalleFechaCreacion"></span>
+                    </div>
+                    <div class="modal-detalle-item">
+                        <span class="modal-detalle-label">Fecha de contacto</span>
+                        <span class="modal-detalle-value" id="detalleFechaContactado"></span>
+                    </div>
+                    <div class="modal-detalle-item">
+                        <span class="modal-detalle-label">Contactado por</span>
+                        <span class="modal-detalle-value" id="detalleContactadoPor"></span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Agregar nota de seguimiento</label>
+                    <textarea id="nuevaNota" class="form-input" rows="3" placeholder="Escribe una nota sobre esta llamada..."></textarea>
+                    <button class="btn-main" style="margin-top: 10px; padding: 8px 16px;" onclick="agregarNota()">
+                        <i class="fas fa-plus"></i> Agregar nota
+                    </button>
+                </div>
+                
+                <div class="modal-section">
+                    <h3 class="modal-section-title">
+                        <i class="fas fa-history"></i> Historial de Notas
+                    </h3>
+                    <div id="notasContainer" class="notas-container"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    let leadSeleccionado = null;
+    
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const busqueda = document.getElementById('searchInput').value;
+        const estado = document.getElementById('estadoFilter').value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        else url.searchParams.delete('busqueda');
+        
+        if (estado) url.searchParams.set('estado', estado);
+        else url.searchParams.delete('estado');
+        
+        window.location.href = url.toString();
+    }
+    
+    function limpiarFiltros() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('busqueda');
+        url.searchParams.delete('estado');
+        window.location.href = url.toString();
+    }
+    
+    function cambiarTab(tab) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        url.searchParams.delete('page_nuevos');
+        url.searchParams.delete('page_seguimiento');
+        url.searchParams.delete('page_convertidos');
+        
+        const busqueda = document.getElementById('searchInput')?.value;
+        const estado = document.getElementById('estadoFilter')?.value;
+        
+        if (busqueda) url.searchParams.set('busqueda', busqueda);
+        if (estado) url.searchParams.set('estado', estado);
+        
+        window.location.href = url.toString();
+    }
+    
+    function mostrarPerdidos() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('estado', 'PERDIDO');
+        window.location.href = url.toString();
+    }
+    
+    function cambiarEstadoLead(id, nuevoEstado) {
+        let titulo = '', texto = '', icono = '';
+        
+        switch(nuevoEstado) {
+            case 'CONTACTADO':
+                titulo = 'Marcar como contactado';
+                texto = 'Este lead será marcado como contactado.';
+                icono = 'question';
+                break;
+            case 'EN_SEGUIMIENTO':
+                titulo = 'Pasar a seguimiento';
+                texto = 'Este lead se moverá a la lista de "En Seguimiento".';
+                icono = 'question';
+                break;
+            case 'PERDIDO':
+                titulo = 'Marcar como perdido';
+                texto = 'Este lead se moverá a la lista de "Perdidos".';
+                icono = 'warning';
+                break;
+            default:
+                titulo = 'Cambiar estado';
+                texto = '¿Estás seguro de cambiar el estado de este lead?';
+                icono = 'question';
+        }
+        
+        Swal.fire({
+            title: titulo,
+            text: texto,
+            icon: icono,
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, cambiar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                
+                fetch(`/cambiar-estado-lead/${id}/`, {
+                    method: 'POST',
+                    headers: { 
+                        'X-CSRFToken': getCookie('csrftoken'), 
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Estado actualizado', text: data.message, confirmButtonColor: '#ff6b00' })
+                            .then(() => { location.reload(); });
+                    } else {
+                        Swal.fire('Error', data.error || 'Error al cambiar el estado', 'error');
+                    }
+                })
+                .catch(() => { Swal.close(); Swal.fire('Error', 'Error de conexión', 'error'); });
+            }
+        });
+    }
+    
+    function verDetalleLead(id) {
+        leadSeleccionado = id;
+        const modal = document.getElementById('modalDetalleLead');
+        const loading = document.getElementById('loadingDetalle');
+        const contenido = document.getElementById('contenidoDetalle');
+        
+        modal.style.display = 'flex';
+        loading.style.display = 'block';
+        contenido.style.display = 'none';
+        
+        fetch(`/ver-detalle-lead/${id}/`)
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                llenarModalDetalle(data);
+                contenido.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                loading.style.display = 'none';
+                Swal.fire('Error', 'Error al cargar los detalles', 'error');
+                cerrarModalDetalle();
+            });
+    }
+    
+    function llenarModalDetalle(data) {
+        document.getElementById('modalAvatar').textContent = data.nombre.slice(0, 2).toUpperCase();
+        document.getElementById('modalTitulo').textContent = data.nombre;
+        
+        let estadoBadge = '';
+        switch(data.estado) {
+            case 'NUEVO': estadoBadge = '<span class="badge-estado badge-nuevo">🆕 Nuevo</span>'; break;
+            case 'CONTACTADO': estadoBadge = '<span class="badge-estado badge-contactado">📞 Contactado</span>'; break;
+            case 'EN_SEGUIMIENTO': estadoBadge = '<span class="badge-estado badge-seguimiento">⏳ En Seguimiento</span>'; break;
+            case 'CONVERTIDO': estadoBadge = '<span class="badge-estado badge-convertido">✅ Convertido</span>'; break;
+            case 'PERDIDO': estadoBadge = '<span class="badge-estado badge-perdido">❌ Perdido</span>'; break;
+        }
+        document.getElementById('modalSubtitulo').innerHTML = `${data.telefono} · ${estadoBadge}`;
+        
+        document.getElementById('detalleNombre').textContent = data.nombre;
+        document.getElementById('detalleTelefono').textContent = data.telefono;
+        document.getElementById('detalleMensaje').textContent = data.mensaje;
+        document.getElementById('detalleFechaCreacion').textContent = data.fecha_creacion;
+        document.getElementById('detalleFechaContactado').textContent = data.fecha_contactado || 'No contactado aún';
+        document.getElementById('detalleContactadoPor').textContent = data.contactado_por || '—';
+        
+        const notasContainer = document.getElementById('notasContainer');
+        if (data.notas_seguimiento && data.notas_seguimiento !== 'No hay notas de seguimiento') {
+            notasContainer.innerHTML = data.notas_seguimiento.replace(/\n/g, '<br>');
+        } else {
+            notasContainer.innerHTML = '<p class="text-muted">No hay notas de seguimiento</p>';
+        }
+        
+        document.getElementById('nuevaNota').value = '';
+    }
+    
+    function agregarNota() {
+        const nota = document.getElementById('nuevaNota').value.trim();
+        
+        if (!nota) {
+            Swal.fire('Error', 'Por favor escribe una nota antes de agregar', 'error');
+            return;
+        }
+        
+        Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        fetch(`/agregar-nota-lead/${leadSeleccionado}/`, {
+            method: 'POST',
+            headers: { 
+                'X-CSRFToken': getCookie('csrftoken'), 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ nota: nota })
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Nota agregada', text: data.message, confirmButtonColor: '#ff6b00' });
+                const notasContainer = document.getElementById('notasContainer');
+                notasContainer.innerHTML = data.notas.replace(/\n/g, '<br>');
+                document.getElementById('nuevaNota').value = '';
+            } else {
+                Swal.fire('Error', data.error || 'Error al agregar la nota', 'error');
+            }
+        })
+        .catch(() => { Swal.close(); Swal.fire('Error', 'Error de conexión', 'error'); });
+    }
+    
+    function cerrarModalDetalle() {
+        document.getElementById('modalDetalleLead').style.display = 'none';
+        leadSeleccionado = null;
+    }
+    
+    // Event listeners para los toggles de contactado
+    document.querySelectorAll('.contactado-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const leadId = this.dataset.id;
+            const nuevoEstado = this.checked ? 'CONTACTADO' : 'NUEVO';
+            
+            fetch(`/cambiar-estado-lead/${leadId}/`, {
+                method: 'POST',
+                headers: { 
+                    'X-CSRFToken': getCookie('csrftoken'), 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({ estado: nuevoEstado })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    this.checked = !this.checked;
+                    Swal.fire('Error', data.error, 'error');
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(() => {
+                this.checked = !this.checked;
+                Swal.fire('Error', 'Error de conexión', 'error');
+            });
+        });
+    });
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    document.addEventListener('keydown', function(e) { 
+        if (e.key === 'Escape') { cerrarModalDetalle(); } 
+    });
+    
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) { 
+        if (e.key === 'Enter') aplicarFiltros(); 
+    });
+</script>
+{% endblock %}

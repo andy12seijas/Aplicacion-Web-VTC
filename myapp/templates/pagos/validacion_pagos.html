@@ -34,10 +34,10 @@
         border-color: var(--orange);
         color: var(--orange);
     }
-    /* ===== ESTILOS BASE ===== */
+
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 16px;
         margin-bottom: 24px;
     }
@@ -69,7 +69,6 @@
         margin-top: 4px;
     }
     
-    /* ===== PESTAÑAS ===== */
     .tabs-container {
         background: white;
         border-radius: 16px;
@@ -112,10 +111,6 @@
         background: white;
     }
 
-    .tab-icon {
-        font-size: 16px;
-    }
-
     .tab-count {
         background: #e0e0e0;
         color: #666;
@@ -139,20 +134,33 @@
         display: block;
     }
 
-    /* ===== FILTROS ===== */
     .filters-container {
         margin-bottom: 20px;
     }
 
     .filters-grid {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         flex-wrap: wrap;
-        align-items: center;
+        align-items: flex-end;
         background: white;
-        padding: 16px;
+        padding: 20px;
         border-radius: 16px;
         border: 1px solid var(--gray-border);
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-group label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .search-box {
@@ -173,7 +181,7 @@
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
 
-    .search-box input {
+    .search-box input, .filter-select {
         border: none;
         padding: 10px 0;
         width: 100%;
@@ -182,11 +190,37 @@
         background: transparent;
     }
 
+    .filter-select {
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        padding: 10px 16px;
+        background: var(--gray-bg);
+        cursor: pointer;
+    }
+
+    .filter-select:focus {
+        border-color: var(--orange);
+        outline: none;
+    }
+
+    .date-input {
+        border: 1px solid var(--gray-border);
+        border-radius: 30px;
+        padding: 10px 16px;
+        font-size: 13px;
+        background: var(--gray-bg);
+        outline: none;
+    }
+
+    .date-input:focus {
+        border-color: var(--orange);
+    }
+
     .btn-search, .btn-clear {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 10px 20px;
+        padding: 10px 24px;
         border-radius: 30px;
         font-size: 13px;
         font-weight: 500;
@@ -216,25 +250,26 @@
         color: var(--orange);
     }
 
-    /* ===== TABLA ===== */
     .table-container {
         overflow-x: auto;
+        border-radius: 12px;
     }
 
     .table {
         width: 100%;
         border-collapse: collapse;
         font-size: 13px;
+        min-width: 800px;
     }
 
     .table th {
         text-align: left;
         padding: 14px 16px;
-        font-weight: 500;
-        color: #666;
+        font-weight: 600;
+        color: #555;
         background: var(--gray-bg);
         border-bottom: 1px solid var(--gray-border);
-        font-size: 11px;
+        font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
@@ -243,13 +278,13 @@
         padding: 12px 16px;
         border-bottom: 1px solid var(--gray-border);
         color: #333;
+        vertical-align: middle;
     }
 
     .table tbody tr:hover {
         background: var(--gray-bg);
     }
 
-    /* ===== BADGES ===== */
     .badge-estado {
         display: inline-block;
         padding: 4px 10px;
@@ -278,6 +313,24 @@
         color: #1565c0;
     }
 
+    .badge-interno {
+        background: #e8eaf6;
+        color: #3949ab;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+
+    .badge-externo {
+        background: #fce4ec;
+        color: #c2185b;
+        padding: 2px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+
     .medio-pago-badge {
         display: inline-flex;
         align-items: center;
@@ -291,7 +344,7 @@
     }
 
     .monto-cell {
-        font-weight: 600;
+        font-weight: 700;
         color: var(--orange);
     }
 
@@ -315,7 +368,6 @@
         flex-shrink: 0;
     }
 
-    /* ===== ACCIONES ===== */
     .actions-cell {
         display: flex;
         gap: 8px;
@@ -369,7 +421,6 @@
         font-size: 14px;
     }
 
-    /* ===== PAGINACIÓN ===== */
     .pagination {
         display: flex;
         align-items: center;
@@ -406,7 +457,7 @@
         font-weight: 500;
     }
 
-    /* ===== MODALES ===== */
+    /* Modales */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -434,20 +485,12 @@
         background: white;
         border-radius: 16px;
         width: 90%;
-        max-width: 500px;
+        max-width: 800px;
         max-height: 90vh;
         overflow-y: auto;
         z-index: 10000;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         animation: modalFadeIn 0.3s ease;
-    }
-    
-    .modal-container.modal-lg {
-        max-width: 800px;
-    }
-    
-    .modal-container.modal-md {
-        max-width: 500px;
     }
     
     @keyframes modalFadeIn {
@@ -469,12 +512,15 @@
         border-bottom: 1px solid var(--gray-border);
         background: var(--gray-bg);
         border-radius: 16px 16px 0 0;
+        flex-wrap: wrap;
+        gap: 12px;
     }
     
     .modal-header-info {
         display: flex;
         align-items: center;
         gap: 16px;
+        flex-wrap: wrap;
     }
     
     .modal-avatar {
@@ -590,6 +636,7 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        font-size: 16px;
     }
 
     .historial-content {
@@ -616,80 +663,6 @@
         border-radius: 8px;
     }
 
-    .modal-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
-    }
-
-    .btn-cancel, .btn-rechazar {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 20px;
-        border-radius: 10px;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: none;
-    }
-
-    .btn-cancel {
-        background: white;
-        border: 2px solid var(--gray-border);
-        color: #666;
-    }
-
-    .btn-cancel:hover {
-        border-color: var(--orange);
-        color: var(--orange);
-    }
-
-    .btn-rechazar {
-        background: #ef4444;
-        color: white;
-    }
-
-    .btn-rechazar:hover {
-        background: #dc2626;
-        transform: translateY(-2px);
-    }
-
-    .modal-section {
-        margin-bottom: 24px;
-        padding-bottom: 24px;
-        border-bottom: 1px solid var(--gray-border);
-    }
-
-    .modal-section:last-child {
-        border-bottom: none;
-    }
-
-    .modal-section-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 3px solid var(--gray-border);
-        border-top-color: var(--orange);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin: 0 auto 16px;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
     .form-group {
         margin-bottom: 20px;
     }
@@ -729,10 +702,18 @@
         margin-top: 4px;
     }
     
-    .form-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: flex-end;
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--gray-border);
+        border-top-color: var(--orange);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 
     @media (max-width: 768px) {
@@ -747,7 +728,10 @@
             flex-direction: column;
             align-items: stretch;
         }
-        .search-box, .btn-search, .btn-clear {
+        .filter-group {
+            width: 100%;
+        }
+        .search-box, .filter-select, .date-input, .btn-search, .btn-clear {
             width: 100%;
         }
         .tab-btn {
@@ -759,11 +743,18 @@
             margin-left: 0;
         }
         .actions-cell {
-            flex-direction: column;
+            flex-direction: row;
         }
         .modal-container {
             width: 95%;
             margin: 10px;
+        }
+        .modal-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        .modal-header-info {
+            justify-content: center;
         }
     }
 </style>
@@ -783,6 +774,10 @@
         <div class="stat-label">Rechazados</div>
     </div>
     <div class="stat-card">
+        <div class="stat-value">{{ stats.aplicados }}</div>
+        <div class="stat-label">Aplicados</div>
+    </div>
+    <div class="stat-card">
         <div class="stat-value">{{ stats.total_mes }}</div>
         <div class="stat-label">Este mes</div>
     </div>
@@ -791,7 +786,7 @@
 <!-- Filtros -->
 <div class="filters-container">
     <div class="filters-grid">
-        <div class="search-box">
+        <div class="search-box" style="flex: 2;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
                 <circle cx="11" cy="11" r="8"/>
                 <path d="M21 21l-4.35-4.35"/>
@@ -800,13 +795,34 @@
                    id="searchInput" value="{{ busqueda }}">
         </div>
         
-        <button class="btn-search" onclick="aplicarFiltros()">
-            <i class="fas fa-search"></i> Buscar
-        </button>
+        <div class="filter-group">
+            <label>Tipo Cliente</label>
+            <select id="tipoClienteFilter" class="filter-select">
+                <option value="">Todos</option>
+                <option value="interno" {% if tipo_cliente == 'interno' %}selected{% endif %}>Interno (Con Contrato)</option>
+                <option value="externo" {% if tipo_cliente == 'externo' %}selected{% endif %}>Externo (Sin Contrato)</option>
+            </select>
+        </div>
         
-        <button class="btn-clear" onclick="limpiarFiltros()">
-            <i class="fas fa-times"></i> Limpiar
-        </button>
+        <div class="filter-group">
+            <label>Desde</label>
+            <input type="date" id="fechaDesde" class="date-input" value="{{ fecha_desde }}">
+        </div>
+        
+        <div class="filter-group">
+            <label>Hasta</label>
+            <input type="date" id="fechaHasta" class="date-input" value="{{ fecha_hasta }}">
+        </div>
+        
+        <div class="filter-group" style="flex-direction: row; gap: 8px;">
+            <button class="btn-search" onclick="aplicarFiltros()">
+                <i class="fas fa-search"></i> Buscar
+            </button>
+            
+            <button class="btn-clear" onclick="limpiarFiltros()">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+        </div>
     </div>
 </div>
 
@@ -831,12 +847,13 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Cliente</th>
+                        <th>Tipo</th>
                         <th>Cédula</th>
+                        <th>Teléfono</th>
                         <th>Monto</th>
                         <th>Método</th>
-                        <th>Referencia</th>
+                      
                         <th>Fecha Pago</th>
                         <th>Acciones</th>
                     </tr>
@@ -844,17 +861,23 @@
                 <tbody>
                     {% for reporte in reportes_pendientes %}
                     <tr>
-                        <td>#{{ reporte.id }}</td>
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ reporte.nombre_cliente|slice:":2"|upper }}</span>
                                 <div>
                                     <div class="user-name">{{ reporte.nombre_cliente }}</div>
-                                    <div style="font-size: 10px; color: #999;">{{ reporte.get_tipo_cliente_display }}</div>
                                 </div>
                             </div>
                         </td>
+                        <td>
+                            {% if reporte.contrato %}
+                                <span class="badge-interno"><i class="fas fa-building"></i> Interno</span>
+                            {% else %}
+                                <span class="badge-externo"><i class="fas fa-user"></i> Externo</span>
+                            {% endif %}
+                        </td>
                         <td>{{ reporte.cedula_cliente }}</td>
+                        <td>{{ reporte.telefono_cliente }}</td>
                         <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</td>
                         <td>
                             <span class="medio-pago-badge">
@@ -865,15 +888,7 @@
                                 {% endif %}
                             </span>
                         </td>
-                        <td>
-                            {% if reporte.detalle_pago_movil %}
-                                {{ reporte.detalle_pago_movil.referencia|truncatechars:12 }}
-                            {% elif reporte.detalle_transferencia %}
-                                {{ reporte.detalle_transferencia.referencia|truncatechars:12 }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
+                       
                         <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</td>
                         <td class="actions-cell">
                             <button class="action-btn" onclick="verDetallePago({{ reporte.id }})" title="Ver detalles">
@@ -889,7 +904,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="empty">
+                        <td colspan="9" class="empty">
                             <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
                             No hay pagos pendientes de validación
                         </td>
@@ -903,10 +918,10 @@
         {% if reportes_pendientes.has_other_pages %}
         <div class="pagination">
             {% if reportes_pendientes.has_previous %}
-            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-double-left"></i>
             </a>
-            <a href="?page_pendientes={{ reportes_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_pendientes={{ reportes_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-left"></i>
             </a>
             {% endif %}
@@ -916,10 +931,10 @@
             </span>
             
             {% if reportes_pendientes.has_next %}
-            <a href="?page_pendientes={{ reportes_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_pendientes={{ reportes_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-right"></i>
             </a>
-            <a href="?page_pendientes={{ reportes_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_pendientes={{ reportes_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-double-right"></i>
             </a>
             {% endif %}
@@ -933,12 +948,13 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Cliente</th>
+                        <th>Tipo</th>
                         <th>Cédula</th>
+                        <th>Teléfono</th>
                         <th>Monto</th>
                         <th>Método</th>
-                        <th>Referencia</th>
+                        
                         <th>Fecha Pago</th>
                         <th>Estado</th>
                         <th>Acciones</th>
@@ -947,17 +963,23 @@
                 <tbody>
                     {% for reporte in reportes_completados %}
                     <tr>
-                        <td>#{{ reporte.id }}</td>
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ reporte.nombre_cliente|slice:":2"|upper }}</span>
                                 <div>
                                     <div class="user-name">{{ reporte.nombre_cliente }}</div>
-                                    <div style="font-size: 10px; color: #999;">{{ reporte.get_tipo_cliente_display }}</div>
                                 </div>
                             </div>
                         </td>
+                        <td>
+                            {% if reporte.contrato %}
+                                <span class="badge-interno"><i class="fas fa-building"></i> Interno</span>
+                            {% else %}
+                                <span class="badge-externo"><i class="fas fa-user"></i> Externo</span>
+                            {% endif %}
+                        </td>
                         <td>{{ reporte.cedula_cliente }}</td>
+                        <td>{{ reporte.telefono_cliente }}</td>
                         <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</td>
                         <td>
                             <span class="medio-pago-badge">
@@ -968,23 +990,15 @@
                                 {% endif %}
                             </span>
                         </td>
-                        <td>
-                            {% if reporte.detalle_pago_movil %}
-                                {{ reporte.detalle_pago_movil.referencia|truncatechars:12 }}
-                            {% elif reporte.detalle_transferencia %}
-                                {{ reporte.detalle_transferencia.referencia|truncatechars:12 }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
+                        
                         <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</td>
                         <td>
                             {% if reporte.estado == 'VERIFICADO' %}
-                            <span class="badge-estado badge-verificado">Verificado</span>
+                            <span class="badge-estado badge-verificado"><i class="fas fa-check-circle"></i> Verificado</span>
                             {% elif reporte.estado == 'RECHAZADO' %}
-                            <span class="badge-estado badge-rechazado">Rechazado</span>
+                            <span class="badge-estado badge-rechazado"><i class="fas fa-times-circle"></i> Rechazado</span>
                             {% elif reporte.estado == 'APLICADO' %}
-                            <span class="badge-estado badge-aplicado">Aplicado</span>
+                            <span class="badge-estado badge-aplicado"><i class="fas fa-check-double"></i> Aplicado</span>
                             {% endif %}
                         </td>
                         <td class="actions-cell">
@@ -995,7 +1009,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="empty">
+                        <td colspan="10" class="empty">
                             <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
                             No hay pagos procesados
                         </td>
@@ -1009,10 +1023,10 @@
         {% if reportes_completados.has_other_pages %}
         <div class="pagination">
             {% if reportes_completados.has_previous %}
-            <a href="?page_completados=1&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_completados=1&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-double-left"></i>
             </a>
-            <a href="?page_completados={{ reportes_completados.previous_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_completados={{ reportes_completados.previous_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-left"></i>
             </a>
             {% endif %}
@@ -1022,10 +1036,10 @@
             </span>
             
             {% if reportes_completados.has_next %}
-            <a href="?page_completados={{ reportes_completados.next_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_completados={{ reportes_completados.next_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-right"></i>
             </a>
-            <a href="?page_completados={{ reportes_completados.paginator.num_pages }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
+            <a href="?page_completados={{ reportes_completados.paginator.num_pages }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
                 <i class="fas fa-angle-double-right"></i>
             </a>
             {% endif %}
@@ -1041,8 +1055,8 @@
             <div class="modal-header-info">
                 <span class="modal-avatar" id="modalAvatar"></span>
                 <div>
-                    <h2 id="modalTitulo">Detalle del Pago</h2>
-                    <p id="modalSubtitulo"></p>
+                    <h2 id="modalTitulo" style="margin: 0; font-size: 18px;">Detalle del Pago</h2>
+                    <p id="modalSubtitulo" style="margin: 4px 0 0; font-size: 13px;"></p>
                 </div>
             </div>
             <button class="modal-close" onclick="cerrarModalDetalle()">
@@ -1057,7 +1071,6 @@
             </div>
             
             <div id="contenidoDetalle" style="display: none;">
-                <!-- Información del Cliente -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
                         <i class="fas fa-user"></i> Información del Cliente
@@ -1066,6 +1079,10 @@
                         <div class="modal-detalle-item">
                             <span class="modal-detalle-label">Nombre completo</span>
                             <span class="modal-detalle-value" id="detalleNombre"></span>
+                        </div>
+                        <div class="modal-detalle-item">
+                            <span class="modal-detalle-label">Tipo de cliente</span>
+                            <span class="modal-detalle-value" id="detalleTipoCliente"></span>
                         </div>
                         <div class="modal-detalle-item">
                             <span class="modal-detalle-label">Cédula</span>
@@ -1083,14 +1100,9 @@
                             <span class="modal-detalle-label">Plan</span>
                             <span class="modal-detalle-value" id="detallePlan"></span>
                         </div>
-                        <div class="modal-detalle-item">
-                            <span class="modal-detalle-label">Tipo de cliente</span>
-                            <span class="modal-detalle-value" id="detalleTipoCliente"></span>
-                        </div>
                     </div>
                 </div>
                 
-                <!-- Información del Pago -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
                         <i class="fas fa-credit-card"></i> Información del Pago
@@ -1115,7 +1127,6 @@
                     </div>
                 </div>
                 
-                <!-- Detalles específicos -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
                         <i class="fas fa-receipt"></i> Detalles de la Transacción
@@ -1123,7 +1134,6 @@
                     <div id="detallePagoContent"></div>
                 </div>
                 
-                <!-- Comprobante -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
                         <i class="fas fa-image"></i> Comprobante de Pago
@@ -1136,7 +1146,7 @@
                         <div id="conComprobante" style="display: none;">
                             <img id="comprobanteImg" class="comprobante-img" alt="Comprobante de pago">
                             <div style="margin-top: 12px;">
-                                <a id="downloadComprobante" href="#" download class="btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                                <a id="downloadComprobante" href="#" download class="btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--orange);">
                                     <i class="fas fa-download"></i> Descargar comprobante
                                 </a>
                             </div>
@@ -1144,7 +1154,6 @@
                     </div>
                 </div>
                 
-                <!-- Historial -->
                 <div class="modal-section historial-validaciones">
                     <h3 class="modal-section-title">
                         <i class="fas fa-history"></i> Historial de Validaciones
@@ -1152,7 +1161,6 @@
                     <div id="historialContainer"></div>
                 </div>
                 
-                <!-- Observación -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
                         <i class="fas fa-comment"></i> Observación del Cliente
@@ -1165,11 +1173,9 @@
         </div>
         
         <div class="modal-footer">
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="cerrarModalDetalle()">
-                    <i class="fas fa-times"></i> Cerrar
-                </button>
-            </div>
+            <button class="btn-cancel" onclick="cerrarModalDetalle()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
         </div>
     </div>
 </div>
@@ -1178,7 +1184,7 @@
 <div id="modalRechazo" class="modal" style="display: none;">
     <div class="modal-container modal-md">
         <div class="modal-header">
-            <h3><i class="fas fa-ban"></i> Rechazar Pago</h3>
+            <h3 style="margin: 0;"><i class="fas fa-ban"></i> Rechazar Pago</h3>
             <button class="modal-close" onclick="cerrarModalRechazo()">
                 <i class="fas fa-times"></i>
             </button>
@@ -1193,12 +1199,10 @@
         </div>
         
         <div class="modal-footer">
-            <div class="form-actions">
-                <button class="btn-cancel" onclick="cerrarModalRechazo()">Cancelar</button>
-                <button class="btn-rechazar" id="btnConfirmarRechazo">
-                    <i class="fas fa-check"></i> Confirmar Rechazo
-                </button>
-            </div>
+            <button class="btn-cancel" onclick="cerrarModalRechazo()">Cancelar</button>
+            <button class="btn-rechazar" id="btnConfirmarRechazo">
+                <i class="fas fa-check"></i> Confirmar Rechazo
+            </button>
         </div>
     </div>
 </div>
@@ -1210,9 +1214,21 @@
     function aplicarFiltros() {
         const url = new URL(window.location.href);
         const busqueda = document.getElementById('searchInput').value;
+        const tipoCliente = document.getElementById('tipoClienteFilter').value;
+        const fechaDesde = document.getElementById('fechaDesde').value;
+        const fechaHasta = document.getElementById('fechaHasta').value;
         
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
+        
+        if (tipoCliente) url.searchParams.set('tipo_cliente', tipoCliente);
+        else url.searchParams.delete('tipo_cliente');
+        
+        if (fechaDesde) url.searchParams.set('fecha_desde', fechaDesde);
+        else url.searchParams.delete('fecha_desde');
+        
+        if (fechaHasta) url.searchParams.set('fecha_hasta', fechaHasta);
+        else url.searchParams.delete('fecha_hasta');
         
         url.searchParams.delete('page_pendientes');
         url.searchParams.delete('page_completados');
@@ -1223,6 +1239,9 @@
     function limpiarFiltros() {
         const url = new URL(window.location.href);
         url.searchParams.delete('busqueda');
+        url.searchParams.delete('tipo_cliente');
+        url.searchParams.delete('fecha_desde');
+        url.searchParams.delete('fecha_hasta');
         url.searchParams.delete('page_pendientes');
         url.searchParams.delete('page_completados');
         window.location.href = url.toString();
@@ -1235,8 +1254,14 @@
         url.searchParams.delete('page_completados');
         
         const busqueda = document.getElementById('searchInput')?.value;
+        const tipoCliente = document.getElementById('tipoClienteFilter')?.value;
+        const fechaDesde = document.getElementById('fechaDesde')?.value;
+        const fechaHasta = document.getElementById('fechaHasta')?.value;
+        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
-        else url.searchParams.delete('busqueda');
+        if (tipoCliente) url.searchParams.set('tipo_cliente', tipoCliente);
+        if (fechaDesde) url.searchParams.set('fecha_desde', fechaDesde);
+        if (fechaHasta) url.searchParams.set('fecha_hasta', fechaHasta);
         
         window.location.href = url.toString();
     }
@@ -1277,11 +1302,11 @@
         document.getElementById('modalSubtitulo').innerHTML = `<i class="fas fa-money-bill-wave"></i> Bs ${data.monto.toFixed(2)} · <span class="badge-estado badge-${data.estado.toLowerCase()}">${data.estado_display}</span>`;
         
         document.getElementById('detalleNombre').textContent = data.cliente_nombre;
+        document.getElementById('detalleTipoCliente').innerHTML = data.tipo_cliente === 'interno' ? '<span class="badge-interno">Interno (Con Contrato)</span>' : '<span class="badge-externo">Externo (Sin Contrato)</span>';
         document.getElementById('detalleCedula').textContent = data.cliente_cedula;
         document.getElementById('detalleTelefono').textContent = data.cliente_telefono || '—';
         document.getElementById('detalleCorreo').textContent = data.cliente_correo || '—';
-        document.getElementById('detallePlan').textContent = data.plan;
-        document.getElementById('detalleTipoCliente').textContent = data.tipo_cliente;
+        document.getElementById('detallePlan').textContent = data.plan || '—';
         
         document.getElementById('detalleMedioPago').innerHTML = data.medio_pago === 'Pago Móvil' ? '<i class="fas fa-mobile-alt"></i> Pago Móvil' : '<i class="fas fa-university"></i> Transferencia';
         document.getElementById('detalleMonto').innerHTML = `<strong>Bs ${data.monto.toFixed(2)}</strong>`;
@@ -1399,7 +1424,6 @@
         reporteSeleccionado = null;
     }
     
-    // Event listener para el botón de confirmar rechazo
     document.getElementById('btnConfirmarRechazo')?.addEventListener('click', function() {
         const motivo = document.getElementById('motivoRechazo').value.trim();
         
@@ -1408,7 +1432,6 @@
             return;
         }
         
-        // CERRAR EL MODAL PRIMERO
         document.getElementById('modalRechazo').style.display = 'none';
         
         Swal.fire({
@@ -1451,7 +1474,6 @@
                     Swal.fire('Error', 'Error de conexión', 'error'); 
                 });
             } else {
-                // Si cancela, no limpiamos reporteSeleccionado pero cerramos el modal
                 document.getElementById('motivoRechazo').value = '';
             }
         });

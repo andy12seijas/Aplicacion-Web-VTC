@@ -3,12 +3,25 @@ from django.contrib.auth import authenticate, login
 from django.contrib import messages
 from django.contrib.auth.models import User
 #Funcion para enviar los datos para iniciar sesion
-
+from myapp.forms import LeadInteresadoForm
 from django.shortcuts import render
 
 def landing_page(request):
-    """Vista principal del landing page"""
-    return render(request, 'landing/index.html')
+    if request.method == 'POST':
+        form = LeadInteresadoForm(request.POST)
+        if form.is_valid():
+            lead = form.save()
+            messages.success(request, '¡Mensaje enviado con éxito! Un asesor te contactará pronto.')
+            return redirect('landing')
+        else:
+            messages.error(request, 'Por favor, corrige los errores del formulario.')
+    else:
+        form = LeadInteresadoForm()
+    
+    context = {
+            'form': form,
+        }
+    return render(request, 'landing/index.html', context)
 
 
 def login_view(request):

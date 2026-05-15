@@ -155,10 +155,8 @@ def crear_reporte(request):
         if medio_pago == 'PAGO_MOVIL':
             detalle = DetallePagoMovil.objects.create(
                 banco_emisor_id=request.POST.get('banco_emisor'),
-                banco_receptor_id=request.POST.get('banco_receptor'),
                 numero_telefono=request.POST.get('numero_telefono'),
-                cedula_titular=request.POST.get('cedula_titular'),
-                referencia=request.POST.get('referencia')
+               
             )
             reporte.detalle_pago_movil = detalle
         
@@ -209,6 +207,9 @@ def validacion_pagos(request):
     # Obtener parámetros de la URL
     busqueda = request.GET.get('busqueda', '')
     tab_activa = request.GET.get('tab', 'pendientes')
+    tipo_cliente = request.GET.get('tipo_cliente', '')
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
     
     # Obtener página actual para cada tabla
     page_pendientes = request.GET.get('page_pendientes', 1)
@@ -225,6 +226,31 @@ def validacion_pagos(request):
     ).select_related(
         'contrato__cliente_potencial', 'cliente_externo', 'detalle_pago_movil', 'detalle_transferencia'
     ).order_by('-fecha_verificacion')
+    
+    # Aplicar filtro de tipo de cliente
+    if tipo_cliente == 'interno':
+        reportes_pendientes = reportes_pendientes.filter(contrato__isnull=False)
+        reportes_completados = reportes_completados.filter(contrato__isnull=False)
+    elif tipo_cliente == 'externo':
+        reportes_pendientes = reportes_pendientes.filter(contrato__isnull=True)
+        reportes_completados = reportes_completados.filter(contrato__isnull=True)
+    
+    # Aplicar filtro de fechas
+    if fecha_desde:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            reportes_pendientes = reportes_pendientes.filter(fecha_pago__gte=fecha_desde_obj)
+            reportes_completados = reportes_completados.filter(fecha_pago__gte=fecha_desde_obj)
+        except ValueError:
+            pass
+    
+    if fecha_hasta:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            reportes_pendientes = reportes_pendientes.filter(fecha_pago__lte=fecha_hasta_obj)
+            reportes_completados = reportes_completados.filter(fecha_pago__lte=fecha_hasta_obj)
+        except ValueError:
+            pass
     
     # Aplicar filtro de búsqueda
     if busqueda:
@@ -283,10 +309,12 @@ def validacion_pagos(request):
         'stats': stats,
         'busqueda': busqueda,
         'tab_activa': tab_activa,
+        'tipo_cliente': tipo_cliente,
+        'fecha_desde': fecha_desde,
+        'fecha_hasta': fecha_hasta,
     }
     
     return render(request, 'pagos/validacion_pagos.html', context)
-
 
 
 def obtener_detalle_pago(request, reporte_id):
@@ -320,10 +348,9 @@ def obtener_detalle_pago(request, reporte_id):
         detalle = reporte.detalle_pago_movil
         detalle_data = {
             'banco_emisor': detalle.banco_emisor.nombre if detalle.banco_emisor else 'N/A',
-            'banco_receptor': detalle.banco_receptor.nombre if detalle.banco_receptor else 'N/A',
+            
             'numero_telefono': detalle.numero_telefono,
-            'cedula_titular': detalle.cedula_titular,
-            'referencia': detalle.referencia,
+           
         }
     elif reporte.medio_pago == 'TRANSFERENCIA' and reporte.detalle_transferencia:
         detalle = reporte.detalle_transferencia
