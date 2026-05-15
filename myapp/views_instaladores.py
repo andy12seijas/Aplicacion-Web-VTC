@@ -6,15 +6,20 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
-
+from django.db.models import Prefetch
 from myapp.forms import InstalacionForm
 from .models import *
 from django.db.models import Q, Prefetch
 from django.core.files.storage import default_storage
 from django.contrib.auth.models import User
+
+
 @login_required
 def instalaciones_pendientes(request):
     """Vista para que el instalador vea sus instalaciones pendientes con filtros"""
+    
+    import pytz
+    from datetime import datetime, timedelta
     
     # Verificar permisos: Superusuario, Administrador o Instalador
     es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
@@ -24,11 +29,46 @@ def instalaciones_pendientes(request):
         messages.error(request, 'No tienes permisos para acceder a esta página.')
         return redirect('dashboard')
     
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
+    
     # Obtener parámetros de filtro
     busqueda = request.GET.get('busqueda', '').strip()
-    fecha_desde = request.GET.get('fecha_desde', '')
-    fecha_hasta = request.GET.get('fecha_hasta', '')
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
     filtro_vendedor = request.GET.get('vendedor', '')
+    
+    # ========== CONVERTIR FECHAS A OBJETOS DATE ==========
+    fecha_desde_obj = None
+    fecha_hasta_obj = None
+    
+    if fecha_desde_raw:
+        try:
+            fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d').date()
+        except ValueError:
+            try:
+                fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y').date()
+            except ValueError:
+                pass
+    
+    if fecha_hasta_raw:
+        try:
+            fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
+        except ValueError:
+            try:
+                fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y').date()
+            except ValueError:
+                pass
+    
+    # Convertir a datetime aware para filtrar
+    fecha_inicio_aware = None
+    fecha_fin_aware = None
+    
+    if fecha_desde_obj:
+        fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+    
+    if fecha_hasta_obj:
+        fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
     
     # Si es admin, puede ver todas las instalaciones
     if es_admin:
@@ -45,14 +85,10 @@ def instalaciones_pendientes(request):
         ).order_by('fecha_asignacion')
     else:
         # Si es instalador: SOLO ve las instalaciones donde participó o está asignado
-        # Esto es clave para que cuando lo saquen de una cuadrilla, siga viendo sus instalaciones
-        
-        # Opción 1: Ver instalaciones donde participó (históricas)
         instalaciones_del_instalador = Instalacion.objects.filter(
             instaladores=request.user
         ).values_list('asignacion_id', flat=True)
         
-        # Opción 2: También ver instalaciones pendientes de su cuadrilla actual
         perfil = request.user.perfil
         cuadrillas_ids = perfil.cuadrillas.filter(activo=True).values_list('id', flat=True)
         
@@ -61,7 +97,6 @@ def instalaciones_pendientes(request):
             activo=True
         ).values_list('id', flat=True)
         
-        # Combinar ambas: instalaciones donde participó + asignaciones de su cuadrilla actual
         asignaciones_ids = set(list(instalaciones_del_instalador) + list(asignaciones_de_su_cuadrilla))
         
         asignaciones = AsignacionContrato.objects.filter(
@@ -77,7 +112,7 @@ def instalaciones_pendientes(request):
             Prefetch('instalacion', queryset=Instalacion.objects.all())
         ).order_by('fecha_asignacion')
     
-    # ===== APLICAR FILTROS =====
+    # ===== APLICAR FILTROS CON DATETIME AWARE =====
     if busqueda:
         asignaciones = asignaciones.filter(
             Q(contrato__cliente_potencial__nombre__icontains=busqueda) |
@@ -92,17 +127,16 @@ def instalaciones_pendientes(request):
             Q(venta_directa__nro_orden__icontains=busqueda)
         )
     
-    if fecha_desde:
-        try:
-            asignaciones = asignaciones.filter(fecha_asignacion__date__gte=fecha_desde)
-        except:
-            pass
-    
-    if fecha_hasta:
-        try:
-            asignaciones = asignaciones.filter(fecha_asignacion__date__lte=fecha_hasta)
-        except:
-            pass
+    # FILTRAR POR FECHA USANDO DATETIME AWARE
+    if fecha_inicio_aware and fecha_fin_aware:
+        asignaciones = asignaciones.filter(
+            fecha_asignacion__gte=fecha_inicio_aware,
+            fecha_asignacion__lte=fecha_fin_aware
+        )
+    elif fecha_inicio_aware:
+        asignaciones = asignaciones.filter(fecha_asignacion__gte=fecha_inicio_aware)
+    elif fecha_fin_aware:
+        asignaciones = asignaciones.filter(fecha_asignacion__lte=fecha_fin_aware)
     
     if es_admin and filtro_vendedor:
         asignaciones = asignaciones.filter(
@@ -119,7 +153,6 @@ def instalaciones_pendientes(request):
             instalacion = asignacion.instalacion
             # Para instaladores no-admin, verificar si realmente participaron en la instalación completada
             if not es_admin and instalacion.completada:
-                # Solo mostrar si el instalador participó en esta instalación
                 if request.user not in instalacion.instaladores.all():
                     continue
             
@@ -128,7 +161,6 @@ def instalaciones_pendientes(request):
             else:
                 instalaciones_pendientes.append(instalacion)
         except Instalacion.DoesNotExist:
-            # Si no existe instalación, crearla automáticamente
             instalacion = Instalacion.objects.create(
                 asignacion=asignacion,
                 creado_por=request.user if not es_admin else None,
@@ -161,13 +193,17 @@ def instalaciones_pendientes(request):
     vendedores = []
     if es_admin:
         from django.contrib.auth.models import User
-        # Usuarios que han creado contratos o ventas directas
         vendedores_ids = set()
         vendedores_ids.update(ContratoCliente.objects.values_list('creado_por_id', flat=True))
         vendedores_ids.update(VentaDirecta.objects.values_list('creado_por_id', flat=True))
         vendedores = User.objects.filter(id__in=vendedores_ids).distinct().order_by('first_name', 'username')
         
     tab_activa = request.GET.get('tab', 'pendientes')
+    
+    # Para mostrar en el template (mantener las fechas originales)
+    fecha_desde_mostrar = fecha_desde_raw
+    fecha_hasta_mostrar = fecha_hasta_raw
+    
     context = {
         'instalaciones_pendientes': instalaciones_pendientes_page,
         'instalaciones_completadas': instalaciones_completadas_page,
@@ -175,13 +211,16 @@ def instalaciones_pendientes(request):
         'total_completadas': len(instalaciones_completadas),
         'es_admin': es_admin,
         'busqueda': busqueda,
-        'fecha_desde': fecha_desde,
-        'fecha_hasta': fecha_hasta,
+        'fecha_desde': fecha_desde_mostrar,
+        'fecha_hasta': fecha_hasta_mostrar,
         'filtro_vendedor': filtro_vendedor,
         'vendedores': vendedores,
         'tab_activa': tab_activa,
     }
     return render(request, 'Instaladores/instalaciones_pendientes.html', context)
+
+
+
 
 @login_required
 def realizar_instalacion(request, instalacion_id):
