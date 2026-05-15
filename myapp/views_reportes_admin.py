@@ -2,7 +2,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Q, Count, Sum
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -20,62 +20,6 @@ from django.core.management import call_command
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.db.models import Q
-def convertir_fecha_iso(fecha_str):
-    """
-    Convierte fecha desde formato dd/mm/yyyy o yyyy-mm-dd a formato yyyy-mm-dd (ISO)
-    Retorna la fecha en formato ISO string o None si no es válida
-    """
-    if not fecha_str:
-        return None
-    
-    # Intentar formato dd/mm/yyyy (ej: 14/05/2026)
-    try:
-        fecha_obj = datetime.strptime(fecha_str, '%d/%m/%Y')
-        return fecha_obj.strftime('%Y-%m-%d')
-    except ValueError:
-        pass
-    
-    # Intentar formato yyyy-mm-dd (ej: 2026-05-14)
-    try:
-        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')
-        return fecha_obj.strftime('%Y-%m-%d')
-    except ValueError:
-        pass
-    
-    # Si ya es un objeto date o datetime
-    if isinstance(fecha_str, (datetime, date)):
-        return fecha_str.strftime('%Y-%m-%d')
-    
-    # Si no se pudo convertir, retornar None
-    return None
-
-def convertir_fecha_date(fecha_str):
-    """
-    Convierte fecha desde formato dd/mm/yyyy o yyyy-mm-dd a objeto date
-    Retorna objeto date o None si no es válida
-    """
-    if not fecha_str:
-        return None
-    
-    # Intentar formato dd/mm/yyyy
-    try:
-        return datetime.strptime(fecha_str, '%d/%m/%Y').date()
-    except ValueError:
-        pass
-    
-    # Intentar formato yyyy-mm-dd
-    try:
-        return datetime.strptime(fecha_str, '%Y-%m-%d').date()
-    except ValueError:
-        pass
-    
-    # Si ya es un objeto date
-    if isinstance(fecha_str, date):
-        return fecha_str
-    
-    return None
-
-
 def es_admin(user):
     return user.is_authenticated and (user.is_superuser or user.groups.filter(name='Administrador').exists())
 
@@ -85,6 +29,7 @@ def es_admin(user):
 def reportes_view(request):
     """Vista principal de reportes unificada"""
     from myapp.models import User, Plan, Cuadrilla, Material
+    # En reportes_view, agrega:
     instaladores = User.objects.filter(groups__name='Instalador').distinct().order_by('first_name', 'username')
     vendedores = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor', 'Instalador']
@@ -98,7 +43,7 @@ def reportes_view(request):
         'planes': planes,
         'cuadrillas': cuadrillas,
         'materiales': materiales,
-        'instaladores': instaladores,
+         'instaladores': instaladores,
     }
     return render(request, 'Admin/reporte.html', context)
 
@@ -117,14 +62,40 @@ def reporte_ventas_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
-    # ===== CONVERTIR FECHAS =====
-    fecha_desde = convertir_fecha_date(fecha_desde_raw)
-    fecha_hasta = convertir_fecha_date(fecha_hasta_raw)
+    # ========== CONVERTIR FECHAS DE dd/mm/yyyy a yyyy-mm-dd ==========
+    fecha_desde = None
+    fecha_hasta = None
+    
+    if fecha_desde_raw:
+        try:
+            # Intentar formato dd/mm/yyyy
+            fecha_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y')
+            fecha_desde = fecha_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            try:
+                # Intentar formato yyyy-mm-dd (ISO)
+                fecha_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d')
+                fecha_desde = fecha_obj.strftime('%Y-%m-%d')
+            except ValueError:
+                fecha_desde = None
+    
+    if fecha_hasta_raw:
+        try:
+            # Intentar formato dd/mm/yyyy
+            fecha_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y')
+            fecha_hasta = fecha_obj.strftime('%Y-%m-%d')
+        except ValueError:
+            try:
+                # Intentar formato yyyy-mm-dd (ISO)
+                fecha_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d')
+                fecha_hasta = fecha_obj.strftime('%Y-%m-%d')
+            except ValueError:
+                fecha_hasta = None
     
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
     
-    # ===== FILTRAR POR FECHA (CORREGIDO) =====
+    # ===== FILTRAR POR FECHA DE COMPLETADO (CON FECHAS CONVERTIDAS) =====
     if fecha_desde and fecha_hasta:
         ventas = ventas.filter(
             Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde, fecha_completado__date__lte=fecha_hasta) |
@@ -210,17 +181,13 @@ def reporte_instalaciones_json(request):
     """API para obtener datos de instalaciones"""
     
     tipo_reporte = request.GET.get('tipo', 'simple')
-    fecha_desde_raw = request.GET.get('fecha_desde', '')
-    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
+    fecha_desde = request.GET.get('fecha_desde', '')
+    fecha_hasta = request.GET.get('fecha_hasta', '')
     cuadrilla_id = request.GET.get('cuadrilla', '')
     estado = request.GET.get('estado', '')
     busqueda = request.GET.get('busqueda', '')
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
-    
-    # ===== CONVERTIR FECHAS =====
-    fecha_desde = convertir_fecha_date(fecha_desde_raw)
-    fecha_hasta = convertir_fecha_date(fecha_hasta_raw)
     
     instalaciones = Instalacion.objects.select_related('asignacion__cuadrilla', 'asignacion__contrato', 'asignacion__venta_directa', 'modelo_modem')
     
@@ -235,9 +202,12 @@ def reporte_instalaciones_json(request):
     elif estado == 'pendiente':
         instalaciones = instalaciones.filter(completada=False)
     
+    # Búsqueda - usar los campos reales de la base de datos
     if busqueda:
+        # Creamos una lista de IDs que coinciden con la búsqueda
         ids_coincidentes = []
         for inst in instalaciones:
+            # Obtener datos a través de las propiedades
             nombre_cliente = inst.nombre_cliente
             cedula_cliente = inst.cedula_cliente
             customer_id = inst.customer_id
@@ -258,6 +228,7 @@ def reporte_instalaciones_json(request):
         page_obj = paginator.page(1)
     
     if tipo_reporte == 'simple':
+        # Reporte simple: Cliente, Customer ID, ODS, Fecha, Cuadrilla, Estado
         data_list = []
         for inst in page_obj:
             data_list.append({
@@ -270,6 +241,7 @@ def reporte_instalaciones_json(request):
                 'estado': 'Completada' if inst.completada else 'Pendiente',
             })
     else:
+        # Reporte avanzado
         data_list = []
         for inst in page_obj:
             direccion = "N/A"
