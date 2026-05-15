@@ -71,14 +71,17 @@ def reporte_vendedor(request):
     
     tasa_conversion = (clientes_con_contrato / total_clientes * 100) if total_clientes > 0 else 0
     
-    # ========== DATOS PARA GRÁFICAS (CON FILTROS DE FECHA) ==========
+    # ========== DATOS PARA GRÁFICAS (CON FILTROS DE FECHA CORREGIDOS) ==========
+    # Usar __date para comparar solo la fecha, ignorando zona horaria
+    clientes_graficas = clientes_totales
+    
     if fecha_desde:
-        clientes_graficas = clientes_totales.filter(fecha_registro__gte=fecha_desde)
-    else:
-        clientes_graficas = clientes_totales
+        fecha_desde_dt = datetime.strptime(fecha_desde, '%Y-%m-%d')
+        clientes_graficas = clientes_graficas.filter(fecha_registro__date__gte=fecha_desde_dt.date())
     
     if fecha_hasta:
-        clientes_graficas = clientes_graficas.filter(fecha_registro__lte=fecha_hasta)
+        fecha_hasta_dt = datetime.strptime(fecha_hasta, '%Y-%m-%d')
+        clientes_graficas = clientes_graficas.filter(fecha_registro__date__lte=fecha_hasta_dt.date())
     
     # 1. Clientes por interés
     interes_data = clientes_graficas.values('interesado').annotate(
