@@ -62,38 +62,36 @@ def reporte_ventas_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
-    # ========== CONVERTIR FECHAS DE dd/mm/yyyy a OBJETO DATE ==========
+    # ========== CONVERTIR FECHAS (MANEJA AMBOS FORMATOS) ==========
     from datetime import datetime
     
     fecha_desde_obj = None
     fecha_hasta_obj = None
     
     if fecha_desde_raw:
+        # Primero intentar formato YYYY-MM-DD (que es el que envía input type="date")
         try:
-            # Intentar formato dd/mm/yyyy
-            fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y').date()
+            fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d').date()
         except ValueError:
+            # Si falla, intentar formato DD/MM/YYYY
             try:
-                # Intentar formato yyyy-mm-dd
-                fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%Y-%m-%d').date()
+                fecha_desde_obj = datetime.strptime(fecha_desde_raw, '%d/%m/%Y').date()
             except ValueError:
                 pass
     
     if fecha_hasta_raw:
         try:
-            # Intentar formato dd/mm/yyyy
-            fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y').date()
+            fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
         except ValueError:
             try:
-                # Intentar formato yyyy-mm-dd
-                fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
+                fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%d/%m/%Y').date()
             except ValueError:
                 pass
     
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
     
-    # ===== FILTRAR POR FECHA USANDO OBJETOS DATE =====
+    # ===== FILTRAR POR FECHA =====
     if fecha_desde_obj and fecha_hasta_obj:
         ventas = ventas.filter(
             Q(estado='COMPLETADO', fecha_completado__date__gte=fecha_desde_obj, fecha_completado__date__lte=fecha_hasta_obj) |
