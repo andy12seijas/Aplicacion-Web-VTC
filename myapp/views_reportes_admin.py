@@ -1229,22 +1229,42 @@ def exportar_reporte(request):
 def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                    busqueda, vendedor, plan, cuadrilla, estado,
                    tipo_soporte, estado_soporte, material, semana_obj, instalador):
-    """Exportar datos a Excel con filtros usando objetos date"""
+    """Exportar datos a Excel con filtros usando datetime aware"""
     
+    import pytz
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    VE_TZ = pytz.timezone('America/Caracas')
     wb = Workbook()
     
     if tipo == 'ventas':
         ws = wb.active
         ws.title = "Reporte de Ventas"
         
-        # SOLO contratos COMPLETADOS
         ventas = ContratoCliente.objects.filter(estado='COMPLETADO')
         
-        # Filtrar por FECHA_COMPLETADO con objetos date
+        # Convertir a datetime aware
+        fecha_inicio_aware = None
+        fecha_fin_aware = None
+        
         if fecha_desde_obj:
-            ventas = ventas.filter(fecha_completado__date__gte=fecha_desde_obj)
+            fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+        
         if fecha_hasta_obj:
-            ventas = ventas.filter(fecha_completado__date__lte=fecha_hasta_obj)
+            fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
+        
+        # Filtrar usando datetime aware
+        if fecha_inicio_aware and fecha_fin_aware:
+            ventas = ventas.filter(
+                fecha_completado__gte=fecha_inicio_aware,
+                fecha_completado__lte=fecha_fin_aware
+            )
+        elif fecha_inicio_aware:
+            ventas = ventas.filter(fecha_completado__gte=fecha_inicio_aware)
+        elif fecha_fin_aware:
+            ventas = ventas.filter(fecha_completado__lte=fecha_fin_aware)
+        
         if vendedor:
             ventas = ventas.filter(creado_por_id=vendedor)
         if plan:
@@ -1288,7 +1308,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                 v.get_estado_display()
             ] for v in ventas]
         
-        # Hoja de resumen
         ws_resumen = wb.create_sheet("Resumen")
         total_registros = ventas.count()
         
@@ -1317,10 +1336,27 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         
         instalaciones = Instalacion.objects.all()
         
+        # Convertir a datetime aware
+        fecha_inicio_aware = None
+        fecha_fin_aware = None
+        
         if fecha_desde_obj:
-            instalaciones = instalaciones.filter(fecha_instalacion__date__gte=fecha_desde_obj)
+            fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+        
         if fecha_hasta_obj:
-            instalaciones = instalaciones.filter(fecha_instalacion__date__lte=fecha_hasta_obj)
+            fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
+        
+        # Filtrar usando datetime aware
+        if fecha_inicio_aware and fecha_fin_aware:
+            instalaciones = instalaciones.filter(
+                fecha_instalacion__gte=fecha_inicio_aware,
+                fecha_instalacion__lte=fecha_fin_aware
+            )
+        elif fecha_inicio_aware:
+            instalaciones = instalaciones.filter(fecha_instalacion__gte=fecha_inicio_aware)
+        elif fecha_fin_aware:
+            instalaciones = instalaciones.filter(fecha_instalacion__lte=fecha_fin_aware)
+        
         if cuadrilla:
             instalaciones = instalaciones.filter(asignacion__cuadrilla_id=cuadrilla)
         if estado == 'completada':
@@ -1381,14 +1417,33 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         
         soportes = Soporte.objects.all()
         
+        # Convertir a datetime aware
+        fecha_inicio_aware = None
+        fecha_fin_aware = None
+        
         if fecha_desde_obj:
-            soportes = soportes.filter(fecha_hora_servicio__date__gte=fecha_desde_obj)
+            fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+        
         if fecha_hasta_obj:
-            soportes = soportes.filter(fecha_hora_servicio__date__lte=fecha_hasta_obj)
+            fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
+        
+        # Filtrar usando datetime aware
+        if fecha_inicio_aware and fecha_fin_aware:
+            soportes = soportes.filter(
+                fecha_hora_servicio__gte=fecha_inicio_aware,
+                fecha_hora_servicio__lte=fecha_fin_aware
+            )
+        elif fecha_inicio_aware:
+            soportes = soportes.filter(fecha_hora_servicio__gte=fecha_inicio_aware)
+        elif fecha_fin_aware:
+            soportes = soportes.filter(fecha_hora_servicio__lte=fecha_fin_aware)
+        
         if tipo_soporte:
             soportes = soportes.filter(asignacion__ticket__tipo_soporte=tipo_soporte)
         if estado_soporte:
             soportes = soportes.filter(estado=estado_soporte)
+        if cuadrilla:
+            soportes = soportes.filter(cuadrilla_id=cuadrilla)
         if busqueda:
             soportes = soportes.filter(
                 Q(asignacion__ticket__nombre__icontains=busqueda) |
@@ -1484,12 +1539,10 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         ws = wb.active
         ws.title = "Reporte de Vendedores"
         
-        from datetime import timedelta
-        
         if semana_obj:
             fecha_referencia = semana_obj
         else:
-            fecha_referencia = VE_TZ.localize(datetime.now()).date()
+            fecha_referencia = datetime.now().date()
         
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
@@ -1511,15 +1564,15 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         if vendedor:
             contratos = contratos.filter(creado_por_id=vendedor)
         
-        vendedores = User.objects.filter(
+        vendedores_list = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor']
         ).distinct()
         
         if vendedor:
-            vendedores = vendedores.filter(id=vendedor)
+            vendedores_list = vendedores_list.filter(id=vendedor)
         
         if busqueda:
-            vendedores = vendedores.filter(
+            vendedores_list = vendedores_list.filter(
                 Q(first_name__icontains=busqueda) |
                 Q(username__icontains=busqueda) |
                 Q(last_name__icontains=busqueda)
@@ -1530,7 +1583,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         
         data_vendedores = []
         
-        for vendedor_obj in vendedores:
+        for vendedor_obj in vendedores_list:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
             total_contratos = contratos_vendedor.count()
             
@@ -1620,7 +1673,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         detalles_headers = ['Vendedor', 'Cliente', 'Fecha Completado', 'Plan', 'Customer ID']
         detalles_data = []
         
-        for vendedor_obj in vendedores:
+        for vendedor_obj in vendedores_list:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj).order_by('-fecha_completado')
             nombre_vendedor = vendedor_obj.get_full_name() or vendedor_obj.username
             
@@ -1652,9 +1705,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         ws = wb.active
         ws.title = "Reporte de Instaladores"
         
-        from datetime import timedelta
-        from collections import defaultdict
-        
         PRECIO_INSTALACION = 15
         PRECIO_CONTRATO = 10
         PRECIOS_SOPORTES = {
@@ -1667,7 +1717,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         if semana_obj:
             fecha_referencia = semana_obj
         else:
-            fecha_referencia = VE_TZ.localize(datetime.now()).date()
+            fecha_referencia = datetime.now().date()
         
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
@@ -1710,7 +1760,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_set'].add(perfil.usuario.id)
             cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
         
-        # ========== 1. INSTALACIONES COMPLETADAS ==========
+        # Instalaciones COMPLETADAS
         instalaciones = Instalacion.objects.filter(
             completada=True,
             fecha_instalacion__gte=fecha_inicio_aware,
@@ -1721,7 +1771,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             cuadrilla_obj = inst.asignacion.cuadrilla if inst.asignacion else None
             if not cuadrilla_obj:
                 continue
-            
             nombre_cuadrilla = cuadrilla_obj.nombre
             if nombre_cuadrilla not in cuadrillas_dict:
                 continue
@@ -1748,7 +1797,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             for inst_hist in instaladores_hist:
                 cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # ========== 2. SOPORTES COMPLETADOS ==========
+        # Soportes COMPLETADOS
         soportes = Soporte.objects.filter(
             estado='COMPLETADO',
             fecha_creacion__gte=fecha_inicio_aware,
@@ -1758,7 +1807,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         for sop in soportes:
             if not sop.cuadrilla:
                 continue
-            
             nombre_cuadrilla = sop.cuadrilla.nombre
             if nombre_cuadrilla not in cuadrillas_dict:
                 continue
@@ -1791,7 +1839,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             for inst_hist in instaladores_hist:
                 cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # ========== 3. CONTRATOS (creados por instaladores) ==========
+        # Contratos (creados por instaladores)
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -1801,18 +1849,15 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             perfil = PerfilUsuario.objects.filter(usuario=instalador_user).first()
             if not perfil:
                 continue
-            
             cuadrillas_del_instalador = perfil.cuadrillas.all()
             if not cuadrillas_del_instalador.exists():
                 continue
-            
             contratos_instalador = ContratoCliente.objects.filter(
                 estado='COMPLETADO',
                 creado_por=instalador_user,
                 fecha_completado__gte=fecha_inicio_aware,
                 fecha_completado__lte=fecha_fin_aware
             )
-            
             for contrato in contratos_instalador:
                 for cuadrilla_inst in cuadrillas_del_instalador:
                     nombre_cuadrilla = cuadrilla_inst.nombre
@@ -1869,6 +1914,9 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
     
     # Aplicar estilos generales
     if tipo not in ['vendedores', 'instaladores']:
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
+        
         header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)
         border = Border(
@@ -1894,6 +1942,9 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             ws.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 50)
     
     else:
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        from openpyxl.utils import get_column_letter
+        
         header_fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)
         border = Border(
@@ -1925,26 +1976,49 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
     
     return response
 
-
 def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                  busqueda, vendedor, plan, cuadrilla, estado,
                  tipo_soporte, estado_soporte, material, semana_obj, instalador):
-    """Exportar datos a PDF con filtros usando objetos date"""
+    """Exportar datos a PDF con filtros usando datetime aware"""
     
     import io
+    import pytz
     from reportlab.lib.pagesizes import A4, landscape
-    from datetime import timedelta 
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from datetime import datetime, timedelta
     from collections import defaultdict
+    
+    VE_TZ = pytz.timezone('America/Caracas')
     
     if tipo == 'ventas':
         titulo = "Reporte de Ventas (Completados)"
         
         datos = ContratoCliente.objects.filter(estado='COMPLETADO')
         
+        # Convertir a datetime aware
+        fecha_inicio_aware = None
+        fecha_fin_aware = None
+        
         if fecha_desde_obj:
-            datos = datos.filter(fecha_completado__date__gte=fecha_desde_obj)
+            fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+        
         if fecha_hasta_obj:
-            datos = datos.filter(fecha_completado__date__lte=fecha_hasta_obj)
+            fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
+        
+        # Filtrar usando datetime aware
+        if fecha_inicio_aware and fecha_fin_aware:
+            datos = datos.filter(
+                fecha_completado__gte=fecha_inicio_aware,
+                fecha_completado__lte=fecha_fin_aware
+            )
+        elif fecha_inicio_aware:
+            datos = datos.filter(fecha_completado__gte=fecha_inicio_aware)
+        elif fecha_fin_aware:
+            datos = datos.filter(fecha_completado__lte=fecha_fin_aware)
+        
         if vendedor:
             datos = datos.filter(creado_por_id=vendedor)
         if plan:
@@ -1991,10 +2065,27 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         
         datos = Instalacion.objects.all()
         
+        # Convertir a datetime aware
+        fecha_inicio_aware = None
+        fecha_fin_aware = None
+        
         if fecha_desde_obj:
-            datos = datos.filter(fecha_instalacion__date__gte=fecha_desde_obj)
+            fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+        
         if fecha_hasta_obj:
-            datos = datos.filter(fecha_instalacion__date__lte=fecha_hasta_obj)
+            fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
+        
+        # Filtrar usando datetime aware
+        if fecha_inicio_aware and fecha_fin_aware:
+            datos = datos.filter(
+                fecha_instalacion__gte=fecha_inicio_aware,
+                fecha_instalacion__lte=fecha_fin_aware
+            )
+        elif fecha_inicio_aware:
+            datos = datos.filter(fecha_instalacion__gte=fecha_inicio_aware)
+        elif fecha_fin_aware:
+            datos = datos.filter(fecha_instalacion__lte=fecha_fin_aware)
+        
         if cuadrilla:
             datos = datos.filter(asignacion__cuadrilla_id=cuadrilla)
         if estado == 'completada':
@@ -2047,14 +2138,33 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         
         datos = Soporte.objects.all()
         
+        # Convertir a datetime aware
+        fecha_inicio_aware = None
+        fecha_fin_aware = None
+        
         if fecha_desde_obj:
-            datos = datos.filter(fecha_hora_servicio__date__gte=fecha_desde_obj)
+            fecha_inicio_aware = VE_TZ.localize(datetime.combine(fecha_desde_obj, datetime.min.time()))
+        
         if fecha_hasta_obj:
-            datos = datos.filter(fecha_hora_servicio__date__lte=fecha_hasta_obj)
+            fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
+        
+        # Filtrar usando datetime aware
+        if fecha_inicio_aware and fecha_fin_aware:
+            datos = datos.filter(
+                fecha_hora_servicio__gte=fecha_inicio_aware,
+                fecha_hora_servicio__lte=fecha_fin_aware
+            )
+        elif fecha_inicio_aware:
+            datos = datos.filter(fecha_hora_servicio__gte=fecha_inicio_aware)
+        elif fecha_fin_aware:
+            datos = datos.filter(fecha_hora_servicio__lte=fecha_fin_aware)
+        
         if tipo_soporte:
             datos = datos.filter(asignacion__ticket__tipo_soporte=tipo_soporte)
         if estado_soporte:
             datos = datos.filter(estado=estado_soporte)
+        if cuadrilla:
+            datos = datos.filter(cuadrilla_id=cuadrilla)
         if busqueda:
             datos = datos.filter(
                 Q(asignacion__ticket__nombre__icontains=busqueda) |
@@ -2157,7 +2267,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         if semana_obj:
             fecha_referencia = semana_obj
         else:
-            fecha_referencia = VE_TZ.localize(datetime.now()).date()
+            fecha_referencia = datetime.now().date()
         
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
@@ -2179,15 +2289,15 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         if vendedor:
             contratos = contratos.filter(creado_por_id=vendedor)
         
-        vendedores = User.objects.filter(
+        vendedores_list = User.objects.filter(
             groups__name__in=['Vendedor', 'Supervisor']
         ).distinct()
         
         if vendedor:
-            vendedores = vendedores.filter(id=vendedor)
+            vendedores_list = vendedores_list.filter(id=vendedor)
         
         if busqueda:
-            vendedores = vendedores.filter(
+            vendedores_list = vendedores_list.filter(
                 Q(first_name__icontains=busqueda) |
                 Q(username__icontains=busqueda) |
                 Q(last_name__icontains=busqueda)
@@ -2198,7 +2308,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         
         data_vendedores = []
         
-        for vendedor_obj in vendedores:
+        for vendedor_obj in vendedores_list:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
             total_contratos = contratos_vendedor.count()
             
@@ -2276,7 +2386,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         if semana_obj:
             fecha_referencia = semana_obj
         else:
-            fecha_referencia = VE_TZ.localize(datetime.now()).date()
+            fecha_referencia = datetime.now().date()
         
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
