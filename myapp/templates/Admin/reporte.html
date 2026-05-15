@@ -953,6 +953,10 @@
     }
 
     function aplicarFiltros() {
+        const fechaDesde = document.getElementById('fecha_desde')?.value;
+        const fechaHasta = document.getElementById('fecha_hasta')?.value;
+        console.log("📅 Fecha Desde (raw):", fechaDesde);
+        console.log("📅 Fecha Hasta (raw):", fechaHasta);
         paginaActual = 1;
         cargarReporte();
     }
