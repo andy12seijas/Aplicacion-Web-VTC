@@ -1171,7 +1171,17 @@ def semanas_disponibles_instaladores_api(request):
     
     return JsonResponse({'semanas': semanas})   
 
-
+def convertir_fecha_date(fecha_str):
+    """Convierte string a objeto date (sin zona horaria)"""
+    if not fecha_str:
+        return None
+    try:
+        return datetime.strptime(fecha_str, '%Y-%m-%d').date()
+    except ValueError:
+        try:
+            return datetime.strptime(fecha_str, '%d/%m/%Y').date()
+        except ValueError:
+            return None
 
 @login_required
 @user_passes_test(es_admin)
