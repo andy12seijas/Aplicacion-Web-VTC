@@ -446,27 +446,26 @@ def crear_contrato(request):
         form = ContratoClienteForm(data, request.FILES, cliente_potencial=cliente)
         
         if form.is_valid():
+            from django.utils import timezone
+            import pytz
+            
             contrato = form.save(commit=False)
             contrato.cliente_potencial = cliente
             contrato.creado_por = request.user
             contrato.cashea = cashea_value
             
-            # ===== CONVERTIR LA FECHA A ZONA HORARIA DE VENEZUELA ANTES DE GUARDAR =====
-            from datetime import datetime
-            import pytz
-            
-            # Zona horaria de Venezuela
+            # ===== FORMA CORRECTA DE GUARDAR LA FECHA LOCAL DE VENEZUELA =====
             VE_TZ = pytz.timezone('America/Caracas')
             
-            # Obtener la hora actual en Venezuela
-            ahora_ve = datetime.now().astimezone(VE_TZ)
+            # Obtener hora actual en Venezuela (como datetime aware)
+            ahora_ve = timezone.now().astimezone(VE_TZ)
             
-            # Asignar la fecha convertida (sin zona horaria para guardar en BD)
-            contrato.fecha_creacion = ahora_ve.replace(tzinfo=None)
+            # Guardar la fecha con zona horaria (Django la convertirá a UTC en la BD)
+            contrato.fecha_creacion = ahora_ve
             
-            # Si el contrato está completado, también asignar fecha_completado
+            # Si el contrato se crea ya como COMPLETADO
             if contrato.estado == 'COMPLETADO':
-                contrato.fecha_completado = ahora_ve.replace(tzinfo=None)
+                contrato.fecha_completado = ahora_ve
             
             contrato.save()
             
