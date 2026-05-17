@@ -118,10 +118,13 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Internationalization
-LANGUAGE_CODE = 'en-us'
-
+LANGUAGE_CODE = 'es-ve'  # o 'en-us'
 USE_I18N = True
+
+# ⚠️ IMPORTANTE: Esto debe estar EXACTAMENTE así
 TIME_ZONE = 'America/Caracas'
+
+# Esto debe ser True
 USE_TZ = True
 # Django usará la zona horaria de Venezuela automáticamente
 
