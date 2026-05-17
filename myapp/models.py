@@ -211,15 +211,25 @@ class ContratoCliente(models.Model):
     estado = models.CharField(max_length=15,choices=EstadoContrato.choices,default=EstadoContrato.EN_PROCESO,verbose_name="Estado del Contrato")
     # Campos de control
     creado_por = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name='contratos_creados',verbose_name="Creado por")
-    fecha_creacion = models.DateTimeField(default=timezone.now, verbose_name="Fecha de creación")
-    fecha_actualizacion = models.DateTimeField(auto_now=True,verbose_name="Última actualización")
-    # models.py - Agrega esto a tu modelo ContratoCliente
+    
+    # ========== CAMBIADO: fecha_creacion SIN default (se asigna en save) ==========
+    fecha_creacion = models.DateTimeField(
+        verbose_name="Fecha de creación"
+        # NOTA: NO tiene auto_now_add ni default - se asigna manualmente en save
+    )
+    
+    fecha_actualizacion = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Última actualización"
+    )
+    
     fecha_completado = models.DateTimeField(
         null=True, 
         blank=True, 
         verbose_name="Fecha de completado",
         help_text="Fecha y hora en que el contrato cambió a COMPLETADO por primera vez"
     )
+    
     class Meta:
         verbose_name = "Contrato de Cliente"
         verbose_name_plural = "Contratos de Clientes"
@@ -253,6 +263,41 @@ class ContratoCliente(models.Model):
     @property
     def nombre_completo(self):
         return self.cliente_potencial.nombre_completo
+    
+    # ========== MÉTODO SAVE CORREGIDO PARA ZONA HORARIA DE VENEZUELA ==========
+    def save(self, *args, **kwargs):
+        import pytz
+        from django.utils import timezone
+        
+        # Zona horaria de Venezuela
+        VE_TZ = pytz.timezone('America/Caracas')
+        
+        # Para CONTRATOS NUEVOS (sin ID todavía)
+        if not self.pk:
+            # Obtener la hora actual en Venezuela (NO UTC)
+            ahora_ve = timezone.now().astimezone(VE_TZ)
+            
+            # Guardar la hora exacta de Venezuela
+            self.fecha_creacion = ahora_ve
+            
+            # Si el contrato se crea ya como COMPLETADO
+            if self.estado == 'COMPLETADO' and not self.fecha_completado:
+                self.fecha_completado = ahora_ve
+        
+        # Para ACTUALIZACIONES (cuando cambia estado a COMPLETADO)
+        if self.pk:
+            try:
+                old_instance = ContratoCliente.objects.get(pk=self.pk)
+                # Si antes NO estaba COMPLETADO y ahora SÍ
+                if old_instance.estado != 'COMPLETADO' and self.estado == 'COMPLETADO':
+                    if not self.fecha_completado:
+                        ahora_ve = timezone.now().astimezone(VE_TZ)
+                        self.fecha_completado = ahora_ve
+            except ContratoCliente.DoesNotExist:
+                pass
+        
+        # Llamar al save original
+        super().save(*args, **kwargs)
     
     
     
