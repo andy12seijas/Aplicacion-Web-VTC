@@ -77,6 +77,25 @@
                     </div>
                 </div>
             </div>
+                {% if form.non_field_errors %}
+                <div class="alert-error">
+                    {% for error in form.non_field_errors %}
+                    <p>❌ {{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <!-- ===== BLOQUE PARA MOSTRAR ERRORES DEL FORMULARIO ===== -->
+                {% if form_errors %}
+                <div class="alert-error" style="margin-bottom: 20px; background: #ffebee; border-left: 4px solid #f44336; padding: 15px;">
+                    <p style="font-weight: bold; margin-bottom: 10px;">❌ No se pudo guardar el contrato. Revise los siguientes errores:</p>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        {% for field, error in form_errors.items %}
+                        <li><strong>{{ field }}:</strong> {{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
 
             <!-- Mostrar error de correo si existe -->
             {% if error_correo %}

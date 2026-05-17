@@ -436,7 +436,6 @@ def crear_contrato(request):
         cliente = get_object_or_404(ClientePotencial, id=cliente_id)
         
         # Procesar el valor de cashea (checkbox/interruptor)
-        # Si no viene en POST, es False (por defecto)
         cashea_value = request.POST.get('cashea', 'off') == 'on'
         
         # Crear un diccionario mutable con los datos del POST
@@ -450,7 +449,11 @@ def crear_contrato(request):
             contrato = form.save(commit=False)
             contrato.cliente_potencial = cliente
             contrato.creado_por = request.user
-            contrato.cashea = cashea_value  # Asegurar que se guarde correctamente
+            contrato.cashea = cashea_value
+            
+            # ===== LA FECHA SE ASIGNA AUTOMÁTICAMENTE POR default=timezone.now =====
+            # No necesitas asignar fecha_creacion manualmente
+            
             contrato.save()
             
             messages.success(
@@ -459,23 +462,25 @@ def crear_contrato(request):
             )
             return redirect('lista_contratos')
         else:
-            # Si hay errores, guardar los datos en la sesión y redirigir con el error
+            # Si hay errores, guardar los datos en la sesión
             request.session['form_data'] = request.POST.urlencode()
             request.session['cliente_id'] = cliente.id
-            request.session['error_correo'] = 'correo_electronico' in form.errors
-            request.session['error_message'] = form.errors.get('correo_electronico', [''])[0] if 'correo_electronico' in form.errors else ''
             
-            # También guardar los archivos en sesión (solo los nombres, no los archivos en sí)
-            if request.FILES.get('foto_pago'):
-                request.session['foto_pago_name'] = request.FILES['foto_pago'].name
+            # Guardar errores específicos
+            request.session['form_errors'] = {
+                field: str(errors[0]) for field, errors in form.errors.items()
+            }
+            
+            # Mensaje de error general
+            error_fields = ', '.join(form.errors.keys())
+            messages.error(request, f'❌ Error en los campos: {error_fields}')
             
             return redirect('crear_contrato_error')
     
     # GET request - verificar si hay datos de error en sesión
     form_data = request.session.pop('form_data', None)
     cliente_id = request.session.pop('cliente_id', None)
-    error_correo = request.session.pop('error_correo', False)
-    error_message = request.session.pop('error_message', '')
+    form_errors = request.session.pop('form_errors', None)
     foto_pago_name = request.session.pop('foto_pago_name', None)
     
     if cliente_id and form_data:
@@ -501,8 +506,7 @@ def crear_contrato(request):
             'boton_texto': 'Guardar Contrato',
             'es_pagina_crear': True,
             'es_post_error': True,
-            'error_correo': error_correo,
-            'error_message': error_message,
+            'form_errors': form_errors,
             'foto_pago_name': foto_pago_name,
         }
     else:
