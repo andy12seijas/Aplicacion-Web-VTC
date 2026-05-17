@@ -347,7 +347,8 @@ class ContratoClienteForm(forms.ModelForm):
         exclude = [
             'ods', 'customer_id', 'atr', 'estado', 'cliente_potencial',
             'cedula', 'nombre', 'apellido', 'telefono_principal', 'creado_por',
-            'fecha_completado'
+            'fecha_completado','fecha_creacion',      # ← Agregado
+            'fecha_actualizacion',
         ]
         widgets = {
             'otro_telefono': forms.TextInput(attrs={
