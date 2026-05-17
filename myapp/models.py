@@ -211,8 +211,11 @@ class ContratoCliente(models.Model):
     estado = models.CharField(max_length=15,choices=EstadoContrato.choices,default=EstadoContrato.EN_PROCESO,verbose_name="Estado del Contrato")
     # Campos de control
     creado_por = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name='contratos_creados',verbose_name="Creado por")
-    fecha_creacion = models.DateTimeField(auto_now_add=True,verbose_name="Fecha de creación")
-    fecha_actualizacion = models.DateTimeField(auto_now=True,verbose_name="Última actualización")
+    
+    # ========== CAMBIO IMPORTANTE: ya NO usa auto_now_add ==========
+    fecha_creacion = models.DateTimeField(verbose_name="Fecha de creación")  # ← CAMBIADO
+    
+    fecha_actualizacion = models.DateTimeField(auto_now=True,verbose_name="Última actualización")  # ← Este sigue igual
     fecha_completado = models.DateTimeField(
         null=True, 
         blank=True, 
@@ -254,7 +257,7 @@ class ContratoCliente(models.Model):
     def nombre_completo(self):
         return self.cliente_potencial.nombre_completo
     
-    # ========== MÉTODO SAVE CORREGIDO PARA ZONA HORARIA ==========
+    # ========== MÉTODO SAVE CORREGIDO ==========
     def save(self, *args, **kwargs):
         import pytz
         from django.utils import timezone
@@ -263,7 +266,7 @@ class ContratoCliente(models.Model):
         
         # Solo para CONTRATOS NUEVOS (sin ID todavía)
         if not self.pk:
-            # Convertir la hora actual a Venezuela
+            # Asignar la hora actual de Venezuela
             ahora_ve = timezone.now().astimezone(VE_TZ)
             self.fecha_creacion = ahora_ve
             
@@ -272,11 +275,9 @@ class ContratoCliente(models.Model):
                 self.fecha_completado = ahora_ve
         
         # Para ACTUALIZACIONES (cuando cambia estado a COMPLETADO)
-        # Verificar si el estado cambió a COMPLETADO
         if self.pk:
             try:
                 old_instance = ContratoCliente.objects.get(pk=self.pk)
-                # Si antes NO estaba COMPLETADO y ahora SÍ
                 if old_instance.estado != 'COMPLETADO' and self.estado == 'COMPLETADO':
                     if not self.fecha_completado:
                         ahora_ve = timezone.now().astimezone(VE_TZ)
