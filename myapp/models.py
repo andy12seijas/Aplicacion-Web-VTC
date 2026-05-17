@@ -172,6 +172,7 @@ class ContratoCliente(models.Model):
         EN_PROCESO = 'EN_PROCESO', 'En Proceso'
         COMPLETADO = 'COMPLETADO', 'Completado'
         NO_COMPLETADO = 'NO_COMPLETADO', 'No Completado'
+        RENUNCIADO = 'RENUNCIADO', 'Renunciado'
     
     # Relación con Cliente Potencial
     cliente_potencial = models.ForeignKey('ClientePotencial',on_delete=models.CASCADE,related_name='contratos',verbose_name="Cliente Potencial")
@@ -190,6 +191,12 @@ class ContratoCliente(models.Model):
     # Tipo de vivienda (relación con tabla TipoVivienda)
     tipo_vivienda = models.ForeignKey(TipoVivienda,on_delete=models.PROTECT,related_name='contratos',verbose_name="Tipo de Vivienda")
     numero_casa = models.CharField(max_length=50,verbose_name="Número de Casa/Edificio",help_text="Número de la casa, edificio, apartamento")
+    latitud = models.FloatField(verbose_name="Latitud",blank=True, null=True,help_text="Coordenada de la ubicación del cliente")
+    longitud = models.FloatField(verbose_name="Longitud",blank=True, null=True, help_text="Coordenada de la ubicación del cliente")
+    cashea = models.BooleanField(
+        default=False,
+        verbose_name="Cashea"
+    )
     # Datos de pago
     numero_pago_movil = models.CharField(blank=True, null=True,max_length=20,verbose_name="Número de Pago Móvil",help_text="Número de teléfono donde se realizó el pago")
     # Subir foto del pago
@@ -206,13 +213,13 @@ class ContratoCliente(models.Model):
     creado_por = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name='contratos_creados',verbose_name="Creado por")
     fecha_creacion = models.DateTimeField(auto_now_add=True,verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True,verbose_name="Última actualización")
-    # models.py - Agrega esto a tu modelo ContratoCliente
     fecha_completado = models.DateTimeField(
         null=True, 
         blank=True, 
         verbose_name="Fecha de completado",
         help_text="Fecha y hora en que el contrato cambió a COMPLETADO por primera vez"
     )
+    
     class Meta:
         verbose_name = "Contrato de Cliente"
         verbose_name_plural = "Contratos de Clientes"
@@ -246,6 +253,39 @@ class ContratoCliente(models.Model):
     @property
     def nombre_completo(self):
         return self.cliente_potencial.nombre_completo
+    
+    # ========== MÉTODO SAVE CORREGIDO PARA ZONA HORARIA ==========
+    def save(self, *args, **kwargs):
+        import pytz
+        from django.utils import timezone
+        
+        VE_TZ = pytz.timezone('America/Caracas')
+        
+        # Solo para CONTRATOS NUEVOS (sin ID todavía)
+        if not self.pk:
+            # Convertir la hora actual a Venezuela
+            ahora_ve = timezone.now().astimezone(VE_TZ)
+            self.fecha_creacion = ahora_ve
+            
+            # Si el contrato se crea ya como COMPLETADO
+            if self.estado == 'COMPLETADO' and not self.fecha_completado:
+                self.fecha_completado = ahora_ve
+        
+        # Para ACTUALIZACIONES (cuando cambia estado a COMPLETADO)
+        # Verificar si el estado cambió a COMPLETADO
+        if self.pk:
+            try:
+                old_instance = ContratoCliente.objects.get(pk=self.pk)
+                # Si antes NO estaba COMPLETADO y ahora SÍ
+                if old_instance.estado != 'COMPLETADO' and self.estado == 'COMPLETADO':
+                    if not self.fecha_completado:
+                        ahora_ve = timezone.now().astimezone(VE_TZ)
+                        self.fecha_completado = ahora_ve
+            except ContratoCliente.DoesNotExist:
+                pass
+        
+        # Llamar al save original
+        super().save(*args, **kwargs)
     
     
     

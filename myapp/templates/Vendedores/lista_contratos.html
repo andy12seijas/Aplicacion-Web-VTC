@@ -92,6 +92,7 @@
                             <th>Teléfono</th>
                             <th>Correo</th>
                             <th>Plan</th>
+                            <th>Cashea</th>
                             <th>Estado</th>
                             <th>Fecha</th>
                             {% if es_admin %}
@@ -114,6 +115,13 @@
                             <td class="telefono-cell">{{ contrato.cliente_potencial.telefono }}</td>
                             <td class="email-cell">{{ contrato.correo_electronico|truncatechars:25 }}</td>
                             <td>{{ contrato.plan_contratado.nombre|truncatechars:15 }}</td>
+                            <td>
+                                {% if contrato.cashea %}
+                                <span class="badge-cashea activo">✅ Sí</span>
+                                {% else %}
+                                <span class="badge-cashea inactivo">❌ No</span>
+                                {% endif %}
+                            </td>
                             <td>
                                 {% if contrato.estado == 'EN_PROCESO' %}
                                 <span class="badge proceso">En Proceso</span>
@@ -165,7 +173,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="{% if es_admin %}9{% else %}8{% endif %}" class="empty">No hay contratos registrados</td>
+                            <td colspan="{% if es_admin %}10{% else %}9{% endif %}" class="empty">No hay contratos registrados</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -200,6 +208,16 @@
                     <div class="card-row">
                         <span class="card-label">📋 Plan:</span>
                         <span class="card-value">{{ contrato.plan_contratado.nombre }}</span>
+                    </div>
+                    <div class="card-row">
+                        <span class="card-label">💰 Cashea:</span>
+                        <span class="card-value">
+                            {% if contrato.cashea %}
+                            <span class="badge-cashea activo">✅ Sí</span>
+                            {% else %}
+                            <span class="badge-cashea inactivo">❌ No</span>
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="card-row">
                         <span class="card-label">📅 Fecha:</span>
@@ -370,6 +388,7 @@
             <div class="modal-tabs">
                 <button class="tab-btn active" onclick="cambiarTab('info')" id="tab-info-btn">Información General</button>
                 <button class="tab-btn" onclick="cambiarTab('pago')" id="tab-pago-btn">Información de Pago</button>
+                <button class="tab-btn" onclick="cambiarTab('ubicacion')" id="tab-ubicacion-btn">Ubicación</button>
                 <button class="tab-btn" onclick="cambiarTab('adicional')" id="tab-adicional-btn">Datos Adicionales</button>
             </div>
             
@@ -401,6 +420,10 @@
                         <div class="modal-item">
                             <span class="modal-label">Correo electrónico</span>
                             <span class="modal-value" id="modalCorreo"></span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Cashea</span>
+                            <span class="modal-value" id="modalCashea"></span>
                         </div>
                     </div>
                 </div>
@@ -490,6 +513,23 @@
                                     Descargar
                                 </a>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pestaña Ubicación - Solo coordenadas, sin mapa -->
+            <div id="tab-ubicacion" class="tab-content">
+                <div class="modal-section">
+                    <h3 class="modal-section-title">Coordenadas de Ubicación</h3>
+                    <div class="modal-grid grid-2">
+                        <div class="modal-item">
+                            <span class="modal-label">Latitud</span>
+                            <span class="modal-value" id="modalLatitud">—</span>
+                        </div>
+                        <div class="modal-item">
+                            <span class="modal-label">Longitud</span>
+                            <span class="modal-value" id="modalLongitud">—</span>
                         </div>
                     </div>
                 </div>
@@ -680,6 +720,25 @@
         box-shadow: var(--shadow-sm);
     }
     
+    /* Badge de Cashea */
+    .badge-cashea {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 30px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    
+    .badge-cashea.activo {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    .badge-cashea.inactivo {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    
     /* ===== CONTENEDOR PRINCIPAL ===== */
     .contratos-container {
         height: calc(100vh - 120px);
@@ -862,7 +921,7 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 12px;
-        min-width: 900px;
+        min-width: 1000px;
     }
     
     .table th {
@@ -983,7 +1042,6 @@
         background: var(--orange-light);
     }
     
-    /* Estilos para el botón de pago pendiente */
     .action-btn.pago-pendiente,
     .card-action.pago-pendiente {
         background: #fff3e0;
@@ -1464,7 +1522,6 @@
         flex-wrap: wrap;
     }
     
-    /* Estilos para el formulario de pago */
     .form-group {
         margin-bottom: 20px;
     }
@@ -1499,7 +1556,6 @@
         color: var(--gray-text);
     }
     
-    /* Área de subida de archivos */
     .file-upload-area {
         border: 2px dashed var(--gray-border);
         border-radius: 12px;
@@ -1798,7 +1854,6 @@
     });
     
     // Función para ver detalle del contrato
-    // Función para ver detalle del contrato CON ERROR DETALLADO
     function verContrato(id) {
         const modal = document.getElementById('contratoModal');
         
@@ -1821,7 +1876,6 @@
         fetch(url)
             .then(response => {
                 if (!response.ok) {
-                    // Intentar obtener el error del servidor
                     return response.text().then(text => {
                         throw new Error(`HTTP ${response.status}: ${text.substring(0, 500)}`);
                     });
@@ -1832,18 +1886,11 @@
                 Swal.close();
                 
                 if (data.error) {
-                    // Mostrar error detallado
-                    let errorMsg = data.error;
-                    if (data.detalle) errorMsg += '\n\nDetalle: ' + data.detalle;
-                    if (data.tipo_error) errorMsg += '\n\nTipo: ' + data.tipo_error;
-                    if (data.traceback) errorMsg += '\n\nTraceback:\n' + data.traceback;
-                    
                     Swal.fire({
                         icon: 'error',
                         title: 'Error del Servidor',
-                        text: errorMsg,
-                        confirmButtonColor: '#ff6b00',
-                        width: '800px'
+                        text: data.error,
+                        confirmButtonColor: '#ff6b00'
                     });
                     return;
                 }
@@ -1858,13 +1905,8 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Error de Conexión',
-                    html: `<div style="text-align: left;">
-                        <p><strong>Mensaje:</strong> ${error.message}</p>
-                        <p><strong>URL:</strong> ${url}</p>
-                        <p><strong>Sugerencia:</strong> Revisa los logs del servidor</p>
-                    </div>`,
-                    confirmButtonColor: '#ff6b00',
-                    width: '800px'
+                    text: error.message,
+                    confirmButtonColor: '#ff6b00'
                 });
             });
     }
@@ -1886,6 +1928,13 @@
             document.getElementById('modalTelefonoPrincipal').textContent = data.cliente.telefono;
             document.getElementById('modalOtroTelefono').textContent = data.otro_telefono || '—';
             document.getElementById('modalCorreo').textContent = data.correo_electronico || '—';
+            
+            // Cashea
+            if (data.cashea) {
+                document.getElementById('modalCashea').innerHTML = '<span class="badge-cashea activo">✅ Sí</span>';
+            } else {
+                document.getElementById('modalCashea').innerHTML = '<span class="badge-cashea inactivo">❌ No</span>';
+            }
             
             // Dirección
             document.getElementById('modalDireccion').textContent = data.direccion_detallada || '—';
@@ -1926,6 +1975,28 @@
                 fotoPlaceholder.innerHTML = '<p>No hay comprobante de pago adjunto</p>';
             }
             
+            // NUEVOS CAMPOS: Latitud y Longitud
+            const latitud = data.latitud;
+            const longitud = data.longitud;
+            
+            // Mostrar latitud (0 = N/A)
+            if (latitud !== null && latitud !== undefined && latitud !== 0) {
+                document.getElementById('modalLatitud').textContent = latitud;
+                document.getElementById('modalLatitud').style.color = '#333';
+            } else {
+                document.getElementById('modalLatitud').textContent = 'N/A';
+                document.getElementById('modalLatitud').style.color = '#999';
+            }
+            
+            // Mostrar longitud (0 = N/A)
+            if (longitud !== null && longitud !== undefined && longitud !== 0) {
+                document.getElementById('modalLongitud').textContent = longitud;
+                document.getElementById('modalLongitud').style.color = '#333';
+            } else {
+                document.getElementById('modalLongitud').textContent = 'N/A';
+                document.getElementById('modalLongitud').style.color = '#999';
+            }
+            
             // Datos adicionales
             document.getElementById('modalODS').textContent = data.ods || '—';
             document.getElementById('modalCustomerID').textContent = data.customer_id || '—';
@@ -1943,6 +2014,12 @@
             
         } catch (error) {
             console.error('Error llenando modal:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al mostrar los datos del contrato',
+                confirmButtonColor: '#ff6b00'
+            });
         }
     }
     
@@ -1988,7 +2065,6 @@
             }
         });
         
-        // Obtener datos del cliente
         fetch(`/datos-contrato/${contratoId}/`)
             .then(response => response.json())
             .then(data => {
@@ -2001,12 +2077,10 @@
                         (data.cliente.nombre[0] + data.cliente.apellido[0]).toUpperCase();
                     document.getElementById('contratoId').value = contratoId;
                     
-                    // Si ya tiene algún dato, precargarlo
                     if (data.numero_pago_movil) {
                         document.getElementById('numero_pago_movil').value = data.numero_pago_movil;
                     }
                     
-                    // Mostrar modal
                     document.getElementById('modalPago').style.display = 'flex';
                 } else {
                     Swal.fire({
@@ -2029,7 +2103,6 @@
             });
     }
     
-    // Función para cerrar el modal de pago
     function cerrarModalPago() {
         document.getElementById('modalPago').style.display = 'none';
         document.getElementById('formCompletarPago').reset();
@@ -2038,7 +2111,6 @@
         contratoPagoId = null;
     }
     
-    // Manejar la subida de imágenes
     document.getElementById('fileUploadArea')?.addEventListener('click', function(e) {
         e.stopPropagation();
         document.getElementById('foto_pago').click();
@@ -2047,7 +2119,6 @@
     document.getElementById('foto_pago')?.addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
-            // Validar tipo
             const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             if (!validTypes.includes(file.type)) {
                 Swal.fire({
@@ -2060,7 +2131,6 @@
                 return;
             }
             
-            // Validar tamaño (5MB)
             if (file.size > 5 * 1024 * 1024) {
                 Swal.fire({
                     icon: 'error',
@@ -2072,7 +2142,6 @@
                 return;
             }
             
-            // Mostrar preview
             const reader = new FileReader();
             reader.onload = function(e) {
                 document.getElementById('uploadPreview').src = e.target.result;
@@ -2089,14 +2158,12 @@
         document.querySelector('.upload-placeholder').style.display = 'block';
     }
     
-    // Enviar formulario de pago
     document.getElementById('formCompletarPago')?.addEventListener('submit', function(e) {
         e.preventDefault();
         
         const formData = new FormData(this);
         const contratoId = document.getElementById('contratoId').value;
         
-        // Mostrar loading
         Swal.fire({
             title: 'Guardando...',
             text: 'Por favor espera',
@@ -2125,7 +2192,7 @@
                     confirmButtonColor: '#ff6b00'
                 }).then(() => {
                     cerrarModalPago();
-                    location.reload(); // Recargar para actualizar los botones
+                    location.reload();
                 });
             } else {
                 Swal.fire({
@@ -2148,9 +2215,7 @@
         });
     });
     
-    // Mostrar indicador de filtros activos al cargar la página
     document.addEventListener('DOMContentLoaded', function() {
-        // Verificar filtros activos
         const urlParams = new URLSearchParams(window.location.search);
         const busqueda = urlParams.get('busqueda');
         const estado = urlParams.get('estado');
@@ -2180,7 +2245,6 @@
         }
     });
     
-    // Cerrar modales con tecla ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             cerrarModal();
@@ -2189,7 +2253,6 @@
         }
     });
     
-    // Cerrar al hacer clic fuera del modal
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
         overlay.addEventListener('click', function() {
             cerrarModal();

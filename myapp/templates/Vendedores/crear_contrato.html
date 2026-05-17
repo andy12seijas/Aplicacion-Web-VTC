@@ -105,9 +105,7 @@
                         <div class="grid-2">
                             <!-- OTRO TELÉFONO CON OPERADORA -->
                             <div class="form-group">
-                                <label>
-                                    {{ form.otro_telefono.label }}
-                                </label>
+                                <label>{{ form.otro_telefono.label }}</label>
                                 <div class="telefono-wrapper">
                                     <select id="operadora_otro" class="form-select operadora-select" style="width: 95px;">
                                         <option value="">Sel.</option>
@@ -128,7 +126,6 @@
                                            title="Ingrese 7 dígitos"
                                            style="flex: 1;">
                                 </div>
-                                <!-- Campo oculto para guardar el teléfono completo -->
                                 <input type="hidden" name="otro_telefono" id="otro_telefono_completo" value="{{ form.otro_telefono.value|default:'' }}">
                                 {% if form.otro_telefono.errors %}
                                 <div class="field-error">
@@ -218,6 +215,42 @@
                                 {% endif %}
                             </div>
                         </div>
+                        
+                        <!-- COORDENADAS -->
+                        <div class="grid-2" style="margin-top: 20px;">
+                            <div class="form-group">
+                                <label for="{{ form.latitud.id_for_label }}">
+                                    {{ form.latitud.label }} <span class="required">*</span>
+                                </label>
+                                {{ form.latitud }}
+                                {% if form.latitud.errors %}
+                                <div class="field-error">
+                                    {% for error in form.latitud.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="help-text">{{ form.latitud.help_text }}</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="{{ form.longitud.id_for_label }}">
+                                    {{ form.longitud.label }} <span class="required">*</span>
+                                </label>
+                                {{ form.longitud }}
+                                {% if form.longitud.errors %}
+                                <div class="field-error">
+                                    {% for error in form.longitud.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="help-text">{{ form.longitud.help_text }}</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Botón para obtener coordenadas de la dirección -->
+                       
                     </div>
 
                     <!-- Datos personales -->
@@ -303,6 +336,29 @@
                                 {% endif %}
                                 <small class="help-text">{{ form.simple_plus.help_text }}</small>
                             </div>
+                            
+                            <!-- CASHEA - Interruptor Amarillo -->
+                            <div class="form-group">
+                                <label>{{ form.cashea.label }}</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="cashea_toggle" name="cashea" {% if form.cashea.value %}checked{% endif %}>
+                                    <label for="cashea_toggle" class="toggle-label">
+                                        <span class="toggle-inner"></span>
+                                        <span class="toggle-switch-indicator"></span>
+                                    </label>
+                                    <span class="toggle-status" id="cashea_status">
+                                        {% if form.cashea.value %}✅ Activado{% else %}❌ Desactivado{% endif %}
+                                    </span>
+                                </div>
+                                <small class="help-text">Activar si el cliente paga con Cashea</small>
+                                {% if form.cashea.errors %}
+                                <div class="field-error">
+                                    {% for error in form.cashea.errors %}
+                                    <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
 
@@ -316,9 +372,7 @@
                         <div class="grid-2">
                             <!-- NÚMERO DE PAGO MÓVIL CON OPERADORA -->
                             <div class="form-group">
-                                <label>
-                                    {{ form.numero_pago_movil.label }}
-                                </label>
+                                <label>{{ form.numero_pago_movil.label }}</label>
                                 <div class="telefono-wrapper">
                                     <select id="operadora_pago" class="form-select operadora-select" style="width: 95px;">
                                         <option value="">Sel.</option>
@@ -339,7 +393,6 @@
                                            title="Ingrese 7 dígitos"
                                            style="flex: 1;">
                                 </div>
-                                <!-- Campo oculto para guardar el número de pago móvil completo -->
                                 <input type="hidden" name="numero_pago_movil" id="pago_movil_completo" value="{{ form.numero_pago_movil.value|default:'' }}">
                                 {% if form.numero_pago_movil.errors %}
                                 <div class="field-error">
@@ -434,6 +487,103 @@
         padding: 10px 12px;
     }
     
+    /* ===== TOGGLE SWITCH CASHEA (AMARILLO) ===== */
+    .toggle-switch {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .toggle-switch input {
+        display: none;
+    }
+    
+    .toggle-label {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 30px;
+        cursor: pointer;
+    }
+    
+    .toggle-inner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        border-radius: 30px;
+        transition: 0.3s;
+    }
+    
+    .toggle-switch-indicator {
+        position: absolute;
+        height: 26px;
+        width: 26px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.3s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    
+    input:checked + .toggle-label .toggle-inner {
+        background-color: #f59e0b;  /* Amarillo/naranja */
+    }
+    
+    input:checked + .toggle-label .toggle-switch-indicator {
+        transform: translateX(30px);
+    }
+    
+    .toggle-status {
+        font-size: 13px;
+        font-weight: 500;
+        padding: 4px 12px;
+        border-radius: 20px;
+        background: #f5f5f5;
+    }
+    
+    input:checked + .toggle-label ~ .toggle-status {
+        background: #fef3c7;
+        color: #d97706;
+    }
+    
+    /* Botón de geocodificación */
+    .btn-geocode {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #e0f2fe;
+        color: #0284c7;
+        border: 1px solid #bae6fd;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-geocode:hover {
+        background: #bae6fd;
+        border-color: #7dd3fc;
+        transform: translateY(-1px);
+    }
+    
+    /* Campos de coordenadas */
+    .coordenada-input {
+        font-family: monospace;
+        font-size: 14px;
+    }
+    
+    .coordenada-input:focus {
+        border-color: #0284c7;
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+    }
+    
     /* Sección de verificación */
     .verification-section {
         margin-bottom: 30px;
@@ -486,10 +636,6 @@
     .btn-verify:disabled {
         background: #cccccc;
         cursor: not-allowed;
-    }
-    
-    .btn-verify.verifying {
-        background: #ff9800;
     }
     
     /* Resultado de verificación */
@@ -875,12 +1021,15 @@
         .telefono-input {
             width: 100%;
         }
+        
+        .toggle-switch {
+            justify-content: space-between;
+        }
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    // Variable para saber si ya hay un cliente verificado
     let clienteVerificado = {{ cliente_verificado|lower|default:'false' }};
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -899,6 +1048,28 @@
         
         // Inicializar validaciones de archivo
         initFileValidation();
+        
+        // Inicializar el toggle de Cashea
+        const casheaToggle = document.getElementById('cashea_toggle');
+        const casheaStatus = document.getElementById('cashea_status');
+        
+        if (casheaToggle) {
+            // Actualizar texto del toggle
+            function actualizarTextoCashea() {
+                if (casheaToggle.checked) {
+                    casheaStatus.innerHTML = '✅ Activado';
+                    casheaStatus.style.background = '#fef3c7';
+                    casheaStatus.style.color = '#d97706';
+                } else {
+                    casheaStatus.innerHTML = '❌ Desactivado';
+                    casheaStatus.style.background = '#f5f5f5';
+                    casheaStatus.style.color = '#666';
+                }
+            }
+            
+            casheaToggle.addEventListener('change', actualizarTextoCashea);
+            actualizarTextoCashea();
+        }
         
         // Si hay error de correo, enfocar en el campo de correo
         {% if error_correo %}
@@ -943,7 +1114,6 @@
             }
         }
         
-        // Función para actualizar el campo oculto
         function actualizarTelefono() {
             const operadora = operadoraSelect.value;
             const numero = numeroInput.value;
@@ -955,12 +1125,9 @@
             }
         }
         
-        // Eventos
         operadoraSelect.addEventListener('change', actualizarTelefono);
         numeroInput.addEventListener('input', function(e) {
-            // Solo permitir números
             this.value = this.value.replace(/[^0-9]/g, '');
-            // Limitar a 7 caracteres
             if (this.value.length > 7) {
                 this.value = this.value.slice(0, 7);
             }
@@ -971,7 +1138,6 @@
     }
     
     function initFileValidation() {
-        // Validar archivo de imagen
         const fotoPago = document.getElementById('{{ form.foto_pago.id_for_label }}');
         if (fotoPago) {
             fotoPago.addEventListener('change', function(e) {
@@ -1044,7 +1210,6 @@
             return;
         }
         
-        // Mostrar estado de carga
         btnVerify.disabled = true;
         btnVerify.classList.add('verifying');
         btnVerify.innerHTML = `
@@ -1055,7 +1220,6 @@
             Verificando...
         `;
         
-        // Llamada AJAX para verificar cédula
         fetch(`/verificar-cliente-contrato/${cedula}/`)
             .then(response => response.json())
             .then(data => {
@@ -1070,7 +1234,6 @@
                 `;
                 
                 if (data.existe) {
-                    // MOSTRAR RESULTADO
                     resultado.innerHTML = `
                         <div class="cliente-encontrado">
                             <div class="cliente-avatar">${data.cliente.nombre[0]}${data.cliente.apellido[0]}</div>
@@ -1082,26 +1245,21 @@
                     `;
                     resultado.style.display = 'block';
                     
-                    // GUARDAR ID DEL CLIENTE
                     document.getElementById('cliente_id').value = data.cliente.id;
                     
-                    // MOSTRAR DATOS DEL CLIENTE EN LA TARJETA
                     document.getElementById('display-cedula').textContent = data.cliente.cedula;
                     document.getElementById('display-nombre').textContent = data.cliente.nombre;
                     document.getElementById('display-apellido').textContent = data.cliente.apellido;
                     document.getElementById('display-telefono').textContent = data.cliente.telefono;
                     
-                    // MOSTRAR SECCIÓN DE CONTRATO
                     contratoSection.style.display = 'block';
                     if (verificationSection) {
                         verificationSection.style.display = 'none';
                     }
                     
-                    // SCROLL SUAVE HACIA EL FORMULARIO
                     contratoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     
                 } else {
-                    // Cliente no encontrado
                     resultado.innerHTML = `
                         <div class="cliente-no-encontrado">
                             <p>❌ No se encontró ningún cliente con la cédula <strong>${cedula}</strong></p>
@@ -1138,7 +1296,44 @@
             });
     }
     
-    // Validar que la cédula solo contenga números mientras se escribe
+    // Función para obtener coordenadas desde la dirección
+    function obtenerCoordenadasDeDireccion() {
+        const direccion = document.getElementById('{{ form.direccion_detallada.id_for_label }}')?.value;
+        const puntoReferencia = document.getElementById('{{ form.punto_referencia.id_for_label }}')?.value;
+        
+        if (!direccion) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Dirección requerida',
+                text: 'Por favor complete primero la dirección detallada',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
+        }
+        
+        const direccionCompleta = `${direccion}, ${puntoReferencia || ''}`;
+        
+        Swal.fire({
+            title: 'Obteniendo coordenadas...',
+            text: 'Por favor espere',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        // Aquí puedes integrar con Google Maps API o similar
+        // Por ahora, simulamos la obtención
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'info',
+                title: 'Funcionalidad en desarrollo',
+                text: 'La geocodificación automática estará disponible próximamente. Por favor ingrese las coordenadas manualmente.',
+                confirmButtonColor: '#ff6b00'
+            });
+        }, 1500);
+    }
+    
     document.getElementById('cedula')?.addEventListener('input', function(e) {
         this.value = this.value.replace(/[^0-9]/g, '');
     });

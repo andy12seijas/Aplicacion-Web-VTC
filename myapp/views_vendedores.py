@@ -435,13 +435,22 @@ def crear_contrato(request):
         
         cliente = get_object_or_404(ClientePotencial, id=cliente_id)
         
+        # Procesar el valor de cashea (checkbox/interruptor)
+        # Si no viene en POST, es False (por defecto)
+        cashea_value = request.POST.get('cashea', 'off') == 'on'
+        
+        # Crear un diccionario mutable con los datos del POST
+        data = request.POST.copy()
+        data['cashea'] = cashea_value
+        
         # Pasar el cliente_potencial al formulario
-        form = ContratoClienteForm(request.POST, request.FILES, cliente_potencial=cliente)
+        form = ContratoClienteForm(data, request.FILES, cliente_potencial=cliente)
         
         if form.is_valid():
             contrato = form.save(commit=False)
             contrato.cliente_potencial = cliente
             contrato.creado_por = request.user
+            contrato.cashea = cashea_value  # Asegurar que se guarde correctamente
             contrato.save()
             
             messages.success(
@@ -476,7 +485,12 @@ def crear_contrato(request):
         from django.http import QueryDict
         data = QueryDict(form_data)
         
-        form = ContratoClienteForm(data, request.FILES, cliente_potencial=cliente)
+        # Procesar cashea para el formulario
+        cashea_value = data.get('cashea', 'off') == 'on'
+        data_dict = data.copy()
+        data_dict['cashea'] = cashea_value
+        
+        form = ContratoClienteForm(data_dict, request.FILES, cliente_potencial=cliente)
         
         context = {
             'form': form,
@@ -571,6 +585,7 @@ def lista_contratos(request):
         'filtro_vendedor': vendedor_id,
         'busqueda': busqueda,
         'vendedores': vendedores,
+        'es_admin': es_admin,  # ← Asegurar que esto se pase al template
     }
     
     return render(request, 'Vendedores/lista_contratos.html', context)
@@ -712,6 +727,27 @@ def datos_contrato(request, contrato_id):
             data['fecha_actualizacion'] = contrato.fecha_actualizacion.strftime('%d/%m/%Y %H:%M')
         except:
             data['fecha_actualizacion'] = ''
+        
+        # ===== NUEVOS CAMPOS =====
+        # Cashea
+        try:
+            data['cashea'] = contrato.cashea if hasattr(contrato, 'cashea') else False
+        except:
+            data['cashea'] = False
+        
+        # Latitud
+        try:
+            latitud = contrato.latitud if hasattr(contrato, 'latitud') else None
+            data['latitud'] = float(latitud) if latitud is not None else 0.0
+        except:
+            data['latitud'] = 0.0
+        
+        # Longitud
+        try:
+            longitud = contrato.longitud if hasattr(contrato, 'longitud') else None
+            data['longitud'] = float(longitud) if longitud is not None else 0.0
+        except:
+            data['longitud'] = 0.0
         
         response_data = data
         

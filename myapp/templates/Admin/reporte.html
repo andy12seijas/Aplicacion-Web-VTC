@@ -522,7 +522,6 @@
         flex-wrap: wrap;
     }
 
-    /* Estilos para el modal */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -534,40 +533,77 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
     .modal-content {
         background: white;
-        border-radius: 16px;
-        max-width: 700px;
-        width: 90%;
-        max-height: 80%;
+        border-radius: 20px;
+        max-width: 95%;
+        width: auto;
+        min-width: 300px;
+        max-height: 90vh;
         overflow: auto;
-        padding: 20px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 
     .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
+        padding: 20px 24px;
+        border-bottom: 2px solid var(--gray-border);
+        background: var(--gray-bg);
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
 
     .modal-header h3 {
         margin: 0;
+        font-size: 20px;
+        color: var(--dark-text);
     }
 
     .modal-close {
         background: none;
         border: none;
-        font-size: 24px;
+        font-size: 28px;
         cursor: pointer;
-        color: #666;
+        color: var(--gray-text);
         transition: var(--transition);
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
     }
 
     .modal-close:hover {
         color: var(--orange);
+        background: var(--orange-light);
+    }
+
+    .modal-body {
+        padding: 24px;
     }
 
     body.modal-open {
@@ -575,19 +611,21 @@
     }
 
     .btn-detalle {
-        background: #ff6b00;
+        background: var(--orange);
         color: white;
         border: none;
-        padding: 4px 10px;
-        border-radius: 15px;
+        padding: 6px 14px;
+        border-radius: 20px;
         cursor: pointer;
         font-size: 11px;
+        font-weight: 500;
         transition: var(--transition);
     }
 
     .btn-detalle:hover {
         background: #ff8c00;
         transform: translateY(-1px);
+        box-shadow: var(--shadow-sm);
     }
 
     .instalador-cell {
@@ -611,6 +649,110 @@
         font-size: 11px;
         color: #555;
         padding: 2px 0;
+    }
+
+    .modal-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-bottom: 20px;
+    }
+
+    .modal-table th {
+        background: var(--gray-bg);
+        padding: 10px 12px;
+        text-align: left;
+        font-weight: 600;
+        color: var(--gray-text);
+        border-bottom: 2px solid var(--gray-border);
+        font-size: 12px;
+    }
+
+    .modal-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--gray-border);
+        color: var(--dark-text);
+    }
+
+    .modal-table tr:hover {
+        background: var(--gray-bg);
+    }
+
+    .section-card {
+        background: white;
+        border: 1px solid var(--gray-border);
+        border-radius: 16px;
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .section-header {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, var(--gray-bg) 0%, white 100%);
+        border-bottom: 1px solid var(--gray-border);
+    }
+
+    .section-header h4 {
+        margin: 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-content {
+        padding: 0;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .stats-summary {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: linear-gradient(135deg, var(--orange-light) 0%, white 100%);
+        border-radius: 16px;
+    }
+
+    .stat-summary-item {
+        flex: 1;
+        text-align: center;
+        padding: 12px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-summary-value {
+        font-size: 28px;
+        font-weight: bold;
+        color: var(--orange);
+    }
+
+    .stat-summary-label {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 4px;
+    }
+
+    .scrollable-table-container {
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid var(--gray-border);
+        border-radius: 12px;
+    }
+
+    .scrollable-table-container table {
+        width: 100%;
+    }
+
+    .scrollable-table-container thead {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 5;
     }
 
     @media (max-width: 768px) {
@@ -671,6 +813,19 @@
         
         .filters-ventas, .filters-instalaciones, .filters-soportes, .filters-inventario, .filters-vendedores, .filters-instaladores {
             flex-direction: column;
+        }
+
+        .modal-content {
+            width: 95%;
+            max-width: 95%;
+        }
+
+        .modal-table {
+            font-size: 11px;
+        }
+
+        .modal-table th, .modal-table td {
+            padding: 6px 8px;
         }
     }
 </style>
@@ -826,7 +981,7 @@
         <thead id="thead-resultados">
             <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
         </thead>
-        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></th>            </tbody>
+        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>            </tbody>
     </table>
 </div>
 
@@ -953,10 +1108,6 @@
     }
 
     function aplicarFiltros() {
-        const fechaDesde = document.getElementById('fecha_desde')?.value;
-        const fechaHasta = document.getElementById('fecha_hasta')?.value;
-        console.log("📅 Fecha Desde (raw):", fechaDesde);
-        console.log("📅 Fecha Hasta (raw):", fechaHasta);
         paginaActual = 1;
         cargarReporte();
     }
@@ -998,7 +1149,7 @@
         
         let url = `/api/reporte-${tipoActual}/?tipo=${nivelActual}&page=${paginaActual}&per_page=${itemsPorPagina}`;
         
-        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
         if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
         if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
         
@@ -1023,7 +1174,7 @@
         }
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td><tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
         
         fetch(url)
             .then(response => response.json())
@@ -1038,7 +1189,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
             });
     }
 
@@ -1049,7 +1200,7 @@
         
         let url = `/api/reporte-vendedores/?page=${paginaActual}&per_page=${itemsPorPagina}`;
         
-        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
         if (vendedor) url += `&vendedor=${vendedor}`;
         if (semana) url += `&semana=${semana}`;
         
@@ -1069,7 +1220,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
             });
     }
 
@@ -1081,7 +1232,7 @@
         
         let url = `/api/reporte-instaladores/?page=${paginaActual}&per_page=${itemsPorPagina}`;
         
-        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
         if (instalador) url += `&instalador=${instalador}`;
         if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
         if (semana) url += `&semana=${semana}`;
@@ -1102,7 +1253,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</div></table></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
             });
     }
 
@@ -1146,58 +1297,7 @@
         `;
     }
 
-    function actualizarTablaInstaladores() {
-        const tbody = document.getElementById('tbody-resultados');
-        
-        if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></td></tr>';
-            return;
-        }
-        
-        document.getElementById('thead-resultados').innerHTML = `
-            <tr>
-                <th>Cuadrilla</th>
-                <th>Instalaciones</th>
-                <th>Monto Instalaciones</th>
-                <th>Soportes</th>
-                <th>Monto Soportes</th>
-                <th>Contratos</th>
-                <th>Monto Contratos</th>
-                <th>Total USD</th>
-                <th>Total Bs</th>
-                <th>Instaladores</th>
-                <th>Detalle</th>
-            </tr>
-        `;
-        
-        tbody.innerHTML = datosActuales.map(item => `
-            <tr>
-                <td><strong>${item.cuadrilla}</strong></td>
-                <td style="text-align:center; font-weight: bold; font-size: 18px;">${item.instalaciones}</td>
-                <td style="text-align:center">${item.monto_instalaciones}</td>
-                <td style="text-align:center; font-weight: bold;">${item.soportes}</td>
-                <td style="text-align:center">${item.monto_soportes}</td>
-                <td style="text-align:center; font-weight: bold;">${item.contratos}</td>
-                <td style="text-align:center">${item.monto_contratos}</td>
-                <td style="text-align:center; font-weight: bold; color: #ff6b00;">${item.total_usd}</td>
-                <td style="text-align:center">${item.total_bs}</td>
-                <td>
-                    <div class="instaladores-lista">
-                        ${item.instaladores_list ? item.instaladores_list.map(inst => `<span class="instalador-item">👤 ${inst}</span>`).join('') : '<span class="instalador-item">Sin instaladores</span>'}
-                    </div>
-                </div>
-                <td style="text-align:center">
-                    <button onclick="verDetalleCuadrilla(${item.id}, '${item.cuadrilla}')" 
-                        class="btn-detalle">
-                        Ver detalle
-                    </button>
-                </div>
-            </tr>
-        `).join('');
-    }
-
     function verDetalleCuadrilla(cuadrillaId, cuadrillaNombre) {
-        // Buscar la cuadrilla en los datos actuales
         const cuadrillaData = datosActuales.find(item => item.id == cuadrillaId);
         
         if (!cuadrillaData) {
@@ -1205,128 +1305,119 @@
             return;
         }
         
-        // Construir HTML de instalaciones
         let instalacionesHtml = '';
         if (cuadrillaData.instalaciones_detalle && cuadrillaData.instalaciones_detalle.length > 0) {
             instalacionesHtml = `
-                <div style="margin-top: 20px;">
-                    <h4 style="color: #10b981;">✅ Instalaciones Realizadas</h4>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead>
-                            <tr style="background: #10b981; color: white;">
-                                <th style="padding: 6px; text-align: left;">Cliente</th>
-                                <th style="padding: 6px; text-align: left;">Customer ID</th>
-                                <th style="padding: 6px; text-align: left;">Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${cuadrillaData.instalaciones_detalle.map(i => `
-                                <tr style="border-bottom: 1px solid #e5e7eb;">
-                                    <td style="padding: 6px;">${i.cliente || 'N/A'}</td>
-                                    <td style="padding: 6px;">${i.customer_id || 'N/A'}</td>
-                                    <td style="padding: 6px;">${i.fecha || 'N/A'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    ~
-                    ${cuadrillaData.instalaciones > cuadrillaData.instalaciones_detalle.length ? 
-                        `<p style="margin-top: 8px; color: #666;">... y ${cuadrillaData.instalaciones - cuadrillaData.instalaciones_detalle.length} instalaciones más</p>` : ''}
+                <div class="section-card">
+                    <div class="section-header">
+                        <h4>✅ Instalaciones Realizadas <span style="color: #10b981;">(${cuadrillaData.instalaciones_detalle.length} de ${cuadrillaData.instalaciones})</span></h4>
+                    </div>
+                    <div class="scrollable-table-container">
+                        <table class="modal-table">
+                            <thead>
+                                <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Plan</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody>
+                                ${cuadrillaData.instalaciones_detalle.map(i => `
+                                    <tr><td>${i.cliente || 'N/A'}</td><td>${i.customer_id || 'N/A'}</td><td>${i.ods || 'N/A'}</td><td>${i.fecha || 'N/A'}</td><td>${i.plan || 'N/A'}</td><td><span class="badge badge-completado">Completada</span></td></tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
+        } else {
+            instalacionesHtml = `<div class="section-card"><div class="section-header"><h4>✅ Instalaciones Realizadas</h4></div><div class="section-content" style="padding: 20px; text-align: center; color: #999;">No hay instalaciones registradas</div></div>`;
         }
         
-        // Construir HTML de soportes
         let soportesHtml = '';
         if (cuadrillaData.soportes_detalle && cuadrillaData.soportes_detalle.length > 0) {
             soportesHtml = `
-                <div style="margin-top: 20px;">
-                    <h4 style="color: #3b82f6;">🔧 Soportes Realizados</h4>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead>
-                            <tr style="background: #3b82f6; color: white;">
-                                <th style="padding: 6px; text-align: left;">Ticket</th>
-                                <th style="padding: 6px; text-align: left;">Cliente</th>
-                                <th style="padding: 6px; text-align: left;">Tipo</th>
-                                <th style="padding: 6px; text-align: left;">Precio</th>
-                                <th style="padding: 6px; text-align: left;">Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${cuadrillaData.soportes_detalle.map(s => `
-                                <tr style="border-bottom: 1px solid #e5e7eb;">
-                                    <td style="padding: 6px;">${s.ticket_padre || 'N/A'}</td>
-                                    <td style="padding: 6px;">${s.cliente || 'N/A'}</td>
-                                    <td style="padding: 6px;">
-                                        <span class="badge ${s.tipo === 'MUDANZA' ? 'badge-completado' : (s.tipo === 'RETIRO' ? 'badge-pendiente' : 'badge-proceso')}">
-                                            ${s.tipo || 'SOPORTE'}
-                                        </span>
-                                    </div>
-                                    <td style="padding: 6px;">$${s.precio || 10}</td>
-                                    <td style="padding: 6px;">${s.fecha || 'N/A'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    ~
-                    ${cuadrillaData.soportes > cuadrillaData.soportes_detalle.length ? 
-                        `<p style="margin-top: 8px; color: #666;">... y ${cuadrillaData.soportes - cuadrillaData.soportes_detalle.length} soportes más</p>` : ''}
+                <div class="section-card">
+                    <div class="section-header">
+                        <h4>🔧 Soportes Realizados <span style="color: #3b82f6;">(${cuadrillaData.soportes_detalle.length} de ${cuadrillaData.soportes})</span></h4>
+                    </div>
+                    <div class="scrollable-table-container">
+                        <table class="modal-table">
+                            <thead>
+                                <tr><th>Ticket</th><th>Cliente</th><th>Customer ID</th><th>Tipo</th><th>Precio</th><th>Fecha</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody>
+                                ${cuadrillaData.soportes_detalle.map(s => `
+                                    <tr>
+                                        <td>${s.ticket_padre || 'N/A'}</td>
+                                        <td>${s.cliente || 'N/A'}</td>
+                                        <td>${s.customer_id || 'N/A'}</td>
+                                        <td><span class="badge ${s.tipo === 'MUDANZA' ? 'badge-completado' : (s.tipo === 'RETIRO' ? 'badge-pendiente' : 'badge-proceso')}">${s.tipo || 'SOPORTE'}</span></td>
+                                        <td>$${s.precio || 10}</td>
+                                        <td>${s.fecha || 'N/A'}</td>
+                                        <td><span class="badge ${s.estado === 'COMPLETADO' ? 'badge-completado' : (s.estado === 'EN_PROCESO' ? 'badge-proceso' : 'badge-pendiente')}">${s.estado || 'PENDIENTE'}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
+        } else {
+            soportesHtml = `<div class="section-card"><div class="section-header"><h4>🔧 Soportes Realizados</h4></div><div class="section-content" style="padding: 20px; text-align: center; color: #999;">No hay soportes registrados</div></div>`;
         }
         
-        // Construir HTML de contratos
         let contratosHtml = '';
         if (cuadrillaData.contratos_detalle && cuadrillaData.contratos_detalle.length > 0) {
             contratosHtml = `
-                <div style="margin-top: 20px;">
-                    <h4 style="color: #f59e0b;">📝 Contratos Instalados</h4>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead>
-                            <tr style="background: #f59e0b; color: white;">
-                                <th style="padding: 6px; text-align: left;">Cliente</th>
-                                <th style="padding: 6px; text-align: left;">Plan</th>
-                                <th style="padding: 6px; text-align: left;">Customer ID</th>
-                                <th style="padding: 6px; text-align: left;">Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${cuadrillaData.contratos_detalle.map(c => `
-                                <tr style="border-bottom: 1px solid #e5e7eb;">
-                                    <td style="padding: 6px;">${c.cliente || 'N/A'}</td>
-                                    <td style="padding: 6px;">${c.plan || 'N/A'}</td>
-                                    <td style="padding: 6px;">${c.customer_id || 'N/A'}</td>
-                                    <td style="padding: 6px;">${c.fecha_completado || 'N/A'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    ~
-                    ${cuadrillaData.contratos > cuadrillaData.contratos_detalle.length ? 
-                        `<p style="margin-top: 8px; color: #666;">... y ${cuadrillaData.contratos - cuadrillaData.contratos_detalle.length} contratos más</p>` : ''}
+                <div class="section-card">
+                    <div class="section-header">
+                        <h4>📝 Contratos Instalados <span style="color: #f59e0b;">(${cuadrillaData.contratos_detalle.length} de ${cuadrillaData.contratos})</span></h4>
+                    </div>
+                    <div class="scrollable-table-container">
+                        <table class="modal-table">
+                            <thead>
+                                <tr><th>Cliente</th><th>Customer ID</th><th>Plan</th><th>Velocidad</th><th>Precio</th><th>Fecha</th><th>Vendedor</th></tr>
+                            </thead>
+                            <tbody>
+                                ${cuadrillaData.contratos_detalle.map(c => `
+                                    <tr><td>${c.cliente || 'N/A'}</td><td>${c.customer_id || 'N/A'}</td><td>${c.plan || 'N/A'}</td><td>${c.velocidad || 'N/A'}</td><td>$${c.precio || 'N/A'}</td><td>${c.fecha_completado || c.fecha_creacion || 'N/A'}</td><td>${c.vendedor || 'N/A'}</td></tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
+        } else {
+            contratosHtml = `<div class="section-card"><div class="section-header"><h4>📝 Contratos Instalados</h4></div><div class="section-content" style="padding: 20px; text-align: center; color: #999;">No hay contratos registrados</div></div>`;
         }
         
-        // Construir el modal completo
+        const statsHtml = `
+            <div class="stats-summary">
+                <div class="stat-summary-item"><div class="stat-summary-value">${cuadrillaData.instalaciones}</div><div class="stat-summary-label">Instalaciones</div><div style="font-size: 11px; color: #10b981;">${cuadrillaData.monto_instalaciones}</div></div>
+                <div class="stat-summary-item"><div class="stat-summary-value">${cuadrillaData.soportes}</div><div class="stat-summary-label">Soportes</div><div style="font-size: 11px; color: #3b82f6;">${cuadrillaData.monto_soportes}</div></div>
+                <div class="stat-summary-item"><div class="stat-summary-value">${cuadrillaData.contratos}</div><div class="stat-summary-label">Contratos</div><div style="font-size: 11px; color: #f59e0b;">${cuadrillaData.monto_contratos}</div></div>
+                <div class="stat-summary-item"><div class="stat-summary-value" style="color: #ff6b00;">${cuadrillaData.total_usd}</div><div class="stat-summary-label">Total USD</div><div style="font-size: 11px;">${cuadrillaData.total_bs}</div></div>
+            </div>
+        `;
+        
+        const instaladoresHtml = `
+            <div class="section-card">
+                <div class="section-header"><h4>👥 Instaladores de la cuadrilla</h4></div>
+                <div class="section-content" style="padding: 16px;">
+                    ${cuadrillaData.instaladores_list && cuadrillaData.instaladores_list.length > 0 ? 
+                        `<ul style="margin: 0; padding-left: 20px;">${cuadrillaData.instaladores_list.map(inst => `<li style="margin: 8px 0;">${inst}</li>`).join('')}</ul>` : 
+                        '<p style="margin: 0; color: #999;">Sin instaladores asignados</p>'}
+                </div>
+            </div>
+        `;
+        
         let detalleHtml = `
             <div id="modalOverlay" class="modal-overlay" onclick="cerrarModalSiClickFondo(event)">
-                <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 800px;">
+                <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 1200px; width: 95%;">
                     <div class="modal-header">
-                        <h3>📋 Detalle de ${cuadrillaNombre}</h3>
+                        <h3>📋 Detalle Completo de ${cuadrillaNombre}</h3>
                         <button class="modal-close" onclick="cerrarModal()">&times;</button>
                     </div>
-                    <div>
-                        <h4 style="color: #10b981;">✅ Instalaciones: ${cuadrillaData.instalaciones} (${cuadrillaData.monto_instalaciones})</h4>
-                        <h4 style="color: #3b82f6;">🔧 Soportes: ${cuadrillaData.soportes} (${cuadrillaData.monto_soportes})</h4>
-                        <h4 style="color: #f59e0b;">📝 Contratos: ${cuadrillaData.contratos} (${cuadrillaData.monto_contratos})</h4>
-                        <hr>
-                        <h3 style="color: #ff6b00;">💰 Total: ${cuadrillaData.total_usd} (${cuadrillaData.total_bs})</h3>
-                        
-                        <div style="margin-top: 20px;">
-                            <h4>👥 Instaladores de la cuadrilla</h4>
-                            <ul>
-                                ${cuadrillaData.instaladores_list ? cuadrillaData.instaladores_list.map(inst => `<li>${inst}</li>`).join('') : '<li>Sin instaladores</li>'}
-                            </ul>
-                        </div>
-                        
+                    <div class="modal-body">
+                        ${statsHtml}
+                        ${instaladoresHtml}
                         ${instalacionesHtml}
                         ${soportesHtml}
                         ${contratosHtml}
@@ -1337,6 +1428,63 @@
         
         document.body.insertAdjacentHTML('beforeend', detalleHtml);
         document.body.classList.add('modal-open');
+    }
+
+    function verDetalleVendedor(vendedorId, vendedorNombre, totalContratos) {
+        const semana = document.getElementById('filterSemana')?.value || '';
+        
+        let url = `/api/reporte-vendedores/?vendedor=${vendedorId}&per_page=1000`;
+        if (semana) url += `&semana=${semana}`;
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const vendedorData = data.data.find(v => v.id == vendedorId);
+                if (vendedorData && vendedorData.contratos_detalle && vendedorData.contratos_detalle.length > 0) {
+                    const statsHtml = `
+                        <div class="stats-summary">
+                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.contratos}</div><div class="stat-summary-label">Total Contratos</div></div>
+                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.comision_por_contrato}</div><div class="stat-summary-label">Comisión x Contrato</div></div>
+                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.total_sin_bono}</div><div class="stat-summary-label">Total sin Bono</div></div>
+                            <div class="stat-summary-item"><div class="stat-summary-value" style="color: #f59e0b;">${vendedorData.bono}</div><div class="stat-summary-label">Bono</div></div>
+                            <div class="stat-summary-item"><div class="stat-summary-value" style="color: #ff6b00;">${vendedorData.total_con_bono}</div><div class="stat-summary-label">Total con Bono</div></div>
+                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.total_bs}</div><div class="stat-summary-label">Total en Bs</div></div>
+                        </div>
+                    `;
+                    
+                    let detalleHtml = `
+                        <div id="modalOverlay" class="modal-overlay" onclick="cerrarModalSiClickFondo(event)">
+                            <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 1200px; width: 95%;">
+                                <div class="modal-header">
+                                    <h3>📋 Contratos de ${vendedorNombre} (${vendedorData.contratos} contratos)</h3>
+                                    <button class="modal-close" onclick="cerrarModal()">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    ${statsHtml}
+                                    <div class="section-card">
+                                        <div class="section-header"><h4>📝 Lista Completa de Contratos</h4></div>
+                                        <div class="scrollable-table-container">
+                                            <table class="modal-table">
+                                                <thead><tr><th>#</th><th>Cliente</th><th>Customer ID</th><th>Plan</th><th>Velocidad</th><th>Precio</th><th>Fecha</th><th>Estado</th></tr></thead>
+                                                <tbody>
+                                                    ${vendedorData.contratos_detalle.map((c, index) => `
+                                                        <tr><td>${index + 1}</td><td>${c.cliente || 'N/A'}</td><td>${c.customer_id || 'N/A'}</td><td>${c.plan || 'N/A'}</td><td>${c.velocidad || 'N/A'}</td><td>$${c.precio || 'N/A'}</td><td>${c.fecha_completado || c.fecha_creacion || 'N/A'}</td><td><span class="badge badge-completado">Completado</span></td></tr>
+                                                    `).join('')}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', detalleHtml);
+                    document.body.classList.add('modal-open');
+                } else {
+                    alert('No hay contratos para mostrar');
+                }
+            })
+            .catch(error => console.error('Error:', error));
     }
 
     function actualizarEstadisticasVendedores(stats) {
@@ -1381,7 +1529,7 @@
         const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
             return;
         }
         
@@ -1410,16 +1558,53 @@
                 <td style="text-align:center">${item.total_bs}</td>
                 <td style="text-align:center"><span class="badge ${item.contratos > 0 ? 'badge-completado' : 'badge-pendiente'}">${item.rango}</span></td>
                 <td style="text-align:center">
-                    <button onclick="verDetalleVendedor(${item.id}, '${item.vendedor}', ${item.contratos})" 
-                        style="background: #ff6b00; color: white; border: none; padding: 4px 10px; border-radius: 15px; cursor: pointer; font-size: 11px;">
-                        Ver contratos
-                    </button>
+                    <button onclick="verDetalleVendedor(${item.id}, '${item.vendedor}', ${item.contratos})" class="btn-detalle">Ver ${item.contratos} contratos</button>
                 </td>
             </tr>
         `).join('');
     }
 
-    // Función para cerrar el modal correctamente
+    function actualizarTablaInstaladores() {
+        const tbody = document.getElementById('tbody-resultados');
+        
+        if (!datosActuales || datosActuales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
+            return;
+        }
+        
+        document.getElementById('thead-resultados').innerHTML = `
+            <tr>
+                <th>Cuadrilla</th>
+                <th>Instalaciones</th>
+                <th>Monto Instalaciones</th>
+                <th>Soportes</th>
+                <th>Monto Soportes</th>
+                <th>Contratos</th>
+                <th>Monto Contratos</th>
+                <th>Total USD</th>
+                <th>Total Bs</th>
+                <th>Instaladores</th>
+                <th>Detalle</th>
+            </tr>
+        `;
+        
+        tbody.innerHTML = datosActuales.map(item => `
+            <tr>
+                <td><strong>${item.cuadrilla}</strong></td>
+                <td style="text-align:center; font-weight: bold; font-size: 18px;">${item.instalaciones}</td>
+                <td style="text-align:center">${item.monto_instalaciones}</td>
+                <td style="text-align:center; font-weight: bold;">${item.soportes}</td>
+                <td style="text-align:center">${item.monto_soportes}</td>
+                <td style="text-align:center; font-weight: bold;">${item.contratos}</td>
+                <td style="text-align:center">${item.monto_contratos}</td>
+                <td style="text-align:center; font-weight: bold; color: #ff6b00;">${item.total_usd}</td>
+                <td style="text-align:center">${item.total_bs}</td>
+                <td><div class="instaladores-lista">${item.instaladores_list ? item.instaladores_list.map(inst => `<span class="instalador-item">👤 ${inst}</span>`).join('') : '<span class="instalador-item">Sin instaladores</span>'}</div></td>
+                <td style="text-align:center"><button onclick="verDetalleCuadrilla(${item.id}, '${item.cuadrilla}')" class="btn-detalle">Ver detalle completo</button></td>
+            </tr>
+        `).join('');
+    }
+
     function cerrarModal() {
         const modal = document.getElementById('modalOverlay');
         if (modal) {
@@ -1428,63 +1613,10 @@
         document.body.classList.remove('modal-open');
     }
 
-    // Función para cerrar modal si se clickea fuera del contenido
     function cerrarModalSiClickFondo(event) {
         if (event.target.id === 'modalOverlay') {
             cerrarModal();
         }
-    }
-
-    function verDetalleVendedor(vendedorId, vendedorNombre, totalContratos) {
-        const semana = document.getElementById('filterSemana')?.value || '';
-        
-        let url = `/api/reporte-vendedores/?vendedor=${vendedorId}&per_page=100`;
-        if (semana) url += `&semana=${semana}`;
-        
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                const vendedorData = data.data.find(v => v.id == vendedorId);
-                if (vendedorData && vendedorData.contratos_detalle && vendedorData.contratos_detalle.length > 0) {
-                    let detalleHtml = `
-                        <div id="modalOverlay" class="modal-overlay" onclick="cerrarModalSiClickFondo(event)">
-                            <div class="modal-content" onclick="event.stopPropagation()">
-                                <div class="modal-header">
-                                    <h3>📋 Contratos de ${vendedorNombre}</h3>
-                                    <button class="modal-close" onclick="cerrarModal()">&times;</button>
-                                </div>
-                                <table style="width: 100%; border-collapse: collapse;">
-                                    <thead>
-                                        <tr style="background: #ff6b00; color: white;">
-                                            <th style="padding: 8px; text-align: left;">Cliente</th>
-                                            <th style="padding: 8px; text-align: left;">Fecha</th>
-                                            <th style="padding: 8px; text-align: left;">Plan</th>
-                                            <th style="padding: 8px; text-align: left;">Customer ID</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${vendedorData.contratos_detalle.map(c => `
-                                            <tr style="border-bottom: 1px solid #e5e7eb;">
-                                                <td style="padding: 8px;">${c.cliente || 'N/A'}</td>
-                                                <td style="padding: 8px;">${c.fecha_completado || c.fecha_creacion || 'N/A'}</td>
-                                                <td style="padding: 8px;">${c.plan || 'N/A'}</td>
-                                                <td style="padding: 8px;">${c.customer_id || 'N/A'}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                ~
-                                ${vendedorData.contratos > vendedorData.contratos_detalle.length ? 
-                                    `<p style="margin-top: 16px; color: #666; text-align: center;">... y ${vendedorData.contratos - vendedorData.contratos_detalle.length} contratos más</p>` : ''}
-                            </div>
-                        </div>
-                    `;
-                    document.body.insertAdjacentHTML('beforeend', detalleHtml);
-                    document.body.classList.add('modal-open');
-                } else {
-                    alert('No hay contratos detallados para mostrar');
-                }
-            })
-            .catch(error => console.error('Error:', error));
     }
 
     function actualizarTasaManual() {
@@ -1564,7 +1696,7 @@
         const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div>2知=utf8';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
             return;
         }
         
@@ -1573,29 +1705,29 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.cliente}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ods}</td>
-                        <td>${item.fecha}</td>
-                        <td>${item.vendedor}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.cliente || 'N/A'}</td>
+                        <td>${item.customer_id || 'N/A'}</td>
+                        <td>${item.ods || 'N/A'}</td>
+                        <td>${item.fecha || 'N/A'}</td>
+                        <td>${item.vendedor || 'N/A'}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
+                        <td>${item.id || 'N/A'}</td>
+                        <td>${item.cliente || 'N/A'}</td>
+                        <td>${item.cedula || 'N/A'}</td>
                         <td>${item.telefono || 'N/A'}</td>
                         <td>${item.correo || 'N/A'}</td>
-                        <td>${item.plan}</td>
-                        <td>${item.fecha}</td>
-                        <td>${item.vendedor}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ods}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.plan || 'N/A'}</td>
+                        <td>${item.fecha || 'N/A'}</td>
+                        <td>${item.vendedor || 'N/A'}</td>
+                        <td>${item.customer_id || 'N/A'}</td>
+                        <td>${item.ods || 'N/A'}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
                     </tr>
                 `).join('');
             }
@@ -1604,26 +1736,26 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Cuadrilla</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.cliente}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ods}</td>
-                        <td>${item.fecha}</td>
-                        <td>${item.cuadrilla}</td>
-                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.cliente || 'N/A'}</td>
+                        <td>${item.customer_id || 'N/A'}</td>
+                        <td>${item.ods || 'N/A'}</td>
+                        <td>${item.fecha || 'N/A'}</td>
+                        <td>${item.cuadrilla || 'N/A'}</td>
+                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th><th>Modelo</th><th>Serial</th><th>Metros</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
+                        <td>${item.id || 'N/A'}</td>
+                        <td>${item.cliente || 'N/A'}</td>
+                        <td>${item.cedula || 'N/A'}</td>
                         <td>${item.direccion || 'N/A'}</td>
-                        <td>${item.plan}</td>
-                        <td>${item.cuadrilla}</td>
-                        <td>${item.fecha}</td>
-                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado}</span></td>
+                        <td>${item.plan || 'N/A'}</td>
+                        <td>${item.cuadrilla || 'N/A'}</td>
+                        <td>${item.fecha || 'N/A'}</td>
+                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
                         <td>${item.modelo || 'N/A'}</td>
                         <td>${item.serial || 'N/A'}</td>
                         <td>${item.metros || 0}m</div>
@@ -1635,25 +1767,25 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>Ticket Padre</th><th>Fecha</th><th>Cuadrilla</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.cliente}</td>
-                        <td>${item.customer_id}</td>
-                        <td>${item.ticket_padre}</td>
-                        <td>${item.fecha}</td>
-                        <td>${item.cuadrilla}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado}</span></td>
+                        <td>${item.cliente || 'N/A'}</td>
+                        <td>${item.customer_id || 'N/A'}</td>
+                        <td>${item.ticket_padre || 'N/A'}</td>
+                        <td>${item.fecha || 'N/A'}</td>
+                        <td>${item.cuadrilla || 'N/A'}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado || 'Pendiente'}</span></td>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Ticket Padre</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.ticket_padre}</td>
-                        <td>${item.cliente}</td>
-                        <td>${item.cedula}</td>
-                        <td>${item.tipo}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado}</span></td>
-                        <td>${item.fecha}</td>
+                        <td>${item.id || 'N/A'}</td>
+                        <td>${item.ticket_padre || 'N/A'}</td>
+                        <td>${item.cliente || 'N/A'}</td>
+                        <td>${item.cedula || 'N/A'}</td>
+                        <td>${item.tipo || 'N/A'}</td>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado || 'Pendiente'}</span></td>
+                        <td>${item.fecha || 'N/A'}</td>
                         <td>${item.falla || 'N/A'}</td>
                         <td>${item.solucion || 'N/A'}</td>
                     </tr>
@@ -1664,21 +1796,21 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.material}</td>
-                        <td>${item.cantidad}</td>
-                        <td>${item.minimo}</td>
-                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado}</span></td>
+                        <td>${item.material || 'N/A'}</td>
+                        <td>${item.cantidad || 0}</td>
+                        <td>${item.minimo || 0}</td>
+                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado || 'Normal'}</span></td>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th><th>Última Actualización</th><th>Actualizado Por</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id}</td>
-                        <td>${item.material}</td>
-                        <td>${item.cantidad}</td>
-                        <td>${item.minimo}</td>
-                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado}</span></td>
+                        <td>${item.id || 'N/A'}</td>
+                        <td>${item.material || 'N/A'}</td>
+                        <td>${item.cantidad || 0}</td>
+                        <td>${item.minimo || 0}</td>
+                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado || 'Normal'}</span></td>
                         <td>${item.ultima_actualizacion || 'N/A'}</td>
                         <td>${item.actualizado_por || 'Sistema'}</td>
                     </tr>
@@ -1689,9 +1821,9 @@
 
     function actualizarEstadisticas(stats) {
         if (!stats) return;
-        document.getElementById('totalRegistros').textContent = stats.total_ventas || stats.total_instalaciones || stats.total_soportes || stats.total_materiales || 0;
+        document.getElementById('totalRegistros').textContent = stats.total || stats.total_ventas || stats.total_instalaciones || stats.total_soportes || stats.total_materiales || 0;
         
-        if (tipoActual !== 'inventario') {
+        if (tipoActual !== 'inventario' && tipoActual !== 'vendedores' && tipoActual !== 'instaladores') {
             document.getElementById('totalCompletados').textContent = stats.completados || stats.completadas || 0;
             document.getElementById('totalPendientes').textContent = stats.pendientes || stats.en_proceso || 0;
         }
@@ -1757,7 +1889,7 @@
             
             let url = `/exportar-reporte/?formato=${formato}&tipo=vendedores`;
             
-            if (busqueda) url += `&busqueda=${busqueda}`;
+            if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
             if (vendedor) url += `&vendedor=${vendedor}`;
             if (semana) url += `&semana=${semana}`;
             
@@ -1773,7 +1905,7 @@
             
             let url = `/exportar-reporte/?formato=${formato}&tipo=instaladores`;
             
-            if (busqueda) url += `&busqueda=${busqueda}`;
+            if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
             if (instalador) url += `&instalador=${instalador}`;
             if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
             if (semana) url += `&semana=${semana}`;
@@ -1788,7 +1920,7 @@
         
         let url = `/exportar-reporte/?formato=${formato}&tipo=${tipoActual}&reporte_tipo=${nivelActual}`;
         
-        if (busqueda) url += `&busqueda=${busqueda}`;
+        if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
         if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
         if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
         

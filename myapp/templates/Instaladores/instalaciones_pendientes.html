@@ -411,6 +411,12 @@
     }
 
     /* ===== ACTION BUTTONS ===== */
+    .action-buttons {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
     .action-btn {
         width: 32px;
         height: 32px;
@@ -423,7 +429,6 @@
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
-        margin-right: 5px;
         text-decoration: none;
     }
 
@@ -431,6 +436,7 @@
         border-color: var(--orange, #ff6b00);
         color: var(--orange, #ff6b00);
         background: var(--orange-light, #fff2e6);
+        transform: translateY(-1px);
     }
     
     /* Botón de información (ojo) */
@@ -442,6 +448,17 @@
         border-color: #3b82f6;
         color: white;
         background: #3b82f6;
+    }
+    
+    /* Botón de ubicación (Google Maps) */
+    .action-btn.location-btn {
+        color: #ea4335;
+    }
+    
+    .action-btn.location-btn:hover {
+        border-color: #ea4335;
+        color: white;
+        background: #ea4335;
     }
 
     /* Botón de copiar */
@@ -876,6 +893,10 @@
         .galeria-detalle {
             grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
         }
+        
+        .action-buttons {
+            flex-wrap: wrap;
+        }
     }
     
     @media (max-width: 480px) {
@@ -1064,6 +1085,24 @@
                                     <line x1="12" y1="8" x2="12.01" y2="8"/>
                                 </svg>
                             </button>
+                            
+                            <!-- Botón de Ubicación (Google Maps) -->
+                            {% if instalacion.tiene_ubicacion %}
+                            <button class="action-btn location-btn" onclick="abrirGoogleMaps({{ instalacion.latitud_cliente }}, {{ instalacion.longitud_cliente }})" title="Ver ubicación en Google Maps">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </button>
+                            {% else %}
+                            <button class="action-btn location-btn" onclick="mostrarSinUbicacion()" title="Esta instalación no tiene ubicación guardada" style="opacity: 0.5;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </button>
+                            {% endif %}
+                            
                             <a href="{% url 'realizar_instalacion' instalacion.id %}" class="action-btn" title="Realizar instalación">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1141,7 +1180,7 @@
                             {% else %}
                             <span class="badge badge-warning">Venta Directa</span>
                             {% endif %}
-                        </div>
+                        </td>
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ instalacion.nombre_cliente|first|upper }}</span>
@@ -1149,19 +1188,19 @@
                                     <div class="user-name">{{ instalacion.nombre_cliente }}</div>
                                 </div>
                             </div>
-                        </div>
-                        <td>{{ instalacion.cedula_cliente }}</div>
+                        </td>
+                        <td>{{ instalacion.cedula_cliente }}</td>
                         <td>
                             <span class="badge completado">{{ instalacion.customer_id }}</span>
-                        </div>
+                        </td>
                         <td>
                             {% if instalacion.asignacion.contrato %}
                             <span class="badge" style="background: #4caf50; color: white;">{{ instalacion.orden_servicio }}</span>
                             {% else %}
                             <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
                             {% endif %}
-                        </div>
-                        <td>{{ instalacion.plan }}</div>
+                        </td>
+                        <td>{{ instalacion.plan }}</td>
                         <td class="cuadrilla-cell">
                             <div class="cuadrilla-nombre">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1177,8 +1216,8 @@
                                 <span class="sin-instaladores">No hay instaladores registrados</span>
                                 {% endfor %}
                             </div>
-                        </div>
-                        <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</div>
+                        </td>
+                        <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</td>
                         {% if es_admin %}
                         <td>
                             {% if instalacion.asignacion.contrato %}
@@ -1186,22 +1225,40 @@
                             {% else %}
                             <span class="vendedor-badge" style="background: #fff3e0; color: #ef6c00;">{{ instalacion.asignacion.venta_directa.creado_por.get_full_name|default:instalacion.asignacion.venta_directa.creado_por.username }}</span>
                             {% endif %}
-                        </div>
+                        </td>
                         {% endif %}
-                        <td>
+                        <td class="action-buttons">
                             <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <circle cx="12" cy="12" r="3"/>
                                     <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
                                 </svg>
                             </button>
+                            
+                            <!-- Botón de Ubicación (Google Maps) para completadas -->
+                            {% if instalacion.tiene_ubicacion %}
+                            <button class="action-btn location-btn" onclick="abrirGoogleMaps({{ instalacion.latitud_cliente }}, {{ instalacion.longitud_cliente }})" title="Ver ubicación en Google Maps">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </button>
+                            {% else %}
+                            <button class="action-btn location-btn" onclick="mostrarSinUbicacion()" title="Esta instalación no tiene ubicación guardada" style="opacity: 0.5;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </button>
+                            {% endif %}
+                            
                             <button class="btn-copy" onclick="copiarDatosInstalacion({{ instalacion.id }}, this)" title="Copiar datos de instalación">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
                                 </svg>
                             </button>
-                        </div>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -1212,7 +1269,7 @@
                             </svg>
                             <br>
                             No tienes instalaciones completadas
-                        </div>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1283,7 +1340,6 @@
                         <div class="detalle-item"><span class="detalle-label">Estado:</span><span class="detalle-valor" id="detalleEstado">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">Fecha Instalación:</span><span class="detalle-valor" id="detalleFechaInstalacion">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">Fecha Asignación:</span><span class="detalle-valor" id="detalleFechaAsignacion">-</span></div>
-                        <!-- Campo SC agregado -->
                         <div class="detalle-item" id="detalleScContainer" style="display: none;">
                             <span class="detalle-label">Sc (Trabajo Interno):</span>
                             <span class="detalle-valor" id="detalleSc">-</span>
@@ -1404,7 +1460,6 @@
                         <div class="detalle-item"><span class="detalle-label">ATR:</span><span class="detalle-valor" id="infoClienteAtr">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">N° Orden / ODS:</span><span class="detalle-valor" id="infoClienteOrden">-</span></div>
                         <div class="detalle-item"><span class="detalle-label">Cuadrilla:</span><span class="detalle-valor" id="infoClienteCuadrilla">-</span></div>
-                        <!-- Campo SC agregado -->
                         <div class="detalle-item" id="infoClienteScContainer" style="display: none;">
                             <span class="detalle-label">Sc (Trabajo Interno):</span>
                             <span class="detalle-valor" id="infoClienteSc">-</span>
@@ -1504,6 +1559,30 @@
     {% if es_admin %}
     document.getElementById('filterVendedor')?.addEventListener('change', aplicarFiltros);
     {% endif %}
+
+    // ===== FUNCIÓN PARA ABRIR GOOGLE MAPS =====
+    function abrirGoogleMaps(latitud, longitud) {
+        if (latitud && longitud && latitud !== 0 && longitud !== 0) {
+            // Abrir Google Maps con las coordenadas
+            const url = `https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}`;
+            window.open(url, '_blank');
+        } else {
+            mostrarSinUbicacion();
+        }
+    }
+    
+    // ===== FUNCIÓN PARA MOSTRAR ALERTA DE SIN UBICACIÓN =====
+    function mostrarSinUbicacion() {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Ubicación no disponible',
+            text: 'Esta instalación no tiene coordenadas de ubicación guardadas',
+            confirmButtonColor: '#ff6b00',
+            confirmButtonText: 'Entendido',
+            timer: 3000,
+            timerProgressBar: true
+        });
+    }
 
     function verDetalleInstalacion(id) {
         const modal = document.getElementById('modalDetalleInstalacion');

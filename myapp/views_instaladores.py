@@ -156,6 +156,25 @@ def instalaciones_pendientes(request):
                 if request.user not in instalacion.instaladores.all():
                     continue
             
+            # ===== AGREGAR CAMPOS DE UBICACIÓN =====
+            # Obtener latitud y longitud desde el contrato o venta directa
+            latitud_cliente = 0
+            longitud_cliente = 0
+            
+            if asignacion.contrato:
+                latitud_cliente = asignacion.contrato.latitud or 0
+                longitud_cliente = asignacion.contrato.longitud or 0
+            elif asignacion.venta_directa:
+                # Si VentaDirecta tiene campos de ubicación, agrégalos aquí
+                # Por ahora usamos 0
+                latitud_cliente = 0
+                longitud_cliente = 0
+            
+            # Agregar propiedades a la instalación
+            instalacion.latitud_cliente = float(latitud_cliente)
+            instalacion.longitud_cliente = float(longitud_cliente)
+            instalacion.tiene_ubicacion = (latitud_cliente != 0 and longitud_cliente != 0)
+            
             if instalacion.completada:
                 instalaciones_completadas.append(instalacion)
             else:
@@ -172,6 +191,14 @@ def instalaciones_pendientes(request):
                 tensores=0,
                 conectores_malos=0
             )
+            # También agregar ubicación al nuevo objeto
+            if asignacion.contrato:
+                instalacion.latitud_cliente = asignacion.contrato.latitud or 0
+                instalacion.longitud_cliente = asignacion.contrato.longitud or 0
+            else:
+                instalacion.latitud_cliente = 0
+                instalacion.longitud_cliente = 0
+            instalacion.tiene_ubicacion = (instalacion.latitud_cliente != 0 and instalacion.longitud_cliente != 0)
             instalaciones_pendientes.append(instalacion)
     
     # Ordenar pendientes por fecha de asignación (más antiguas primero)

@@ -329,16 +329,25 @@ class ClientePotencialForm(forms.ModelForm):
 
 
 
+# forms.py
+from django import forms
+from django.contrib.auth.models import User
+from .models import (
+    ContratoCliente, Plan, ModalidadEquipo, TipoVivienda, Red,
+    ClientePotencial
+)
+
+
 class ContratoClienteForm(forms.ModelForm):
-    """Formulario para crear contratos de clientes - SIN CAMPOS DE PAGO"""
+    """Formulario para crear contratos de clientes - CON CAMPOS DE CASHEA, LATITUD Y LONGITUD"""
     
     class Meta:
         model = ContratoCliente
-        # Excluir campos de pago y otros que no queremos
+        # Excluir campos que no queremos que el vendedor llene directamente
         exclude = [
             'ods', 'customer_id', 'atr', 'estado', 'cliente_potencial',
             'cedula', 'nombre', 'apellido', 'telefono_principal', 'creado_por',
-             # 👈 ELIMINAMOS ESTOS CAMPOS
+            'fecha_completado'
         ]
         widgets = {
             'otro_telefono': forms.TextInput(attrs={
@@ -381,7 +390,6 @@ class ContratoClienteForm(forms.ModelForm):
             'red': forms.Select(attrs={
                 'class': 'form-select'
             }),
-             # 👇 AGREGAR LOS CAMPOS DE PAGO
             'numero_pago_movil': forms.TextInput(attrs={
                 'class': 'form-input',
                 'placeholder': 'Ej: 0414-1234567',
@@ -390,6 +398,19 @@ class ContratoClienteForm(forms.ModelForm):
             'foto_pago': forms.FileInput(attrs={
                 'class': 'form-file',
                 'accept': 'image/*'
+            }),
+            # NUEVOS CAMPOS
+            'latitud': forms.NumberInput(attrs={
+                'class': 'form-input coordenada-input',
+                'placeholder': 'Ej: 10.12345678',
+                'step': 'any',
+                'required': True
+            }),
+            'longitud': forms.NumberInput(attrs={
+                'class': 'form-input coordenada-input',
+                'placeholder': 'Ej: -67.12345678',
+                'step': 'any',
+                'required': True
             }),
         }
         labels = {
@@ -404,8 +425,15 @@ class ContratoClienteForm(forms.ModelForm):
             'tipo_vivienda': 'Tipo de Vivienda',
             'numero_casa': 'Número de Casa/Edificio',
             'red': 'Red',
-            'numero_pago_movil': 'Número de Pago Móvil ',
-            'foto_pago': 'Foto del Comprobante de Pago ',
+            'numero_pago_movil': 'Número de Pago Móvil (opcional)',
+            'foto_pago': 'Foto del Comprobante de Pago (opcional)',
+            'cashea': 'Cashea',
+            'latitud': 'Latitud',
+            'longitud': 'Longitud',
+        }
+        help_texts = {
+            'latitud': 'Coordenada de latitud (ej: 10.496111)',
+            'longitud': 'Coordenada de longitud (ej: -66.898333)',
         }
     
     def clean_correo_electronico(self):
@@ -433,6 +461,22 @@ class ContratoClienteForm(forms.ModelForm):
         
         return correo
     
+    def clean_latitud(self):
+        latitud = self.cleaned_data.get('latitud')
+        if latitud is None:
+            raise forms.ValidationError('La latitud es requerida.')
+        if latitud < -90 or latitud > 90:
+            raise forms.ValidationError('La latitud debe estar entre -90 y 90 grados.')
+        return latitud
+    
+    def clean_longitud(self):
+        longitud = self.cleaned_data.get('longitud')
+        if longitud is None:
+            raise forms.ValidationError('La longitud es requerida.')
+        if longitud < -180 or longitud > 180:
+            raise forms.ValidationError('La longitud debe estar entre -180 y 180 grados.')
+        return longitud
+    
     def __init__(self, *args, **kwargs):
         self.cliente_potencial = kwargs.pop('cliente_potencial', None)
         super().__init__(*args, **kwargs)
@@ -454,6 +498,13 @@ class ContratoClienteForm(forms.ModelForm):
         self.fields['tipo_vivienda'].required = True
         self.fields['numero_casa'].required = True
         self.fields['red'].required = True
+        
+        # NUEVOS CAMPOS REQUERIDOS
+        self.fields['latitud'].required = True
+        self.fields['longitud'].required = True
+        
+        # Cashea no es requerido (tiene default)
+        self.fields['cashea'].required = False
         
 from django import forms
 from django.contrib.auth.models import Group, User
