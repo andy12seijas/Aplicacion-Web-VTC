@@ -451,8 +451,22 @@ def crear_contrato(request):
             contrato.creado_por = request.user
             contrato.cashea = cashea_value
             
-            # ===== LA FECHA SE ASIGNA AUTOMÁTICAMENTE POR default=timezone.now =====
-            # No necesitas asignar fecha_creacion manualmente
+            # ===== CONVERTIR LA FECHA A ZONA HORARIA DE VENEZUELA ANTES DE GUARDAR =====
+            from datetime import datetime
+            import pytz
+            
+            # Zona horaria de Venezuela
+            VE_TZ = pytz.timezone('America/Caracas')
+            
+            # Obtener la hora actual en Venezuela
+            ahora_ve = datetime.now().astimezone(VE_TZ)
+            
+            # Asignar la fecha convertida (sin zona horaria para guardar en BD)
+            contrato.fecha_creacion = ahora_ve.replace(tzinfo=None)
+            
+            # Si el contrato está completado, también asignar fecha_completado
+            if contrato.estado == 'COMPLETADO':
+                contrato.fecha_completado = ahora_ve.replace(tzinfo=None)
             
             contrato.save()
             
