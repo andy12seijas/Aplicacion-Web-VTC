@@ -211,7 +211,7 @@ class ContratoCliente(models.Model):
     estado = models.CharField(max_length=15,choices=EstadoContrato.choices,default=EstadoContrato.EN_PROCESO,verbose_name="Estado del Contrato")
     # Campos de control
     creado_por = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True,related_name='contratos_creados',verbose_name="Creado por")
-    fecha_creacion = models.DateTimeField(auto_now_add=True,verbose_name="Fecha de creación")
+    fecha_creacion = models.DateTimeField(default=timezone.now, verbose_name="Fecha de creación")
     fecha_actualizacion = models.DateTimeField(auto_now=True,verbose_name="Última actualización")
     # models.py - Agrega esto a tu modelo ContratoCliente
     fecha_completado = models.DateTimeField(
