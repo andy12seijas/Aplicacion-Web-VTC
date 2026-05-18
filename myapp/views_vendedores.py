@@ -446,7 +446,7 @@ def crear_contrato(request):
         form = ContratoClienteForm(data, request.FILES, cliente_potencial=cliente)
         
         if form.is_valid():
-            from django.utils import timezone
+            from datetime import datetime
             import pytz
             
             contrato = form.save(commit=False)
@@ -454,24 +454,32 @@ def crear_contrato(request):
             contrato.creado_por = request.user
             contrato.cashea = cashea_value
             
-            # ===== FORMA CORRECTA DE GUARDAR LA FECHA LOCAL DE VENEZUELA =====
-            VE_TZ = pytz.timezone('America/Caracas')
+            # ===== FORZAR LA HORA DE CARACAS VENEZUELA =====
+            # Zona horaria de Venezuela (UTC-4, sin horario de verano)
+            CARACAS = pytz.timezone('America/Caracas')
             
-            # Obtener hora actual en Venezuela (como datetime aware)
-            ahora_ve = timezone.now().astimezone(VE_TZ)
+            # Obtener la hora actual UTC y convertir a Caracas
+            ahora_utc = datetime.now(pytz.UTC)
+            ahora_caracas = ahora_utc.astimezone(CARACAS)
             
-            # Guardar la fecha con zona horaria (Django la convertirá a UTC en la BD)
-            contrato.fecha_creacion = ahora_ve
+            # Quitar la zona horaria para guardar en MySQL (o mantenerla)
+            # MySQL guardará la hora tal cual
+            contrato.fecha_creacion = ahora_caracas.replace(tzinfo=None)
+            
+            # Para depuración - imprime en los logs de Namecheap
+            print(f"🔍 Hora UTC: {ahora_utc}")
+            print(f"🔍 Hora Caracas: {ahora_caracas}")
+            print(f"🔍 Hora a guardar: {contrato.fecha_creacion}")
             
             # Si el contrato se crea ya como COMPLETADO
             if contrato.estado == 'COMPLETADO':
-                contrato.fecha_completado = ahora_ve
+                contrato.fecha_completado = ahora_caracas.replace(tzinfo=None)
             
             contrato.save()
             
             messages.success(
                 request,
-                f'✅ Contrato creado exitosamente para {cliente.nombre_completo}'
+                f'✅ Contrato creado exitosamente para {cliente.nombre_completo} a las {ahora_caracas.strftime("%H:%M:%S")} (hora Venezuela)'
             )
             return redirect('lista_contratos')
         else:
