@@ -430,7 +430,7 @@ def crear_contrato(request):
         # Verificar que viene el ID del cliente
         cliente_id = request.POST.get('cliente_id')
         if not cliente_id:
-            messages.error(request, '❌ Error: Debe verificar un cliente primero.')
+            messages.error(request, 'Error: Debe verificar un cliente primero.')
             return redirect('crear_contrato')
         
         cliente = get_object_or_404(ClientePotencial, id=cliente_id)
@@ -455,21 +455,18 @@ def crear_contrato(request):
             contrato.cashea = cashea_value
             
             # ===== FORZAR LA HORA DE CARACAS VENEZUELA =====
-            # Zona horaria de Venezuela (UTC-4, sin horario de verano)
+            # Zona horaria de Venezuela (UTC-4)
             CARACAS = pytz.timezone('America/Caracas')
             
-            # Obtener la hora actual UTC y convertir a Caracas
-            ahora_utc = datetime.now(pytz.UTC)
-            ahora_caracas = ahora_utc.astimezone(CARACAS)
+            # Obtener la hora actual en Caracas DIRECTAMENTE
+            ahora_caracas = datetime.now(CARACAS)
             
-            # Quitar la zona horaria para guardar en MySQL (o mantenerla)
-            # MySQL guardará la hora tal cual
+            # Guardar la hora de Caracas (sin zona horaria)
             contrato.fecha_creacion = ahora_caracas.replace(tzinfo=None)
             
-            # Para depuración - imprime en los logs de Namecheap
-            print(f" Hora UTC: {ahora_utc}")
-            print(f" Hora Caracas: {ahora_caracas}")
-            print(f" Hora a guardar: {contrato.fecha_creacion}")
+            # Depuración
+            print(f"Hora Caracas: {ahora_caracas}")
+            print(f"Hora a guardar: {contrato.fecha_creacion}")
             
             # Si el contrato se crea ya como COMPLETADO
             if contrato.estado == 'COMPLETADO':
@@ -479,7 +476,7 @@ def crear_contrato(request):
             
             messages.success(
                 request,
-                f' Contrato creado exitosamente para {cliente.nombre_completo} a las {ahora_caracas.strftime("%H:%M:%S")} (hora Venezuela)'
+                f'Contrato creado exitosamente para {cliente.nombre_completo}'
             )
             return redirect('lista_contratos')
         else:
@@ -494,7 +491,7 @@ def crear_contrato(request):
             
             # Mensaje de error general
             error_fields = ', '.join(form.errors.keys())
-            messages.error(request, f'❌ Error en los campos: {error_fields}')
+            messages.error(request, f'Error en los campos: {error_fields}')
             
             return redirect('crear_contrato_error')
     
