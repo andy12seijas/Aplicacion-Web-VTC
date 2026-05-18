@@ -678,7 +678,7 @@ class Instalacion(models.Model):
         verbose_name="Realizada por"
     )
     fecha_creacion = models.DateTimeField(
-        auto_now_add=True,
+        default=timezone.now,
         verbose_name="Fecha de creación"
     )
     fecha_actualizacion = models.DateTimeField(
