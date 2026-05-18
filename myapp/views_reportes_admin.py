@@ -75,6 +75,8 @@ def reportes_view(request):
 def reporte_ventas_json(request):
     """API para obtener datos de ventas (incluye COMPLETADO y EN_PROCESO)"""
     
+    import pytz
+    
     tipo_reporte = request.GET.get('tipo', 'simple')
     fecha_desde_raw = request.GET.get('fecha_desde', '')
     fecha_hasta_raw = request.GET.get('fecha_hasta', '')
@@ -84,15 +86,15 @@ def reporte_ventas_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
+    
     # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
     fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
     fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
     
     # ¡MUY IMPORTANTE para la fecha HASTA!
-    # Queremos que el filtro incluya TODO el día. Por ejemplo, si el usuario selecciona
-    # hasta el 6 de mayo, debe incluir los contratos hasta las 11:59:59 PM.
     if fecha_hasta_aware:
-        # Sumamos 1 día y restamos 1 microsegundo para obtener el final del día.
         fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
     
     # Incluir COMPLETADO y EN_PROCESO
@@ -136,31 +138,51 @@ def reporte_ventas_json(request):
         page_obj = paginator.page(1)
     
     if tipo_reporte == 'simple':
-        data_list = [{
-            'id': v.id,
-            'cliente': v.nombre_completo,
-            'customer_id': v.customer_id or 'N/A',
-            'ods': v.ods or 'N/A',
-            'fecha': v.fecha_completado.strftime('%d/%m/%Y') if v.estado == 'COMPLETADO' and v.fecha_completado else v.fecha_creacion.strftime('%d/%m/%Y'),
-            'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
-            'estado': v.get_estado_display(),
-        } for v in page_obj]
+        data_list = []
+        for v in page_obj:
+            # ===== CONVERTIR FECHAS A VENEZUELA =====
+            if v.estado == 'COMPLETADO' and v.fecha_completado:
+                fecha_ve = v.fecha_completado.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            else:
+                fecha_ve = v.fecha_creacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            
+            data_list.append({
+                'id': v.id,
+                'cliente': v.nombre_completo,
+                'customer_id': v.customer_id or 'N/A',
+                'ods': v.ods or 'N/A',
+                'fecha': fecha_str,
+                'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+                'estado': v.get_estado_display(),
+            })
     else:
-        data_list = [{
-            'id': v.id,
-            'cliente': v.nombre_completo,
-            'cedula': v.cedula,
-            'telefono': v.telefono_principal,
-            'correo': v.correo_electronico,
-            'direccion': v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
-            'plan': v.plan_contratado.nombre,
-            'fecha': v.fecha_completado.strftime('%d/%m/%Y %H:%M') if v.estado == 'COMPLETADO' and v.fecha_completado else v.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
-            'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
-            'customer_id': v.customer_id or 'N/A',
-            'ods': v.ods or 'N/A',
-            'atr': v.atr or 'N/A',
-            'estado': v.get_estado_display(),
-        } for v in page_obj]
+        data_list = []
+        for v in page_obj:
+            # ===== CONVERTIR FECHAS A VENEZUELA =====
+            if v.estado == 'COMPLETADO' and v.fecha_completado:
+                fecha_ve = v.fecha_completado.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M')
+            else:
+                fecha_ve = v.fecha_creacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M')
+            
+            data_list.append({
+                'id': v.id,
+                'cliente': v.nombre_completo,
+                'cedula': v.cedula,
+                'telefono': v.telefono_principal,
+                'correo': v.correo_electronico,
+                'direccion': v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
+                'plan': v.plan_contratado.nombre,
+                'fecha': fecha_str,
+                'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+                'customer_id': v.customer_id or 'N/A',
+                'ods': v.ods or 'N/A',
+                'atr': v.atr or 'N/A',
+                'estado': v.get_estado_display(),
+            })
     
     estadisticas = {
         'total_ventas': total_registros,
