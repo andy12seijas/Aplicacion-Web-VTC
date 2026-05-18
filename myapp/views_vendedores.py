@@ -627,10 +627,13 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def datos_contrato(request, contrato_id):
-    """API para obtener datos de un contrato - Versión ultra robusta"""
+    """API para obtener datos de un contrato - Con zona horaria de Venezuela"""
+    
+    import pytz
     
     response_data = {}
     status_code = 200
+    VE_TZ = pytz.timezone('America/Caracas')
     
     try:
         from myapp.models import ContratoCliente
@@ -651,7 +654,7 @@ def datos_contrato(request, contrato_id):
         # ID
         data['id'] = contrato.id
         
-        # Cliente (con try individual)
+        # Cliente
         try:
             data['cliente'] = {
                 'id': contrato.cliente_potencial.id,
@@ -715,7 +718,7 @@ def datos_contrato(request, contrato_id):
         except:
             data['red'] = ''
         
-        # Foto (importante: NO intentar acceder a .url si no existe)
+        # Foto
         try:
             if contrato.foto_pago and hasattr(contrato.foto_pago, 'url'):
                 data['foto_pago'] = contrato.foto_pago.url
@@ -739,16 +742,37 @@ def datos_contrato(request, contrato_id):
         except:
             data['creado_por'] = 'Desconocido'
         
-        # Fechas
+        # ===== FECHAS CON ZONA HORARIA DE VENEZUELA =====
         try:
-            data['fecha_creacion'] = contrato.fecha_creacion.strftime('%d/%m/%Y %H:%M')
-        except:
+            if contrato.fecha_creacion:
+                # Convertir a zona horaria de Venezuela
+                fecha_ve = contrato.fecha_creacion.astimezone(VE_TZ)
+                data['fecha_creacion'] = fecha_ve.strftime('%d/%m/%Y %H:%M:%S')
+            else:
+                data['fecha_creacion'] = ''
+        except Exception as e:
+            print(f"Error convirtiendo fecha_creacion: {e}")
             data['fecha_creacion'] = ''
         
         try:
-            data['fecha_actualizacion'] = contrato.fecha_actualizacion.strftime('%d/%m/%Y %H:%M')
-        except:
+            if contrato.fecha_actualizacion:
+                fecha_ve = contrato.fecha_actualizacion.astimezone(VE_TZ)
+                data['fecha_actualizacion'] = fecha_ve.strftime('%d/%m/%Y %H:%M:%S')
+            else:
+                data['fecha_actualizacion'] = ''
+        except Exception as e:
+            print(f"Error convirtiendo fecha_actualizacion: {e}")
             data['fecha_actualizacion'] = ''
+        
+        try:
+            if contrato.fecha_completado:
+                fecha_ve = contrato.fecha_completado.astimezone(VE_TZ)
+                data['fecha_completado'] = fecha_ve.strftime('%d/%m/%Y %H:%M:%S')
+            else:
+                data['fecha_completado'] = ''
+        except Exception as e:
+            print(f"Error convirtiendo fecha_completado: {e}")
+            data['fecha_completado'] = ''
         
         # ===== NUEVOS CAMPOS =====
         # Cashea
@@ -782,7 +806,6 @@ def datos_contrato(request, contrato_id):
         }
         print(f"ERROR: {traceback.format_exc()}")
     
-    # Asegurarnos de que SIEMPRE devolvemos JSON
     try:
         return JsonResponse(response_data, status=status_code)
     except Exception as json_error:
