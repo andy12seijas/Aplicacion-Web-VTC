@@ -215,7 +215,7 @@ class ContratoCliente(models.Model):
     # ========== CAMBIADO: fecha_creacion SIN default (se asigna en save) ==========
     fecha_creacion = models.DateTimeField(
         verbose_name="Fecha de creación",
-        default=timezone.now,
+       
     )
     
     fecha_actualizacion = models.DateTimeField(
