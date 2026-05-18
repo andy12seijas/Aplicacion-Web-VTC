@@ -467,9 +467,9 @@ def crear_contrato(request):
             contrato.fecha_creacion = ahora_caracas.replace(tzinfo=None)
             
             # Para depuración - imprime en los logs de Namecheap
-            print(f"🔍 Hora UTC: {ahora_utc}")
-            print(f"🔍 Hora Caracas: {ahora_caracas}")
-            print(f"🔍 Hora a guardar: {contrato.fecha_creacion}")
+            print(f" Hora UTC: {ahora_utc}")
+            print(f" Hora Caracas: {ahora_caracas}")
+            print(f" Hora a guardar: {contrato.fecha_creacion}")
             
             # Si el contrato se crea ya como COMPLETADO
             if contrato.estado == 'COMPLETADO':
@@ -479,7 +479,7 @@ def crear_contrato(request):
             
             messages.success(
                 request,
-                f'✅ Contrato creado exitosamente para {cliente.nombre_completo} a las {ahora_caracas.strftime("%H:%M:%S")} (hora Venezuela)'
+                f' Contrato creado exitosamente para {cliente.nombre_completo} a las {ahora_caracas.strftime("%H:%M:%S")} (hora Venezuela)'
             )
             return redirect('lista_contratos')
         else:
