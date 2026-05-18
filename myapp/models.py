@@ -264,40 +264,8 @@ class ContratoCliente(models.Model):
     def nombre_completo(self):
         return self.cliente_potencial.nombre_completo
     
-    # ========== MÉTODO SAVE CORREGIDO PARA ZONA HORARIA DE VENEZUELA ==========
-    def save(self, *args, **kwargs):
-        import pytz
-        from django.utils import timezone
-        
-        # Zona horaria de Venezuela
-        VE_TZ = pytz.timezone('America/Caracas')
-        
-        # Para CONTRATOS NUEVOS (sin ID todavía)
-        if not self.pk:
-            # Obtener la hora actual en Venezuela (NO UTC)
-            ahora_ve = timezone.now().astimezone(VE_TZ)
-            
-            # Guardar la hora exacta de Venezuela
-            self.fecha_creacion = ahora_ve
-            
-            # Si el contrato se crea ya como COMPLETADO
-            if self.estado == 'COMPLETADO' and not self.fecha_completado:
-                self.fecha_completado = ahora_ve
-        
-        # Para ACTUALIZACIONES (cuando cambia estado a COMPLETADO)
-        if self.pk:
-            try:
-                old_instance = ContratoCliente.objects.get(pk=self.pk)
-                # Si antes NO estaba COMPLETADO y ahora SÍ
-                if old_instance.estado != 'COMPLETADO' and self.estado == 'COMPLETADO':
-                    if not self.fecha_completado:
-                        ahora_ve = timezone.now().astimezone(VE_TZ)
-                        self.fecha_completado = ahora_ve
-            except ContratoCliente.DoesNotExist:
-                pass
-        
-        # Llamar al save original
-        super().save(*args, **kwargs)
+    
+    
     
     
     
