@@ -1016,220 +1016,222 @@
     }
 </style>
 
-<!-- Estadísticas -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-value">{{ total_instalaciones }}</span>
-        <span class="stat-label">Total</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_completadas }}</span>
-        <span class="stat-label">Completadas</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-value">{{ total_pendientes }}</span>
-        <span class="stat-label">Pendientes</span>
-    </div>
-</div>
-
-<!-- Filtros -->
-<div class="filters-container">
-    <div class="filters-grid">
-        <div class="search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Buscar por cliente, cédula, customer ID..." id="searchInput" value="{{ busqueda }}">
+<div class="instalaciones-container">
+    <!-- Estadísticas -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_instalaciones }}</span>
+            <span class="stat-label">Total</span>
         </div>
-        <select id="filterEstado" class="filter-select">
-            <option value="">Todos los estados</option>
-            <option value="completada" {% if estado == 'completada' %}selected{% endif %}>Completadas</option>
-            <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendientes</option>
-        </select>
-        <select id="filterCuadrilla" class="filter-select">
-            <option value="">Todas las cuadrillas</option>
-            {% for cuadrilla in cuadrillas %}
-            <option value="{{ cuadrilla.id }}" {% if cuadrilla_id == cuadrilla.id|stringformat:"s" %}selected{% endif %}>
-                {{ cuadrilla.nombre }}
-            </option>
-            {% endfor %}
-        </select>
-        <div class="date-filter">
-            <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde" value="{{ fecha_desde }}">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_completadas }}</span>
+            <span class="stat-label">Completadas</span>
         </div>
-        <div class="date-filter">
-            <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta" value="{{ fecha_hasta }}">
+        <div class="stat-card">
+            <span class="stat-value">{{ total_pendientes }}</span>
+            <span class="stat-label">Pendientes</span>
         </div>
     </div>
-</div>
 
-<!-- Indicador de filtros activos -->
-<div id="filtrosActivos" class="filtros-activos" style="display: none;">
-    <span class="filtros-label">📌 Filtros activos:</span>
-    <span class="filtros-lista" id="filtrosLista"></span>
-    <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar ✕</button>
-</div>
+    <!-- Filtros -->
+    <div class="filters-container">
+        <div class="filters-grid">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" placeholder="Buscar por cliente, cédula, customer ID..." id="searchInput" value="{{ busqueda }}">
+            </div>
+            <select id="filterEstado" class="filter-select">
+                <option value="">Todos los estados</option>
+                <option value="completada" {% if estado == 'completada' %}selected{% endif %}>Completadas</option>
+                <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendientes</option>
+            </select>
+            <select id="filterCuadrilla" class="filter-select">
+                <option value="">Todas las cuadrillas</option>
+                {% for cuadrilla in cuadrillas %}
+                <option value="{{ cuadrilla.id }}" {% if cuadrilla_id == cuadrilla.id|stringformat:"s" %}selected{% endif %}>
+                    {{ cuadrilla.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="date-filter">
+                <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde" value="{{ fecha_desde }}">
+            </div>
+            <div class="date-filter">
+                <input type="date" id="fecha_hasta" class="filter-input" placeholder="Hasta" value="{{ fecha_hasta }}">
+            </div>
+        </div>
+    </div>
 
-<!-- Contenedor con scroll -->
-<div class="instalaciones-scroll-wrapper">
-    <!-- Vista Desktop -->
-    <div class="desktop-view">
-        <div class="table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Cliente</th>
-                        <th>Cédula</th>
-                        <th>Plan</th>
-                        <th>Customer ID</th>
-                        <th>Cuadrilla</th>
-                        <th>Estado</th>
-                        <th>Fecha Instalación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for instalacion in instalaciones %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>
-                            <div class="user-cell">
-                                <span class="user-avatar">{{ instalacion.nombre_cliente|slice:":2"|upper }}</span>
-                                <div>
-                                    <div class="user-name">{{ instalacion.nombre_cliente }}</div>
+    <!-- Indicador de filtros activos -->
+    <div id="filtrosActivos" class="filtros-activos" style="display: none;">
+        <span class="filtros-label">📌 Filtros activos:</span>
+        <span class="filtros-lista" id="filtrosLista"></span>
+        <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">Limpiar ✕</button>
+    </div>
+
+    <!-- Contenedor con scroll -->
+    <div class="instalaciones-scroll-wrapper">
+        <!-- Vista Desktop -->
+        <div class="desktop-view">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Cliente</th>
+                            <th>Cédula</th>
+                            <th>Plan</th>
+                            <th>Customer ID</th>
+                            <th>Cuadrilla</th>
+                            <th>Estado</th>
+                            <th>Fecha Instalación</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for instalacion in instalaciones %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                <div class="user-cell">
+                                    <span class="user-avatar">{{ instalacion.nombre_cliente|slice:":2"|upper }}</span>
+                                    <div>
+                                        <div class="user-name">{{ instalacion.nombre_cliente }}</div>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>{{ instalacion.cedula_cliente }}</td>
-                        <td>{{ instalacion.plan }}</td>
-                        <td><span class="badge badge-info">{{ instalacion.customer_id|default:"N/A" }}</span></td>
-                        <td>{{ instalacion.asignacion.cuadrilla.nombre|default:"N/A" }}</td>
-                        <td>
-                            {% if instalacion.completada %}
-                            <span class="badge badge-success">Completada</span>
-                            {% else %}
-                            <span class="badge badge-warning">Pendiente</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ instalacion.fecha_instalacion|date:"d/m/Y H:i"|default:"No registrada" }}</td>
-                        <td>
-                            <div class="actions">
-                                <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="3"/>
-                                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                                    </svg>
-                                </button>
-                                <button class="action-btn" onclick="editarInstalacion({{ instalacion.id }})" title="Editar instalación">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" class="empty">No hay instalaciones registradas</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td>{{ instalacion.cedula_cliente }}</td>
+                            <td>{{ instalacion.plan }}</td>
+                            <td><span class="badge badge-info">{{ instalacion.customer_id|default:"N/A" }}</span></td>
+                            <td>{{ instalacion.asignacion.cuadrilla.nombre|default:"N/A" }}</td>
+                            <td>
+                                {% if instalacion.completada %}
+                                <span class="badge badge-success">Completada</span>
+                                {% else %}
+                                <span class="badge badge-warning">Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ instalacion.fecha_instalacion|date:"d/m/Y H:i"|default:"No registrada" }}</td>
+                            <td>
+                                <div class="actions">
+                                    <button class="action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="action-btn" onclick="editarInstalacion({{ instalacion.id }})" title="Editar instalación">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="empty">No hay instalaciones registradas</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
 
-    <!-- Vista Mobile -->
-    <div class="mobile-view">
-        {% for instalacion in instalaciones %}
-        <div class="card instalacion-card">
-            <div class="card-header">
-                <div class="card-user">
-                    <span class="card-avatar">{{ instalacion.nombre_cliente|slice:":2"|upper }}</span>
-                    <div>
-                        <div class="card-name">{{ instalacion.nombre_cliente }}</div>
-                        <div class="card-meta">
-                            <span class="card-meta-item">C.I: {{ instalacion.cedula_cliente }}</span>
+        <!-- Vista Mobile -->
+        <div class="mobile-view">
+            {% for instalacion in instalaciones %}
+            <div class="card instalacion-card">
+                <div class="card-header">
+                    <div class="card-user">
+                        <span class="card-avatar">{{ instalacion.nombre_cliente|slice:":2"|upper }}</span>
+                        <div>
+                            <div class="card-name">{{ instalacion.nombre_cliente }}</div>
+                            <div class="card-meta">
+                                <span class="card-meta-item">C.I: {{ instalacion.cedula_cliente }}</span>
+                            </div>
                         </div>
                     </div>
+                    <span class="status-dot {% if instalacion.completada %}active{% else %}warning{% endif %}"></span>
                 </div>
-                <span class="status-dot {% if instalacion.completada %}active{% else %}warning{% endif %}"></span>
+                <div class="card-body">
+                    <div class="card-row"><span class="card-label">Plan:</span><span class="card-value">{{ instalacion.plan }}</span></div>
+                    <div class="card-row"><span class="card-label">Customer ID:</span><span class="card-value">{{ instalacion.customer_id|default:"N/A" }}</span></div>
+                    <div class="card-row"><span class="card-label">Cuadrilla:</span><span class="card-value">{{ instalacion.asignacion.cuadrilla.nombre|default:"N/A" }}</span></div>
+                    <div class="card-row"><span class="card-label">Estado:</span><span class="card-value">{% if instalacion.completada %}<span class="badge badge-success">Completada</span>{% else %}<span class="badge badge-warning">Pendiente</span>{% endif %}</span></div>
+                    <div class="card-row"><span class="card-label">Fecha:</span><span class="card-value">{{ instalacion.fecha_instalacion|date:"d/m/Y H:i"|default:"No registrada" }}</span></div>
+                </div>
+                <div class="card-actions">
+                    <button class="card-action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
+                        </svg>
+                    </button>
+                    <button class="card-action-btn" onclick="editarInstalacion({{ instalacion.id }})" title="Editar instalación">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="card-row"><span class="card-label">Plan:</span><span class="card-value">{{ instalacion.plan }}</span></div>
-                <div class="card-row"><span class="card-label">Customer ID:</span><span class="card-value">{{ instalacion.customer_id|default:"N/A" }}</span></div>
-                <div class="card-row"><span class="card-label">Cuadrilla:</span><span class="card-value">{{ instalacion.asignacion.cuadrilla.nombre|default:"N/A" }}</span></div>
-                <div class="card-row"><span class="card-label">Estado:</span><span class="card-value">{% if instalacion.completada %}<span class="badge badge-success">Completada</span>{% else %}<span class="badge badge-warning">Pendiente</span>{% endif %}</span></div>
-                <div class="card-row"><span class="card-label">Fecha:</span><span class="card-value">{{ instalacion.fecha_instalacion|date:"d/m/Y H:i"|default:"No registrada" }}</span></div>
-            </div>
-            <div class="card-actions">
-                <button class="card-action-btn" onclick="verDetalleInstalacion({{ instalacion.id }})" title="Ver detalles">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7z"/>
-                    </svg>
-                </button>
-                <button class="card-action-btn" onclick="editarInstalacion({{ instalacion.id }})" title="Editar instalación">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-                    </svg>
-                </button>
-            </div>
+            {% empty %}
+            <div class="empty-mobile">No hay instalaciones registradas</div>
+            {% endfor %}
         </div>
-        {% empty %}
-        <div class="empty-mobile">No hay instalaciones registradas</div>
-        {% endfor %}
     </div>
-</div>
 
-<!-- Paginación -->
-{% if instalaciones.has_other_pages %}
-<div class="pagination-container">
-    <div class="pagination-info">Mostrando {{ instalaciones.start_index }} - {{ instalaciones.end_index }} de {{ instalaciones.paginator.count }} instalaciones</div>
-    <div class="pagination-controls">
-        {% if instalaciones.has_previous %}
-        <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Primera página">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
-        </a>
-        <a href="?page={{ instalaciones.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Página anterior">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </a>
-        {% else %}
-        <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></span>
-        <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></span>
-        {% endif %}
-        <div class="page-numbers">
-            {% for num in instalaciones.paginator.page_range %}
-                {% if num == instalaciones.number %}
-                    <span class="page-current">{{ num }}</span>
-                {% elif num > instalaciones.number|add:'-3' and num < instalaciones.number|add:'3' %}
-                    <a href="?page={{ num }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-num">{{ num }}</a>
-                {% endif %}
-            {% endfor %}
+    <!-- Paginación -->
+    {% if instalaciones.has_other_pages %}
+    <div class="pagination-container">
+        <div class="pagination-info">Mostrando {{ instalaciones.start_index }} - {{ instalaciones.end_index }} de {{ instalaciones.paginator.count }} instalaciones</div>
+        <div class="pagination-controls">
+            {% if instalaciones.has_previous %}
+            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Primera página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg>
+            </a>
+            <a href="?page={{ instalaciones.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Página anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg></span>
+            <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></span>
+            {% endif %}
+            <div class="page-numbers">
+                {% for num in instalaciones.paginator.page_range %}
+                    {% if num == instalaciones.number %}
+                        <span class="page-current">{{ num }}</span>
+                    {% elif num > instalaciones.number|add:'-3' and num < instalaciones.number|add:'3' %}
+                        <a href="?page={{ num }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-num">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% if instalaciones.has_next %}
+            <a href="?page={{ instalaciones.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Página siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a href="?page={{ instalaciones.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Última página">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg>
+            </a>
+            {% else %}
+            <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
+            <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></span>
+            {% endif %}
         </div>
-        {% if instalaciones.has_next %}
-        <a href="?page={{ instalaciones.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Página siguiente">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </a>
-        <a href="?page={{ instalaciones.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado %}&estado={{ estado }}{% endif %}{% if cuadrilla_id %}&cuadrilla={{ cuadrilla_id }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link" title="Última página">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg>
-        </a>
-        {% else %}
-        <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></span>
-        <span class="page-link disabled"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 17l5-5-5-5M6 17l5-5-5-5"/></svg></span>
-        {% endif %}
+        <div class="page-selector-mobile">
+            <span>Ir a página</span>
+            <select id="pageSelect" class="page-select">
+                {% for num in instalaciones.paginator.page_range %}
+                <option value="{{ num }}" {% if num == instalaciones.number %}selected{% endif %}>{{ num }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
-    <div class="page-selector-mobile">
-        <span>Ir a página</span>
-        <select id="pageSelect" class="page-select">
-            {% for num in instalaciones.paginator.page_range %}
-            <option value="{{ num }}" {% if num == instalaciones.number %}selected{% endif %}>{{ num }}</option>
-            {% endfor %}
-        </select>
-    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <!-- Modal de Detalle de Instalación (MEJORADO) -->
 <div id="instalacionModal" class="modal" style="display: none;">
@@ -1446,12 +1448,25 @@
                             </svg>
                             Fotos (${data.fotos.length})
                         </div>
-                        <div class="fotos-grid">
-                            ${data.fotos.map(foto => `<img src="${foto}" class="foto-thumb-modal" onclick="window.open('${foto}', '_blank')">`).join('')}
-                        </div>
+                        <div class="fotos-grid" id="modalFotosGrid"></div>
                     </div>
                     ` : ''}
                 `;
+                
+                // 🔧 CORRECCIÓN APLICADA AQUÍ: Limpiar URLs de fotos duplicadas
+                if (data.fotos && data.fotos.length > 0) {
+                    const fotosGrid = document.getElementById('modalFotosGrid');
+                    if (fotosGrid) {
+                        fotosGrid.innerHTML = data.fotos.map(foto => {
+                            let urlLimpia = foto;
+                            // Si la URL comienza con '/pagos/pagos/', eliminar el primer '/pagos/'
+                            if (urlLimpia && urlLimpia.startsWith('/pagos/pagos/')) {
+                                urlLimpia = urlLimpia.replace('/pagos/pagos/', '/pagos/');
+                            }
+                            return `<img src="${urlLimpia}" class="foto-thumb-modal" onclick="window.open('${urlLimpia}', '_blank')">`;
+                        }).join('');
+                    }
+                }
                 
                 const instaladoresDiv = document.getElementById('instaladoresLista');
                 if (instaladoresDiv && data.instaladores) {
