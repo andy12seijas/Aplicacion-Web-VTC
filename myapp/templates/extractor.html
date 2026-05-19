@@ -112,39 +112,41 @@
         background: #2196f3;
         color: white;
         border: none;
-        padding: 4px 10px;
-        border-radius: 15px;
+        padding: 2px 8px;
+        border-radius: 12px;
         font-size: 10px;
         cursor: pointer;
-        margin-left: 10px;
+        margin-left: 6px;
         transition: all 0.2s;
+        display: inline-block;
+        vertical-align: middle;
     }
     
     .btn-copy-field:hover {
         background: #1976d2;
-        transform: scale(1.02);
     }
     
     .resultados-card {
         background: white;
         border-radius: 20px;
         border: 1px solid var(--gray-border);
-        overflow: hidden;
+        overflow-x: auto;
         display: none;
     }
     
     .tabla-horizontal {
         width: 100%;
         border-collapse: collapse;
+        min-width: 1200px;
     }
     
     .tabla-horizontal th {
         text-align: center;
-        padding: 14px 12px;
+        padding: 14px 8px;
         background: var(--orange);
         color: white;
         font-weight: 500;
-        font-size: 12px;
+        font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         border-right: 1px solid rgba(255,255,255,0.2);
@@ -153,11 +155,12 @@
     
     .tabla-horizontal td {
         text-align: center;
-        padding: 12px;
+        padding: 10px 8px;
         border-bottom: 1px solid var(--gray-border);
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 500;
         background: white;
+        white-space: nowrap;
     }
     
     .tabla-horizontal tr:hover td {
@@ -166,10 +169,10 @@
     
     .badge-valor {
         background: #e8f5e9;
-        padding: 6px 12px;
-        border-radius: 20px;
+        padding: 4px 8px;
+        border-radius: 15px;
         font-family: monospace;
-        font-size: 13px;
+        font-size: 12px;
         display: inline-block;
     }
     
@@ -232,22 +235,9 @@
         border: 1px solid #e0e0e0;
     }
     
-    .campo-con-boton {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-    
     @media (max-width: 768px) {
         .card-header, .card-body {
             padding: 16px;
-        }
-        
-        .tabla-horizontal th, .tabla-horizontal td {
-            padding: 8px 10px;
-            font-size: 11px;
         }
         
         .btn-orange, .btn-outline-green {
@@ -259,8 +249,8 @@
             flex-direction: column;
         }
         
-        .campo-con-boton {
-            flex-direction: column;
+        .resultados-card {
+            overflow-x: scroll;
         }
     }
 </style>
@@ -300,9 +290,6 @@
 </div>
 
 <div id="resultados" class="resultados-card">
-    <div class="card-header">
-        <h3>📊 Datos Extraídos - Copia la fila para Excel</h3>
-    </div>
     <div style="overflow-x: auto;">
         <table class="tabla-horizontal" id="tablaDatos">
             <thead>
@@ -340,7 +327,6 @@
 <script>
     let datosActuales = {};
     
-    // Función de extracción mejorada
     function extraerDatos() {
         const texto = document.getElementById('inputTexto').value;
         
@@ -348,8 +334,6 @@
             alert('Por favor, pega el texto de la instalación primero.');
             return;
         }
-        
-        console.log("Texto recibido:", texto);
         
         function extraerValor(patrones) {
             if (!Array.isArray(patrones)) {
@@ -415,71 +399,21 @@
             snModem: snModem
         };
         
-        // Actualizar la tabla con botones de copiar por campo
+        // Actualizar la tabla - UNA SOLA FILA HORIZONTAL
         const tbody = document.getElementById('tbodyDatos');
         tbody.innerHTML = `
             <tr>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.ordenServicio}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('ordenServicio')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.customer}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('customer')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.nombre}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('nombre')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.metros}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('metros')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.conectores}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('conectores')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.rosetas}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('rosetas')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.patchCord}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('patchCord')">📋</button>
-                    </div>
-                 </div>
-                <tr>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.tensores}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('tensores')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.modeloModem}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('modeloModem')">📋</button>
-                    </div>
-                 </div>
-                <td>
-                    <div class="campo-con-boton">
-                        <span class="badge-valor">${datosActuales.snModem}</span>
-                        <button class="btn-copy-field" onclick="copiarCampo('snModem')">📋</button>
-                    </div>
-                 </div>
-            </table>
+                <td><span class="badge-valor">${datosActuales.ordenServicio}</span><button class="btn-copy-field" onclick="copiarCampo('ordenServicio')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.customer}</span><button class="btn-copy-field" onclick="copiarCampo('customer')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.nombre}</span><button class="btn-copy-field" onclick="copiarCampo('nombre')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.metros}</span><button class="btn-copy-field" onclick="copiarCampo('metros')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.conectores}</span><button class="btn-copy-field" onclick="copiarCampo('conectores')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.rosetas}</span><button class="btn-copy-field" onclick="copiarCampo('rosetas')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.patchCord}</span><button class="btn-copy-field" onclick="copiarCampo('patchCord')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.tensores}</span><button class="btn-copy-field" onclick="copiarCampo('tensores')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.modeloModem}</span><button class="btn-copy-field" onclick="copiarCampo('modeloModem')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.snModem}</span><button class="btn-copy-field" onclick="copiarCampo('snModem')">📋</button></td>
+            </tr>
         `;
         
         const previewText = `${datosActuales.ordenServicio}\t${datosActuales.customer}\t${datosActuales.nombre}\t${datosActuales.metros}\t${datosActuales.conectores}\t${datosActuales.rosetas}\t${datosActuales.patchCord}\t${datosActuales.tensores}\t${datosActuales.modeloModem}\t${datosActuales.snModem}`;
