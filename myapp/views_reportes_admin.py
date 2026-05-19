@@ -205,6 +205,8 @@ def reporte_ventas_json(request):
 def reporte_instalaciones_json(request):
     """API para obtener datos de instalaciones"""
     
+    import pytz
+    
     tipo_reporte = request.GET.get('tipo', 'simple')
     fecha_desde_raw = request.GET.get('fecha_desde', '')
     fecha_hasta_raw = request.GET.get('fecha_hasta', '')
@@ -214,12 +216,14 @@ def reporte_instalaciones_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
+    
     # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
     fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
     fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
     
     # ¡MUY IMPORTANTE para la fecha HASTA!
-    # Queremos que el filtro incluya TODO el día.
     if fecha_hasta_aware:
         fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
     
@@ -237,12 +241,10 @@ def reporte_instalaciones_json(request):
     elif estado == 'pendiente':
         instalaciones = instalaciones.filter(completada=False)
     
-    # Búsqueda - usar los campos reales de la base de datos
+    # Búsqueda
     if busqueda:
-        # Creamos una lista de IDs que coinciden con la búsqueda
         ids_coincidentes = []
         for inst in instalaciones:
-            # Obtener datos a través de las propiedades
             nombre_cliente = inst.nombre_cliente
             cedula_cliente = inst.cedula_cliente
             customer_id = inst.customer_id
@@ -263,20 +265,25 @@ def reporte_instalaciones_json(request):
         page_obj = paginator.page(1)
     
     if tipo_reporte == 'simple':
-        # Reporte simple: Cliente, Customer ID, ODS, Fecha, Cuadrilla, Estado
         data_list = []
         for inst in page_obj:
+            # ===== CONVERTIR FECHA A VENEZUELA =====
+            if inst.fecha_instalacion:
+                fecha_ve = inst.fecha_instalacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            else:
+                fecha_str = 'No registrada'
+            
             data_list.append({
                 'id': inst.id,
                 'cliente': inst.nombre_cliente,
                 'customer_id': inst.customer_id,
                 'ods': inst.orden_servicio,
-                'fecha': inst.fecha_instalacion.strftime('%d/%m/%Y') if inst.fecha_instalacion else 'No registrada',
+                'fecha': fecha_str,
                 'cuadrilla': inst.asignacion.cuadrilla.nombre if inst.asignacion and inst.asignacion.cuadrilla else 'N/A',
                 'estado': 'Completada' if inst.completada else 'Pendiente',
             })
     else:
-        # Reporte avanzado
         data_list = []
         for inst in page_obj:
             direccion = "N/A"
@@ -288,6 +295,13 @@ def reporte_instalaciones_json(request):
             except:
                 direccion = "N/A"
             
+            # ===== CONVERTIR FECHA A VENEZUELA =====
+            if inst.fecha_instalacion:
+                fecha_ve = inst.fecha_instalacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M')
+            else:
+                fecha_str = 'No registrada'
+            
             data_list.append({
                 'id': inst.id,
                 'cliente': inst.nombre_cliente,
@@ -295,7 +309,7 @@ def reporte_instalaciones_json(request):
                 'direccion': direccion[:100] if direccion else 'N/A',
                 'plan': inst.plan,
                 'cuadrilla': inst.asignacion.cuadrilla.nombre if inst.asignacion and inst.asignacion.cuadrilla else 'N/A',
-                'fecha': inst.fecha_instalacion.strftime('%d/%m/%Y %H:%M') if inst.fecha_instalacion else 'No registrada',
+                'fecha': fecha_str,
                 'estado': 'Completada' if inst.completada else 'Pendiente',
                 'modelo': inst.modelo_modem.nombre if inst.modelo_modem else 'N/A',
                 'serial': inst.sn_modem or 'N/A',
@@ -325,6 +339,8 @@ def reporte_instalaciones_json(request):
 def reporte_soportes_json(request):
     """API para obtener datos de soportes"""
     
+    import pytz
+    
     tipo_reporte = request.GET.get('tipo', 'simple')
     fecha_desde_raw = request.GET.get('fecha_desde', '')
     fecha_hasta_raw = request.GET.get('fecha_hasta', '')
@@ -335,12 +351,14 @@ def reporte_soportes_json(request):
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
     
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
+    
     # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
     fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
     fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
     
     # ¡MUY IMPORTANTE para la fecha HASTA!
-    # Queremos que el filtro incluya TODO el día.
     if fecha_hasta_aware:
         fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
     
@@ -387,12 +405,22 @@ def reporte_soportes_json(request):
                 customer_id = "N/A"
                 ticket_padre = "N/A"
             
+            # ===== CONVERTIR FECHA A VENEZUELA =====
+            if s.fecha_hora_servicio:
+                fecha_ve = s.fecha_hora_servicio.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            elif s.fecha_creacion:
+                fecha_ve = s.fecha_creacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            else:
+                fecha_str = 'N/A'
+            
             data_list.append({
                 'id': s.id,
                 'cliente': cliente_nombre,
                 'customer_id': customer_id,
                 'ticket_padre': ticket_padre,
-                'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y'),
+                'fecha': fecha_str,
                 'cuadrilla': s.cuadrilla.nombre if s.cuadrilla else 'N/A',
                 'estado': s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado,
             })
@@ -410,6 +438,16 @@ def reporte_soportes_json(request):
                 ticket_padre = "N/A"
                 tipo_display = "N/A"
             
+            # ===== CONVERTIR FECHA A VENEZUELA =====
+            if s.fecha_hora_servicio:
+                fecha_ve = s.fecha_hora_servicio.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M')
+            elif s.fecha_creacion:
+                fecha_ve = s.fecha_creacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M')
+            else:
+                fecha_str = 'N/A'
+            
             data_list.append({
                 'id': s.id,
                 'ticket_padre': ticket_padre,
@@ -417,7 +455,7 @@ def reporte_soportes_json(request):
                 'cedula': cedula,
                 'tipo': tipo_display,
                 'estado': s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado,
-                'fecha': s.fecha_hora_servicio.strftime('%d/%m/%Y %H:%M') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
+                'fecha': fecha_str,
                 'falla': s.falla_encontrada[:100] if s.falla_encontrada else 'N/A',
                 'solucion': s.solucion[:100] if s.solucion else 'N/A',
                 'cuadrilla': s.cuadrilla.nombre if s.cuadrilla else 'N/A',
@@ -439,7 +477,6 @@ def reporte_soportes_json(request):
         'pagina_actual': page_obj.number,
         'por_pagina': per_page,
     })
-
 
 @login_required
 @user_passes_test(es_admin)
@@ -501,6 +538,7 @@ def reporte_inventario_json(request):
         'por_pagina': per_page,
     })
 
+
 @login_required
 @user_passes_test(es_admin)
 def reporte_vendedores_json(request):
@@ -509,7 +547,12 @@ def reporte_vendedores_json(request):
     por semana (viernes a jueves)
     """
     
+    import pytz
     from decimal import Decimal
+    from datetime import datetime, timedelta
+    
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
     
     # Obtener parámetros
     semana_fecha = request.GET.get('semana', '')
@@ -521,16 +564,15 @@ def reporte_vendedores_json(request):
     # ========== CONVERTIR FECHA DE SEMANA A DATETIME AWARE ==========
     fecha_referencia = None
     if semana_fecha:
-        # Convertir usando la función auxiliar
         fecha_referencia_aware = convertir_a_datetime_aware(semana_fecha)
         if fecha_referencia_aware:
             fecha_referencia = fecha_referencia_aware.date()
     
     if not fecha_referencia:
-        # Usar fecha actual en zona Venezuela
-        fecha_referencia = VE_TZ.localize(datetime.now()).date()
+        ahora_ve = datetime.now().astimezone(VE_TZ)
+        fecha_referencia = ahora_ve.date()
     
-    # Calcular semana (viernes a jueves) usando fechas naive (solo la fecha)
+    # Calcular semana (viernes a jueves)
     dias_desde_viernes = fecha_referencia.weekday() - 4
     if dias_desde_viernes < 0:
         dias_desde_viernes += 7
@@ -539,9 +581,7 @@ def reporte_vendedores_json(request):
     jueves_fin = viernes_inicio + timedelta(days=6)
     
     # ===== CONVERTIR A DATETIME AWARE PARA FILTRAR =====
-    # Inicio del día (00:00:00) en zona Venezuela
     fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
-    # Fin del día (23:59:59.999999) en zona Venezuela
     fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
     
     # Usar fecha_completado directamente con datetime aware
@@ -582,13 +622,10 @@ def reporte_vendedores_json(request):
     vendedores_data = []
     
     for vendedor in todos_vendedores:
-        # Contratos completados en esta semana para este vendedor
         contratos_vendedor = contratos.filter(creado_por=vendedor)
         total_contratos = contratos_vendedor.count()
         
-        # Mostrar vendedor si tiene contratos o es el seleccionado
         if total_contratos > 0 or not vendedor_id:
-            # Calcular comisión según rangos
             if total_contratos >= 1 and total_contratos <= 5:
                 comision_por_contrato = 8
                 bono = 20
@@ -613,14 +650,27 @@ def reporte_vendedores_json(request):
             total_con_bono = total_precio + bono
             total_bs = total_con_bono * tasa
             
-            # Detalle de contratos (mostrar fecha_completado real)
+            # ===== DETALLE DE CONTRATOS CON FECHAS CONVERTIDAS =====
             lista_contratos = []
             for contrato in contratos_vendedor.order_by('-fecha_completado')[:5]:
+                # Convertir fechas a Venezuela
+                if contrato.fecha_completado:
+                    fecha_completado_ve = contrato.fecha_completado.astimezone(VE_TZ)
+                    fecha_completado_str = fecha_completado_ve.strftime('%d/%m/%Y %H:%M')
+                else:
+                    fecha_completado_str = 'N/A'
+                
+                if contrato.fecha_creacion:
+                    fecha_creacion_ve = contrato.fecha_creacion.astimezone(VE_TZ)
+                    fecha_creacion_str = fecha_creacion_ve.strftime('%d/%m/%Y')
+                else:
+                    fecha_creacion_str = 'N/A'
+                
                 lista_contratos.append({
                     'id': contrato.id,
                     'cliente': contrato.nombre_completo,
-                    'fecha_completado': contrato.fecha_completado.strftime('%d/%m/%Y %H:%M') if contrato.fecha_completado else 'N/A',
-                    'fecha_creacion': contrato.fecha_creacion.strftime('%d/%m/%Y'),
+                    'fecha_completado': fecha_completado_str,
+                    'fecha_creacion': fecha_creacion_str,
                     'plan': contrato.plan_contratado.nombre,
                     'customer_id': contrato.customer_id or 'N/A'
                 })
@@ -639,10 +689,8 @@ def reporte_vendedores_json(request):
                 'contratos_detalle': lista_contratos
             })
     
-    # Ordenar por cantidad de contratos (mayor a menor)
     vendedores_data.sort(key=lambda x: int(x['contratos']), reverse=True)
     
-    # Paginación
     total_registros = len(vendedores_data)
     paginator = Paginator(vendedores_data, per_page)
     
@@ -651,7 +699,6 @@ def reporte_vendedores_json(request):
     except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
     
-    # Estadísticas
     total_contratos_semana = sum(v['contratos'] for v in vendedores_data)
     total_pagar_usd = sum(float(v['total_con_bono'].replace('$', '')) for v in vendedores_data)
     total_pagar_bs = total_pagar_usd * tasa
@@ -687,24 +734,25 @@ def reporte_vendedores_json(request):
 def semanas_disponibles_api(request):
     """API para obtener las semanas disponibles con contratos completados"""
     
-    # Obtener todas las semanas donde hay contratos completados
+    import pytz
+    from datetime import datetime, timedelta
+    
+    VE_TZ = pytz.timezone('America/Caracas')
+    
     contratos = ContratoCliente.objects.filter(estado='COMPLETADO').order_by('fecha_creacion')
     
     semanas = []
     fechas_procesadas = set()
     
     for contrato in contratos:
-        # Usar la fecha completado (si existe) o fecha_creacion
         if contrato.fecha_completado:
             fecha_utc = contrato.fecha_completado
         else:
             fecha_utc = contrato.fecha_creacion
         
-        # Convertir la fecha UTC a zona Venezuela para obtener la fecha correcta
         fecha_ve = fecha_utc.astimezone(VE_TZ)
         fecha = fecha_ve.date()
         
-        # Calcular semana (viernes a jueves)
         dias_desde_viernes = fecha.weekday() - 4
         if dias_desde_viernes < 0:
             dias_desde_viernes += 7
@@ -721,10 +769,8 @@ def semanas_disponibles_api(request):
                 'label': f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
             })
     
-    # Ordenar por fecha descendente
     semanas.sort(key=lambda x: x['value'], reverse=True)
     
-    # Agregar semana actual (en zona Venezuela)
     ahora_ve = datetime.now().astimezone(VE_TZ)
     hoy = ahora_ve.date()
     dias_desde_viernes = hoy.weekday() - 4
@@ -740,12 +786,10 @@ def semanas_disponibles_api(request):
         'label': f"Semana Actual ({viernes_actual.strftime('%d/%m/%Y')} - {jueves_actual.strftime('%d/%m/%Y')})"
     }
     
-    # Verificar si la semana actual ya está en la lista
     if not any(s['value'] == semana_actual_clave for s in semanas):
         semanas.insert(0, semana_actual)
     
     return JsonResponse({'semanas': semanas})
-
 
 
 @staff_member_required
@@ -782,8 +826,13 @@ def reporte_instaladores_json(request):
     Por semana (viernes a jueves)
     """
     
+    import pytz
     from decimal import Decimal
     from collections import defaultdict
+    from datetime import datetime, timedelta
+    
+    # Zona horaria de Venezuela
+    VE_TZ = pytz.timezone('America/Caracas')
     
     # Obtener parámetros
     semana_fecha = request.GET.get('semana', '')
@@ -801,8 +850,8 @@ def reporte_instaladores_json(request):
             fecha_referencia = fecha_referencia_aware.date()
     
     if not fecha_referencia:
-        # Usar fecha actual en zona Venezuela
-        fecha_referencia = VE_TZ.localize(datetime.now()).date()
+        ahora_ve = datetime.now().astimezone(VE_TZ)
+        fecha_referencia = ahora_ve.date()
     
     # Calcular semana (viernes a jueves)
     dias_desde_viernes = fecha_referencia.weekday() - 4
@@ -829,11 +878,9 @@ def reporte_instaladores_json(request):
     # Obtener todas las cuadrillas activas
     todas_cuadrillas = Cuadrilla.objects.filter(activo=True)
     
-    # Filtrar por cuadrilla si se especifica
     if cuadrilla_id:
         todas_cuadrillas = todas_cuadrillas.filter(id=cuadrilla_id)
     
-    # ===== DICCIONARIO PARA AGRUPAR POR CUADRILLA =====
     cuadrillas_dict = defaultdict(lambda: {
         'id': None,
         'cuadrilla': '',
@@ -849,19 +896,16 @@ def reporte_instaladores_json(request):
         'contratos_detalle': []
     })
     
-    # Primero, registrar todas las cuadrillas en el diccionario
     for cuadrilla in todas_cuadrillas:
         cuadrillas_dict[cuadrilla.nombre]['id'] = cuadrilla.id
         cuadrillas_dict[cuadrilla.nombre]['cuadrilla'] = cuadrilla.nombre
         
-        # Obtener los instaladores de esta cuadrilla (a través de PerfilUsuario)
         perfiles = cuadrilla.instaladores.all()
         for perfil in perfiles:
             if perfil.usuario:
                 cuadrillas_dict[cuadrilla.nombre]['instaladores_set'].add(perfil.usuario.id)
     
-    # ========== 1. INSTALACIONES COMPLETADAS (para PAGO) ==========
-    # Usar datetime aware para filtrar
+    # ========== 1. INSTALACIONES COMPLETADAS ==========
     instalaciones = Instalacion.objects.filter(
         completada=True,
         fecha_instalacion__gte=fecha_inicio_aware,
@@ -877,15 +921,12 @@ def reporte_instaladores_json(request):
         if nombre_cuadrilla not in cuadrillas_dict:
             continue
         
-        # Obtener instaladores históricos (para filtros y detalle)
         instaladores_hist = inst.instaladores.all()
         
-        # Verificar filtro por instalador específico
         if instalador_id:
             if not instaladores_hist.filter(id=instalador_id).exists():
                 continue
         
-        # Verificar búsqueda
         if busqueda:
             tiene_coincidencia = False
             for inst_hist in instaladores_hist:
@@ -902,20 +943,26 @@ def reporte_instaladores_json(request):
         for inst_hist in instaladores_hist:
             cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Detalle
         if len(cuadrillas_dict[nombre_cuadrilla]['instalaciones_detalle']) < 5:
             cliente_nombre = inst.nombre_cliente if hasattr(inst, 'nombre_cliente') else 'N/A'
             customer_id = inst.customer_id if hasattr(inst, 'customer_id') else 'N/A'
             nombres_inst = [i.get_full_name() or i.username for i in instaladores_hist[:3]]
+            
+            # ===== CONVERTIR FECHA A VENEZUELA =====
+            if inst.fecha_instalacion:
+                fecha_ve = inst.fecha_instalacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            else:
+                fecha_str = 'N/A'
+            
             cuadrillas_dict[nombre_cuadrilla]['instalaciones_detalle'].append({
                 'cliente': cliente_nombre,
                 'customer_id': customer_id,
-                'fecha': inst.fecha_instalacion.strftime('%d/%m/%Y') if inst.fecha_instalacion else 'N/A',
+                'fecha': fecha_str,
                 'instaladores': ', '.join(nombres_inst)
             })
     
     # ========== 2. SOPORTES COMPLETADOS ==========
-    # Usar datetime aware para filtrar
     soportes = Soporte.objects.filter(
         estado='COMPLETADO',
         fecha_creacion__gte=fecha_inicio_aware,
@@ -967,16 +1014,24 @@ def reporte_instaladores_json(request):
             except:
                 pass
             nombres_inst = [i.get_full_name() or i.username for i in instaladores_hist[:3]]
+            
+            # ===== CONVERTIR FECHA A VENEZUELA =====
+            if sop.fecha_creacion:
+                fecha_ve = sop.fecha_creacion.astimezone(VE_TZ)
+                fecha_str = fecha_ve.strftime('%d/%m/%Y')
+            else:
+                fecha_str = 'N/A'
+            
             cuadrillas_dict[nombre_cuadrilla]['soportes_detalle'].append({
                 'ticket_padre': sop.asignacion.ticket.ticket_padre if sop.asignacion and sop.asignacion.ticket else 'N/A',
                 'cliente': cliente_nombre,
                 'tipo': tipo,
                 'precio': precio,
-                'fecha': sop.fecha_creacion.strftime('%d/%m/%Y') if sop.fecha_creacion else 'N/A',
+                'fecha': fecha_str,
                 'instaladores': ', '.join(nombres_inst)
             })
     
-    # ========== 3. CONTRATOS COMPLETADOS (creados por INSTALADORES) ==========
+    # ========== 3. CONTRATOS COMPLETADOS ==========
     instaladores_users = User.objects.filter(groups__name='Instalador')
     
     if instalador_id:
@@ -991,7 +1046,6 @@ def reporte_instaladores_json(request):
         if not cuadrillas_del_instalador.exists():
             continue
         
-        # Usar datetime aware para filtrar contratos
         contratos_instalador = ContratoCliente.objects.filter(
             estado='COMPLETADO',
             creado_por=instalador,
@@ -1021,14 +1075,20 @@ def reporte_instaladores_json(request):
                 cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(instalador.id)
                 
                 if len(cuadrillas_dict[nombre_cuadrilla]['contratos_detalle']) < 5:
+                    # ===== CONVERTIR FECHA A VENEZUELA =====
+                    if contrato.fecha_completado:
+                        fecha_ve = contrato.fecha_completado.astimezone(VE_TZ)
+                        fecha_str = fecha_ve.strftime('%d/%m/%Y')
+                    else:
+                        fecha_str = 'N/A'
+                    
                     cuadrillas_dict[nombre_cuadrilla]['contratos_detalle'].append({
                         'cliente': contrato.nombre_completo,
                         'plan': contrato.plan_contratado.nombre,
                         'customer_id': contrato.customer_id or 'N/A',
-                        'fecha_completado': contrato.fecha_completado.strftime('%d/%m/%Y') if contrato.fecha_completado else 'N/A'
+                        'fecha_completado': fecha_str
                     })
     
-    # ===== CONSTRUIR LISTA FINAL =====
     cuadrillas_data = []
     for nombre, data in cuadrillas_dict.items():
         total_usd = data['monto_instalaciones'] + data['monto_soportes'] + data['monto_contratos']
@@ -1121,16 +1181,17 @@ def reporte_instaladores_json(request):
 def semanas_disponibles_instaladores_api(request):
     """API para obtener las semanas disponibles con actividad de instaladores"""
     
-    from datetime import timedelta
+    import pytz
+    from datetime import datetime, timedelta
     
-    # Obtener fechas de instalaciones, soportes y contratos
+    VE_TZ = pytz.timezone('America/Caracas')
+    
     fechas = []
     
     # Instalaciones - convertir a zona Venezuela
     instalaciones = Instalacion.objects.filter(completada=True).exclude(fecha_instalacion__isnull=True)
     for inst in instalaciones:
         if inst.fecha_instalacion:
-            # Convertir UTC a zona Venezuela
             fecha_ve = inst.fecha_instalacion.astimezone(VE_TZ)
             fechas.append(fecha_ve.date())
     
@@ -1152,7 +1213,6 @@ def semanas_disponibles_instaladores_api(request):
     fechas_procesadas = set()
     
     for fecha in fechas:
-        # Calcular semana (viernes a jueves)
         dias_desde_viernes = fecha.weekday() - 4
         if dias_desde_viernes < 0:
             dias_desde_viernes += 7
@@ -1169,10 +1229,8 @@ def semanas_disponibles_instaladores_api(request):
                 'label': f"{viernes_inicio.strftime('%d/%m/%Y')} - {jueves_fin.strftime('%d/%m/%Y')}"
             })
     
-    # Ordenar por fecha descendente
     semanas.sort(key=lambda x: x['value'], reverse=True)
     
-    # Agregar semana actual (en zona Venezuela)
     ahora_ve = datetime.now().astimezone(VE_TZ)
     hoy = ahora_ve.date()
     dias_desde_viernes = hoy.weekday() - 4
@@ -1264,7 +1322,8 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         ws = wb.active
         ws.title = "Reporte de Ventas"
         
-        ventas = ContratoCliente.objects.filter(estado='COMPLETADO')
+        # Incluir COMPLETADO y EN_PROCESO
+        ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
         
         # Convertir a datetime aware
         fecha_inicio_aware = None
@@ -1276,16 +1335,24 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         if fecha_hasta_obj:
             fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
         
-        # Filtrar usando datetime aware
+        # ===== FILTRAR CORRECTAMENTE =====
+        # COMPLETADO usa fecha_completado
+        # EN_PROCESO usa fecha_creacion
         if fecha_inicio_aware and fecha_fin_aware:
             ventas = ventas.filter(
-                fecha_completado__gte=fecha_inicio_aware,
-                fecha_completado__lte=fecha_fin_aware
+                Q(estado='COMPLETADO', fecha_completado__gte=fecha_inicio_aware, fecha_completado__lte=fecha_fin_aware) |
+                Q(estado='EN_PROCESO', fecha_creacion__gte=fecha_inicio_aware, fecha_creacion__lte=fecha_fin_aware)
             )
         elif fecha_inicio_aware:
-            ventas = ventas.filter(fecha_completado__gte=fecha_inicio_aware)
+            ventas = ventas.filter(
+                Q(estado='COMPLETADO', fecha_completado__gte=fecha_inicio_aware) |
+                Q(estado='EN_PROCESO', fecha_creacion__gte=fecha_inicio_aware)
+            )
         elif fecha_fin_aware:
-            ventas = ventas.filter(fecha_completado__lte=fecha_fin_aware)
+            ventas = ventas.filter(
+                Q(estado='COMPLETADO', fecha_completado__lte=fecha_fin_aware) |
+                Q(estado='EN_PROCESO', fecha_creacion__lte=fecha_fin_aware)
+            )
         
         if vendedor:
             ventas = ventas.filter(creado_por_id=vendedor)
@@ -1299,47 +1366,72 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                 Q(customer_id__icontains=busqueda)
             )
         
-        ventas = ventas.order_by('-fecha_completado')
+        ventas = ventas.order_by('-fecha_creacion')
+        
+        # Función para formatear fechas en Venezuela
+        def formatear_fecha(fecha):
+            if fecha:
+                fecha_ve = fecha.astimezone(VE_TZ)
+                return fecha_ve.strftime('%d/%m/%Y %H:%M')
+            return 'N/A'
         
         if reporte_tipo == 'simple':
-            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha Completado', 'Vendedor', 'Estado']
-            data = [[
-                v.nombre_completo,
-                v.customer_id or 'N/A',
-                v.ods or 'N/A',
-                v.fecha_completado.strftime('%d/%m/%Y') if v.fecha_completado else 'N/A',
-                v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
-                v.get_estado_display()
-            ] for v in ventas]
+            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Vendedor', 'Estado']
+            data = []
+            for v in ventas:
+                if v.estado == 'COMPLETADO' and v.fecha_completado:
+                    fecha_str = formatear_fecha(v.fecha_completado)
+                else:
+                    fecha_str = formatear_fecha(v.fecha_creacion)
+                
+                data.append([
+                    v.nombre_completo,
+                    v.customer_id or 'N/A',
+                    v.ods or 'N/A',
+                    fecha_str,
+                    v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+                    v.get_estado_display()
+                ])
         else:
-            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Correo', 'Dirección', 'Plan', 'Fecha Completado', 'Fecha Creación', 'Vendedor', 'Customer ID', 'ODS', 'ATR', 'Estado']
-            data = [[
-                v.id,
-                v.nombre_completo,
-                v.cedula,
-                v.telefono_principal,
-                v.correo_electronico,
-                v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
-                v.plan_contratado.nombre,
-                v.fecha_completado.strftime('%d/%m/%Y %H:%M') if v.fecha_completado else 'N/A',
-                v.fecha_creacion.strftime('%d/%m/%Y %H:%M'),
-                v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
-                v.customer_id or 'N/A',
-                v.ods or 'N/A',
-                v.atr or 'N/A',
-                v.get_estado_display()
-            ] for v in ventas]
+            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Correo', 'Dirección', 'Plan', 'Fecha', 'Fecha Creación', 'Vendedor', 'Customer ID', 'ODS', 'ATR', 'Estado']
+            data = []
+            for v in ventas:
+                if v.estado == 'COMPLETADO' and v.fecha_completado:
+                    fecha_str = formatear_fecha(v.fecha_completado)
+                else:
+                    fecha_str = formatear_fecha(v.fecha_creacion)
+                
+                data.append([
+                    v.id,
+                    v.nombre_completo,
+                    v.cedula,
+                    v.telefono_principal,
+                    v.correo_electronico,
+                    v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
+                    v.plan_contratado.nombre,
+                    fecha_str,
+                    formatear_fecha(v.fecha_creacion),
+                    v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+                    v.customer_id or 'N/A',
+                    v.ods or 'N/A',
+                    v.atr or 'N/A',
+                    v.get_estado_display()
+                ])
         
         ws_resumen = wb.create_sheet("Resumen")
         total_registros = ventas.count()
+        completados_count = ventas.filter(estado='COMPLETADO').count()
+        en_proceso_count = ventas.filter(estado='EN_PROCESO').count()
         
         resumen_data = [
-            ['REPORTE DE VENTAS (COMPLETADOS)', ''],
+            ['REPORTE DE VENTAS', ''],
             ['', ''],
             ['Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
             ['', ''],
             ['ESTADÍSTICAS:', ''],
-            ['Total de contratos completados:', total_registros],
+            ['Total de contratos:', total_registros],
+            ['Completados:', completados_count],
+            ['En Proceso:', en_proceso_count],
         ]
         
         for row_idx, row_data in enumerate(resumen_data, 1):
@@ -1351,14 +1443,13 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     cell.font = Font(bold=True)
         
         ws_resumen.column_dimensions['A'].width = 30
-        
+    
     elif tipo == 'instalaciones':
         ws = wb.active
         ws.title = "Reporte de Instalaciones"
         
         instalaciones = Instalacion.objects.all()
         
-        # Convertir a datetime aware
         fecha_inicio_aware = None
         fecha_fin_aware = None
         
@@ -1368,7 +1459,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         if fecha_hasta_obj:
             fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
         
-        # Filtrar usando datetime aware
         if fecha_inicio_aware and fecha_fin_aware:
             instalaciones = instalaciones.filter(
                 fecha_instalacion__gte=fecha_inicio_aware,
@@ -1394,6 +1484,12 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         
         instalaciones = instalaciones.order_by('-fecha_instalacion')
         
+        def formatear_fecha_inst(fecha):
+            if fecha:
+                fecha_ve = fecha.astimezone(VE_TZ)
+                return fecha_ve.strftime('%d/%m/%Y')
+            return 'No registrada'
+        
         if reporte_tipo == 'simple':
             headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Cuadrilla', 'Estado']
             data = []
@@ -1402,7 +1498,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     i.nombre_cliente,
                     i.customer_id,
                     i.orden_servicio,
-                    i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'No registrada',
+                    formatear_fecha_inst(i.fecha_instalacion),
                     i.asignacion.cuadrilla.nombre if i.asignacion and i.asignacion.cuadrilla else 'N/A',
                     'Completada' if i.completada else 'Pendiente'
                 ])
@@ -1424,7 +1520,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     direccion[:100] if direccion else 'N/A',
                     i.plan,
                     i.asignacion.cuadrilla.nombre if i.asignacion and i.asignacion.cuadrilla else 'N/A',
-                    i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'No registrada',
+                    formatear_fecha_inst(i.fecha_instalacion),
                     'Completada' if i.completada else 'Pendiente',
                     i.modelo_modem.nombre if i.modelo_modem else 'N/A',
                     i.sn_modem or 'N/A',
@@ -1432,14 +1528,13 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     i.customer_id,
                     i.orden_servicio
                 ])
-        
+    
     elif tipo == 'soportes':
         ws = wb.active
         ws.title = "Reporte de Soportes"
         
         soportes = Soporte.objects.all()
         
-        # Convertir a datetime aware
         fecha_inicio_aware = None
         fecha_fin_aware = None
         
@@ -1449,7 +1544,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         if fecha_hasta_obj:
             fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
         
-        # Filtrar usando datetime aware
         if fecha_inicio_aware and fecha_fin_aware:
             soportes = soportes.filter(
                 fecha_hora_servicio__gte=fecha_inicio_aware,
@@ -1475,6 +1569,12 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         
         soportes = soportes.order_by('-fecha_hora_servicio', '-fecha_creacion')
         
+        def formatear_fecha_sop(fecha):
+            if fecha:
+                fecha_ve = fecha.astimezone(VE_TZ)
+                return fecha_ve.strftime('%d/%m/%Y')
+            return 'N/A'
+        
         if reporte_tipo == 'simple':
             headers = ['Cliente', 'Customer ID', 'Ticket Padre', 'Fecha', 'Cuadrilla', 'Estado']
             data = []
@@ -1492,7 +1592,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     cliente,
                     customer_id,
                     ticket_padre,
-                    s.fecha_hora_servicio.strftime('%d/%m/%Y') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y'),
+                    formatear_fecha_sop(s.fecha_hora_servicio or s.fecha_creacion),
                     s.cuadrilla.nombre if s.cuadrilla else 'N/A',
                     s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado
                 ])
@@ -1518,12 +1618,12 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     cedula,
                     tipo_display,
                     s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado,
-                    s.fecha_hora_servicio.strftime('%d/%m/%Y') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y'),
+                    formatear_fecha_sop(s.fecha_hora_servicio or s.fecha_creacion),
                     (s.falla_encontrada[:100] + '...') if s.falla_encontrada and len(s.falla_encontrada) > 100 else (s.falla_encontrada or 'N/A'),
                     (s.solucion[:100] + '...') if s.solucion and len(s.solucion) > 100 else (s.solucion or 'N/A'),
                     s.cuadrilla.nombre if s.cuadrilla else 'N/A'
                 ])
-        
+    
     elif tipo == 'inventario':
         ws = wb.active
         ws.title = "Reporte de Inventario"
@@ -1573,7 +1673,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Crear datetime aware para filtrar
         fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
         fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
         
@@ -1700,10 +1799,13 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             nombre_vendedor = vendedor_obj.get_full_name() or vendedor_obj.username
             
             for contrato in contratos_vendedor:
+                fecha_ve = contrato.fecha_completado.astimezone(VE_TZ) if contrato.fecha_completado else None
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M') if fecha_ve else 'N/A'
+                
                 detalles_data.append([
                     nombre_vendedor,
                     contrato.nombre_completo,
-                    contrato.fecha_completado.strftime('%d/%m/%Y %H:%M') if contrato.fecha_completado else 'N/A',
+                    fecha_str,
                     contrato.plan_contratado.nombre,
                     contrato.customer_id or 'N/A'
                 ])
@@ -1748,7 +1850,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Crear datetime aware para filtrar
         fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
         fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
         
@@ -1782,7 +1883,6 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_set'].add(perfil.usuario.id)
             cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
         
-        # Instalaciones COMPLETADAS
         instalaciones = Instalacion.objects.filter(
             completada=True,
             fecha_instalacion__gte=fecha_inicio_aware,
@@ -1794,32 +1894,29 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             if not cuadrilla_obj:
                 continue
             nombre_cuadrilla = cuadrilla_obj.nombre
-            if nombre_cuadrilla not in cuadrillas_dict:
-                continue
-            
-            instaladores_hist = inst.instaladores.all()
-            
-            if instalador:
-                if not instaladores_hist.filter(id=instalador).exists():
-                    continue
-            
-            if busqueda:
-                tiene_coincidencia = False
+            if nombre_cuadrilla in cuadrillas_dict:
+                instaladores_hist = inst.instaladores.all()
+                
+                if instalador:
+                    if not instaladores_hist.filter(id=instalador).exists():
+                        continue
+                
+                if busqueda:
+                    tiene_coincidencia = False
+                    for inst_hist in instaladores_hist:
+                        nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                        if busqueda.lower() in nombre_completo.lower():
+                            tiene_coincidencia = True
+                            break
+                    if not tiene_coincidencia:
+                        continue
+                
+                cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
+                
                 for inst_hist in instaladores_hist:
-                    nombre_completo = inst_hist.get_full_name() or inst_hist.username
-                    if busqueda.lower() in nombre_completo.lower():
-                        tiene_coincidencia = True
-                        break
-                if not tiene_coincidencia:
-                    continue
-            
-            cuadrillas_dict[nombre_cuadrilla]['instalaciones'] += 1
-            cuadrillas_dict[nombre_cuadrilla]['monto_instalaciones'] += PRECIO_INSTALACION
-            
-            for inst_hist in instaladores_hist:
-                cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
+                    cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Soportes COMPLETADOS
         soportes = Soporte.objects.filter(
             estado='COMPLETADO',
             fecha_creacion__gte=fecha_inicio_aware,
@@ -1830,38 +1927,35 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             if not sop.cuadrilla:
                 continue
             nombre_cuadrilla = sop.cuadrilla.nombre
-            if nombre_cuadrilla not in cuadrillas_dict:
-                continue
-            
-            instaladores_hist = sop.instaladores.all()
-            
-            if instalador:
-                if not instaladores_hist.filter(id=instalador).exists():
-                    continue
-            
-            if busqueda:
-                tiene_coincidencia = False
+            if nombre_cuadrilla in cuadrillas_dict:
+                instaladores_hist = sop.instaladores.all()
+                
+                if instalador:
+                    if not instaladores_hist.filter(id=instalador).exists():
+                        continue
+                
+                if busqueda:
+                    tiene_coincidencia = False
+                    for inst_hist in instaladores_hist:
+                        nombre_completo = inst_hist.get_full_name() or inst_hist.username
+                        if busqueda.lower() in nombre_completo.lower():
+                            tiene_coincidencia = True
+                            break
+                    if not tiene_coincidencia:
+                        continue
+                
+                try:
+                    tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
+                    precio = PRECIOS_SOPORTES.get(tipo, 10)
+                except:
+                    precio = 10
+                
+                cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
+                cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
+                
                 for inst_hist in instaladores_hist:
-                    nombre_completo = inst_hist.get_full_name() or inst_hist.username
-                    if busqueda.lower() in nombre_completo.lower():
-                        tiene_coincidencia = True
-                        break
-                if not tiene_coincidencia:
-                    continue
-            
-            try:
-                tipo = sop.asignacion.ticket.tipo_soporte if sop.asignacion and sop.asignacion.ticket else 'SOPORTE'
-                precio = PRECIOS_SOPORTES.get(tipo, 10)
-            except:
-                precio = 10
-            
-            cuadrillas_dict[nombre_cuadrilla]['soportes'] += 1
-            cuadrillas_dict[nombre_cuadrilla]['monto_soportes'] += precio
-            
-            for inst_hist in instaladores_hist:
-                cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
+                    cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Contratos (creados por instaladores)
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -1998,6 +2092,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
     
     return response
 
+
 def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                  busqueda, vendedor, plan, cuadrilla, estado,
                  tipo_soporte, estado_soporte, material, semana_obj, instalador):
@@ -2015,12 +2110,17 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
     
     VE_TZ = pytz.timezone('America/Caracas')
     
+    def formatear_fecha_pdf(fecha):
+        if fecha:
+            fecha_ve = fecha.astimezone(VE_TZ)
+            return fecha_ve.strftime('%d/%m/%Y %H:%M')
+        return 'N/A'
+    
     if tipo == 'ventas':
-        titulo = "Reporte de Ventas (Completados)"
+        titulo = "Reporte de Ventas"
         
-        datos = ContratoCliente.objects.filter(estado='COMPLETADO')
+        datos = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
         
-        # Convertir a datetime aware
         fecha_inicio_aware = None
         fecha_fin_aware = None
         
@@ -2030,16 +2130,22 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         if fecha_hasta_obj:
             fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
         
-        # Filtrar usando datetime aware
+        # ===== FILTRAR CORRECTAMENTE =====
         if fecha_inicio_aware and fecha_fin_aware:
             datos = datos.filter(
-                fecha_completado__gte=fecha_inicio_aware,
-                fecha_completado__lte=fecha_fin_aware
+                Q(estado='COMPLETADO', fecha_completado__gte=fecha_inicio_aware, fecha_completado__lte=fecha_fin_aware) |
+                Q(estado='EN_PROCESO', fecha_creacion__gte=fecha_inicio_aware, fecha_creacion__lte=fecha_fin_aware)
             )
         elif fecha_inicio_aware:
-            datos = datos.filter(fecha_completado__gte=fecha_inicio_aware)
+            datos = datos.filter(
+                Q(estado='COMPLETADO', fecha_completado__gte=fecha_inicio_aware) |
+                Q(estado='EN_PROCESO', fecha_creacion__gte=fecha_inicio_aware)
+            )
         elif fecha_fin_aware:
-            datos = datos.filter(fecha_completado__lte=fecha_fin_aware)
+            datos = datos.filter(
+                Q(estado='COMPLETADO', fecha_completado__lte=fecha_fin_aware) |
+                Q(estado='EN_PROCESO', fecha_creacion__lte=fecha_fin_aware)
+            )
         
         if vendedor:
             datos = datos.filter(creado_por_id=vendedor)
@@ -2053,41 +2159,56 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                 Q(customer_id__icontains=busqueda)
             )
         
-        datos = datos.order_by('-fecha_completado')
+        datos = datos.order_by('-fecha_creacion')
         total_registros = datos.count()
+        completados = datos.filter(estado='COMPLETADO').count()
+        en_proceso = datos.filter(estado='EN_PROCESO').count()
         
         if reporte_tipo == 'simple':
-            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha Completado', 'Vendedor', 'Estado']
-            rows = [[
-                v.nombre_completo,
-                v.customer_id or 'N/A',
-                v.ods or 'N/A',
-                v.fecha_completado.strftime('%d/%m/%Y') if v.fecha_completado else 'N/A',
-                v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
-                v.get_estado_display()
-            ] for v in datos]
+            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Vendedor', 'Estado']
+            rows = []
+            for v in datos:
+                if v.estado == 'COMPLETADO' and v.fecha_completado:
+                    fecha_str = formatear_fecha_pdf(v.fecha_completado)
+                else:
+                    fecha_str = formatear_fecha_pdf(v.fecha_creacion)
+                
+                rows.append([
+                    v.nombre_completo,
+                    v.customer_id or 'N/A',
+                    v.ods or 'N/A',
+                    fecha_str,
+                    v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+                    v.get_estado_display()
+                ])
         else:
-            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Plan', 'Fecha Completado', 'Fecha Creación', 'Vendedor', 'Customer ID', 'ODS', 'Estado']
-            rows = [[
-                str(v.id),
-                v.nombre_completo,
-                v.cedula,
-                v.telefono_principal,
-                v.plan_contratado.nombre,
-                v.fecha_completado.strftime('%d/%m/%Y') if v.fecha_completado else 'N/A',
-                v.fecha_creacion.strftime('%d/%m/%Y'),
-                v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
-                v.customer_id or 'N/A',
-                v.ods or 'N/A',
-                v.get_estado_display()
-            ] for v in datos]
+            headers = ['ID', 'Cliente', 'Cédula', 'Teléfono', 'Plan', 'Fecha', 'Fecha Creación', 'Vendedor', 'Customer ID', 'ODS', 'Estado']
+            rows = []
+            for v in datos:
+                if v.estado == 'COMPLETADO' and v.fecha_completado:
+                    fecha_str = formatear_fecha_pdf(v.fecha_completado)
+                else:
+                    fecha_str = formatear_fecha_pdf(v.fecha_creacion)
+                
+                rows.append([
+                    str(v.id),
+                    v.nombre_completo,
+                    v.cedula,
+                    v.telefono_principal,
+                    v.plan_contratado.nombre,
+                    fecha_str,
+                    formatear_fecha_pdf(v.fecha_creacion),
+                    v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
+                    v.customer_id or 'N/A',
+                    v.ods or 'N/A',
+                    v.get_estado_display()
+                ])
     
     elif tipo == 'instalaciones':
         titulo = "Reporte de Instalaciones"
         
         datos = Instalacion.objects.all()
         
-        # Convertir a datetime aware
         fecha_inicio_aware = None
         fecha_fin_aware = None
         
@@ -2097,7 +2218,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         if fecha_hasta_obj:
             fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
         
-        # Filtrar usando datetime aware
         if fecha_inicio_aware and fecha_fin_aware:
             datos = datos.filter(
                 fecha_instalacion__gte=fecha_inicio_aware,
@@ -2134,7 +2254,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                     i.nombre_cliente,
                     i.customer_id,
                     i.orden_servicio,
-                    i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'N/A',
+                    formatear_fecha_pdf(i.fecha_instalacion) if i.fecha_instalacion else 'No registrada',
                     i.asignacion.cuadrilla.nombre if i.asignacion and i.asignacion.cuadrilla else 'N/A',
                     'Completada' if i.completada else 'Pendiente'
                 ])
@@ -2148,7 +2268,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                     i.cedula_cliente,
                     i.plan,
                     i.asignacion.cuadrilla.nombre if i.asignacion and i.asignacion.cuadrilla else 'N/A',
-                    i.fecha_instalacion.strftime('%d/%m/%Y') if i.fecha_instalacion else 'N/A',
+                    formatear_fecha_pdf(i.fecha_instalacion) if i.fecha_instalacion else 'N/A',
                     'Completada' if i.completada else 'Pendiente',
                     i.modelo_modem.nombre if i.modelo_modem else 'N/A',
                     i.sn_modem or 'N/A',
@@ -2160,7 +2280,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         
         datos = Soporte.objects.all()
         
-        # Convertir a datetime aware
         fecha_inicio_aware = None
         fecha_fin_aware = None
         
@@ -2170,7 +2289,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         if fecha_hasta_obj:
             fecha_fin_aware = VE_TZ.localize(datetime.combine(fecha_hasta_obj, datetime.max.time()))
         
-        # Filtrar usando datetime aware
         if fecha_inicio_aware and fecha_fin_aware:
             datos = datos.filter(
                 fecha_hora_servicio__gte=fecha_inicio_aware,
@@ -2217,7 +2335,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                     cliente,
                     customer_id,
                     ticket_padre,
-                    s.fecha_hora_servicio.strftime('%d/%m/%Y') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y'),
+                    formatear_fecha_pdf(s.fecha_hora_servicio or s.fecha_creacion),
                     s.cuadrilla.nombre if s.cuadrilla else 'N/A',
                     s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado
                 ])
@@ -2243,7 +2361,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                     cedula,
                     tipo_display,
                     s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado,
-                    s.fecha_hora_servicio.strftime('%d/%m/%Y') if s.fecha_hora_servicio else s.fecha_creacion.strftime('%d/%m/%Y'),
+                    formatear_fecha_pdf(s.fecha_hora_servicio or s.fecha_creacion),
                     (s.falla_encontrada[:80] + '...') if s.falla_encontrada and len(s.falla_encontrada) > 80 else (s.falla_encontrada or 'N/A'),
                     (s.solucion[:80] + '...') if s.solucion and len(s.solucion) > 80 else (s.solucion or 'N/A')
                 ])
@@ -2298,7 +2416,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Crear datetime aware para filtrar
         fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
         fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
         
@@ -2417,7 +2534,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         viernes_inicio = fecha_referencia - timedelta(days=dias_desde_viernes)
         jueves_fin = viernes_inicio + timedelta(days=6)
         
-        # Crear datetime aware para filtrar
         fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
         fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
         
@@ -2449,7 +2565,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                     cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_set'].add(perfil.usuario.id)
             cuadrillas_dict[cuadrilla_obj.nombre]['instaladores_list'] = nombres_instaladores
         
-        # Instalaciones
         instalaciones = Instalacion.objects.filter(
             completada=True,
             fecha_instalacion__gte=fecha_inicio_aware,
@@ -2484,7 +2599,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                 for inst_hist in instaladores_hist:
                     cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Soportes
         soportes = Soporte.objects.filter(
             estado='COMPLETADO',
             fecha_creacion__gte=fecha_inicio_aware,
@@ -2524,7 +2638,6 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                 for inst_hist in instaladores_hist:
                     cuadrillas_dict[nombre_cuadrilla]['instaladores_set'].add(inst_hist.id)
         
-        # Contratos
         instaladores_users = User.objects.filter(groups__name='Instalador')
         
         if instalador:
@@ -2628,7 +2741,9 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
     
     if tipo == 'ventas':
         stats_data.extend([
-            ['Total contratos completados:', str(len(rows))],
+            ['Total registros:', str(len(rows))],
+            ['Completados:', str(completados)],
+            ['En Proceso:', str(en_proceso)],
         ])
     elif tipo == 'instalaciones':
         stats_data.extend([
