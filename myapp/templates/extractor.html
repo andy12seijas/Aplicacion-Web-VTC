@@ -1,0 +1,501 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Extractor de Datos de Instalación{% endblock %}
+
+{% block page_title %}📋 Extractor de Datos de Instalación{% endblock %}
+{% block page_subtitle %}Pega el texto de la instalación y extrae los datos automáticamente{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'dashboard' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .extractor-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    
+    .card-header {
+        padding: 20px 24px;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .card-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--dark-text);
+    }
+    
+    .card-body {
+        padding: 24px;
+    }
+    
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-size: 12px;
+        color: #1565c0;
+    }
+    
+    textarea {
+        width: 100%;
+        height: 280px;
+        padding: 16px;
+        border: 2px solid var(--gray-border);
+        border-radius: 12px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 12px;
+        resize: vertical;
+        transition: all 0.2s;
+    }
+    
+    textarea:focus {
+        outline: none;
+        border-color: var(--orange);
+        box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
+    }
+    
+    .btn-orange {
+        background: var(--orange);
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 16px;
+    }
+    
+    .btn-orange:hover {
+        background: #ff8c00;
+        transform: translateY(-1px);
+    }
+    
+    .btn-outline-green {
+        background: white;
+        color: #4caf50;
+        border: 1px solid #4caf50;
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-top: 16px;
+        margin-left: 12px;
+    }
+    
+    .btn-outline-green:hover {
+        background: #4caf50;
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    .resultados-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+        display: none;
+    }
+    
+    .tabla-horizontal {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .tabla-horizontal th {
+        text-align: center;
+        padding: 14px 12px;
+        background: var(--orange);
+        color: white;
+        font-weight: 500;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-right: 1px solid rgba(255,255,255,0.2);
+        white-space: nowrap;
+    }
+    
+    .tabla-horizontal td {
+        text-align: center;
+        padding: 12px;
+        border-bottom: 1px solid var(--gray-border);
+        font-size: 13px;
+        font-weight: 500;
+        background: white;
+    }
+    
+    .tabla-horizontal tr:hover td {
+        background: var(--gray-bg);
+    }
+    
+    .badge-valor {
+        background: #e8f5e9;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-family: monospace;
+        font-size: 13px;
+        display: inline-block;
+    }
+    
+    .acciones-resultados {
+        padding: 16px 24px;
+        border-top: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+    
+    .mensaje-copiar {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #4caf50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        animation: slideIn 0.3s ease;
+        z-index: 1000;
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .excel-preview {
+        margin-top: 20px;
+        padding: 16px;
+        background: #f1f8e9;
+        border-radius: 12px;
+        border: 1px solid #c5e1a5;
+        display: none;
+    }
+    
+    .excel-preview h4 {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        color: #33691e;
+    }
+    
+    .excel-preview pre {
+        background: white;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 11px;
+        font-family: monospace;
+        margin: 0;
+        border: 1px solid #e0e0e0;
+    }
+    
+    @media (max-width: 768px) {
+        .card-header, .card-body {
+            padding: 16px;
+        }
+        
+        .tabla-horizontal th, .tabla-horizontal td {
+            padding: 8px 10px;
+            font-size: 11px;
+        }
+        
+        .btn-orange, .btn-outline-green {
+            width: 100%;
+            margin-left: 0;
+        }
+        
+        .acciones-resultados {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="extractor-card">
+    <div class="card-header">
+        <h3>📝 Pegar texto de instalación</h3>
+    </div>
+    <div class="card-body">
+        <div class="info-box">
+            💡 <strong>Formato aceptado:</strong><br>
+            ATR VTC #*: 01<br>
+            NOMBRE DEL CLIENTE: Yeferson Amaro<br>
+            ORDEN De SERVICIO: 95516<br>
+            CUSTOMER:472025586<br>
+            FEEDER:VLS 02<br>
+            CAJA: 279<br>
+            PUERTO UTILIZADO: 5<br>
+            EQUIPOS: MODEL: G-1426G-A<br>
+            SN: ALCLFCFC6960<br>
+            INICIO:190<br>
+            FINAL:155<br>
+            METROS:35<br>
+            CONECTORES:2<br>
+            ROSETAS:1<br>
+            PACH CORD:1<br>
+            TENSORES: 3
+        </div>
+        
+        <textarea id="inputTexto" placeholder="Pega aquí el texto de la instalación..."></textarea>
+        
+        <div>
+            <button class="btn-orange" id="btnExtraer">🔍 Extraer Datos</button>
+            <button class="btn-outline-green" onclick="limpiar()">🗑️ Limpiar</button>
+        </div>
+    </div>
+</div>
+
+<div id="resultados" class="resultados-card">
+    <div class="card-header">
+        <h3>📊 Datos Extraídos - Copia la fila para Excel</h3>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="tabla-horizontal" id="tablaDatos">
+            <thead>
+                <tr>
+                    <th>Orden de<br>Servicio</th>
+                    <th>Customer ID</th>
+                    <th>Nombre del<br>Cliente</th>
+                    <th>Metros</th>
+                    <th>Conectores</th>
+                    <th>Rosetas</th>
+                    <th>Patch<br>Cord</th>
+                    <th>Tensores</th>
+                    <th>Modelo del<br>Módem</th>
+                    <th>SN del<br>Módem</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyDatos">
+                <tr>
+                    <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="acciones-resultados">
+        <button class="btn-outline-green" onclick="copiarFila()">📋 Copiar Fila (para Excel)</button>
+        <button class="btn-orange" onclick="copiarTodo()">📋 Copiar Tabla Completa</button>
+    </div>
+    
+    <div id="excelPreview" class="excel-preview">
+        <h4>📊 Formato para Excel (una fila por instalación):</h4>
+        <pre id="previewText"></pre>
+    </div>
+</div>
+
+<script>
+    let datosActuales = {};
+    
+    // Función de extracción mejorada
+    function extraerDatos() {
+        const texto = document.getElementById('inputTexto').value;
+        
+        if (!texto.trim()) {
+            alert('Por favor, pega el texto de la instalación primero.');
+            return;
+        }
+        
+        console.log("Texto recibido:", texto);
+        
+        // Función para extraer valores con múltiples patrones
+        function extraerValor(patrones) {
+            if (!Array.isArray(patrones)) {
+                patrones = [patrones];
+            }
+            
+            for (let patron of patrones) {
+                // Patrón flexible: permite espacios, mayúsculas/minúsculas, dos puntos o no
+                const regex = new RegExp(patron + '\\s*:?\\s*([^\\n]+)', 'i');
+                const match = texto.match(regex);
+                if (match && match[1] && match[1].trim() !== '') {
+                    let valor = match[1].trim();
+                    // Limpiar caracteres no deseados
+                    valor = valor.replace(/[\r\n]+$/, '');
+                    return valor;
+                }
+            }
+            return '—';
+        }
+        
+        function extraerNumero(patrones) {
+            const valor = extraerValor(patrones);
+            if (valor !== '—') {
+                const num = parseInt(valor);
+                return isNaN(num) ? '0' : num.toString();
+            }
+            return '0';
+        }
+        
+        // Extraer cada campo con múltiples variaciones
+        const ordenServicio = extraerValor(['ORDEN De SERVICIO', 'ORDEN DE SERVICIO', 'ORDEN', 'NRO ORDEN']);
+        const customer = extraerValor(['CUSTOMER', 'CUSTOMER ID', 'ID CLIENTE']);
+        const nombre = extraerValor(['NOMBRE DEL CLIENTE', 'CLIENTE', 'NOMBRE']);
+        let metros = extraerValor(['METROS', 'MT', 'METROS UTILIZADOS']);
+        const conectores = extraerNumero(['CONECTORES', 'CONECTOR']);
+        const rosetas = extraerNumero(['ROSETAS', 'ROSETAS UTILIZADAS']);
+        const patchCord = extraerNumero(['PACH CORD', 'PATCH CORD', 'PATCH']);
+        const tensores = extraerNumero(['TENSORES', 'TENSOR']);
+        let modeloModem = extraerValor(['MODEL:', 'MODELO:', 'MODEL']);
+        let snModem = extraerValor(['SN:', 'SERIAL:', 'NRO SERIE']);
+        
+        // Valores por defecto
+        if (modeloModem === '—') modeloModem = 'G-1426G-A';
+        if (snModem === '—') snModem = 'ALCLFCFC6960';
+        
+        // Calcular metros desde INICIO y FINAL si no viene METROS
+        if (metros === '—') {
+            const inicio = extraerValor(['INICIO', 'MEDICION INICIO']);
+            const final = extraerValor(['FINAL', 'MEDICION FINAL']);
+            if (inicio !== '—' && final !== '—') {
+                const diff = Math.abs(parseInt(final) - parseInt(inicio));
+                metros = isNaN(diff) ? '—' : diff.toString();
+            }
+        }
+        
+        if (metros === '—') metros = '0';
+        
+        console.log("Datos extraídos:", {
+            ordenServicio, customer, nombre, metros, conectores, 
+            rosetas, patchCord, tensores, modeloModem, snModem
+        });
+        
+        datosActuales = {
+            ordenServicio: ordenServicio,
+            customer: customer,
+            nombre: nombre,
+            metros: metros,
+            conectores: conectores,
+            rosetas: rosetas,
+            patchCord: patchCord,
+            tensores: tensores,
+            modeloModem: modeloModem,
+            snModem: snModem
+        };
+        
+        // Actualizar la tabla
+        const tbody = document.getElementById('tbodyDatos');
+        tbody.innerHTML = `
+            <tr>
+                <td><span class="badge-valor">${datosActuales.ordenServicio}</span></td>
+                <td><span class="badge-valor">${datosActuales.customer}</span></td>
+                <td><span class="badge-valor">${datosActuales.nombre}</span></td>
+                <td><span class="badge-valor">${datosActuales.metros} m</span></td>
+                <td><span class="badge-valor">${datosActuales.conectores}</span></td>
+                <td><span class="badge-valor">${datosActuales.rosetas}</span></td>
+                <td><span class="badge-valor">${datosActuales.patchCord}</span></td>
+                <td><span class="badge-valor">${datosActuales.tensores}</span></td>
+                <td><span class="badge-valor">${datosActuales.modeloModem}</span></td>
+                <td><span class="badge-valor">${datosActuales.snModem}</span></td>
+            </tr>
+        `;
+        
+        // Vista previa para Excel
+        const previewText = `${datosActuales.ordenServicio}\t${datosActuales.customer}\t${datosActuales.nombre}\t${datosActuales.metros}\t${datosActuales.conectores}\t${datosActuales.rosetas}\t${datosActuales.patchCord}\t${datosActuales.tensores}\t${datosActuales.modeloModem}\t${datosActuales.snModem}`;
+        document.getElementById('previewText').textContent = previewText;
+        document.getElementById('excelPreview').style.display = 'block';
+        document.getElementById('resultados').style.display = 'block';
+        document.getElementById('resultados').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    function limpiar() {
+        document.getElementById('inputTexto').value = '';
+        document.getElementById('tbodyDatos').innerHTML = `
+            <tr>
+                <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+            </tr>
+        `;
+        document.getElementById('resultados').style.display = 'none';
+        document.getElementById('excelPreview').style.display = 'none';
+        datosActuales = {};
+    }
+    
+    function copiarFila() {
+        if (Object.keys(datosActuales).length === 0) {
+            alert('Primero extrae los datos.');
+            return;
+        }
+        
+        const textoExcel = `${datosActuales.ordenServicio}\t${datosActuales.customer}\t${datosActuales.nombre}\t${datosActuales.metros}\t${datosActuales.conectores}\t${datosActuales.rosetas}\t${datosActuales.patchCord}\t${datosActuales.tensores}\t${datosActuales.modeloModem}\t${datosActuales.snModem}`;
+        
+        navigator.clipboard.writeText(textoExcel).then(() => {
+            mostrarMensaje('✅ Fila copiada - Pégala en Excel');
+        }).catch(() => {
+            const textarea = document.createElement('textarea');
+            textarea.value = textoExcel;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            mostrarMensaje('✅ Fila copiada - Pégala en Excel');
+        });
+    }
+    
+    function copiarTodo() {
+        if (Object.keys(datosActuales).length === 0) {
+            alert('Primero extrae los datos.');
+            return;
+        }
+        
+        const encabezados = 'Orden de Servicio\tCustomer ID\tNombre del Cliente\tMetros\tConectores\tRosetas\tPatch Cord\tTensores\tModelo del Módem\tSN del Módem';
+        const valores = `${datosActuales.ordenServicio}\t${datosActuales.customer}\t${datosActuales.nombre}\t${datosActuales.metros}\t${datosActuales.conectores}\t${datosActuales.rosetas}\t${datosActuales.patchCord}\t${datosActuales.tensores}\t${datosActuales.modeloModem}\t${datosActuales.snModem}`;
+        const textoExcel = encabezados + '\n' + valores;
+        
+        navigator.clipboard.writeText(textoExcel).then(() => {
+            mostrarMensaje('✅ Tabla copiada - Incluye encabezados');
+        }).catch(() => {
+            const textarea = document.createElement('textarea');
+            textarea.value = textoExcel;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            mostrarMensaje('✅ Tabla copiada - Incluye encabezados');
+        });
+    }
+    
+    function mostrarMensaje(mensaje) {
+        const div = document.createElement('div');
+        div.className = 'mensaje-copiar';
+        div.textContent = mensaje;
+        document.body.appendChild(div);
+        setTimeout(() => {
+            div.remove();
+        }, 2000);
+    }
+    
+    // Event listener con ID específico
+    document.getElementById('btnExtraer').addEventListener('click', extraerDatos);
+    
+    // Ctrl+Enter para extraer
+    document.getElementById('inputTexto').addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            extraerDatos();
+        }
+    });
+</script>
+{% endblock %}

@@ -47,3 +47,18 @@ class CustomLoginView(LoginView):
             return redirect('login')
         
         return super().form_valid(form)
+    
+
+
+
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def extractor_instalacion(request):
+    """
+    Vista para el extractor de datos de instalación
+    Permite pegar texto y extraer campos específicos
+    """
+    return render(request, 'extractor.html')    

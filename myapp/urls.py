@@ -20,6 +20,7 @@ from myapp.views_reportarpago import *
 from myapp.views_soportecliente import *
 from myapp.views_validacion_soporte import *
 from myapp.views_leads import *
+from myapp.views import *
 
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
@@ -181,6 +182,8 @@ path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_a
     # Reporte de llamadas (para estadísticas)
     path('api/reporte-llamadas/', reporte_llamadas_json, name='reporte_llamadas_json'),
     path('api/clientes-callcenter/', api_clientes_callcenter, name='api_clientes_callcenter'),
+
+    path('extractor-instalacion/', extractor_instalacion, name='extractor_instalacion'),
 
 ]
 
