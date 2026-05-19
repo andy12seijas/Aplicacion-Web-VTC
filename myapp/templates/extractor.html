@@ -308,7 +308,16 @@
             </thead>
             <tbody id="tbodyDatos">
                 <tr>
-                    <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('ordenServicio')">📋</button></td>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('customer')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('nombre')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('metros')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('conectores')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('rosetas')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('patchCord')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('tensores')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('modeloModem')">📋</button></div>
+                    <td>—</div><button class="btn-copy-field" onclick="copiarCampo('snModem')">📋</button></div>
                 </tr>
             </tbody>
         </table>
@@ -326,6 +335,18 @@
 
 <script>
     let datosActuales = {};
+    
+    // Función para formatear el número de orden de servicio
+    function formatearOrdenServicio(numero) {
+        if (!numero || numero === '—') return '—';
+        // Eliminar cualquier carácter no numérico
+        let numStr = numero.toString().replace(/\D/g, '');
+        if (numStr === '') return '—';
+        // Formatear como CO + 9 dígitos (completar con ceros a la izquierda)
+        // Total: CO + 9 dígitos (ej: CO000095584)
+        let padded = numStr.padStart(9, '0');
+        return 'CO' + padded;
+    }
     
     function extraerDatos() {
         const texto = document.getElementById('inputTexto').value;
@@ -361,7 +382,7 @@
             return '0';
         }
         
-        const ordenServicio = extraerValor(['ORDEN De SERVICIO', 'ORDEN DE SERVICIO', 'ORDEN', 'NRO ORDEN']);
+        let ordenServicioRaw = extraerValor(['ORDEN De SERVICIO', 'ORDEN DE SERVICIO', 'ORDEN', 'NRO ORDEN']);
         const customer = extraerValor(['CUSTOMER', 'CUSTOMER ID', 'ID CLIENTE']);
         const nombre = extraerValor(['NOMBRE DEL CLIENTE', 'CLIENTE', 'NOMBRE']);
         let metros = extraerNumero(['METROS', 'MT', 'METROS UTILIZADOS']);
@@ -371,6 +392,9 @@
         const tensores = extraerNumero(['TENSORES', 'TENSOR']);
         let modeloModem = extraerValor(['MODEL:', 'MODELO:', 'MODEL']);
         let snModem = extraerValor(['SN:', 'SERIAL:', 'NRO SERIE']);
+        
+        // Aplicar formato al número de orden de servicio
+        const ordenServicio = formatearOrdenServicio(ordenServicioRaw);
         
         if (modeloModem === '—') modeloModem = 'G-1426G-A';
         if (snModem === '—') snModem = 'ALCLFCFC6960';
@@ -399,20 +423,20 @@
             snModem: snModem
         };
         
-        // Actualizar la tabla - UNA SOLA FILA HORIZONTAL
+        // Actualizar la tabla
         const tbody = document.getElementById('tbodyDatos');
         tbody.innerHTML = `
             <tr>
-                <td><span class="badge-valor">${datosActuales.ordenServicio}</span><button class="btn-copy-field" onclick="copiarCampo('ordenServicio')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.customer}</span><button class="btn-copy-field" onclick="copiarCampo('customer')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.nombre}</span><button class="btn-copy-field" onclick="copiarCampo('nombre')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.metros}</span><button class="btn-copy-field" onclick="copiarCampo('metros')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.conectores}</span><button class="btn-copy-field" onclick="copiarCampo('conectores')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.rosetas}</span><button class="btn-copy-field" onclick="copiarCampo('rosetas')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.patchCord}</span><button class="btn-copy-field" onclick="copiarCampo('patchCord')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.tensores}</span><button class="btn-copy-field" onclick="copiarCampo('tensores')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.modeloModem}</span><button class="btn-copy-field" onclick="copiarCampo('modeloModem')">📋</button></td>
-                <td><span class="badge-valor">${datosActuales.snModem}</span><button class="btn-copy-field" onclick="copiarCampo('snModem')">📋</button></td>
+                <td><span class="badge-valor">${datosActuales.ordenServicio}</span><button class="btn-copy-field" onclick="copiarCampo('ordenServicio')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.customer}</span><button class="btn-copy-field" onclick="copiarCampo('customer')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.nombre}</span><button class="btn-copy-field" onclick="copiarCampo('nombre')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.metros}</span><button class="btn-copy-field" onclick="copiarCampo('metros')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.conectores}</span><button class="btn-copy-field" onclick="copiarCampo('conectores')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.rosetas}</span><button class="btn-copy-field" onclick="copiarCampo('rosetas')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.patchCord}</span><button class="btn-copy-field" onclick="copiarCampo('patchCord')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.tensores}</span><button class="btn-copy-field" onclick="copiarCampo('tensores')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.modeloModem}</span><button class="btn-copy-field" onclick="copiarCampo('modeloModem')">📋</button></div>
+                <td><span class="badge-valor">${datosActuales.snModem}</span><button class="btn-copy-field" onclick="copiarCampo('snModem')">📋</button></div>
             </tr>
         `;
         
@@ -446,7 +470,17 @@
     function limpiar() {
         document.getElementById('inputTexto').value = '';
         document.getElementById('tbodyDatos').innerHTML = `
-            <tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+            <tr><td>—<button class="btn-copy-field" onclick="copiarCampo('ordenServicio')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('customer')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('nombre')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('metros')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('conectores')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('rosetas')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('patchCord')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('tensores')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('modeloModem')">📋</button></td>
+                <td>—<button class="btn-copy-field" onclick="copiarCampo('snModem')">📋</button></td>
+            </tr>
         `;
         document.getElementById('resultados').style.display = 'none';
         document.getElementById('excelPreview').style.display = 'none';
