@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'mnejv+1neoy#utf^le812j(n8bznl!#s*q4*1fi1dtj=4c-)*i'
 
-DEBUG = False
+DEBUG = True
 
 # ⬅️ AGREGADO vtconexiones.com
 ALLOWED_HOSTS = [
