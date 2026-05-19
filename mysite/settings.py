@@ -5,9 +5,9 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-s9z!fs@p1efs3ypgnetd7c5pi$5=--9@9_^w1z6mwtqb(vysu7'
+SECRET_KEY = 'mnejv+1neoy#utf^le812j(n8bznl!#s*q4*1fi1dtj=4c-)*i'
 
-DEBUG = True
+DEBUG = False
 
 # ⬅️ AGREGADO vtconexiones.com
 ALLOWED_HOSTS = [
@@ -98,18 +98,34 @@ WSGI_APPLICATION = 'mysite.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'vtcodcnb_miapp_db',      # El nombre exacto con prefijo
-        'USER': 'vtcodcnb_admin',          # El usuario exacto con prefijo
-        'PASSWORD': 'Simple2026**',         # La contraseña que pusiste
+        'NAME': 'vtcodcnb_miapp_db',
+        'USER': 'vtcodcnb_admin',
+        'PASSWORD': 'Simple2026**',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',  # 🔒 Mejor para seguridad y caracteres
+            'use_unicode': True,   # 🔒 Manejo seguro de strings
         },
+        # 🔒 Timeout para evitar conexiones huérfanas
+        'CONN_MAX_AGE': 600,
+        # 🔒 Número de intentos de reconexión
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
+# Seguridad adicional
+SECURE_BROWSER_XSS_FILTER = True  # 🔒 Protección XSS
+SECURE_CONTENT_TYPE_NOSNIFF = True  # 🔒 Evita MIME sniffing
+X_FRAME_OPTIONS = 'DENY'  # 🔒 Anti-clickjacking
 
+# Si usas HTTPS (recomendado)
+CSRF_COOKIE_SECURE = True  # Solo enviar CSRF por HTTPS
+SESSION_COOKIE_SECURE = True  # Solo enviar sesión por HTTPS
+SECURE_SSL_REDIRECT = True  # Redirigir HTTP a HTTPS
+SECURE_HSTS_SECONDS = 31536000  # 1 año
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
