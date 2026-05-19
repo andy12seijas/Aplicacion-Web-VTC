@@ -857,7 +857,7 @@ def obtener_detalle_instalacion(request, instalacion_id):
             
             # Observaciones y fotos
             'observacion': instalacion.observacion or 'Sin observaciones',
-            'fotos': instalacion.fotos or [],
+            'fotos': [foto.replace('/pagos/pagos/', '/pagos/') if foto and foto.startswith('/pagos/pagos/') else foto for foto in (instalacion.fotos or [])],
             
             # Instaladores que participaron
             'instaladores': [

@@ -1189,7 +1189,7 @@
                                 </div>
                             </div>
                         </td>
-                        <td>{{ instalacion.cedula_cliente }}</td>
+                        <td>{{ instalacion.cedula_cliente }}</d
                         <td>
                             <span class="badge completado">{{ instalacion.customer_id }}</span>
                         </td>
@@ -1200,7 +1200,7 @@
                             <span class="badge" style="background: #ff6b00; color: white;">{{ instalacion.asignacion.venta_directa.nro_orden }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ instalacion.plan }}</td>
+                        <td>{{ instalacion.plan }}</d
                         <td class="cuadrilla-cell">
                             <div class="cuadrilla-nombre">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1216,7 +1216,7 @@
                                 <span class="sin-instaladores">No hay instaladores registrados</span>
                                 {% endfor %}
                             </div>
-                        </td>
+                         </d
                         <td>{{ instalacion.fecha_instalacion|date:"d/m/y H:i" }}</td>
                         {% if es_admin %}
                         <td>
@@ -1563,7 +1563,6 @@
     // ===== FUNCIÓN PARA ABRIR GOOGLE MAPS =====
     function abrirGoogleMaps(latitud, longitud) {
         if (latitud && longitud && latitud !== 0 && longitud !== 0) {
-            // Abrir Google Maps con las coordenadas
             const url = `https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}`;
             window.open(url, '_blank');
         } else {
@@ -1571,7 +1570,6 @@
         }
     }
     
-    // ===== FUNCIÓN PARA MOSTRAR ALERTA DE SIN UBICACIÓN =====
     function mostrarSinUbicacion() {
         Swal.fire({
             icon: 'warning',
@@ -1616,7 +1614,7 @@
     function mostrarDatosEnModal(data) {
         document.getElementById('detalleCliente').textContent = data.nombre_cliente;
         document.getElementById('detalleCedula').textContent = data.cedula_cliente;
-        document.getElementById('detalleTelefono').textContent = data.telefono;
+        document.getElementById('detalleTelefono').textContent = data.telefono_cliente;
         document.getElementById('detallePlan').textContent = data.plan;
         document.getElementById('detalleCustomerId').textContent = data.customer_id || 'No disponible';
         document.getElementById('detalleAtr').textContent = data.atr || '03';
@@ -1639,15 +1637,14 @@
         document.getElementById('detalleTensores').textContent = data.tensores;
         document.getElementById('detalleConectoresMalos').textContent = data.conectores_malos;
         
-        // Mostrar campo SC en el modal de detalles solo si es admin
+        // Mostrar campo SC
         const esAdmin = {{ es_admin|lower }};
         const scContainer = document.getElementById('detalleScContainer');
         const scValue = document.getElementById('detalleSc');
         
-        if (esAdmin) {
+        if (esAdmin && data.trabajo_interno) {
             scContainer.style.display = 'flex';
-            const trabajoInterno = data.trabajo_interno === true || data.trabajo_interno === 'true';
-            if (trabajoInterno) {
+            if (data.trabajo_interno === true || data.trabajo_interno === 'true') {
                 scValue.innerHTML = '<span class="badge" style="background: #ff6b00; color: white;">✓ Sí (Sc)</span>';
             } else {
                 scValue.innerHTML = '<span class="badge" style="background: #e0e0e0; color: #666;">✗ No</span>';
@@ -1671,18 +1668,23 @@
         document.getElementById('detalleCreadoPor').textContent = data.creado_por;
         document.getElementById('detalleTipo').textContent = data.tipo;
         
-        // Cargar fotos
+        // ========== CORRECCIÓN DE FOTOS: Limpiar URLs duplicadas ==========
         const fotosDiv = document.getElementById('detalleFotos');
         fotosDiv.innerHTML = '';
         if (data.fotos && data.fotos.length > 0) {
             data.fotos.forEach(foto => {
+                let urlLimpia = foto;
+                // Limpiar URL duplicada /pagos/pagos/ -> /pagos/
+                if (urlLimpia && urlLimpia.startsWith('/pagos/pagos/')) {
+                    urlLimpia = urlLimpia.replace('/pagos/pagos/', '/pagos/');
+                }
                 const fotoItem = document.createElement('div');
                 fotoItem.className = 'foto-item-modal';
                 const img = document.createElement('img');
-                img.src = foto;
+                img.src = urlLimpia;
                 img.alt = 'Foto de instalación';
                 fotoItem.appendChild(img);
-                fotoItem.onclick = () => verFotoAmpliada(foto);
+                fotoItem.onclick = () => verFotoAmpliada(urlLimpia);
                 fotosDiv.appendChild(fotoItem);
             });
         } else {
@@ -1772,15 +1774,13 @@
                 document.getElementById('infoClienteVendedorTelefono').textContent = inst.vendedor_telefono || 'No registrado';
                 document.getElementById('infoClienteVendedorEmail').textContent = inst.vendedor_email || '-';
                 
-                // Mostrar campo SC solo si es admin
                 const esAdmin = {{ es_admin|lower }};
                 const scContainer = document.getElementById('infoClienteScContainer');
                 const scValue = document.getElementById('infoClienteSc');
                 
-                if (esAdmin) {
+                if (esAdmin && inst.trabajo_interno) {
                     scContainer.style.display = 'flex';
-                    const trabajoInterno = inst.trabajo_interno === true || inst.trabajo_interno === 'true';
-                    if (trabajoInterno) {
+                    if (inst.trabajo_interno === true || inst.trabajo_interno === 'true') {
                         scValue.innerHTML = '<span class="badge" style="background: #ff6b00; color: white;">✓ Sí (Sc)</span>';
                     } else {
                         scValue.innerHTML = '<span class="badge" style="background: #e0e0e0; color: #666;">✗ No</span>';
