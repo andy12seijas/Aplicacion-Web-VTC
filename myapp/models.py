@@ -2413,3 +2413,100 @@ class LeadInteresado(models.Model):
         self.cliente_potencial_convertido = cliente_potencial
         self.estado = self.EstadoLead.CONVERTIDO
         self.save(update_fields=['cliente_potencial_convertido', 'estado'])            
+
+
+# models.py - Agrega al final del archivo
+
+class RegistroLlamada(models.Model):
+    """Registro de llamadas del Call Center"""
+    
+    class EstadoLlamada(models.TextChoices):
+        PENDIENTE = 'PENDIENTE', '⏳ Pendiente'
+        CONTACTADO = 'CONTACTADO', '✅ Contactado'
+        NO_RESPONDE = 'NO_RESPONDE', '❌ No Responde'
+    
+    # Relación con los diferentes tipos de cliente (solo uno se usa)
+    contrato = models.ForeignKey(
+        'ContratoCliente',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='llamadas'
+    )
+    cliente_potencial = models.ForeignKey(
+        'ClientePotencial',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='llamadas'
+    )
+    cliente_externo = models.ForeignKey(
+        'ClienteExterno',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='llamadas'
+    )
+    
+    # Datos de la llamada
+    estado = models.CharField(
+        max_length=20,
+        choices=EstadoLlamada.choices,
+        default=EstadoLlamada.PENDIENTE,
+        verbose_name="Estado de la llamada",
+        db_index=True
+    )
+    nota = models.TextField(
+        blank=True, 
+        null=True,
+        verbose_name="Notas de la llamada"
+    )
+    fecha_llamada = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha y hora de la llamada"
+    )
+    realizado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='llamadas_realizadas',
+        verbose_name="Realizado por"
+    )
+    
+    class Meta:
+        verbose_name = "Registro de Llamada"
+        verbose_name_plural = "Registros de Llamadas"
+        ordering = ['-fecha_llamada']
+        indexes = [
+            models.Index(fields=['estado']),
+            models.Index(fields=['fecha_llamada']),
+        ]
+    
+    def __str__(self):
+        cliente = self.contrato or self.cliente_potencial or self.cliente_externo
+        if cliente:
+            nombre = cliente.nombre_completo if hasattr(cliente, 'nombre_completo') else str(cliente)
+            return f"Llamada a {nombre} - {self.get_estado_display()}"
+        return f"Llamada #{self.id} - {self.get_estado_display()}"
+    
+    @property
+    def nombre_cliente(self):
+        """Obtiene el nombre del cliente desde la relación correspondiente"""
+        if self.contrato:
+            return self.contrato.nombre_completo
+        elif self.cliente_potencial:
+            return self.cliente_potencial.nombre_completo
+        elif self.cliente_externo:
+            return self.cliente_externo.nombre_completo
+        return "Cliente no disponible"
+    
+    @property
+    def telefono_cliente(self):
+        """Obtiene el teléfono del cliente desde la relación correspondiente"""
+        if self.contrato:
+            return self.contrato.telefono_principal
+        elif self.cliente_potencial:
+            return self.cliente_potencial.telefono
+        elif self.cliente_externo:
+            return self.cliente_externo.telefono
+        return "N/A"        

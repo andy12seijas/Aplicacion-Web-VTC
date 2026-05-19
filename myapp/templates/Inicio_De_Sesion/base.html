@@ -660,22 +660,25 @@
             </div>
 
             <div class="menu">
+                <!-- SECCIÓN VENTAS - SOLO PARA USUARIOS QUE NO SON CALL CENTER -->
+                {% if user.groups.all.0.name != 'Call Center' %}
                 <div class="menu-section">VENTAS</div>
-                
+
                 <div class="menu-item" onclick="toggleSubmenu(this, 'vendedorSubmenu')">
                     <span class="menu-icon">👤</span>
                     <span class="menu-title">Vendedor</span>
                     <i class="fas fa-chevron-down arrow"></i>
                 </div>
-                
+
                 <ul class="submenu" id="vendedorSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_clientes' %}'">Captura de Cliente</li>
                     <li class="submenu-item" onclick="window.location.href='{% url 'lista_contratos' %}'">Contrato de Cliente</li>
-                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' or user.groups.all.0.name == 'Vendedor' or user.groups.all.0.name == 'Supervisor'%}
+                    {% if user.is_superuser or user.groups.all.0.name == 'Administrador' or user.groups.all.0.name == 'Vendedor' or user.groups.all.0.name == 'Supervisor' %}
                     <li class="submenu-item" onclick="window.location.href='{% url 'estado_cuadrillas' %}'">Estados de las Cuadrillas</li>
                     {% endif %}
                     <li class="submenu-item" onclick="window.location.href='{% url 'reporte_vendedor' %}'">Reporte</li>
                 </ul>
+                {% endif %}
 
                 <!-- SECCIÓN OPERACIONES - SOLO PARA INSTALADORES Y ADMIN (NO para Supervisor) -->
                 {% if user.groups.all.0.name == 'Instalador' or user.groups.all.0.name == 'Administrador' or user.is_superuser %}
@@ -708,6 +711,7 @@
                 <ul class="submenu" id="callcenterSubmenu">
                     <li class="submenu-item" onclick="window.location.href='{% url 'validacion_pagos' %}'">Validación de Pagos</li>
                     <li class="submenu-item" onclick="window.location.href='{% url 'panel_leads' %}'">Clientes Interesados</li>
+                    <li class="submenu-item" onclick="window.location.href='{% url 'reporte_clientes_callcenter' %}'">Llamadas</li>
                     <!-- Aquí puedes agregar más opciones en el futuro como: -->
                     <!-- <li class="submenu-item" >Historial de Validaciones</li> -->
                     <!-- <li class="submenu-item" ">Reportes</li> -->

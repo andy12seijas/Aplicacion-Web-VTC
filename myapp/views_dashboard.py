@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User, Group
 from django.db.models.functions import TruncDate, TruncWeek
 from .models import (
-    ContratoCliente, ClientePotencial, Cuadrilla, AsignacionContrato,
-    Instalacion, Soporte, VentaDirecta, NominaVendedor, Plan
+    ClienteExterno, ContratoCliente, ClientePotencial, Cuadrilla, AsignacionContrato,
+    Instalacion, RegistroLlamada, Soporte, VentaDirecta, NominaVendedor, Plan
 )
 
 def es_vendedor(user):
@@ -33,6 +33,8 @@ def dashboard(request):
         return dashboard_instalador(request)
     elif user.groups.filter(name='Supervisor').exists():
         return dashboard_supervisor(request)
+    elif user.groups.filter(name='Call Center').exists():
+        return dashboard_callcenter(request)
     else:
         # Perfil sin rol específico
         return dashboard_general(request)
@@ -572,6 +574,181 @@ def dashboard_supervisor(request):
         'distribucion_labels': distribucion_labels,
         'distribucion_data': distribucion_data,
         'distribucion_colors': distribucion_colors,
+    }
+    
+    return render(request, 'Inicio_De_Sesion/dashboard.html', context)
+
+
+
+# ==================== DASHBOARD CALL CENTER ====================
+def dashboard_callcenter(request):
+    """Dashboard para Call Center - Estadísticas de llamadas y clientes"""
+    user = request.user
+    
+    hoy = timezone.now().date()
+    inicio_semana = hoy - timedelta(days=hoy.weekday())
+    fin_semana = inicio_semana + timedelta(days=6)
+    
+    # ========== ESTADÍSTICAS DE LLAMADAS ==========
+    total_llamadas = RegistroLlamada.objects.count()
+    llamadas_hoy = RegistroLlamada.objects.filter(fecha_llamada__date=hoy).count()
+    llamadas_semana = RegistroLlamada.objects.filter(
+        fecha_llamada__date__gte=inicio_semana,
+        fecha_llamada__date__lte=fin_semana
+    ).count()
+    
+    # Llamadas por estado
+    llamadas_contactados = RegistroLlamada.objects.filter(estado='CONTACTADO').count()
+    llamadas_no_responde = RegistroLlamada.objects.filter(estado='NO_RESPONDE').count()
+    llamadas_pendientes = RegistroLlamada.objects.filter(estado='PENDIENTE').count()
+    
+    porcentaje_efectividad = (llamadas_contactados / total_llamadas * 100) if total_llamadas > 0 else 0
+    
+    # ========== ESTADÍSTICAS DE CLIENTES ==========
+    total_contratos = ContratoCliente.objects.count()
+    total_potenciales = ClientePotencial.objects.count()
+    total_externos = ClienteExterno.objects.count()
+    
+    # Clientes pendientes por contactar
+    from django.db.models import OuterRef, Subquery
+    
+    ultima_llamada_contrato = RegistroLlamada.objects.filter(
+        contrato=OuterRef('pk')
+    ).order_by('-fecha_llamada')
+    
+    contratos_sin_contactar = ContratoCliente.objects.annotate(
+        ultimo_estado=Subquery(ultima_llamada_contrato.values('estado')[:1])
+    ).filter(
+        Q(ultimo_estado__isnull=True) | Q(ultimo_estado='PENDIENTE')
+    ).count()
+    
+    ultima_llamada_potencial = RegistroLlamada.objects.filter(
+        cliente_potencial=OuterRef('pk')
+    ).order_by('-fecha_llamada')
+    
+    potenciales_sin_contactar = ClientePotencial.objects.annotate(
+        ultimo_estado=Subquery(ultima_llamada_potencial.values('estado')[:1])
+    ).filter(
+        Q(ultimo_estado__isnull=True) | Q(ultimo_estado='PENDIENTE')
+    ).count()
+    
+    ultima_llamada_externo = RegistroLlamada.objects.filter(
+        cliente_externo=OuterRef('pk')
+    ).order_by('-fecha_llamada')
+    
+    externos_sin_contactar = ClienteExterno.objects.annotate(
+        ultimo_estado=Subquery(ultima_llamada_externo.values('estado')[:1])
+    ).filter(
+        Q(ultimo_estado__isnull=True) | Q(ultimo_estado='PENDIENTE')
+    ).count()
+    
+    total_pendientes_contactar = contratos_sin_contactar + potenciales_sin_contactar + externos_sin_contactar
+    
+    # ========== LLAMADAS POR MES ==========
+    meses = []
+    llamadas_por_mes = []
+    for i in range(5, -1, -1):
+        fecha_inicio = hoy.replace(day=1) - timedelta(days=30*i)
+        fecha_fin = (fecha_inicio.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        
+        conteo = RegistroLlamada.objects.filter(
+            fecha_llamada__date__gte=fecha_inicio,
+            fecha_llamada__date__lte=fecha_fin
+        ).count()
+        meses.append(fecha_inicio.strftime('%b'))
+        llamadas_por_mes.append(conteo)
+    
+    # ========== ÚLTIMAS LLAMADAS REALIZADAS (CORREGIDO - SIN ASIGNAR ATRIBUTOS) ==========
+    ultimas_llamadas_query = RegistroLlamada.objects.select_related(
+        'contrato__cliente_potencial',
+        'cliente_potencial',
+        'cliente_externo',
+        'realizado_por'
+    ).order_by('-fecha_llamada')[:10]
+    
+    # Convertir a lista de diccionarios para evitar asignar atributos
+    ultimas_llamadas = []
+    for llamada in ultimas_llamadas_query:
+        if llamada.contrato:
+            nombre_cliente = llamada.contrato.nombre_completo
+            telefono_cliente = llamada.contrato.telefono_principal
+            tipo_cliente = 'Contrato'
+        elif llamada.cliente_potencial:
+            nombre_cliente = llamada.cliente_potencial.nombre_completo
+            telefono_cliente = llamada.cliente_potencial.telefono
+            tipo_cliente = 'Potencial'
+        elif llamada.cliente_externo:
+            nombre_cliente = llamada.cliente_externo.nombre_completo
+            telefono_cliente = llamada.cliente_externo.telefono
+            tipo_cliente = 'Externo'
+        else:
+            nombre_cliente = 'N/A'
+            telefono_cliente = 'N/A'
+            tipo_cliente = 'N/A'
+        
+        ultimas_llamadas.append({
+            'id': llamada.id,
+            'nombre_cliente': nombre_cliente,
+            'telefono_cliente': telefono_cliente,
+            'tipo_cliente': tipo_cliente,
+            'estado': llamada.estado,
+            'nota': llamada.nota,
+            'fecha_llamada': llamada.fecha_llamada,
+            'realizado_por': llamada.realizado_por,
+        })
+    
+    # ========== RENDIMIENTO POR AGENTE (CORREGIDO) ==========
+    agentes_query = User.objects.filter(groups__name='Call Center').annotate(
+        total_llamadas=Count('llamadas_realizadas'),
+        contactados=Count('llamadas_realizadas', filter=Q(llamadas_realizadas__estado='CONTACTADO')),
+        no_responde=Count('llamadas_realizadas', filter=Q(llamadas_realizadas__estado='NO_RESPONDE'))
+    ).order_by('-total_llamadas')[:5]
+    
+    # Convertir a lista de diccionarios
+    agentes = []
+    for agente in agentes_query:
+        efectividad = round((agente.contactados / agente.total_llamadas * 100), 1) if agente.total_llamadas > 0 else 0
+        agentes.append({
+            'id': agente.id,
+            'username': agente.username,
+            'full_name': agente.get_full_name(),
+            'total_llamadas': agente.total_llamadas,
+            'contactados': agente.contactados,
+            'no_responde': agente.no_responde,
+            'efectividad': efectividad,
+        })
+    
+    # ========== CLIENTES CON MAYOR INTENCIÓN ==========
+    clientes_interesados = ClientePotencial.objects.filter(
+        interesado__in=['SI', 'TAL_VEZ']
+    ).exclude(
+        id__in=ContratoCliente.objects.values_list('cliente_potencial_id', flat=True)
+    ).select_related('creado_por')[:10]
+    
+    context = {
+        'rol': 'callcenter',
+        # Estadísticas de llamadas
+        'total_llamadas': total_llamadas,
+        'llamadas_hoy': llamadas_hoy,
+        'llamadas_semana': llamadas_semana,
+        'llamadas_contactados': llamadas_contactados,
+        'llamadas_no_responde': llamadas_no_responde,
+        'llamadas_pendientes': llamadas_pendientes,
+        'porcentaje_efectividad': round(porcentaje_efectividad, 1),
+        # Estadísticas de clientes
+        'total_contratos': total_contratos,
+        'total_potenciales': total_potenciales,
+        'total_externos': total_externos,
+        'total_pendientes_contactar': total_pendientes_contactar,
+        # Gráficas
+        'meses': json.dumps(meses),
+        'llamadas_por_mes': json.dumps(llamadas_por_mes),
+        # Últimas llamadas (lista de diccionarios)
+        'ultimas_llamadas': ultimas_llamadas,
+        # Agentes (lista de diccionarios)
+        'agentes': agentes,
+        # Clientes con interés
+        'clientes_interesados': clientes_interesados,
     }
     
     return render(request, 'Inicio_De_Sesion/dashboard.html', context)

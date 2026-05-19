@@ -10,6 +10,8 @@
         Mi Dashboard de Instalaciones
     {% elif rol == 'administrador' %}
         Panel de Control Administrativo
+    {% elif rol == 'callcenter' %}
+        Dashboard Call Center
     {% else %}
         Dashboard
     {% endif %}
@@ -22,6 +24,8 @@
         Resumen de tus instalaciones y actividades
     {% elif rol == 'administrador' %}
         Visión general del negocio
+    {% elif rol == 'callcenter' %}
+        Estadísticas de llamadas y gestión de clientes
     {% else %}
         Bienvenido al sistema
     {% endif %}
@@ -37,6 +41,16 @@
             </svg>
             Actualizar
         </button>
+    </div>
+    {% elif rol == 'callcenter' %}
+    <div class="header-actions">
+        <a href="{% url 'reporte_clientes_callcenter' %}" class="btn-orange">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            Marcador de Clientes
+        </a>
     </div>
     {% endif %}
 {% endblock %}
@@ -339,7 +353,7 @@
                                 </svg>
                             </button>
                         </div>
-                    </tr>
+                    <tr>
                     {% empty %}
                     <tr><td colspan="5" class="empty">No hay asignaciones pendientes 🎉</div>{% endfor %}
                 </tbody>
@@ -535,7 +549,6 @@
     
     <!-- Gráficas en torta -->
     <div class="dashboard-row">
-        <!-- Gráfica de Interés de Clientes -->
         <div class="dashboard-card">
             <div class="card-header">
                 <h3>📊 Interés de Clientes</h3>
@@ -546,7 +559,6 @@
             </div>
         </div>
         
-        <!-- Gráfica de Estado de Contratos -->
         <div class="dashboard-card">
             <div class="card-header">
                 <h3>📋 Estado de Contratos</h3>
@@ -559,7 +571,6 @@
     </div>
     
     <div class="dashboard-row">
-        <!-- Gráfica de Instalaciones -->
         <div class="dashboard-card">
             <div class="card-header">
                 <h3>🔧 Instalaciones</h3>
@@ -570,7 +581,6 @@
             </div>
         </div>
         
-        <!-- Gráfica de Soportes por Tipo -->
         <div class="dashboard-card">
             <div class="card-header">
                 <h3>🛠️ Soportes por Tipo</h3>
@@ -637,7 +647,7 @@
                         <td>{{ contrato.fecha_creacion|date:"d/m/Y H:i" }}</div>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty">No hay contratos registrados</div>{% endfor %}
+                    <td><td colspan="5" class="empty">No hay contratos registrados</div>{% endfor %}
                 </tbody>
             </table>
         </div>
@@ -986,9 +996,253 @@
         </div>
     </div>
     
-    {% endif %}
+    
+    <<!-- ==================== DASHBOARD CALL CENTER ==================== -->
+{% elif rol == 'callcenter' %}
+
+<!-- Stats Cards - Llamadas -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_llamadas }}</span>
+            <span class="stat-label">Total Llamadas</span>
+        </div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ llamadas_contactados }}</span>
+            <span class="stat-label">Contactados</span>
+        </div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="18" y1="6" x2="6" y2="18"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ llamadas_no_responde }}</span>
+            <span class="stat-label">No Responde</span>
+        </div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ llamadas_pendientes }}</span>
+            <span class="stat-label">Pendientes</span>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards - Clientes por Contactar -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_contratos }}</span>
+            <span class="stat-label">Contratos</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_potenciales }}</span>
+            <span class="stat-label">Potenciales</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_externos }}</span>
+            <span class="stat-label">Externos</span>
+        </div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+            </svg>
+        </div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_pendientes_contactar }}</span>
+            <span class="stat-label">Por Contactar</span>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfica y Resumen -->
+<div class="dashboard-row">
+    <div class="dashboard-card chart-card">
+        <div class="card-header">
+            <h3>📊 Llamadas por Mes</h3>
+            <span class="card-badge">Últimos 6 meses</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="llamadasChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>📈 Resumen de Gestión</h3>
+        </div>
+        <div class="progress-container" style="padding: 20px;">
+            <div class="progress-info" style="width: 100%;">
+                <div class="info-item">
+                    <span class="info-label">Efectividad general:</span>
+                    <span class="info-value highlight">{{ porcentaje_efectividad }}%</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Llamadas esta semana:</span>
+                    <span class="info-value">{{ llamadas_semana }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Llamadas hoy:</span>
+                    <span class="info-value">{{ llamadas_hoy }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Contactados hoy:</span>
+                    <span class="info-value success">{{ llamadas_contactados_hoy|default:"0" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Últimas Llamadas Realizadas -->
+<div class="dashboard-card full-width">
+    <div class="card-header">
+        <h3>📞 Últimas Llamadas Realizadas</h3>
+        <a href="{% url 'reporte_clientes_callcenter' %}" class="link-view">Ir al marcador →</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-dashboard">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Notas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for llamada in ultimas_llamadas %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <span class="user-avatar-sm">{{ llamada.nombre_cliente|slice:":2"|upper }}</span>
+                            {{ llamada.nombre_cliente }}
+                        </div>
+                    </div>
+                    <td>{{ llamada.telefono_cliente }}</div>
+                    <td>
+                        {% if llamada.estado == 'CONTACTADO' %}
+                        <span class="badge badge-success">✅ Contactado</span>
+                        {% else %}
+                        <span class="badge badge-danger">❌ No Responde</span>
+                        {% endif %}
+                    </div>
+                    <td>{{ llamada.fecha_llamada|date:"d/m/Y H:i" }}</div>
+                    <td>{{ llamada.nota|truncatechars:40 }}</div>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="empty">No hay llamadas registradas</div>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Clientes con Mayor Interés -->
+<div class="dashboard-card full-width">
+    <div class="card-header">
+        <h3>⭐ Clientes Potenciales con Mayor Interés</h3>
+        <span class="card-badge">Sin contrato aún</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-dashboard">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>Interés</th>
+                    <th>Vendedor</th>
+                    <th>Fecha Registro</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes_interesados %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <span class="user-avatar-sm">{{ cliente.nombre|slice:":2"|upper }}{{ cliente.apellido|slice:":2"|upper }}</span>
+                            {{ cliente.nombre_completo }}
+                        </div>
+                    </div>
+                    <td>{{ cliente.telefono }}</div>
+                    <td>
+                        <span class="badge {% if cliente.interesado == 'SI' %}badge-success{% else %}badge-warning{% endif %}">
+                            {% if cliente.interesado == 'SI' %}✅ Sí{% else %}🤔 Tal vez{% endif %}
+                        </span>
+                    </div>
+                    <td>{{ cliente.creado_por.get_full_name|default:cliente.creado_por.username }}</div>
+                    <td>{{ cliente.fecha_creacion|date:"d/m/Y" }}</div>
+                    <td>
+                        <a href="{% url 'reporte_clientes_callcenter' %}?busqueda={{ cliente.cedula }}" class="action-btn" title="Llamar">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty">No hay clientes interesados sin contrato</div>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer">
+        <a href="{% url 'reporte_clientes_callcenter' %}?tipo=potenciales&interes=SI" class="link-view">Ver todos los clientes interesados →</a>
+    </div>
+</div>
+
+{% endif %}
     
 </div>
+
 <style>
     /* ===== VARIABLES ===== */
     :root {
@@ -1459,120 +1713,7 @@
         margin-bottom: 6px;
     }
     
-    /* ===== SOPORTES TIPO GRID ===== */
-    .soportes-tipo-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        padding: 20px;
-        text-align: center;
-    }
-    
-    .tipo-item {
-        padding: 16px;
-        border-radius: 12px;
-        background: var(--gray-bg);
-    }
-    
-    .tipo-item.mudanza { background: #e0f2fe; }
-    .tipo-item.retiro { background: #fed7aa; }
-    .tipo-item.recableado { background: #d1fae5; }
-    
-    .tipo-value {
-        font-size: 24px;
-        font-weight: 700;
-        display: block;
-    }
-    
-    .tipo-label {
-        font-size: 11px;
-        color: var(--gray-text);
-    }
-    
-    .soportes-estado {
-        display: flex;
-        justify-content: space-around;
-        padding: 16px 20px;
-        border-top: 1px solid var(--gray-border);
-    }
-    
-    .estado-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 12px;
-    }
-    
-    .estado-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-    }
-    
-    .estado-dot.pendiente { background: var(--warning); }
-    .estado-dot.proceso { background: var(--info); }
-    .estado-dot.completado { background: var(--success); }
-    
-    /* ===== NOMINA LIST ===== */
-    .nomina-list {
-        padding: 8px 0;
-    }
-    
-    .nomina-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--gray-border);
-    }
-    
-    .nomina-item:last-child {
-        border-bottom: none;
-    }
-    
-    .nomina-vendedor {
-        font-weight: 500;
-        font-size: 13px;
-    }
-    
-    .nomina-info {
-        display: flex;
-        gap: 16px;
-    }
-    
-    .nomina-contratos {
-        font-size: 11px;
-        color: var(--gray-text);
-    }
-    
-    .nomina-total {
-        font-weight: 600;
-        color: var(--success);
-    }
-    
-    /* ===== WELCOME CARD ===== */
-    .welcome-card {
-        background: white;
-        border-radius: 24px;
-        padding: 48px 32px;
-        text-align: center;
-        border: 1px solid var(--gray-border);
-    }
-    
-    .welcome-icon {
-        margin-bottom: 24px;
-    }
-    
-    .welcome-card h2 {
-        font-size: 24px;
-        margin-bottom: 12px;
-    }
-    
-    .welcome-card p {
-        color: var(--gray-text);
-        margin-bottom: 24px;
-    }
-    
+    /* ===== WELCOME ACTIONS ===== */
     .welcome-actions {
         display: flex;
         gap: 12px;
@@ -1589,6 +1730,9 @@
         font-weight: 500;
         text-decoration: none;
         transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
     }
     
     .btn-outline:hover {
@@ -1643,6 +1787,56 @@
         gap: 8px;
     }
     
+    /* Ranking stats */
+    .ranking-stats {
+        display: flex;
+        gap: 12px;
+        font-size: 11px;
+    }
+    
+    .stat-completados { color: #10b981; }
+    .stat-proceso { color: #f59e0b; }
+    .stat-total { color: #ff6b00; }
+    
+    .ranking-eficiencia {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 80px;
+    }
+    
+    .mini-progress {
+        width: 50px;
+        height: 4px;
+        background: var(--gray-border);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+    
+    .mini-fill {
+        height: 100%;
+        background: var(--orange);
+        border-radius: 2px;
+    }
+    
+    .text-success { color: #10b981; }
+    .text-warning { color: #f59e0b; }
+    .text-danger { color: #ef4444; }
+    
+    .progress-bar-mini {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 80px;
+    }
+    
+    .progress-bar-mini .progress-fill {
+        width: 60px;
+        height: 6px;
+        background: var(--orange);
+        border-radius: 3px;
+    }
+    
     /* ===== RESPONSIVE ===== */
     @media screen and (max-width: 1024px) {
         .dashboard-row {
@@ -1682,19 +1876,9 @@
             grid-template-columns: repeat(2, 1fr);
         }
         
-        .soportes-tipo-grid {
-            grid-template-columns: 1fr;
-        }
-        
         .welcome-actions {
             flex-direction: column;
             align-items: center;
-        }
-        
-        .nomina-info {
-            flex-direction: column;
-            gap: 4px;
-            align-items: flex-end;
         }
     }
     
@@ -1709,93 +1893,6 @@
             align-items: flex-start;
         }
     }
-    /* Ranking stats */
-.ranking-stats {
-    display: flex;
-    gap: 12px;
-    font-size: 11px;
-}
-
-.stat-completados { color: #10b981; }
-.stat-proceso { color: #f59e0b; }
-.stat-total { color: #ff6b00; }
-
-.ranking-eficiencia {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 80px;
-}
-
-.mini-progress {
-    width: 50px;
-    height: 4px;
-    background: var(--gray-border);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.mini-fill {
-    height: 100%;
-    background: var(--orange);
-    border-radius: 2px;
-}
-
-/* Distribución */
-.distribucion-container {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.distribucion-leyenda {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    margin-top: 20px;
-    flex-wrap: wrap;
-}
-
-.leyenda-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-}
-
-.leyenda-color {
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-}
-
-.leyenda-label {
-    color: var(--gray-text);
-}
-
-.leyenda-valor {
-    font-weight: 600;
-    color: var(--dark-text);
-}
-
-.text-success { color: #10b981; }
-.text-warning { color: #f59e0b; }
-.text-danger { color: #ef4444; }
-
-.progress-bar-mini {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 80px;
-}
-
-.progress-bar-mini .progress-fill {
-    width: 60px;
-    height: 6px;
-    background: var(--orange);
-    border-radius: 3px;
-}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -2015,6 +2112,38 @@
                     }
                 });
             }
+            
+        {% elif rol == 'callcenter' %}
+            // Gráfica de llamadas por mes
+            const llamadasCtx = document.getElementById('llamadasChart')?.getContext('2d');
+            if (llamadasCtx) {
+                new Chart(llamadasCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: {{ meses|safe }},
+                        datasets: [{
+                            label: 'Llamadas',
+                            data: {{ llamadas_por_mes|safe }},
+                            backgroundColor: 'rgba(255, 107, 0, 0.7)',
+                            borderColor: '#ff6b00',
+                            borderWidth: 1,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
         {% endif %}
     });
     
@@ -2033,10 +2162,8 @@
         fetch('/dashboard/datos-api/')
             .then(response => response.json())
             .then(data => {
-                // Actualizar stats dinámicamente
                 const statsElements = document.querySelectorAll('.stat-value, .stat-value-sm');
                 if (statsElements.length) {
-                    // Aquí podrías actualizar los valores
                     console.log('Datos actualizados:', data);
                 }
             })

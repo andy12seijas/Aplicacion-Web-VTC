@@ -174,6 +174,14 @@ path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_a
     path('agregar-nota-lead/<int:lead_id>/',agregar_nota_lead, name='agregar_nota_lead'),
     path('ver-detalle-lead/<int:lead_id>/', ver_detalle_lead, name='ver_detalle_lead'),
 
+
+    path('reporte-clientes-callcenter/', reporte_clientes_callcenter, name='reporte_clientes_callcenter'),
+    path('registrar-llamada/', registrar_llamada, name='registrar_llamada'),
+    
+    # Reporte de llamadas (para estadísticas)
+    path('api/reporte-llamadas/', reporte_llamadas_json, name='reporte_llamadas_json'),
+    path('api/clientes-callcenter/', api_clientes_callcenter, name='api_clientes_callcenter'),
+
 ]
 
 
