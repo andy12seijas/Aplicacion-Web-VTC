@@ -10,7 +10,9 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 import json
 
-from myapp.models import LeadInteresado  # Ajusta la ruta según tu estructura
+from myapp.decorators import admin_required
+from myapp.models import ClientePotencial, LeadInteresado
+from myapp.views_instalacion_admin import es_admin  # Ajusta la ruta según tu estructura
 
 
 @staff_member_required
@@ -210,3 +212,260 @@ def ver_detalle_lead(request, lead_id):
     }
     
     return JsonResponse(data)
+from django.contrib.auth.decorators import login_required, user_passes_test
+
+@csrf_exempt
+@login_required
+def convertir_lead_cliente(request, lead_id):
+    """API para marcar un lead como CONVERTIDO"""
+    
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+    
+    try:
+        lead = get_object_or_404(LeadInteresado, id=lead_id)
+        
+        # Solo cambiar el estado a CONVERTIDO
+        lead.estado = LeadInteresado.EstadoLead.CONVERTIDO
+        lead.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Lead marcado como CONVERTIDO exitosamente'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    
+
+
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db.models import Count, Q, Sum
+from django.utils import timezone
+from datetime import datetime, timedelta
+from myapp.models import RegistroLlamada, SoporteCliente, ReportePago, User
+import json
+import pytz
+
+@login_required
+def reporte_estadisticas_callcenter(request):
+    """
+    Reporte estadístico del Call Center por semana (viernes a jueves)
+    Muestra: llamadas realizadas, soportes leídos, pagos reportados, etc.
+    """
+    
+    VE_TZ = pytz.timezone('America/Caracas')
+    
+    # Obtener parámetros
+    semana_offset = int(request.GET.get('semana_offset', 0))
+    agente_id = request.GET.get('agente', '')
+    
+    # Obtener fecha actual en Venezuela
+    ahora_ve = datetime.now().astimezone(VE_TZ)
+    hoy_ve = ahora_ve.date()
+    
+    # Calcular semana (viernes a jueves)
+    dias_desde_viernes = (hoy_ve.weekday() - 4) % 7
+    viernes_actual = hoy_ve - timedelta(days=dias_desde_viernes)
+    
+    viernes_seleccionado = viernes_actual - timedelta(weeks=semana_offset)
+    jueves_seleccionado = viernes_seleccionado + timedelta(days=6)
+    
+    # Crear fechas aware para filtrar
+    fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_seleccionado, datetime.min.time()))
+    fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_seleccionado, datetime.max.time()))
+    
+    # ========== 1. ESTADÍSTICAS DE LLAMADAS ==========
+    llamadas_base = RegistroLlamada.objects.filter(
+        fecha_llamada__gte=fecha_inicio_aware,
+        fecha_llamada__lte=fecha_fin_aware
+    )
+    
+    if agente_id:
+        llamadas_base = llamadas_base.filter(realizado_por_id=agente_id)
+    
+    total_llamadas = llamadas_base.count()
+    llamadas_contactados = llamadas_base.filter(estado='CONTACTADO').count()
+    llamadas_no_responde = llamadas_base.filter(estado='NO_RESPONDE').count()
+    llamadas_pendientes = llamadas_base.filter(estado='PENDIENTE').count()
+    
+    # Tasa de efectividad
+    tasa_efectividad = (llamadas_contactados / total_llamadas * 100) if total_llamadas > 0 else 0
+    
+    # Llamadas por día de la semana
+    llamadas_por_dia = []
+    dias_semana = ['Viernes', 'Sábado', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves']
+    
+    for i, dia in enumerate(dias_semana):
+        fecha_dia = viernes_seleccionado + timedelta(days=i)
+        fecha_inicio_dia = VE_TZ.localize(datetime.combine(fecha_dia, datetime.min.time()))
+        fecha_fin_dia = VE_TZ.localize(datetime.combine(fecha_dia, datetime.max.time()))
+        
+        conteo = RegistroLlamada.objects.filter(
+            fecha_llamada__gte=fecha_inicio_dia,
+            fecha_llamada__lte=fecha_fin_dia
+        )
+        if agente_id:
+            conteo = conteo.filter(realizado_por_id=agente_id)
+        
+        llamadas_por_dia.append(conteo.count())
+    
+    # ========== 2. ESTADÍSTICAS DE SOPORTES LEÍDOS ==========
+    soportes_base = SoporteCliente.objects.filter(
+        fecha_leido__gte=fecha_inicio_aware,
+        fecha_leido__lte=fecha_fin_aware,
+        estado='LEIDO'
+    )
+    
+    total_soportes_leidos = soportes_base.count()
+    
+    # Soportes por tipo de cliente
+    soportes_internos = soportes_base.filter(tipo_cliente='INTERNO').count()
+    soportes_externos = soportes_base.filter(tipo_cliente='EXTERNO').count()
+    
+    # ========== 3. ESTADÍSTICAS DE PAGOS REPORTADOS ==========
+    pagos_base = ReportePago.objects.filter(
+        fecha_reporte__gte=fecha_inicio_aware,
+        fecha_reporte__lte=fecha_fin_aware
+    )
+    
+    total_pagos = pagos_base.count()
+    pagos_verificados = pagos_base.filter(estado='VERIFICADO').count()
+    pagos_rechazados = pagos_base.filter(estado='RECHAZADO').count()
+    pagos_aplicados = pagos_base.filter(estado='APLICADO').count()
+    pagos_pendientes = pagos_base.filter(estado='PENDIENTE').count()
+    
+    # Pagos por medio
+    pagos_pago_movil = pagos_base.filter(medio_pago='PAGO_MOVIL').count()
+    pagos_transferencia = pagos_base.filter(medio_pago='TRANSFERENCIA').count()
+    
+    # ========== 4. RENDIMIENTO POR AGENTE ==========
+    agentes = User.objects.filter(
+        groups__name='Call Center',
+        is_active=True
+    ).annotate(
+        total_llamadas=Count('llamadas_realizadas', filter=Q(llamadas_realizadas__fecha_llamada__gte=fecha_inicio_aware, llamadas_realizadas__fecha_llamada__lte=fecha_fin_aware)),
+        contactados=Count('llamadas_realizadas', filter=Q(llamadas_realizadas__estado='CONTACTADO', llamadas_realizadas__fecha_llamada__gte=fecha_inicio_aware, llamadas_realizadas__fecha_llamada__lte=fecha_fin_aware)),
+        no_responde=Count('llamadas_realizadas', filter=Q(llamadas_realizadas__estado='NO_RESPONDE', llamadas_realizadas__fecha_llamada__gte=fecha_inicio_aware, llamadas_realizadas__fecha_llamada__lte=fecha_fin_aware)),
+        soportes_leidos=Count('soportes_cliente_creados', filter=Q(soportes_cliente_creados__fecha_leido__gte=fecha_inicio_aware, soportes_cliente_creados__fecha_leido__lte=fecha_fin_aware, soportes_cliente_creados__estado='LEIDO')),
+        pagos_validados=Count('reportes_verificados', filter=Q(reportes_verificados__fecha_verificacion__gte=fecha_inicio_aware, reportes_verificados__fecha_verificacion__lte=fecha_fin_aware))
+    ).order_by('-total_llamadas')
+    
+    agentes_data = []
+    for agente in agentes:
+        efectividad = (agente.contactados / agente.total_llamadas * 100) if agente.total_llamadas > 0 else 0
+        agentes_data.append({
+            'id': agente.id,
+            'nombre': agente.get_full_name() or agente.username,
+            'total_llamadas': agente.total_llamadas,
+            'contactados': agente.contactados,
+            'no_responde': agente.no_responde,
+            'efectividad': round(efectividad, 1),
+            'soportes_leidos': agente.soportes_leidos,
+            'pagos_validados': agente.pagos_validados,
+        })
+    
+    # ========== 5. LLAMADAS POR MES (últimos 6 meses) ==========
+    meses = []
+    llamadas_por_mes = []
+    contactados_por_mes = []
+    
+    for i in range(5, -1, -1):
+        fecha_inicio_mes = (hoy_ve.replace(day=1) - timedelta(days=30*i))
+        fecha_fin_mes = (fecha_inicio_mes.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        
+        fecha_inicio_mes_aware = VE_TZ.localize(datetime.combine(fecha_inicio_mes, datetime.min.time()))
+        fecha_fin_mes_aware = VE_TZ.localize(datetime.combine(fecha_fin_mes, datetime.max.time()))
+        
+        llamadas_mes = RegistroLlamada.objects.filter(
+            fecha_llamada__gte=fecha_inicio_mes_aware,
+            fecha_llamada__lte=fecha_fin_mes_aware
+        )
+        contactados_mes = llamadas_mes.filter(estado='CONTACTADO')
+        
+        if agente_id:
+            llamadas_mes = llamadas_mes.filter(realizado_por_id=agente_id)
+            contactados_mes = contactados_mes.filter(realizado_por_id=agente_id)
+        
+        meses.append(fecha_inicio_mes.strftime('%b'))
+        llamadas_por_mes.append(llamadas_mes.count())
+        contactados_por_mes.append(contactados_mes.count())
+    
+    # ========== 6. ÚLTIMAS LLAMADAS ==========
+    ultimas_llamadas = llamadas_base.select_related(
+        'contrato__cliente_potencial',
+        'cliente_potencial',
+        'cliente_externo',
+        'realizado_por'
+    ).order_by('-fecha_llamada')[:15]
+    
+    ultimas_llamadas_data = []
+    for llamada in ultimas_llamadas:
+        if llamada.contrato:
+            nombre = llamada.contrato.nombre_completo
+        elif llamada.cliente_potencial:
+            nombre = llamada.cliente_potencial.nombre_completo
+        elif llamada.cliente_externo:
+            nombre = llamada.cliente_externo.nombre_completo
+        else:
+            nombre = 'N/A'
+        
+        ultimas_llamadas_data.append({
+            'nombre': nombre,
+            'telefono': llamada.telefono_cliente,
+            'estado': llamada.get_estado_display(),
+            'fecha': llamada.fecha_llamada.astimezone(VE_TZ).strftime('%d/%m/%Y %H:%M'),
+            'agente': llamada.realizado_por.get_full_name() or llamada.realizado_por.username if llamada.realizado_por else 'Sistema',
+            'nota': llamada.nota[:50] if llamada.nota else ''
+        })
+    
+    # ========== 7. LISTA DE AGENTES ==========
+    agentes_lista = User.objects.filter(groups__name='Call Center', is_active=True).order_by('first_name', 'username')
+    
+    context = {
+        # Fechas
+        'semana_inicio': viernes_seleccionado.strftime('%d/%m/%Y'),
+        'semana_fin': jueves_seleccionado.strftime('%d/%m/%Y'),
+        'semana_offset': semana_offset,
+        'agente_seleccionado': agente_id,
+        'agentes_lista': agentes_lista,
+        
+        # Estadísticas de llamadas
+        'total_llamadas': total_llamadas,
+        'llamadas_contactados': llamadas_contactados,
+        'llamadas_no_responde': llamadas_no_responde,
+        'llamadas_pendientes': llamadas_pendientes,
+        'tasa_efectividad': round(tasa_efectividad, 1),
+        'llamadas_por_dia': llamadas_por_dia,
+        'dias_semana': dias_semana,
+        
+        # Estadísticas de soportes
+        'total_soportes_leidos': total_soportes_leidos,
+        'soportes_internos': soportes_internos,
+        'soportes_externos': soportes_externos,
+        
+        # Estadísticas de pagos
+        'total_pagos': total_pagos,
+        'pagos_verificados': pagos_verificados,
+        'pagos_rechazados': pagos_rechazados,
+        'pagos_aplicados': pagos_aplicados,
+        'pagos_pendientes': pagos_pendientes,
+        'pagos_pago_movil': pagos_pago_movil,
+        'pagos_transferencia': pagos_transferencia,
+        
+        # Gráficas
+        'meses': json.dumps(meses),
+        'llamadas_por_mes': json.dumps(llamadas_por_mes),
+        'contactados_por_mes': json.dumps(contactados_por_mes),
+        
+        # Agentes
+        'agentes_data': agentes_data,
+        
+        # Últimas llamadas
+        'ultimas_llamadas': ultimas_llamadas_data,
+    }
+    
+    return render(request, 'pagos/reporte_estadisticas.html', context)    
+

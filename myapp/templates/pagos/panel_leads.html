@@ -225,7 +225,7 @@
     }
 
     .btn-search:hover {
-        background: var(--orange-dark);
+        background: #e06000;
         transform: translateY(-2px);
     }
 
@@ -394,7 +394,6 @@
         color: white;
     }
 
-    /* Toggle switch para el check de contactado */
     .toggle-switch {
         position: relative;
         display: inline-block;
@@ -483,7 +482,6 @@
         font-weight: 500;
     }
 
-    /* Modal */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -664,6 +662,43 @@
         box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.1);
     }
     
+    .btn-main {
+        background: var(--orange);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    
+    .btn-main:hover {
+        background: #e06000;
+        transform: translateY(-1px);
+    }
+    
+    .btn-cancel {
+        background: white;
+        color: #666;
+        border: 1px solid var(--gray-border);
+        border-radius: 8px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-cancel:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
     .spinner {
         width: 40px;
         height: 40px;
@@ -721,7 +756,6 @@
     }
 </style>
 
-<!-- Estadísticas -->
 <div class="stats-grid">
     <div class="stat-card" onclick="cambiarTab('nuevos')">
         <div class="stat-value">{{ stats.nuevos|add:stats.contactados }}</div>
@@ -745,7 +779,6 @@
     </div>
 </div>
 
-<!-- Filtros -->
 <div class="filters-container">
     <div class="filters-grid">
         <div class="search-box" style="flex: 2;">
@@ -773,7 +806,6 @@
             <button class="btn-search" onclick="aplicarFiltros()">
                 <i class="fas fa-search"></i> Buscar
             </button>
-            
             <button class="btn-clear" onclick="limpiarFiltros()">
                 <i class="fas fa-times"></i> Limpiar
             </button>
@@ -781,7 +813,6 @@
     </div>
 </div>
 
-<!-- Pestañas principales -->
 <div class="tabs-container">
     <div class="tabs-header">
         <button class="tab-btn {% if tab_activa == 'nuevos' or not tab_activa %}active{% endif %}" onclick="cambiarTab('nuevos')">
@@ -817,7 +848,7 @@
                 </thead>
                 <tbody>
                     {% for lead in leads_nuevos %}
-                    <tr data-id="{{ lead.id }}" data-estado="{{ lead.estado }}">
+                    <tr data-id="{{ lead.id }}">
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ lead.nombre|slice:":2"|upper }}</span>
@@ -828,10 +859,10 @@
                                     </span>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ lead.telefono }}</td>
-                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</td>
-                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        </div>
+                        <td>{{ lead.telefono }}</div>
+                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</div>
+                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</div>
                         <td>
                             <label class="toggle-switch">
                                 <input type="checkbox" class="contactado-toggle" 
@@ -839,7 +870,7 @@
                                        {% if lead.estado == 'CONTACTADO' %}checked{% endif %}>
                                 <span class="toggle-slider"></span>
                             </label>
-                        </td>
+                        </div>
                         <td class="actions-cell">
                             <button class="action-btn info" onclick="verDetalleLead({{ lead.id }})" title="Ver detalles">
                                 <i class="fas fa-eye"></i>
@@ -850,43 +881,27 @@
                             <button class="action-btn danger" onclick="cambiarEstadoLead({{ lead.id }}, 'PERDIDO')" title="Marcar como Perdido">
                                 <i class="fas fa-times"></i>
                             </button>
-                        </td>
+                        </div>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="empty">
-                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
-                            No hay leads nuevos o contactados
-                        </td>
+                        <td colspan="6" class="empty">No hay leads nuevos o contactados</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         
-        <!-- Paginación Nuevos -->
         {% if leads_nuevos.has_other_pages %}
         <div class="pagination">
             {% if leads_nuevos.has_previous %}
-            <a href="?page_nuevos=1&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-left"></i>
-            </a>
-            <a href="?page_nuevos={{ leads_nuevos.previous_page_number }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-left"></i>
-            </a>
+            <a href="?page_nuevos=1&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-double-left"></i></a>
+            <a href="?page_nuevos={{ leads_nuevos.previous_page_number }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-left"></i></a>
             {% endif %}
-            
-            <span class="page-info">
-                Página {{ leads_nuevos.number }} de {{ leads_nuevos.paginator.num_pages }}
-            </span>
-            
+            <span class="page-info">Página {{ leads_nuevos.number }} de {{ leads_nuevos.paginator.num_pages }}</span>
             {% if leads_nuevos.has_next %}
-            <a href="?page_nuevos={{ leads_nuevos.next_page_number }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-right"></i>
-            </a>
-            <a href="?page_nuevos={{ leads_nuevos.paginator.num_pages }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-right"></i>
-            </a>
+            <a href="?page_nuevos={{ leads_nuevos.next_page_number }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-right"></i></a>
+            <a href="?page_nuevos={{ leads_nuevos.paginator.num_pages }}&tab=nuevos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-double-right"></i></a>
             {% endif %}
         </div>
         {% endif %}
@@ -917,58 +932,45 @@
                                     <span class="badge-estado badge-seguimiento">⏳ En Seguimiento</span>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ lead.telefono }}</td>
-                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</td>
-                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</td>
-                        <td>{{ lead.notas_seguimiento|truncatechars:40|default:"—" }}</td>
+                        </div>
+                        <td>{{ lead.telefono }}</div>
+                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</div>
+                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</div>
+                        <td>{{ lead.notas_seguimiento|truncatechars:40|default:"—" }}</div>
                         <td class="actions-cell">
                             <button class="action-btn info" onclick="verDetalleLead({{ lead.id }})" title="Ver detalles">
                                 <i class="fas fa-eye"></i>
                             </button>
-                            <button class="action-btn success" onclick="cambiarEstadoLead({{ lead.id }}, 'CONTACTADO')" title="Volver a Contactado">
+                            <button class="action-btn success" onclick="convertirLeadCliente({{ lead.id }})" title="Convertir a Cliente">
+                                <i class="fas fa-check-circle"></i>
+                            </button>
+                            <button class="action-btn warning" onclick="cambiarEstadoLead({{ lead.id }}, 'CONTACTADO')" title="Volver a Contactado">
                                 <i class="fas fa-arrow-left"></i>
                             </button>
                             <button class="action-btn danger" onclick="cambiarEstadoLead({{ lead.id }}, 'PERDIDO')" title="Marcar como Perdido">
                                 <i class="fas fa-times"></i>
                             </button>
-                        </td>
+                        </div>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="empty">
-                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
-                            No hay leads en seguimiento
-                        </td>
+                        <td colspan="6" class="empty">No hay leads en seguimiento</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         
-        <!-- Paginación Seguimiento -->
         {% if leads_seguimiento.has_other_pages %}
         <div class="pagination">
             {% if leads_seguimiento.has_previous %}
-            <a href="?page_seguimiento=1&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-left"></i>
-            </a>
-            <a href="?page_seguimiento={{ leads_seguimiento.previous_page_number }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-left"></i>
-            </a>
+            <a href="?page_seguimiento=1&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-double-left"></i></a>
+            <a href="?page_seguimiento={{ leads_seguimiento.previous_page_number }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-left"></i></a>
             {% endif %}
-            
-            <span class="page-info">
-                Página {{ leads_seguimiento.number }} de {{ leads_seguimiento.paginator.num_pages }}
-            </span>
-            
+            <span class="page-info">Página {{ leads_seguimiento.number }} de {{ leads_seguimiento.paginator.num_pages }}</span>
             {% if leads_seguimiento.has_next %}
-            <a href="?page_seguimiento={{ leads_seguimiento.next_page_number }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-right"></i>
-            </a>
-            <a href="?page_seguimiento={{ leads_seguimiento.paginator.num_pages }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-right"></i>
-            </a>
+            <a href="?page_seguimiento={{ leads_seguimiento.next_page_number }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-right"></i></a>
+            <a href="?page_seguimiento={{ leads_seguimiento.paginator.num_pages }}&tab=seguimiento{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-double-right"></i></a>
             {% endif %}
         </div>
         {% endif %}
@@ -998,71 +1000,52 @@
                                     <span class="badge-estado badge-convertido">✅ Convertido</span>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ lead.telefono }}</td>
-                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</td>
-                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        </div>
+                        <td>{{ lead.telefono }}</div>
+                        <td>{{ lead.mensaje|truncatechars:50|default:"—" }}</div>
+                        <td>{{ lead.fecha_creacion|date:"d/m/Y H:i" }}</div>
                         <td class="actions-cell">
                             <button class="action-btn info" onclick="verDetalleLead({{ lead.id }})" title="Ver detalles">
                                 <i class="fas fa-eye"></i>
                             </button>
-                        </td>
+                        </div>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="empty">
-                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
-                            No hay leads convertidos aún
-                        </td>
+                        <td colspan="5" class="empty">No hay leads convertidos aún</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
         
-        <!-- Paginación Convertidos -->
         {% if leads_convertidos.has_other_pages %}
         <div class="pagination">
             {% if leads_convertidos.has_previous %}
-            <a href="?page_convertidos=1&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-left"></i>
-            </a>
-            <a href="?page_convertidos={{ leads_convertidos.previous_page_number }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-left"></i>
-            </a>
+            <a href="?page_convertidos=1&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-double-left"></i></a>
+            <a href="?page_convertidos={{ leads_convertidos.previous_page_number }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-left"></i></a>
             {% endif %}
-            
-            <span class="page-info">
-                Página {{ leads_convertidos.number }} de {{ leads_convertidos.paginator.num_pages }}
-            </span>
-            
+            <span class="page-info">Página {{ leads_convertidos.number }} de {{ leads_convertidos.paginator.num_pages }}</span>
             {% if leads_convertidos.has_next %}
-            <a href="?page_convertidos={{ leads_convertidos.next_page_number }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-right"></i>
-            </a>
-            <a href="?page_convertidos={{ leads_convertidos.paginator.num_pages }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-right"></i>
-            </a>
+            <a href="?page_convertidos={{ leads_convertidos.next_page_number }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-right"></i></a>
+            <a href="?page_convertidos={{ leads_convertidos.paginator.num_pages }}&tab=convertidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link"><i class="fas fa-angle-double-right"></i></a>
             {% endif %}
         </div>
         {% endif %}
     </div>
 </div>
 
-<!-- Modal de Detalle de Lead -->
 <div id="modalDetalleLead" class="modal" style="display: none;">
     <div class="modal-container">
         <div class="modal-header">
             <div class="modal-header-info">
                 <span class="modal-avatar" id="modalAvatar"></span>
                 <div>
-                    <h2 id="modalTitulo" style="margin: 0; font-size: 18px;">Detalle del Lead</h2>
-                    <p id="modalSubtitulo" style="margin: 4px 0 0; font-size: 13px;"></p>
+                    <h2 style="margin: 0; font-size: 18px;" id="modalTitulo">Detalle del Lead</h2>
+                    <p style="margin: 4px 0 0; font-size: 13px;" id="modalSubtitulo"></p>
                 </div>
             </div>
-            <button class="modal-close" onclick="cerrarModalDetalle()">
-                <i class="fas fa-times"></i>
-            </button>
+            <button class="modal-close" onclick="cerrarModalDetalle()"><i class="fas fa-times"></i></button>
         </div>
         
         <div class="modal-body">
@@ -1108,18 +1091,14 @@
                 </div>
                 
                 <div class="modal-section">
-                    <h3 class="modal-section-title">
-                        <i class="fas fa-history"></i> Historial de Notas
-                    </h3>
+                    <h3 class="modal-section-title"><i class="fas fa-history"></i> Historial de Notas</h3>
                     <div id="notasContainer" class="notas-container"></div>
                 </div>
             </div>
         </div>
         
         <div class="modal-footer">
-            <button class="btn-cancel" onclick="cerrarModalDetalle()">
-                <i class="fas fa-times"></i> Cerrar
-            </button>
+            <button class="btn-cancel" onclick="cerrarModalDetalle()"><i class="fas fa-times"></i> Cerrar</button>
         </div>
     </div>
 </div>
@@ -1132,13 +1111,10 @@
         const url = new URL(window.location.href);
         const busqueda = document.getElementById('searchInput').value;
         const estado = document.getElementById('estadoFilter').value;
-        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         else url.searchParams.delete('busqueda');
-        
         if (estado) url.searchParams.set('estado', estado);
         else url.searchParams.delete('estado');
-        
         window.location.href = url.toString();
     }
     
@@ -1155,13 +1131,10 @@
         url.searchParams.delete('page_nuevos');
         url.searchParams.delete('page_seguimiento');
         url.searchParams.delete('page_convertidos');
-        
         const busqueda = document.getElementById('searchInput')?.value;
         const estado = document.getElementById('estadoFilter')?.value;
-        
         if (busqueda) url.searchParams.set('busqueda', busqueda);
         if (estado) url.searchParams.set('estado', estado);
-        
         window.location.href = url.toString();
     }
     
@@ -1172,49 +1145,21 @@
     }
     
     function cambiarEstadoLead(id, nuevoEstado) {
-        let titulo = '', texto = '', icono = '';
-        
-        switch(nuevoEstado) {
-            case 'CONTACTADO':
-                titulo = 'Marcar como contactado';
-                texto = 'Este lead será marcado como contactado.';
-                icono = 'question';
-                break;
-            case 'EN_SEGUIMIENTO':
-                titulo = 'Pasar a seguimiento';
-                texto = 'Este lead se moverá a la lista de "En Seguimiento".';
-                icono = 'question';
-                break;
-            case 'PERDIDO':
-                titulo = 'Marcar como perdido';
-                texto = 'Este lead se moverá a la lista de "Perdidos".';
-                icono = 'warning';
-                break;
-            default:
-                titulo = 'Cambiar estado';
-                texto = '¿Estás seguro de cambiar el estado de este lead?';
-                icono = 'question';
-        }
+        let titulo = '', texto = '';
+        if (nuevoEstado === 'CONTACTADO') { titulo = 'Marcar como contactado'; texto = 'Este lead será marcado como contactado.'; }
+        else if (nuevoEstado === 'EN_SEGUIMIENTO') { titulo = 'Pasar a seguimiento'; texto = 'Este lead se moverá a la lista de "En Seguimiento".'; }
+        else { titulo = 'Marcar como perdido'; texto = 'Este lead se moverá a la lista de "Perdidos".'; }
         
         Swal.fire({
-            title: titulo,
-            text: texto,
-            icon: icono,
-            showCancelButton: true,
-            confirmButtonColor: '#ff6b00',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, cambiar',
-            cancelButtonText: 'Cancelar'
+            title: titulo, text: texto, icon: 'question', showCancelButton: true,
+            confirmButtonColor: '#ff6b00', cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, cambiar', cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-                
                 fetch(`/cambiar-estado-lead/${id}/`, {
                     method: 'POST',
-                    headers: { 
-                        'X-CSRFToken': getCookie('csrftoken'), 
-                        'Content-Type': 'application/json' 
-                    },
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
                     body: JSON.stringify({ estado: nuevoEstado })
                 })
                 .then(response => response.json())
@@ -1222,9 +1167,41 @@
                     Swal.close();
                     if (data.success) {
                         Swal.fire({ icon: 'success', title: 'Estado actualizado', text: data.message, confirmButtonColor: '#ff6b00' })
-                            .then(() => { location.reload(); });
+                            .then(() => location.reload());
                     } else {
                         Swal.fire('Error', data.error || 'Error al cambiar el estado', 'error');
+                    }
+                })
+                .catch(() => { Swal.close(); Swal.fire('Error', 'Error de conexión', 'error'); });
+            }
+        });
+    }
+    
+    function convertirLeadCliente(leadId) {
+        Swal.fire({
+            title: '¿Marcar como convertido?',
+            text: 'Este lead será marcado como CONVERTIDO.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, marcar como convertido',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                fetch(`/convertir-lead-cliente/${leadId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    Swal.close();
+                    if (data.success) {
+                        Swal.fire({ icon: 'success', title: 'Lead convertido', text: data.message, confirmButtonColor: '#ff6b00' })
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', data.error || 'Error al convertir el lead', 'error');
                     }
                 })
                 .catch(() => { Swal.close(); Swal.fire('Error', 'Error de conexión', 'error'); });
@@ -1237,7 +1214,6 @@
         const modal = document.getElementById('modalDetalleLead');
         const loading = document.getElementById('loadingDetalle');
         const contenido = document.getElementById('contenidoDetalle');
-        
         modal.style.display = 'flex';
         loading.style.display = 'block';
         contenido.style.display = 'none';
@@ -1249,18 +1225,12 @@
                 llenarModalDetalle(data);
                 contenido.style.display = 'block';
             })
-            .catch(error => {
-                console.error('Error:', error);
-                loading.style.display = 'none';
-                Swal.fire('Error', 'Error al cargar los detalles', 'error');
-                cerrarModalDetalle();
-            });
+            .catch(() => { loading.style.display = 'none'; Swal.fire('Error', 'Error al cargar los detalles', 'error'); cerrarModalDetalle(); });
     }
     
     function llenarModalDetalle(data) {
         document.getElementById('modalAvatar').textContent = data.nombre.slice(0, 2).toUpperCase();
         document.getElementById('modalTitulo').textContent = data.nombre;
-        
         let estadoBadge = '';
         switch(data.estado) {
             case 'NUEVO': estadoBadge = '<span class="badge-estado badge-nuevo">🆕 Nuevo</span>'; break;
@@ -1270,7 +1240,6 @@
             case 'PERDIDO': estadoBadge = '<span class="badge-estado badge-perdido">❌ Perdido</span>'; break;
         }
         document.getElementById('modalSubtitulo').innerHTML = `${data.telefono} · ${estadoBadge}`;
-        
         document.getElementById('detalleNombre').textContent = data.nombre;
         document.getElementById('detalleTelefono').textContent = data.telefono;
         document.getElementById('detalleMensaje').textContent = data.mensaje;
@@ -1284,26 +1253,17 @@
         } else {
             notasContainer.innerHTML = '<p class="text-muted">No hay notas de seguimiento</p>';
         }
-        
         document.getElementById('nuevaNota').value = '';
     }
     
     function agregarNota() {
         const nota = document.getElementById('nuevaNota').value.trim();
-        
-        if (!nota) {
-            Swal.fire('Error', 'Por favor escribe una nota antes de agregar', 'error');
-            return;
-        }
+        if (!nota) { Swal.fire('Error', 'Por favor escribe una nota', 'error'); return; }
         
         Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        
         fetch(`/agregar-nota-lead/${leadSeleccionado}/`, {
             method: 'POST',
-            headers: { 
-                'X-CSRFToken': getCookie('csrftoken'), 
-                'Content-Type': 'application/json' 
-            },
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
             body: JSON.stringify({ nota: nota })
         })
         .then(response => response.json())
@@ -1326,33 +1286,21 @@
         leadSeleccionado = null;
     }
     
-    // Event listeners para los toggles de contactado
     document.querySelectorAll('.contactado-toggle').forEach(toggle => {
         toggle.addEventListener('change', function() {
             const leadId = this.dataset.id;
             const nuevoEstado = this.checked ? 'CONTACTADO' : 'NUEVO';
-            
             fetch(`/cambiar-estado-lead/${leadId}/`, {
                 method: 'POST',
-                headers: { 
-                    'X-CSRFToken': getCookie('csrftoken'), 
-                    'Content-Type': 'application/json' 
-                },
+                headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
             })
             .then(response => response.json())
             .then(data => {
-                if (!data.success) {
-                    this.checked = !this.checked;
-                    Swal.fire('Error', data.error, 'error');
-                } else {
-                    location.reload();
-                }
+                if (!data.success) { this.checked = !this.checked; Swal.fire('Error', data.error, 'error'); }
+                else { location.reload(); }
             })
-            .catch(() => {
-                this.checked = !this.checked;
-                Swal.fire('Error', 'Error de conexión', 'error');
-            });
+            .catch(() => { this.checked = !this.checked; Swal.fire('Error', 'Error de conexión', 'error'); });
         });
     });
     
@@ -1360,8 +1308,8 @@
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
             const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
                 if (cookie.substring(0, name.length + 1) === (name + '=')) {
                     cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                     break;
@@ -1371,12 +1319,7 @@
         return cookieValue;
     }
     
-    document.addEventListener('keydown', function(e) { 
-        if (e.key === 'Escape') { cerrarModalDetalle(); } 
-    });
-    
-    document.getElementById('searchInput')?.addEventListener('keypress', function(e) { 
-        if (e.key === 'Enter') aplicarFiltros(); 
-    });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') cerrarModalDetalle(); });
+    document.getElementById('searchInput')?.addEventListener('keypress', function(e) { if (e.key === 'Enter') aplicarFiltros(); });
 </script>
 {% endblock %}

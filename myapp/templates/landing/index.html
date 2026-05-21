@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>SimpleFibra x VTConexiones | Internet de Fibra Óptica</title>
+    <title>SimpleFibra | Internet de Fibra Óptica</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -18,6 +18,7 @@
             --orange: #ff6b00;
             --orange-dark: #e05a00;
             --orange-light: #fff2e6;
+            --orange-soft: #ff8c42;
             --dark: #1a1a2e;
             --dark-gray: #2d2d44;
             --light-gray: #f8f9fa;
@@ -74,21 +75,14 @@
 
         .simplefibra-brand {
             display: flex;
-            flex-direction: column;
-            line-height: 1.2;
+            align-items: center;
         }
 
         .simplefibra-brand .brand-main {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
             color: var(--orange);
             letter-spacing: -0.5px;
-        }
-
-        .simplefibra-brand .brand-tag {
-            font-size: 9px;
-            color: var(--text-gray);
-            letter-spacing: 0.5px;
         }
 
         .navbar-brand-custom {
@@ -97,18 +91,112 @@
             gap: 10px;
         }
 
+        /* Logo más grande en el brand */
+        .brand-logo {
+            height: 45px;
+            width: auto;
+        }
+
+        /* Botones de navegación - solo iconos */
+        .nav-icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            margin: 0 4px;
+            text-decoration: none;
+            font-size: 18px;
+            background: transparent;
+            border: 2px solid var(--orange);
+            color: var(--orange);
+        }
+
+        .nav-icon-btn:hover {
+            background: var(--orange);
+            color: white;
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 107, 0, 0.3);
+        }
+
+        /* Tooltip personalizado - HACIA ABAJO */
+        [data-tooltip] {
+            position: relative;
+            cursor: pointer;
+        }
+
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 10px;
+            background: var(--orange);
+            color: white;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: 8px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            margin-top: 8px;
+            z-index: 100;
+        }
+
+        [data-tooltip]:after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-bottom-color: var(--orange);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            margin-top: 2px;
+        }
+
+        [data-tooltip]:hover:before,
+        [data-tooltip]:hover:after {
+            opacity: 1;
+            visibility: visible;
+        }
+
         @media (max-width: 768px) {
             .vtc-logo {
                 height: 32px;
             }
             .simplefibra-brand .brand-main {
-                font-size: 14px;
-            }
-            .simplefibra-brand .brand-tag {
-                font-size: 7px;
+                font-size: 16px;
             }
             .brand-divider {
                 height: 24px;
+            }
+            .brand-logo {
+                height: 35px;
+            }
+            .nav-icon-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+                margin: 5px 0;
+            }
+            .navbar-nav {
+                flex-direction: row;
+                justify-content: center;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            [data-tooltip]:before {
+                font-size: 10px;
+                padding: 4px 8px;
+                white-space: nowrap;
             }
         }
 
@@ -133,68 +221,9 @@
             color: var(--orange);
         }
 
-        .nav-btn {
-            padding: 6px 14px;
-            border-radius: 30px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            margin: 4px 0;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 13px;
-            text-align: center;
-        }
-
-        .btn-login {
-            background: transparent;
-            border: 2px solid var(--orange);
-            color: var(--orange);
-        }
-
-        .btn-login:hover {
-            background: var(--orange);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn-pago {
-            background: transparent;
-            border: 2px solid var(--green);
-            color: var(--green);
-        }
-
-        .btn-pago:hover {
-            background: var(--green);
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn-soporte {
-            background: transparent;
-            border: 2px solid #3b82f6;
-            color: #3b82f6;
-        }
-
-        .btn-soporte:hover {
-            background: #3b82f6;
-            color: white;
-            transform: translateY(-2px);
-        }
-
-        .btn-location {
-            background: var(--orange);
-            border: none;
-            color: white;
-        }
-
-        .btn-location:hover {
-            background: var(--orange-dark);
-            transform: translateY(-2px);
-        }
-
-        /* Hero Section */
+        /* Hero Section con degradado y logo animado */
         .hero {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -210,9 +239,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23ff6b00" fill-opacity="0.05" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,154.7C960,171,1056,181,1152,165.3C1248,149,1344,107,1392,85.3L1440,64L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>') no-repeat bottom;
-            background-size: cover;
-            opacity: 0.3;
+            background: radial-gradient(circle at 80% 30%, rgba(255,107,0,0.15) 0%, rgba(26,26,46,0) 70%);
+            pointer-events: none;
         }
 
         .hero-title {
@@ -234,51 +262,60 @@
 
         .hero-stats {
             display: flex;
-            gap: 20px;
-            margin-top: 30px;
+            gap: 30px;
+            margin-top: 40px;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
         }
 
         .stat-item {
             text-align: center;
-            flex: 1;
-            min-width: 80px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-5px);
+            border-color: var(--orange);
+            background: rgba(255,107,0,0.1);
         }
 
         .stat-number {
-            font-size: 24px;
+            font-size: 36px;
             font-weight: bold;
             color: var(--orange);
+            line-height: 1;
         }
 
         .stat-label {
             font-size: 12px;
-            color: rgba(255,255,255,0.7);
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
         }
 
         .hero-image {
-            animation: float 3s ease-in-out infinite;
+            animation: float 4s ease-in-out infinite;
             margin-top: 40px;
-        }
-
-        .hero-image img {
-            max-width: 70%;
+            text-align: center;
         }
 
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-25px); }
         }
 
         .btn-main {
             background: linear-gradient(135deg, var(--orange) 0%, var(--orange-dark) 100%);
             color: white;
             border: none;
-            padding: 12px 28px;
+            padding: 14px 32px;
             border-radius: 50px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 15px;
             transition: all 0.3s ease;
             box-shadow: 0 5px 20px rgba(255, 107, 0, 0.3);
             text-decoration: none;
@@ -655,6 +692,28 @@
             font-size: 12px;
         }
 
+        /* Logo en el hero - GRANDE */
+        .hero-logo-container {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .hero-simplefibra-logo {
+            max-width: 450px;
+            width: 100%;
+            filter: drop-shadow(0 20px 30px rgba(0,0,0,0.3));
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% {
+                filter: drop-shadow(0 20px 30px rgba(255,107,0,0.3));
+            }
+            50% {
+                filter: drop-shadow(0 30px 50px rgba(255,107,0,0.6));
+            }
+        }
+
         @media (min-width: 768px) {
             .hero-title {
                 font-size: 56px;
@@ -669,13 +728,10 @@
                 font-size: 18px;
             }
             .stat-number {
-                font-size: 32px;
+                font-size: 42px;
             }
             .hero-stats {
                 justify-content: flex-start;
-            }
-            .hero-image {
-                margin-top: 0;
             }
             .contact-info {
                 text-align: left;
@@ -689,6 +745,12 @@
             .social-links {
                 justify-content: flex-start;
             }
+            .hero-logo-container {
+                text-align: center;
+            }
+            .hero-simplefibra-logo {
+                max-width: 550px;
+            }
         }
 
         @media (max-width: 767px) {
@@ -696,11 +758,6 @@
                 padding: 15px 0;
                 max-height: 80vh;
                 overflow-y: auto;
-            }
-            .nav-btn {
-                width: 100%;
-                text-align: center;
-                margin: 5px 0;
             }
             .section {
                 padding: 40px 0;
@@ -710,6 +767,13 @@
             }
             .hero-stats {
                 gap: 15px;
+                justify-content: center;
+            }
+            .stat-item {
+                padding: 10px 15px;
+            }
+            .stat-number {
+                font-size: 28px;
             }
             .plan-card {
                 width: 100%;
@@ -723,6 +787,10 @@
             .container {
                 padding-left: 15px;
                 padding-right: 15px;
+            }
+            .hero-simplefibra-logo {
+                max-width: 280px;
+                margin-bottom: 20px;
             }
         }
 
@@ -757,6 +825,19 @@
         .is-invalid {
             border-color: #dc3545 !important;
         }
+        
+        /* Logo en el brand - más grande */
+        .brand-logo {
+            height: 45px;
+            width: auto;
+        }
+        
+        .footer-brand-logo {
+            height: 30px;
+            width: auto;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -768,8 +849,7 @@
                     <img src="{% static 'cd.png' %}" alt="VTC" class="vtc-logo">
                     <div class="brand-divider"></div>
                     <div class="simplefibra-brand">
-                        <span class="brand-main"><i class="fas fa-wifi"></i> SimpleFibra</span>
-                        <span class="brand-tag">by VTConexiones</span>
+                        <img src="{% static 'simplefibra.png' %}" alt="SimpleFibra" class="brand-logo">
                     </div>
                 </a>
             </div>
@@ -791,23 +871,23 @@
                         <a class="nav-link" href="#contacto">Contacto</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-btn btn-login" href="{% url 'login' %}">
-                            <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                        <a class="nav-icon-btn" href="{% url 'login' %}" data-tooltip="Iniciar Sesión">
+                            <i class="fas fa-sign-in-alt"></i>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-btn btn-pago" href="{% url 'reportar_pago' %}">
-                            <i class="fas fa-credit-card"></i> Reportar Pago
+                        <a class="nav-icon-btn" href="{% url 'reportar_pago' %}" data-tooltip="Reportar Pago">
+                            <i class="fas fa-credit-card"></i>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-btn btn-soporte" href="{% url 'reportar_soporte' %}">
-                            <i class="fas fa-headset"></i> Soporte
+                        <a class="nav-icon-btn" href="{% url 'reportar_soporte' %}" data-tooltip="Soporte Técnico">
+                            <i class="fas fa-headset"></i>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-btn btn-location" href="https://maps.app.goo.gl/Hrur9wj917ZKkmmU9" target="_blank">
-                            <i class="fas fa-map-marker-alt"></i> Ubicación
+                        <a class="nav-icon-btn" href="https://maps.app.goo.gl/Hrur9wj917ZKkmmU9" target="_blank" data-tooltip="Ubicación">
+                            <i class="fas fa-map-marker-alt"></i>
                         </a>
                     </li>
                 </ul>
@@ -817,7 +897,7 @@
 
     <section class="hero">
         <div class="container">
-            <div class="row align-items-center g-0">
+            <div class="row align-items-center">
                 <div class="col-lg-6" data-aos="fade-right">
                     <h1 class="hero-title text-white">
                         Internet de <span>Fibra Óptica</span><br>
@@ -846,8 +926,8 @@
                     </div>
                 </div>
                 <div class="col-lg-6" data-aos="fade-left">
-                    <div class="hero-image text-center">
-                        <img src="https://cdn-icons-png.flaticon.com/512/1731/1731186.png" alt="Fibra Óptica" class="img-fluid">
+                    <div class="hero-image">
+                        <img src="{% static 'simplefibra.png' %}" alt="SimpleFibra" class="hero-simplefibra-logo">
                     </div>
                 </div>
             </div>
@@ -984,7 +1064,7 @@
         </div>
     </section>
 
-    <!-- Contacto Section con formulario simplificado -->
+    <!-- Contacto Section con formulario validado -->
     <section id="contacto" class="section contacto-section">
         <div class="container">
             <div class="row align-items-center">
@@ -1028,25 +1108,26 @@
                             {% csrf_token %}
                             <div class="mb-3">
                                 <label class="form-label">Nombre completo <span class="text-danger">*</span></label>
-                                {{ form.nombre }}
+                                <input type="text" name="nombre" id="id_nombre" class="form-control" maxlength="20" required>
                                 {% if form.nombre.errors %}
                                     <div class="errorlist">{{ form.nombre.errors }}</div>
                                 {% endif %}
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Teléfono <span class="text-danger">*</span></label>
-                                {{ form.telefono }}
+                                <input type="tel" name="telefono" id="id_telefono" class="form-control" maxlength="12" pattern="[0-9]+" title="Solo números" placeholder="04121234567" required>
                                 {% if form.telefono.errors %}
                                     <div class="errorlist">{{ form.telefono.errors }}</div>
                                 {% endif %}
-                                <small class="text-muted">Ej: 0412-1234567</small>
+                                <small class="text-muted">Ej: 04121234567 (solo números, máximo 12 dígitos)</small>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Mensaje</label>
-                                {{ form.mensaje }}
+                                <textarea name="mensaje" id="id_mensaje" class="form-control" rows="3" maxlength="50" placeholder="¿Qué plan te interesa?"></textarea>
                                 {% if form.mensaje.errors %}
                                     <div class="errorlist">{{ form.mensaje.errors }}</div>
                                 {% endif %}
+                                <small class="text-muted">Máximo 50 caracteres</small>
                             </div>
                             <button type="submit" class="btn-main w-100">
                                 <i class="fas fa-envelope"></i> Enviar mensaje
@@ -1063,7 +1144,8 @@
             <div class="row">
                 <div class="col-lg-4">
                     <a class="footer-brand" href="/">
-                        <i class="fas fa-wifi"></i> SimpleFibra x VTC
+                        <img src="{% static 'simplefibra.png' %}" alt="SimpleFibra" class="footer-brand-logo">
+                        SimpleFibra
                     </a>
                     <p>Conectamos tu mundo con la mejor tecnología de fibra óptica. Velocidad, estabilidad y soporte 24/7.</p>
                 </div>
@@ -1095,7 +1177,7 @@
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>&copy; 2025 SimpleFibra x VTConexiones. Todos los derechos reservados.</p>
+                <p>&copy; 2025 SimpleFibra. Todos los derechos reservados.</p>
             </div>
         </div>
     </footer>
@@ -1138,6 +1220,62 @@
                     }
                 }
             });
+        });
+
+        // Validación adicional en el cliente
+        document.getElementById('contactoForm')?.addEventListener('submit', function(e) {
+            const nombre = document.getElementById('id_nombre');
+            const telefono = document.getElementById('id_telefono');
+            const mensaje = document.getElementById('id_mensaje');
+            let isValid = true;
+            let errorMsg = '';
+
+            if (nombre.value.trim().length === 0) {
+                isValid = false;
+                errorMsg = 'Por favor ingresa tu nombre.\n';
+                nombre.classList.add('is-invalid');
+            } else if (nombre.value.trim().length > 20) {
+                isValid = false;
+                errorMsg = 'El nombre no puede tener más de 20 caracteres.\n';
+                nombre.classList.add('is-invalid');
+            } else {
+                nombre.classList.remove('is-invalid');
+            }
+
+            const telefonoValue = telefono.value.trim();
+            if (telefonoValue.length === 0) {
+                isValid = false;
+                errorMsg += 'Por favor ingresa tu número de teléfono.\n';
+                telefono.classList.add('is-invalid');
+            } else if (!/^\d+$/.test(telefonoValue)) {
+                isValid = false;
+                errorMsg += 'El teléfono solo debe contener números.\n';
+                telefono.classList.add('is-invalid');
+            } else if (telefonoValue.length > 12) {
+                isValid = false;
+                errorMsg += 'El teléfono no puede tener más de 12 dígitos.\n';
+                telefono.classList.add('is-invalid');
+            } else {
+                telefono.classList.remove('is-invalid');
+            }
+
+            if (mensaje.value.length > 50) {
+                isValid = false;
+                errorMsg += 'El mensaje no puede tener más de 50 caracteres.';
+                mensaje.classList.add('is-invalid');
+            } else {
+                mensaje.classList.remove('is-invalid');
+            }
+
+            if (!isValid) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error en el formulario',
+                    text: errorMsg,
+                    confirmButtonColor: '#ff6b00'
+                });
+            }
         });
     </script>
 </body>

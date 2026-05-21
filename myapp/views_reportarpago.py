@@ -478,12 +478,12 @@ def rechazar_pago(request, reporte_id):
 
 @login_required
 def reporte_clientes_callcenter(request):
-    """Vista para reporte unificado de clientes (Contratos, Potenciales, Externos) para Call Center"""
+    """Vista para reporte unificado de clientes (Contratos, Potenciales sin contrato, Externos) para Call Center"""
     
     import pytz
     from datetime import datetime
     from django.core.paginator import Paginator
-    from django.db.models import Q
+    from django.db.models import Q, Exists, OuterRef
     
     VE_TZ = pytz.timezone('America/Caracas')
     es_admin = request.user.is_superuser or request.user.groups.filter(name='Administrador').exists()
@@ -498,7 +498,6 @@ def reporte_clientes_callcenter(request):
     busqueda = request.GET.get('busqueda', '')
     filtro_estado = request.GET.get('estado_llamada', '')
     
-    # Obtener la última llamada de cada cliente
     from django.db.models import OuterRef, Subquery
     
     # ========== 1. CONTRATOS ==========
@@ -506,7 +505,6 @@ def reporte_clientes_callcenter(request):
         'cliente_potencial', 'creado_por', 'plan_contratado'
     )
     
-    # Subconsulta para obtener la última llamada de cada contrato
     ultima_llamada_contrato = RegistroLlamada.objects.filter(
         contrato=OuterRef('pk')
     ).order_by('-fecha_llamada')
@@ -517,8 +515,10 @@ def reporte_clientes_callcenter(request):
         ultima_fecha=Subquery(ultima_llamada_contrato.values('fecha_llamada')[:1])
     )
     
-    # ========== 2. CLIENTES POTENCIALES ==========
-    potenciales = ClientePotencial.objects.select_related('creado_por')
+    # ========== 2. CLIENTES POTENCIALES (SOLO SIN CONTRATO) ==========
+    potenciales = ClientePotencial.objects.filter(
+        ~Exists(ContratoCliente.objects.filter(cliente_potencial=OuterRef('pk')))
+    ).select_related('creado_por')
     
     ultima_llamada_potencial = RegistroLlamada.objects.filter(
         cliente_potencial=OuterRef('pk')
@@ -833,7 +833,7 @@ def api_clientes_callcenter(request):
     import pytz
     from datetime import datetime
     from django.core.paginator import Paginator
-    from django.db.models import Q, OuterRef, Subquery
+    from django.db.models import Q, OuterRef, Subquery, Exists
     
     VE_TZ = pytz.timezone('America/Caracas')
     
@@ -861,9 +861,6 @@ def api_clientes_callcenter(request):
             fecha_hasta_obj = datetime.strptime(fecha_hasta_raw, '%Y-%m-%d').date()
         except:
             pass
-    
-    # Subconsulta para última llamada
-    from myapp.models import RegistroLlamada
     
     clientes_list = []
     
@@ -897,9 +894,13 @@ def api_clientes_callcenter(request):
                 'ultima_fecha': ultima.fecha_llamada.astimezone(VE_TZ).strftime('%d/%m/%Y %H:%M') if ultima and ultima.fecha_llamada else '',
             })
     
-    # ========== 2. SOLO CLIENTES POTENCIALES ==========
+    # ========== 2. SOLO CLIENTES POTENCIALES (SIN CONTRATO) ==========
     if tipo == 'potenciales' or tipo == 'todos':
-        potenciales = ClientePotencial.objects.select_related('creado_por')
+        # Filtrar solo clientes potenciales que NO tienen contrato
+        potenciales = ClientePotencial.objects.filter(
+            # Excluir los que tienen un contrato asociado
+            ~Exists(ContratoCliente.objects.filter(cliente_potencial=OuterRef('pk')))
+        ).select_related('creado_por')
         
         for p in potenciales:
             # Filtrar por interés

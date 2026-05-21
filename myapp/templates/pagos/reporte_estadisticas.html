@@ -1,0 +1,602 @@
+{% extends 'Inicio_De_Sesion/base.html' %}
+{% load static %}
+
+{% block title %}Call Center - Reporte Estadístico{% endblock %}
+
+{% block page_title %}📊 Reporte Estadístico del Call Center{% endblock %}
+{% block page_subtitle %}Análisis de llamadas, soportes y pagos por semana (Viernes a Jueves){% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'dashboard' %}" class="btn-secondary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+    Volver al Panel
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --orange: #ff6b00;
+        --orange-light: #fff2e6;
+        --gray-bg: #f9fafb;
+        --gray-border: #e5e7eb;
+        --gray-text: #6b7280;
+        --dark-text: #111827;
+        --success: #10b981;
+        --success-light: #d1fae5;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #3b82f6;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --transition: all 0.2s;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid var(--gray-border);
+        transition: var(--transition);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--orange);
+    }
+    
+    .stat-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+    }
+    
+    .stat-icon.primary { background: var(--orange-light); color: var(--orange); }
+    .stat-icon.success { background: var(--success-light); color: var(--success); }
+    .stat-icon.warning { background: #fed7aa; color: var(--warning); }
+    .stat-icon.danger { background: #fee2e2; color: var(--danger); }
+    .stat-icon.info { background: #dbeafe; color: var(--info); }
+    
+    .stat-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--gray-text);
+    }
+    
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--dark-text);
+        line-height: 1.2;
+    }
+    
+    .stat-sub {
+        font-size: 12px;
+        color: var(--gray-text);
+        margin-top: 8px;
+    }
+    
+    .filters-container {
+        margin-bottom: 24px;
+    }
+    
+    .filters-grid {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        background: white;
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .filter-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--gray-text);
+        text-transform: uppercase;
+    }
+    
+    .filter-select {
+        padding: 10px 14px;
+        border: 1px solid var(--gray-border);
+        border-radius: 12px;
+        background: white;
+        font-size: 14px;
+        cursor: pointer;
+        min-width: 180px;
+    }
+    
+    .semana-navegacion {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: var(--gray-bg);
+        padding: 5px 15px;
+        border-radius: 50px;
+    }
+    
+    .nav-btn {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--gray-border);
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        color: var(--gray-text);
+    }
+    
+    .nav-btn:hover {
+        border-color: var(--orange);
+        color: var(--orange);
+    }
+    
+    .dashboard-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+    
+    .dashboard-card {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--gray-border);
+        overflow: hidden;
+    }
+    
+    .dashboard-card.full-width {
+        grid-column: span 2;
+    }
+    
+    .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--gray-border);
+        background: var(--gray-bg);
+    }
+    
+    .card-header h3 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    
+    .table th {
+        text-align: left;
+        padding: 12px 12px;
+        background: var(--gray-bg);
+        border-bottom: 1px solid var(--gray-border);
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+    
+    .table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--gray-border);
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+    }
+    
+    .badge-success { background: var(--success-light); color: #065f46; }
+    .badge-warning { background: #fed7aa; color: #9b2c1d; }
+    .badge-danger { background: #fee2e2; color: #dc2626; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+    
+    .chart-container {
+        min-height: 250px;
+        padding: 10px;
+    }
+    
+    canvas {
+        max-width: 100%;
+        height: auto !important;
+    }
+    
+    .empty {
+        text-align: center;
+        padding: 40px;
+        color: var(--gray-text);
+    }
+    
+    .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 20px;
+    }
+    
+    .semana-fecha {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .dashboard-row {
+            grid-template-columns: 1fr;
+        }
+        .dashboard-card.full-width {
+            grid-column: span 1;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        .filters-grid {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filter-select {
+            width: 100%;
+        }
+        .semana-navegacion {
+            justify-content: center;
+        }
+    }
+</style>
+
+<!-- Navegación de semana -->
+<div class="filters-container">
+    <div class="filters-grid">
+        <div class="filter-group">
+            <label class="filter-label">Agente</label>
+            <select id="filterAgente" class="filter-select" onchange="aplicarFiltros()">
+                <option value="">Todos los agentes</option>
+                {% for agente in agentes_lista %}
+                <option value="{{ agente.id }}" {% if agente_seleccionado == agente.id|stringformat:"s" %}selected{% endif %}>
+                    {{ agente.get_full_name|default:agente.username }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label class="filter-label">Período</label>
+            <div class="semana-navegacion">
+                <a href="?semana_offset={{ semana_offset|add:1 }}{% if agente_seleccionado %}&agente={{ agente_seleccionado }}{% endif %}" class="nav-btn" title="Semana anterior">‹</a>
+                <span class="semana-fecha">{{ semana_inicio }} - {{ semana_fin }}</span>
+                {% if semana_offset > 0 %}
+                <a href="?semana_offset={{ semana_offset|add:-1 }}{% if agente_seleccionado %}&agente={{ agente_seleccionado }}{% endif %}" class="nav-btn" title="Semana siguiente">›</a>
+                {% else %}
+                <span class="nav-btn" style="opacity:0.5; cursor:not-allowed;">›</span>
+                {% endif %}
+                <a href="?{% if agente_seleccionado %}agente={{ agente_seleccionado }}{% endif %}" class="nav-btn" title="Semana actual">●</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tarjetas principales -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon primary">📞</div>
+            <div>
+                <div class="stat-title">Total Llamadas</div>
+                <div class="stat-value">{{ total_llamadas }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Efectividad: {{ tasa_efectividad }}%</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon success">✅</div>
+            <div>
+                <div class="stat-title">Contactados</div>
+                <div class="stat-value">{{ llamadas_contactados }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">No responde: {{ llamadas_no_responde }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon info">📖</div>
+            <div>
+                <div class="stat-title">Soportes Leídos</div>
+                <div class="stat-value">{{ total_soportes_leidos }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Internos: {{ soportes_internos }} | Externos: {{ soportes_externos }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon warning">💰</div>
+            <div>
+                <div class="stat-title">Pagos Reportados</div>
+                <div class="stat-value">{{ total_pagos }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Verificados: {{ pagos_verificados }} | Pendientes: {{ pagos_pendientes }}</div>
+    </div>
+</div>
+
+<!-- Segunda fila de stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon warning">⏳</div>
+            <div>
+                <div class="stat-title">Pendientes</div>
+                <div class="stat-value">{{ llamadas_pendientes }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Por contactar</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon success">💳</div>
+            <div>
+                <div class="stat-title">Pagos Verificados</div>
+                <div class="stat-value">{{ pagos_verificados }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Aplicados: {{ pagos_aplicados }} | Rechazados: {{ pagos_rechazados }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon primary">📱</div>
+            <div>
+                <div class="stat-title">Pago Móvil</div>
+                <div class="stat-value">{{ pagos_pago_movil }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Transferencia: {{ pagos_transferencia }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-header">
+            <div class="stat-icon info">👥</div>
+            <div>
+                <div class="stat-title">Agentes Activos</div>
+                <div class="stat-value">{{ agentes_data|length }}</div>
+            </div>
+        </div>
+        <div class="stat-sub">Con llamadas esta semana</div>
+    </div>
+</div>
+
+<!-- Gráficas -->
+<div class="dashboard-row">
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>📊 Llamadas por Día</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="llamadasPorDiaChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>📈 Llamadas vs Contactados por Mes</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="llamadasPorMesChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Distribución de Pagos -->
+<div class="dashboard-row">
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>💰 Distribución de Pagos</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="pagosEstadoChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dashboard-card">
+        <div class="card-header">
+            <h3>📱 Medios de Pago</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="pagosMedioChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Últimas Llamadas -->
+<div class="dashboard-card full-width">
+    <div class="card-header">
+        <h3>📞 Últimas Llamadas Realizadas</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Teléfono</th>
+                    <th>Estado</th>
+                    <th>Agente</th>
+                    <th>Fecha</th>
+                    <th>Nota</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for llamada in ultimas_llamadas %}
+                <tr>
+                    <td>{{ llamada.nombre }}</td>
+                    <td>{{ llamada.telefono }}</td>
+                    <td><span class="badge {% if 'Contactado' in llamada.estado %}badge-success{% elif 'No Responde' in llamada.estado %}badge-danger{% else %}badge-warning{% endif %}">{{ llamada.estado }}</span></td>
+                    <td>{{ llamada.agente }}</td>
+                    <td>{{ llamada.fecha }}</td>
+                    <td>{{ llamada.nota }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty">No hay llamadas registradas en este período</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    function aplicarFiltros() {
+        const url = new URL(window.location.href);
+        const agente = document.getElementById('filterAgente').value;
+        if (agente) url.searchParams.set('agente', agente);
+        else url.searchParams.delete('agente');
+        window.location.href = url.toString();
+    }
+    
+    // Llamadas por día
+    const llamadasPorDiaCtx = document.getElementById('llamadasPorDiaChart')?.getContext('2d');
+    if (llamadasPorDiaCtx) {
+        new Chart(llamadasPorDiaCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ dias_semana|safe }},
+                datasets: [{
+                    label: 'Llamadas',
+                    data: {{ llamadas_por_dia|safe }},
+                    backgroundColor: 'rgba(255, 107, 0, 0.7)',
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: { y: { beginAtZero: true, grid: { color: '#e5e7eb' } } }
+            }
+        });
+    }
+    
+    // Llamadas por mes
+    const llamadasPorMesCtx = document.getElementById('llamadasPorMesChart')?.getContext('2d');
+    if (llamadasPorMesCtx) {
+        new Chart(llamadasPorMesCtx, {
+            type: 'line',
+            data: {
+                labels: {{ meses|safe }},
+                datasets: [
+                    {
+                        label: 'Total Llamadas',
+                        data: {{ llamadas_por_mes|safe }},
+                        borderColor: '#ff6b00',
+                        backgroundColor: 'rgba(255, 107, 0, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Contactados',
+                        data: {{ contactados_por_mes|safe }},
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true
+            }
+        });
+    }
+    
+    // Pagos por estado
+    const pagosEstadoCtx = document.getElementById('pagosEstadoChart')?.getContext('2d');
+    if (pagosEstadoCtx) {
+        new Chart(pagosEstadoCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Verificados', 'Aplicados', 'Rechazados', 'Pendientes'],
+                datasets: [{
+                    data: [{{ pagos_verificados }}, {{ pagos_aplicados }}, {{ pagos_rechazados }}, {{ pagos_pendientes }}],
+                    backgroundColor: ['#10b981', '#3b82f6', '#ef4444', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+    
+    // Pagos por medio
+    const pagosMedioCtx = document.getElementById('pagosMedioChart')?.getContext('2d');
+    if (pagosMedioCtx) {
+        new Chart(pagosMedioCtx, {
+            type: 'pie',
+            data: {
+                labels: ['Pago Móvil', 'Transferencia'],
+                datasets: [{
+                    data: [{{ pagos_pago_movil }}, {{ pagos_transferencia }}],
+                    backgroundColor: ['#ff6b00', '#3b82f6'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+</script>
+{% endblock %}

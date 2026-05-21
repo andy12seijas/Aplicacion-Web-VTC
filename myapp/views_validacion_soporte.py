@@ -9,7 +9,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import SoporteCliente, ContratoCliente, ClienteExterno
 
 
-@staff_member_required
+
 def gestion_soportes_cliente(request):
     """Vista para gestionar los soportes/reclamos de clientes (Call Center)"""
     
@@ -84,7 +84,7 @@ def gestion_soportes_cliente(request):
 
 
 @csrf_exempt
-@staff_member_required
+
 def marcar_soporte_leido(request, soporte_id):
     """Marca un soporte como leído"""
     

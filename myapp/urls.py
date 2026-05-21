@@ -174,6 +174,8 @@ path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_a
     path('cambiar-estado-lead/<int:lead_id>/', cambiar_estado_lead, name='cambiar_estado_lead'),
     path('agregar-nota-lead/<int:lead_id>/',agregar_nota_lead, name='agregar_nota_lead'),
     path('ver-detalle-lead/<int:lead_id>/', ver_detalle_lead, name='ver_detalle_lead'),
+    path('convertir-lead-cliente/<int:lead_id>/',convertir_lead_cliente, name='convertir_lead_cliente'),
+    path('reporte-estadisticas-callcenter/', reporte_estadisticas_callcenter, name='reporte_estadisticas_callcenter'),
 
 
     path('reporte-clientes-callcenter/', reporte_clientes_callcenter, name='reporte_clientes_callcenter'),
