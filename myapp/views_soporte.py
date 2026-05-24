@@ -498,6 +498,24 @@ def registrar_soporte(request, ticket_id):
         
         # ========== VALIDAR STOCK (MISMA LÓGICA QUE REALIZAR INSTALACION) ==========
         errores_stock = []
+        errores_obligatorios = []
+        
+        if not fecha_hora_servicio:
+            errores_obligatorios.append("La fecha y hora del servicio es obligatoria.")
+        
+        if not falla_encontrada:
+            errores_obligatorios.append("La falla encontrada es obligatoria.")
+        
+        if not solucion:
+            errores_obligatorios.append("La solución aplicada es obligatoria.")
+        
+        # Si hay errores de campos obligatorios, mostrar mensajes
+        if errores_obligatorios:
+            if is_ajax:
+                return JsonResponse({'error': '<br>'.join(errores_obligatorios)}, status=400)
+            for error in errores_obligatorios:
+                messages.error(request, f'❌ {error}')
+            return redirect('registrar_soporte', ticket_id=ticket.id)
         
         # Validar módem - solo si se seleccionó
         if modelo_modem_id and modelo_modem_id != '' and modelo_modem_id != 'None':
@@ -1011,18 +1029,56 @@ def crear_ticket_rapido(request):
             nombre = datos.get('nombre', '')
             apellido = datos.get('apellido', '')
         
+        # VALIDAR Y ASIGNAR 'N/A' PARA CAMPOS OBLIGATORIOS QUE FALTAN
+        # Ticket Padre
+        ticket_padre = datos.get('ticket_padre', '').strip()
+        if not ticket_padre:
+            ticket_padre = 'N/A'
+        
+        # Nombre
+        if not nombre:
+            nombre = 'N/A'
+        
+        # Apellido
+        if not apellido:
+            apellido = 'N/A'
+        
         # Limpiar cédula - eliminar V-, E-, etc. dejar solo números
         cedula_raw = datos.get('cedula', '')
-        cedula_limpia = re.sub(r'[^0-9]', '', cedula_raw)
+        cedula_limpia = re.sub(r'[^0-9]', '', cedula_raw) if cedula_raw else 'N/A'
+        if not cedula_limpia:
+            cedula_limpia = 'N/A'
         
         # Limpiar teléfono - dejar solo números
         telefono_raw = datos.get('telefono', '')
-        telefono_limpio = re.sub(r'[^0-9]', '', telefono_raw)
+        telefono_limpio = re.sub(r'[^0-9]', '', telefono_raw) if telefono_raw else 'N/A'
+        if not telefono_limpio:
+            telefono_limpio = 'N/A'
+        
+        # Customer ID
+        customer_id = datos.get('customer_id', '').strip()
+        if not customer_id:
+            customer_id = 'N/A'
+        
+        # Dirección
+        direccion = datos.get('direccion', '').strip()
+        if not direccion:
+            direccion = 'N/A'
+        
+        # Falla
+        falla = datos.get('falla', '').strip()
+        if not falla:
+            falla = 'N/A'
+        
+        # Tipo de soporte (valor por defecto: SOPORTE)
+        tipo_soporte = datos.get('tipo', 'SOPORTE')
+        if tipo_soporte not in ['MUDANZA', 'RETIRO', 'RECABLEADO', 'SOPORTE']:
+            tipo_soporte = 'SOPORTE'
         
         # Buscar el plan
         plan_nombre = datos.get('plan', '')
         plan = None
-        if plan_nombre:
+        if plan_nombre and plan_nombre != 'N/A':
             numeros = re.findall(r'\d+', str(plan_nombre))
             if numeros:
                 plan = Plan.objects.filter(nombre__icontains=numeros[0]).first()
@@ -1030,18 +1086,18 @@ def crear_ticket_rapido(request):
         if not plan:
             plan = Plan.objects.filter(activo=True).first()
         
-        # Crear ticket
+        # Crear ticket con todos los valores validados
         ticket = Ticket.objects.create(
-            ticket_padre=datos.get('ticket_padre', ''),
-            tipo_soporte=datos.get('tipo', 'SOPORTE'),
+            ticket_padre=ticket_padre,
+            tipo_soporte=tipo_soporte,
             nombre=nombre,
             apellido=apellido,
-            cedula=cedula_limpia,  # Cédula limpia (solo números)
-            customer_id=datos.get('customer_id', ''),
-            telefono=telefono_limpio,  # Teléfono limpio (solo números)
-            direccion=datos.get('direccion', ''),
+            cedula=cedula_limpia,
+            customer_id=customer_id,
+            telefono=telefono_limpio,
+            direccion=direccion,
             plan=plan,
-            falla=datos.get('falla', ''),
+            falla=falla,
             creado_por=request.user
         )
         
