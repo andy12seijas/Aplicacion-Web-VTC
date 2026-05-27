@@ -519,13 +519,7 @@
                                            placeholder="Ej: V-12345678" required>
                                 </div>
                                 
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">
-                                        <i class="fas fa-envelope"></i> Correo Electrónico
-                                    </label>
-                                    <input type="email" name="correo" class="form-control-modern" id="inputCorreo"
-                                           placeholder="usuario@ejemplo.com" required>
-                                </div>
+                                
                                 
                                 <button type="submit" class="btn-primary-modern" id="btnBuscarCliente">
                                     <i class="fas fa-search"></i> Buscar Cliente
@@ -821,7 +815,7 @@
             e.preventDefault();
             
             const cedula = document.getElementById('inputCedula').value;
-            const correo = document.getElementById('inputCorreo').value;
+           
             
             const btn = document.getElementById('btnBuscarCliente');
             const originalText = btn.innerHTML;
@@ -835,7 +829,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value
                     },
-                    body: JSON.stringify({ cedula, correo })
+                    body: JSON.stringify({ cedula })
                 });
                 
                 const data = await response.json();
@@ -849,7 +843,7 @@
                     document.getElementById('step2Content').style.display = 'block';
                 } else {
                     document.getElementById('regCedula').value = cedula;
-                    document.getElementById('regCorreo').value = correo;
+                   
                     const modal = new bootstrap.Modal(document.getElementById('modalRegistroCliente'));
                     modal.show();
                 }

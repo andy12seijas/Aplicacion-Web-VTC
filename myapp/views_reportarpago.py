@@ -45,12 +45,12 @@ def buscar_cliente(request):
     try:
         data = json.loads(request.body)
         cedula = data.get('cedula')
-        correo = data.get('correo')
+       
         
         # Buscar en ContratoCliente (clientes internos)
         contrato = ContratoCliente.objects.filter(
             cliente_potencial__cedula=cedula,
-            correo_electronico=correo
+           
         ).select_related('cliente_potencial').first()
         
         if contrato:
@@ -71,7 +71,7 @@ def buscar_cliente(request):
         # Buscar en ClienteExterno
         cliente_externo = ClienteExterno.objects.filter(
             cedula=cedula,
-            correo=correo
+          
         ).first()
         
         if cliente_externo:
