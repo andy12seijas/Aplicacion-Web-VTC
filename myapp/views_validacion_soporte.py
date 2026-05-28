@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import SoporteCliente, ContratoCliente, ClienteExterno
 
-
+from django.conf import settings
 
 def gestion_soportes_cliente(request):
     """Vista para gestionar los soportes/reclamos de clientes (Call Center)"""
@@ -137,6 +137,26 @@ def ver_detalle_soporte(request, soporte_id):
         plan = 'N/A'
         tipo_cliente = 'Desconocido'
     
+    # ========== SOLUCIÓN PARA LAS FOTOS EN PRODUCCIÓN ==========
+    # Construir la URL completa de la foto
+    foto_url = None
+    if soporte.foto:
+        if settings.DEBUG:
+            # En desarrollo, usar la URL relativa
+            foto_url = soporte.foto.url
+        else:
+            # En producción, construir URL completa con el dominio
+            # Esto funciona en Namecheap y cualquier hosting
+            dominio = request.build_absolute_uri('/')[:-1]  # Elimina la barra final
+            # Si la URL ya empieza con http, usarla directamente
+            if soporte.foto.url.startswith(('http://', 'https://')):
+                foto_url = soporte.foto.url
+            else:
+                # Construir URL completa
+                foto_url = f"{dominio}{soporte.foto.url}"
+    
+    # ========== FIN SOLUCIÓN ==========
+    
     data = {
         'id': soporte.id,
         'cliente_nombre': cliente_nombre,
@@ -147,7 +167,7 @@ def ver_detalle_soporte(request, soporte_id):
         'tipo_cliente': tipo_cliente,
         'reclamo': soporte.reclamo,
         'observacion': soporte.observacion or 'Sin observaciones',
-        'foto_url': soporte.foto.url if soporte.foto else None,
+        'foto_url': foto_url,
         'estado': soporte.estado,
         'estado_display': soporte.get_estado_display(),
         'fecha_creacion': soporte.fecha_creacion.strftime('%d/%m/%Y %H:%M'),

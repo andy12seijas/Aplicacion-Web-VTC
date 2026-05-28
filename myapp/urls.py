@@ -83,6 +83,7 @@ urlpatterns = [
     path('ventas-directas/',lista_ventas_directas, name='lista_ventas_directas'),
     path('ventas-directas/crear/',crear_venta_directa, name='crear_venta_directa'),
     path('ventas-directas/<int:venta_id>/editar/',editar_venta_directa, name='editar_venta_directa'),
+    path('crear-venta-rapida/', crear_venta_rapida, name='crear_venta_rapida'),
     
     path('ventas-directas/<int:venta_id>/detalle/', detalle_venta_directa, name='detalle_venta_directa'),
     path('ventas-directas/<int:venta_id>/cambiar-estado/', cambiar_estado_venta, name='cambiar_estado_venta'),
@@ -130,7 +131,7 @@ urlpatterns = [
     path('api/reporte-instaladores/', reporte_instaladores_json, name='reporte_instaladores_json'),
     path('api/semanas-disponibles/', semanas_disponibles_api, name='semanas_disponibles_api'),
     # API para semanas disponibles de instaladores
-path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_api, name='semanas_disponibles_instaladores'),
+    path('api/semanas-disponibles-instaladores/', semanas_disponibles_instaladores_api, name='semanas_disponibles_instaladores'),
     path('api/actualizar-tasa/', api_actualizar_tasa, name='api_actualizar_tasa'),
     #URLS DE INVENTARIO
  

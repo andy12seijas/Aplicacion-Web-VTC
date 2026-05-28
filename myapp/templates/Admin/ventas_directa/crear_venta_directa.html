@@ -18,170 +18,250 @@
 {% block content %}
 <div class="form-container">
     <div class="form-card">
-        <form method="post" class="venta-form" id="ventaForm">
-            {% csrf_token %}
-            
-            {% if form.non_field_errors %}
-            <div class="alert-error">
-                {% for error in form.non_field_errors %}
-                <p>{{ error }}</p>
-                {% endfor %}
-            </div>
-            {% endif %}
-            
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="{{ form.nro_orden.id_for_label }}">
-                        Número de Orden <span class="required">*</span>
-                    </label>
-                    {{ form.nro_orden }}
-                    {% if form.nro_orden.errors %}
-                    <div class="field-error">
-                        {% for error in form.nro_orden.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+        <!-- Pestañas de modo de ingreso -->
+        <div class="mode-tabs">
+            <button type="button" class="mode-tab active" data-mode="manual">
+                <span class="tab-icon">📝</span> Manual (Campo por campo)
+            </button>
+            <button type="button" class="mode-tab" data-mode="rapido">
+                <span class="tab-icon">⚡</span> Formato Rápido
+            </button>
+        </div>
+
+        <!-- MODO MANUAL - Formulario normal -->
+        <div id="modo-manual" class="mode-content active">
+            <form method="post" class="venta-form" id="ventaForm">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert-error">
+                    {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="{{ form.nro_orden.id_for_label }}">
+                            Número de Orden <span class="required">*</span>
+                        </label>
+                        {{ form.nro_orden }}
+                        {% if form.nro_orden.errors %}
+                        <div class="field-error">
+                            {% for error in form.nro_orden.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">{{ form.nro_orden.help_text }}</small>
                     </div>
-                    {% endif %}
-                    <small class="help-text">{{ form.nro_orden.help_text }}</small>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.cedula.id_for_label }}">
+                            Cédula <span class="required">*</span>
+                        </label>
+                        {{ form.cedula }}
+                        {% if form.cedula.errors %}
+                        <div class="field-error">
+                            {% for error in form.cedula.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">Solo números, sin puntos ni letras</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.customer_id.id_for_label }}">
+                            Customer ID <span class="required">*</span>
+                        </label>
+                        {{ form.customer_id }}
+                        {% if form.customer_id.errors %}
+                        <div class="field-error">
+                            {% for error in form.customer_id.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">ID del cliente en el sistema</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.nombre.id_for_label }}">
+                            Nombre <span class="required">*</span>
+                        </label>
+                        {{ form.nombre }}
+                        {% if form.nombre.errors %}
+                        <div class="field-error">
+                            {% for error in form.nombre.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.apellido.id_for_label }}">
+                            Apellido <span class="required">*</span>
+                        </label>
+                        {{ form.apellido }}
+                        {% if form.apellido.errors %}
+                        <div class="field-error">
+                            {% for error in form.apellido.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Teléfono con operadora -->
+                    <div class="form-group">
+                        <label>
+                            Teléfono <span class="required">*</span>
+                        </label>
+                        <div class="telefono-wrapper">
+                            <select id="operadora" class="form-select operadora-select" style="width: 95px;">
+                                <option value="">Sel.</option>
+                                <option value="0412">0412</option>
+                                <option value="0414">0414</option>
+                                <option value="0416">0416</option>
+                                <option value="0424">0424</option>
+                                <option value="0422">0422</option>
+                                <option value="0426">0426</option>
+                            </select>
+                            <span class="telefono-guion">-</span>
+                            <input type="text" 
+                                   id="numero_telefono" 
+                                   class="form-input telefono-input" 
+                                   placeholder="1234567"
+                                   maxlength="7"
+                                   pattern="[0-9]{7}"
+                                   title="Ingrese 7 dígitos"
+                                   style="flex: 1;">
+                        </div>
+                        <!-- Campo oculto para guardar el teléfono completo -->
+                        <input type="hidden" name="telefono" id="telefono_completo" value="{{ form.telefono.value|default:'' }}">
+                        {% if form.telefono.errors %}
+                        <div class="field-error">
+                            {% for error in form.telefono.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">Seleccione operadora y luego ingrese los 7 dígitos (Ej: 0412-1234567)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="{{ form.plan.id_for_label }}">
+                            Plan <span class="required">*</span>
+                        </label>
+                        {{ form.plan }}
+                        {% if form.plan.errors %}
+                        <div class="field-error">
+                            {% for error in form.plan.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="{{ form.observacion.id_for_label }}">
+                            Observación
+                        </label>
+                        {{ form.observacion }}
+                        {% if form.observacion.errors %}
+                        <div class="field-error">
+                            {% for error in form.observacion.errors %}
+                            <small>{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="help-text">Notas adicionales sobre la venta (opcional)</small>
+                    </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="{{ form.cedula.id_for_label }}">
-                        Cédula <span class="required">*</span>
-                    </label>
-                    {{ form.cedula }}
-                    {% if form.cedula.errors %}
-                    <div class="field-error">
-                        {% for error in form.cedula.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                <div class="form-actions">
+                    <a href="{% url 'lista_ventas_directas' %}" class="btn-outline">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M20 6L9 17l-5-5"/>
+                        </svg>
+                        {{ boton_texto }}
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- MODO RÁPIDO - Pegar texto formateado -->
+        <div id="modo-rapido" class="mode-content">
+            <div class="form-sections">
+                <div class="form-section">
+                    <h3 class="section-title">⚡ Pegar Formato de Venta</h3>
+                    <div class="info-box">
+                        <p><strong>📌 Formatos aceptados:</strong></p>
+                        <p><strong>Formato 1 (Tabla - copiar desde Excel):</strong></p>
+                        <pre class="formato-ejemplo">
+CO000097218	V22087535	473103435	sara Patricia González	4144027078	400 mbps	31/05/2026	AM	Carabobo	VALENCIA	VALENCIA	BARRIO RUIZ PINEDA II</pre>
+                        <p><strong>Formato 2 (Etiquetas):</strong></p>
+                        <pre class="formato-ejemplo">
+Nro Orden: CO000097218
+Cédula: V22087535
+Customer ID: 473103435
+Nombre y apellido: sara Patricia González
+Teléfono: 4144027078
+Plan: 400 mbps
+Fecha: 31/05/2026
+Dirección: Carabobo VALENCIA VALENCIA BARRIO RUIZ PINEDA II</pre>
+                        <p class="help-text">✔️ Copia y pega cualquiera de los dos formatos</p>
+                        <p class="help-text">✔️ El sistema extraerá automáticamente todos los datos</p>
+                        <p class="help-text">✔️ Los campos no encontrados se guardarán como "N/A"</p>
+                        <p class="help-text">✔️ La cédula y teléfono se guardarán solo con números</p>
                     </div>
-                    {% endif %}
-                    <small class="help-text">Solo números, sin puntos ni letras</small>
+                    
+                    <div class="form-group full-width">
+                        <label>Texto de la Venta <span class="required">*</span></label>
+                        <textarea id="textoRapido" class="form-input" rows="10" placeholder="Pega aquí el texto de la venta..."></textarea>
+                        <small class="help-text">Pega el texto completo y el sistema lo procesará automáticamente</small>
+                    </div>
+                    
+                    <button type="button" class="btn-preview" onclick="previsualizarDatos()">
+                        🔍 Previsualizar datos extraídos
+                    </button>
                 </div>
                 
-                <div class="form-group">
-                    <label for="{{ form.customer_id.id_for_label }}">
-                        Customer ID <span class="required">*</span>
-                    </label>
-                    {{ form.customer_id }}
-                    {% if form.customer_id.errors %}
-                    <div class="field-error">
-                        {% for error in form.customer_id.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                <!-- Previsualización de datos extraídos -->
+                <div id="previsualizacion" class="preview-section" style="display: none;">
+                    <h3 class="section-title">📋 Datos Extraídos</h3>
+                    <div class="preview-grid">
+                        <div class="preview-item"><strong>Nro Orden:</strong> <span id="preview_orden">-</span></div>
+                        <div class="preview-item"><strong>Cédula:</strong> <span id="preview_cedula">-</span></div>
+                        <div class="preview-item"><strong>Customer ID:</strong> <span id="preview_customer">-</span></div>
+                        <div class="preview-item full-width"><strong>Nombre Completo:</strong> <span id="preview_nombre">-</span></div>
+                        <div class="preview-item"><strong>Teléfono:</strong> <span id="preview_telefono">-</span></div>
+                        <div class="preview-item"><strong>Plan:</strong> <span id="preview_plan">-</span></div>
+                        <div class="preview-item"><strong>Fecha:</strong> <span id="preview_fecha">-</span></div>
+                        <div class="preview-item full-width"><strong>Dirección:</strong> <span id="preview_direccion">-</span></div>
                     </div>
-                    {% endif %}
-                    <small class="help-text">ID del cliente en el sistema</small>
                 </div>
                 
-                <div class="form-group">
-                    <label for="{{ form.nombre.id_for_label }}">
-                        Nombre <span class="required">*</span>
-                    </label>
-                    {{ form.nombre }}
-                    {% if form.nombre.errors %}
-                    <div class="field-error">
-                        {% for error in form.nombre.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                <div class="form-section">
+                    <h3 class="section-title">📝 Observación (opcional)</h3>
+                    <div class="form-group full-width">
+                        <label for="observacion_rapido">Observación adicional</label>
+                        <textarea id="observacion_rapido" class="form-input" rows="3" placeholder="Notas adicionales sobre la venta..."></textarea>
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.apellido.id_for_label }}">
-                        Apellido <span class="required">*</span>
-                    </label>
-                    {{ form.apellido }}
-                    {% if form.apellido.errors %}
-                    <div class="field-error">
-                        {% for error in form.apellido.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <!-- Teléfono con operadora -->
-                <div class="form-group">
-                    <label>
-                        Teléfono <span class="required">*</span>
-                    </label>
-                    <div class="telefono-wrapper">
-                        <select id="operadora" class="form-select operadora-select" style="width: 95px;">
-                            <option value="">Sel.</option>
-                            <option value="0412">0412</option>
-                            <option value="0414">0414</option>
-                            <option value="0416">0416</option>
-                            <option value="0424">0424</option>
-                            <option value="0422">0422</option>
-                            <option value="0426">0426</option>
-                        </select>
-                        <span class="telefono-guion">-</span>
-                        <input type="text" 
-                               id="numero_telefono" 
-                               class="form-input telefono-input" 
-                               placeholder="1234567"
-                               maxlength="7"
-                               pattern="[0-9]{7}"
-                               title="Ingrese 7 dígitos"
-                               style="flex: 1;">
-                    </div>
-                    <!-- Campo oculto para guardar el teléfono completo -->
-                    <input type="hidden" name="telefono" id="telefono_completo" value="{{ form.telefono.value|default:'' }}">
-                    {% if form.telefono.errors %}
-                    <div class="field-error">
-                        {% for error in form.telefono.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    <small class="help-text">Seleccione operadora y luego ingrese los 7 dígitos (Ej: 0412-1234567)</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="{{ form.plan.id_for_label }}">
-                        Plan <span class="required">*</span>
-                    </label>
-                    {{ form.plan }}
-                    {% if form.plan.errors %}
-                    <div class="field-error">
-                        {% for error in form.plan.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group full-width">
-                    <label for="{{ form.observacion.id_for_label }}">
-                        Observación
-                    </label>
-                    {{ form.observacion }}
-                    {% if form.observacion.errors %}
-                    <div class="field-error">
-                        {% for error in form.observacion.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                    <small class="help-text">Notas adicionales sobre la venta (opcional)</small>
                 </div>
             </div>
             
             <div class="form-actions">
-                <a href="{% url 'lista_ventas_directas' %}" class="btn-outline">
-                    Cancelar
-                </a>
-                <button type="submit" class="btn-primary">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M20 6L9 17l-5-5"/>
-                    </svg>
-                    {{ boton_texto }}
-                </button>
+                <a href="{% url 'lista_ventas_directas' %}" class="btn-outline">Cancelar</a>
+                <button type="button" class="btn-primary" onclick="procesarYGuardar()">Guardar Venta</button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -195,7 +275,71 @@
         background: white;
         border-radius: 16px;
         border: 1px solid #e0e0e0;
+        overflow: hidden;
+    }
+    
+    /* Pestañas */
+    .mode-tabs {
+        display: flex;
+        border-bottom: 1px solid #e0e0e0;
+        background: #f8f9fa;
+    }
+    
+    .mode-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 20px;
+        background: none;
+        border: none;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .mode-tab:hover {
+        background: #fff0e6;
+        color: #ff6b00;
+    }
+    
+    .mode-tab.active {
+        background: white;
+        color: #ff6b00;
+        border-bottom: 3px solid #ff6b00;
+    }
+    
+    .tab-icon {
+        font-size: 18px;
+    }
+    
+    .mode-content {
+        display: none;
         padding: 24px;
+    }
+    
+    .mode-content.active {
+        display: block;
+    }
+    
+    .form-sections {
+        width: 100%;
+    }
+    
+    .form-section {
+        margin-bottom: 24px;
+    }
+    
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #ff6b00;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #ffe0cc;
     }
     
     .form-grid {
@@ -226,7 +370,6 @@
         margin-left: 2px;
     }
     
-    /* Estilos para el teléfono */
     .telefono-wrapper {
         display: flex;
         align-items: center;
@@ -296,15 +439,84 @@
         border-left: 4px solid #f44336;
     }
     
+    .info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #ff6b00;
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    
+    .formato-ejemplo {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-family: monospace;
+        overflow-x: auto;
+        margin: 12px 0;
+        white-space: pre-wrap;
+    }
+    
+    .btn-preview {
+        background: #ffe0cc;
+        border: 1px solid #ff6b00;
+        color: #ff6b00;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        margin-top: 10px;
+        transition: all 0.2s;
+    }
+    
+    .btn-preview:hover {
+        background: #ff6b00;
+        color: white;
+    }
+    
+    .preview-section {
+        margin-top: 20px;
+        padding: 16px;
+        background: #f0fdf4;
+        border-radius: 12px;
+        border: 1px solid #bbf7d0;
+    }
+    
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px;
+    }
+    
+    .preview-item {
+        font-size: 13px;
+    }
+    
+    .preview-item.full-width {
+        grid-column: 1 / -1;
+    }
+    
+    .preview-item strong {
+        color: #555;
+    }
+    
+    .preview-item span {
+        color: #ff6b00;
+        font-weight: 500;
+    }
+    
     .form-actions {
         display: flex;
         justify-content: flex-end;
         gap: 12px;
         padding-top: 24px;
         border-top: 1px solid #e0e0e0;
+        margin-top: 16px;
     }
     
-    .btn-primary, .btn-outline {
+    .btn-primary, .btn-outline, .btn-secondary {
         display: inline-flex;
         align-items: center;
         gap: 8px;
@@ -340,17 +552,9 @@
     }
     
     .btn-secondary {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
         background: white;
         color: #666;
         border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        font-size: 13px;
-        text-decoration: none;
-        transition: all 0.2s;
     }
     
     .btn-secondary:hover {
@@ -359,6 +563,10 @@
     }
     
     @media (max-width: 768px) {
+        .mode-content {
+            padding: 16px;
+        }
+        
         .form-grid {
             grid-template-columns: 1fr;
         }
@@ -391,12 +599,235 @@
         .telefono-input {
             width: 100%;
         }
+        
+        .preview-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .preview-item.full-width {
+            grid-column: 1;
+        }
     }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inicializar teléfono
+        inicializarTelefono();
+        
+        // Pestañas
+        const tabs = document.querySelectorAll('.mode-tab');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const mode = this.dataset.mode;
+                
+                // Cambiar clase active en tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Cambiar clase active en contenidos
+                document.querySelectorAll('.mode-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                const activeContent = document.getElementById(`modo-${mode}`);
+                if (activeContent) {
+                    activeContent.classList.add('active');
+                }
+            });
+        });
+    });
+
+    // Función para extraer datos del texto
+    function extraerDatos(texto) {
+        const datos = {
+            nro_orden: '',
+            cedula: '',
+            customer_id: '',
+            nombre_completo: '',
+            telefono: '',
+            plan: '',
+            fecha: '',
+            direccion: ''
+        };
+        
+        // Si el texto contiene tabs (formato de tabla)
+        if (texto.includes('\t')) {
+            const lineas = texto.split('\n');
+            for (let linea of lineas) {
+                const campos = linea.split('\t');
+                if (campos.length >= 8 && (campos[0].startsWith('CO') || campos[0].startsWith('SO'))) {
+                    datos.nro_orden = campos[0]?.trim() || '';
+                    datos.cedula = campos[1] ? campos[1].trim().replace(/[^0-9]/g, '') : '';
+                    datos.customer_id = campos[2]?.trim() || '';
+                    datos.nombre_completo = campos[3]?.trim() || '';
+                    datos.telefono = campos[4] ? campos[4].trim().replace(/[^0-9]/g, '') : '';
+                    datos.plan = campos[5]?.trim() || '';
+                    datos.fecha = campos[6]?.trim() || '';
+                    // Combinar dirección (índices 8,9,10,11)
+                    if (campos.length >= 12) {
+                        const estado = campos[8]?.trim() || '';
+                        const ciudad = campos[9]?.trim() || '';
+                        const municipio = campos[10]?.trim() || '';
+                        const urbanizacion = campos[11]?.trim() || '';
+                        datos.direccion = `${estado} ${ciudad} ${municipio} ${urbanizacion}`.trim();
+                    }
+                    break;
+                }
+            }
+        } 
+        // Si no tiene tabs, usar el formato con etiquetas
+        else {
+            // Extraer Nro Orden
+            let ordenMatch = texto.match(/(?:Nro Orden|Orden|Número de Orden)[:\s]*([CO]?\d+)/i);
+            if (ordenMatch) datos.nro_orden = ordenMatch[1];
+            
+            // Extraer Cédula
+            let cedulaMatch = texto.match(/(?:Cédula|Cedula|CI)[:\s]*([VEJPG]?-?[\d]+)/i);
+            if (cedulaMatch) {
+                let cedulaRaw = cedulaMatch[1] || cedulaMatch[0];
+                datos.cedula = cedulaRaw.replace(/[^0-9]/g, '');
+            }
+            
+            // Extraer Customer ID
+            let customerMatch = texto.match(/(?:Customer|Customer ID|ID Cliente)[:\s]*(\d+)/i);
+            if (customerMatch) datos.customer_id = customerMatch[1];
+            
+            // Extraer Nombre completo
+            let nombreMatch = texto.match(/(?:Nombre y apellido|Nombre|Cliente)[:\s]*-?\s*([^\n]+)/i);
+            if (nombreMatch) {
+                datos.nombre_completo = nombreMatch[1].trim().replace(/^-/, '');
+            }
+            
+            if (!datos.nombre_completo) {
+                const lines = texto.split('\n');
+                for (let line of lines) {
+                    if (line.match(/[A-Z][a-z]+\s+[A-Z][a-z]+/) && !line.includes('Dirección') && !line.includes('Cédula')) {
+                        datos.nombre_completo = line.trim().replace(/^-/, '');
+                        break;
+                    }
+                }
+            }
+            
+            // Extraer Teléfono
+            let telefonoMatch = texto.match(/(?:Teléfono|Telefono|Celular)[:\s]*(\d+)/i);
+            if (telefonoMatch) {
+                datos.telefono = telefonoMatch[1].replace(/[^0-9]/g, '');
+            }
+            
+            // Extraer Plan
+            let planMatch = texto.match(/(?:Plan|Velocidad)[:\s]*(\d+\s*(?:mbps|Mbps|MB|megas?))/i);
+            if (planMatch) {
+                let planText = planMatch[1].trim();
+                if (!planText.toLowerCase().includes('mbps')) planText += ' mbps';
+                datos.plan = planText;
+            }
+            
+            // Extraer Fecha
+            const fechaMatch = texto.match(/(?:Fecha)[:\s]*([\d\/]+)/i);
+            if (fechaMatch) datos.fecha = fechaMatch[1];
+            
+            // Extraer Dirección
+            const direccionMatch = texto.match(/(?:Dirección|Direccion)[:\s]*([^\n]+)/i);
+            if (direccionMatch) {
+                datos.direccion = direccionMatch[1].trim();
+            }
+        }
+        
+        return datos;
+    }
+
+    // Previsualizar datos extraídos
+    function previsualizarDatos() {
+        const texto = document.getElementById('textoRapido').value;
+        if (!texto.trim()) {
+            Swal.fire('Error', 'Pega el texto de la venta primero', 'warning');
+            return;
+        }
+        
+        const datos = extraerDatos(texto);
+        
+        // Formatear teléfono para mostrar
+        let telefonoMostrar = datos.telefono || 'N/A';
+        if (telefonoMostrar !== 'N/A' && telefonoMostrar.length === 10) {
+            telefonoMostrar = `${telefonoMostrar.substr(0,4)}-${telefonoMostrar.substr(4)}`;
+        }
+        
+        document.getElementById('preview_orden').textContent = datos.nro_orden || 'N/A';
+        document.getElementById('preview_cedula').textContent = datos.cedula || 'N/A';
+        document.getElementById('preview_customer').textContent = datos.customer_id || 'N/A';
+        document.getElementById('preview_nombre').textContent = datos.nombre_completo || 'N/A';
+        document.getElementById('preview_telefono').textContent = telefonoMostrar;
+        document.getElementById('preview_plan').textContent = datos.plan || 'N/A';
+        document.getElementById('preview_fecha').textContent = datos.fecha || 'N/A';
+        document.getElementById('preview_direccion').textContent = datos.direccion || 'N/A';
+        
+        document.getElementById('previsualizacion').style.display = 'block';
+        window.datosExtraidos = datos;
+    }
+
+    // Procesar y guardar desde modo rápido
+    function procesarYGuardar() {
+        const texto = document.getElementById('textoRapido').value;
+        if (!texto.trim()) {
+            Swal.fire('Error', 'Pega el texto de la venta primero', 'warning');
+            return;
+        }
+        
+        const datos = extraerDatos(texto);
+        const observacion = document.getElementById('observacion_rapido')?.value || '';
+        
+        if (!datos.nro_orden) {
+            Swal.fire('Error', 'No se encontró el Número de Orden en el texto', 'error');
+            return;
+        }
+        
+        Swal.fire({
+            title: '¿Guardar venta?',
+            html: `<strong>Nro Orden:</strong> ${datos.nro_orden || 'N/A'}<br>
+                   <strong>Cliente:</strong> ${datos.nombre_completo || 'N/A'}<br>
+                   <strong>Cédula:</strong> ${datos.cedula || 'N/A'}<br>
+                   <strong>Teléfono:</strong> ${datos.telefono || 'N/A'}<br>
+                   <strong>Plan:</strong> ${datos.plan || 'N/A'}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ff6b00',
+            confirmButtonText: 'Sí, guardar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = "{% url 'crear_venta_rapida' %}";
+                
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden';
+                csrf.name = 'csrfmiddlewaretoken';
+                csrf.value = '{{ csrf_token }}';
+                form.appendChild(csrf);
+                
+                const datosInput = document.createElement('input');
+                datosInput.type = 'hidden';
+                datosInput.name = 'datos_json';
+                datosInput.value = JSON.stringify(datos);
+                form.appendChild(datosInput);
+                
+                const observacionInput = document.createElement('input');
+                observacionInput.type = 'hidden';
+                observacionInput.name = 'observacion';
+                observacionInput.value = observacion;
+                form.appendChild(observacionInput);
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    }
+
     // ============================================================
-    // MANEJO DE TELÉFONO (operadora + número)
+    // MANEJO DE TELÉFONO (modo manual)
     // ============================================================
     function inicializarTelefono() {
         const operadoraSelect = document.getElementById('operadora');
@@ -405,7 +836,6 @@
         
         if (!operadoraSelect || !numeroInput || !telefonoHidden) return;
         
-        // Si hay un teléfono guardado, separarlo para mostrarlo
         const telefonoExistente = telefonoHidden.value;
         if (telefonoExistente && telefonoExistente.includes('-')) {
             const partes = telefonoExistente.split('-');
@@ -415,7 +845,6 @@
             }
         }
         
-        // Función para actualizar el campo oculto
         function actualizarTelefono() {
             const operadora = operadoraSelect.value;
             const numero = numeroInput.value;
@@ -427,12 +856,9 @@
             }
         }
         
-        // Eventos
         operadoraSelect.addEventListener('change', actualizarTelefono);
         numeroInput.addEventListener('input', function(e) {
-            // Solo permitir números
             this.value = this.value.replace(/[^0-9]/g, '');
-            // Limitar a 7 caracteres
             if (this.value.length > 7) {
                 this.value = this.value.slice(0, 7);
             }
@@ -442,43 +868,38 @@
         actualizarTelefono();
     }
     
-    // ============================================================
-    // VALIDACIONES
-    // ============================================================
+    // Validaciones modo manual
+    const cedulaInput = document.getElementById('{{ form.cedula.id_for_label }}');
+    if (cedulaInput) {
+        cedulaInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    }
     
-    // Validar que la cédula solo contenga números
-    document.getElementById('{{ form.cedula.id_for_label }}')?.addEventListener('input', function(e) {
-        this.value = this.value.replace(/[^0-9]/g, '');
-    });
+    const nroOrdenInput = document.getElementById('{{ form.nro_orden.id_for_label }}');
+    if (nroOrdenInput) {
+        nroOrdenInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\s/g, '');
+        });
+    }
     
-    // Validar que el número de orden no tenga espacios
-    document.getElementById('{{ form.nro_orden.id_for_label }}')?.addEventListener('input', function(e) {
-        this.value = this.value.replace(/\s/g, '');
-    });
-    
-    // Validar el formulario antes de enviar
-    document.getElementById('ventaForm').addEventListener('submit', function(e) {
-        const operadora = document.getElementById('operadora')?.value;
-        const numero = document.getElementById('numero_telefono')?.value;
-        const telefonoHidden = document.getElementById('telefono_completo')?.value;
-        
-        if (!operadora || !numero || numero.length !== 7) {
-            e.preventDefault();
-            Swal.fire({
-                icon: 'error',
-                title: 'Teléfono inválido',
-                text: 'Debe seleccionar una operadora y completar los 7 dígitos del teléfono',
-                confirmButtonColor: '#ff6b00'
-            });
-            return false;
-        }
-    });
-    
-    // Inicializar al cargar la página
-    document.addEventListener('DOMContentLoaded', function() {
-        inicializarTelefono();
-    });
+    const ventaForm = document.getElementById('ventaForm');
+    if (ventaForm) {
+        ventaForm.addEventListener('submit', function(e) {
+            const operadora = document.getElementById('operadora')?.value;
+            const numero = document.getElementById('numero_telefono')?.value;
+            
+            if (!operadora || !numero || numero.length !== 7) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Teléfono inválido',
+                    text: 'Debe seleccionar una operadora y completar los 7 dígitos del teléfono',
+                    confirmButtonColor: '#ff6b00'
+                });
+                return false;
+            }
+        });
+    }
 </script>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}

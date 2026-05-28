@@ -166,20 +166,24 @@
                 <div class="form-section">
                     <h3 class="section-title">⚡ Pegar Formato de Ticket</h3>
                     <div class="info-box">
-                        <p><strong>📌 Formato aceptado:</strong></p>
+                        <p><strong>📌 Formatos aceptados:</strong></p>
+                        <p><strong>Formato 1 (Tabla - copiar desde Excel):</strong></p>
                         <pre class="formato-ejemplo">
-Falla: Sin conexión a internet
-Ticket Padre: SIMPLETV-06319623
-Fecha y hora: 21/04/2026
-Nombre y apellido: Jhon Alber Rojas Castellanos
-Cédula: V-23424117
-Customer: 436378286
-Dirección: CARABOBO-VALENCIA-VALENCIA-URB. MIGUEL ACHE Av Aranzazu sector Andrés Eloy blanco,calle Andrés Eloy 3era calle,casa # 93/09
-Teléfono: 4144313051
-Plan: 200 mbps</pre>
-                        <p class="help-text">✔️ Puedes copiar y pegar el formato directamente</p>
+SO000001154	V17553087	457726670	Duglenis Naranjo	4244086673	400 Mbps	28/05/2026	AM	CARABOBO	VALENCIA	VALENCIA	URB. LA CASTRERA</pre>
+                        <p><strong>Formato 2 (Etiquetas):</strong></p>
+                        <pre class="formato-ejemplo">
+Ticket Padre: SO000000983
+Fecha y hora: 26/05/2026
+Nombre y apellido: Dreiner Gabriel Pérez Vidal
+Cédula: V32017191
+Customer: 433963135
+Dirección: URB LA ENTRADA
+Teléfono: 4147602093
+Plan: 200 Mbps</pre>
+                        <p class="help-text">✔️ Copia y pega cualquiera de los dos formatos</p>
                         <p class="help-text">✔️ El sistema extraerá automáticamente todos los datos</p>
-                        <p class="help-text">✔️ La cédula se guardará solo con números (Ej: 23424117)</p>
+                        <p class="help-text">✔️ Los campos no encontrados se guardarán como "N/A"</p>
+                        <p class="help-text">✔️ La cédula y teléfono se guardarán solo con números</p>
                     </div>
                     
                     <div class="form-group full-width">
@@ -206,11 +210,12 @@ Plan: 200 mbps</pre>
                         <div class="preview-item"><strong>Plan:</strong> <span id="preview_plan">-</span></div>
                         <div class="preview-item full-width"><strong>Dirección:</strong> <span id="preview_direccion">-</span></div>
                         <div class="preview-item full-width"><strong>Falla:</strong> <span id="preview_falla">-</span></div>
+                        <div class="preview-item"><strong>Fecha requerida:</strong> <span id="preview_fecha">-</span></div>
                     </div>
                 </div>
                 
                 <div class="form-section">
-                    <h3 class="section-title">🚚 Asignación</h3>
+                    <h3 class="section-title">🚚 Asignación (opcional)</h3>
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="tipo_soporte_rapido">Tipo de Soporte <span class="required">*</span></label>
@@ -319,7 +324,7 @@ Plan: 200 mbps</pre>
         });
     });
 
-    // Función para extraer datos del texto
+    // Función para extraer datos del texto (soporta ambos formatos)
     function extraerDatos(texto) {
         const datos = {
             ticket_padre: '',
@@ -329,78 +334,117 @@ Plan: 200 mbps</pre>
             telefono: '',
             direccion: '',
             plan: '',
-            falla: ''
+            falla: '',
+            fecha_reporte: ''
         };
         
-        // Extraer Ticket Padre
-        let ticketMatch = texto.match(/(?:Ticket Padre|Ticket#?|ID Ticket)[:\s]*([A-Z0-9-]+)/i);
-        if (!ticketMatch) {
-            ticketMatch = texto.match(/SIMPLETV-\d+/i);
-        }
-        if (ticketMatch) datos.ticket_padre = ticketMatch[1] || ticketMatch[0];
-        
-        // Extraer Falla
-        const fallaMatch = texto.match(/(?:Falla|Problema|Issue)[:\s]*([^\n]+)/i);
-        if (fallaMatch) datos.falla = fallaMatch[1].trim();
-        
-        // Extraer Nombre completo
-        let nombreMatch = texto.match(/(?:Nombre y apellido|Nombre|Cliente)[:\s]*([^\n]+)/i);
-        if (nombreMatch) {
-            datos.nombre_completo = nombreMatch[1].trim();
-        }
-        
-        if (!datos.nombre_completo) {
-            const lines = texto.split('\n');
-            for (let line of lines) {
-                if (line.match(/[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+/) && !line.includes('Dirección') && !line.includes('Ticket')) {
-                    datos.nombre_completo = line.trim();
+        // Si el texto contiene tabs (formato de tabla)
+        if (texto.includes('\t')) {
+            const lineas = texto.split('\n');
+            for (let linea of lineas) {
+                const campos = linea.split('\t');
+                if (campos.length >= 8 && campos[0].startsWith('SO')) {
+                    datos.ticket_padre = campos[0]?.trim() || '';
+                    datos.cedula = campos[1] ? campos[1].trim().replace(/[^0-9]/g, '') : '';
+                    datos.customer_id = campos[2]?.trim() || '';
+                    datos.nombre_completo = campos[3]?.trim() || '';
+                    datos.telefono = campos[4] ? campos[4].trim().replace(/[^0-9]/g, '') : '';
+                    datos.plan = campos[5]?.trim() || '';
+                    datos.fecha_reporte = campos[6]?.trim() || '';
+                    // Combinar dirección (índices 8,9,10,11)
+                    if (campos.length >= 12) {
+                        const estado = campos[8]?.trim() || '';
+                        const ciudad = campos[9]?.trim() || '';
+                        const municipio = campos[10]?.trim() || '';
+                        const urbanizacion = campos[11]?.trim() || '';
+                        datos.direccion = `${estado} ${ciudad} ${municipio} ${urbanizacion}`.trim();
+                    }
+                    datos.falla = 'Soporte Técnico';
                     break;
                 }
             }
-        }
-        
-        // Extraer Cédula - SOLO NÚMEROS
-        let cedulaMatch = texto.match(/(?:Cédula|Cedula|CI)[:\s]*([VEJPG]?-?[\d]+)/i);
-        if (!cedulaMatch) {
-            cedulaMatch = texto.match(/[VEJPG]-\d+/i);
-        }
-        if (cedulaMatch) {
-            let cedulaRaw = cedulaMatch[1] || cedulaMatch[0];
-            datos.cedula = cedulaRaw.replace(/[^0-9]/g, '');
-        }
-        
-        // Extraer Customer ID
-        let customerMatch = texto.match(/(?:Customer|Customer ID|ID Cliente)[:\s]*(\d+)/i);
-        if (!customerMatch) {
-            customerMatch = texto.match(/Customer:\s*(\d+)/i);
-        }
-        if (customerMatch) datos.customer_id = customerMatch[1];
-        
-        // Extraer Teléfono - SOLO NÚMEROS
-        let telefonoMatch = texto.match(/(?:Teléfono|Telefono|Celular|Contacto)[:\s]*([\d\s-]+)/i);
-        if (!telefonoMatch) {
-            telefonoMatch = texto.match(/\b(?:04|02)\d{9}\b/);
-        }
-        if (telefonoMatch) {
-            let telefonoRaw = telefonoMatch[1] || telefonoMatch[0];
-            datos.telefono = telefonoRaw.replace(/[^0-9]/g, '');
-        }
-        
-        // Extraer Dirección
-        const direccionMatch = texto.match(/(?:Dirección|Direccion)[:\s]*([^\n]+(?:\n[^\n]+)*?)(?=\n(?:Teléfono|Plan|Falla|Ticket|Cédula|\n\n|$))/i);
-        if (direccionMatch) {
-            datos.direccion = direccionMatch[1].trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
-        }
-        
-        // Extraer Plan
-        let planMatch = texto.match(/(?:Plan|Velocidad)[:\s]*(\d+\s*(?:mbps|Mbps|MB|megas?))/i);
-        if (!planMatch) {
-            planMatch = texto.match(/(\d+)\s*(?:mbps|Mbps|MB|megas?)/i);
-        }
-        if (planMatch) {
-            let planText = planMatch[1].trim();
-            if (!planText.toLowerCase().includes('mbps')) planText += ' mbps';
-            datos.plan = planText;
+        } 
+        // Si no tiene tabs, usar el formato con etiquetas
+        else {
+            // Extraer Ticket Padre (SO000 format)
+            let ticketMatch = texto.match(/(?:Ticket Padre|SO\d+)/i);
+            if (ticketMatch) {
+                let ticketRaw = ticketMatch[0];
+                if (ticketRaw.match(/SO\d+/i)) {
+                    datos.ticket_padre = ticketRaw;
+                } else {
+                    const soMatch = texto.match(/SO\d+/i);
+                    if (soMatch) datos.ticket_padre = soMatch[0];
+                }
+            }
+            
+            // Extraer Falla
+            const fallaMatch = texto.match(/(?:Falla|Problema|Issue)[:\s]*([^\n]+)/i);
+            if (fallaMatch) datos.falla = fallaMatch[1].trim();
+            
+            // Extraer Nombre completo
+            let nombreMatch = texto.match(/(?:Nombre y apellido|Nombre|Cliente)[:\s]*-?\s*([^\n]+)/i);
+            if (nombreMatch) {
+                datos.nombre_completo = nombreMatch[1].trim().replace(/^-/, '');
+            }
+            
+            if (!datos.nombre_completo) {
+                const lines = texto.split('\n');
+                for (let line of lines) {
+                    if (line.match(/[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+/) && !line.includes('Dirección') && !line.includes('Ticket')) {
+                        datos.nombre_completo = line.trim().replace(/^-/, '');
+                        break;
+                    }
+                }
+            }
+            
+            // Extraer Cédula
+            let cedulaMatch = texto.match(/(?:Cédula|Cedula|CI)[:\s]*([VEJPG]?-?[\d]+)/i);
+            if (!cedulaMatch) {
+                cedulaMatch = texto.match(/[VEJPG]-\d+/i);
+            }
+            if (cedulaMatch) {
+                let cedulaRaw = cedulaMatch[1] || cedulaMatch[0];
+                datos.cedula = cedulaRaw.replace(/[^0-9]/g, '');
+            }
+            
+            // Extraer Customer ID
+            let customerMatch = texto.match(/(?:Customer|Customer ID|ID Cliente)[:\s]*(\d+)/i);
+            if (!customerMatch) {
+                customerMatch = texto.match(/Customer:\s*(\d+)/i);
+            }
+            if (customerMatch) datos.customer_id = customerMatch[1];
+            
+            // Extraer Teléfono
+            let telefonoMatch = texto.match(/(?:Teléfono|Telefono|Celular|Contacto)[:\s]*([\d\s-]+)/i);
+            if (!telefonoMatch) {
+                telefonoMatch = texto.match(/\b(?:04|02)\d{9}\b/);
+            }
+            if (telefonoMatch) {
+                let telefonoRaw = telefonoMatch[1] || telefonoMatch[0];
+                datos.telefono = telefonoRaw.replace(/[^0-9]/g, '');
+            }
+            
+            // Extraer Dirección
+            const direccionMatch = texto.match(/(?:Dirección|Direccion)[:\s]*([^\n]+(?:\n[^\n]+)*?)(?=\n(?:Teléfono|Plan|Falla|Ticket|Cédula|\n\n|$))/i);
+            if (direccionMatch) {
+                datos.direccion = direccionMatch[1].trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
+            }
+            
+            // Extraer Plan
+            let planMatch = texto.match(/(?:Plan|Velocidad)[:\s]*(\d+\s*(?:mbps|Mbps|MB|megas?))/i);
+            if (!planMatch) {
+                planMatch = texto.match(/(\d+)\s*(?:mbps|Mbps|MB|megas?)/i);
+            }
+            if (planMatch) {
+                let planText = planMatch[1].trim();
+                if (!planText.toLowerCase().includes('mbps')) planText += ' mbps';
+                datos.plan = planText;
+            }
+            
+            // Extraer Fecha
+            const fechaMatch = texto.match(/(?:Fecha y hora|Fecha)[:\s]*([\d\/]+)/i);
+            if (fechaMatch) datos.fecha_reporte = fechaMatch[1];
         }
         
         return datos;
@@ -420,15 +464,16 @@ Plan: 200 mbps</pre>
                           tipoSeleccionado === 'RETIRO' ? 'Retiro' : 
                           tipoSeleccionado === 'RECABLEADO' ? 'Recableado' : 'Soporte Técnico';
         
-        document.getElementById('preview_ticket').textContent = datos.ticket_padre || '-';
+        document.getElementById('preview_ticket').textContent = datos.ticket_padre || 'N/A';
         document.getElementById('preview_tipo').textContent = tipoTexto;
-        document.getElementById('preview_nombre').textContent = datos.nombre_completo || '-';
-        document.getElementById('preview_cedula').textContent = datos.cedula || '-';
-        document.getElementById('preview_customer').textContent = datos.customer_id || '-';
-        document.getElementById('preview_telefono').textContent = datos.telefono || '-';
-        document.getElementById('preview_plan').textContent = datos.plan || '-';
-        document.getElementById('preview_direccion').textContent = datos.direccion || '-';
-        document.getElementById('preview_falla').textContent = datos.falla || '-';
+        document.getElementById('preview_nombre').textContent = datos.nombre_completo || 'N/A';
+        document.getElementById('preview_cedula').textContent = datos.cedula || 'N/A';
+        document.getElementById('preview_customer').textContent = datos.customer_id || 'N/A';
+        document.getElementById('preview_telefono').textContent = datos.telefono || 'N/A';
+        document.getElementById('preview_plan').textContent = datos.plan || 'N/A';
+        document.getElementById('preview_direccion').textContent = datos.direccion || 'N/A';
+        document.getElementById('preview_falla').textContent = datos.falla || 'N/A';
+        document.getElementById('preview_fecha').textContent = datos.fecha_reporte || 'N/A';
         
         document.getElementById('previsualizacion').style.display = 'block';
         window.datosExtraidos = datos;
@@ -446,20 +491,17 @@ Plan: 200 mbps</pre>
         const tipoSoporte = document.getElementById('tipo_soporte_rapido').value;
         
         if (!datos.ticket_padre) {
-            Swal.fire('Error', 'No se encontró el Ticket Padre en el texto', 'error');
+            Swal.fire('Error', 'No se encontró el Ticket Padre en el texto. Asegúrate de que tenga formato SO000000XXX', 'error');
             return;
         }
         if (!datos.nombre_completo) {
-            Swal.fire('Error', 'No se encontró el nombre completo del cliente', 'error');
-            return;
+            Swal.fire('Advertencia', 'No se encontró el nombre completo, se guardará como N/A', 'warning');
         }
         if (!datos.cedula) {
-            Swal.fire('Error', 'No se encontró la cédula del cliente', 'error');
-            return;
+            Swal.fire('Advertencia', 'No se encontró la cédula, se guardará como N/A', 'warning');
         }
         if (!datos.telefono) {
-            Swal.fire('Error', 'No se encontró el teléfono del cliente', 'error');
-            return;
+            Swal.fire('Advertencia', 'No se encontró el teléfono, se guardará como N/A', 'warning');
         }
         
         const cuadrillaId = document.getElementById('cuadrilla_rapido')?.value;
@@ -470,12 +512,12 @@ Plan: 200 mbps</pre>
         
         Swal.fire({
             title: '¿Guardar ticket?',
-            html: `<strong>Ticket:</strong> ${datos.ticket_padre}<br>
+            html: `<strong>Ticket:</strong> ${datos.ticket_padre || 'N/A'}<br>
                    <strong>Tipo:</strong> ${tipoSoporte === 'MUDANZA' ? 'Mudanza' : tipoSoporte === 'RETIRO' ? 'Retiro' : tipoSoporte === 'RECABLEADO' ? 'Recableado' : 'Soporte Técnico'}<br>
-                   <strong>Cliente:</strong> ${datos.nombre_completo}<br>
-                   <strong>Cédula:</strong> ${datos.cedula}<br>
-                   <strong>Teléfono:</strong> ${datos.telefono}<br>
-                   <strong>Plan:</strong> ${datos.plan || 'No definido'}`,
+                   <strong>Cliente:</strong> ${datos.nombre_completo || 'N/A'}<br>
+                   <strong>Cédula:</strong> ${datos.cedula || 'N/A'}<br>
+                   <strong>Teléfono:</strong> ${datos.telefono || 'N/A'}<br>
+                   <strong>Plan:</strong> ${datos.plan || 'N/A'}`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#ff6b00',

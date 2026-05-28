@@ -995,11 +995,12 @@ def ver_detalle_soporte(request, ticket_id):
 @login_required
 @user_passes_test(es_administrador)
 def crear_ticket_rapido(request):
-    """Crear ticket automáticamente desde texto formateado"""
+    """Crear ticket automáticamente desde texto formateado (soporta formato tabla y etiquetas)"""
     
     if request.method == 'POST':
         import json
         import re
+        from datetime import datetime
         from .models import Plan, Cuadrilla, AsignacionSoporte, Ticket
         
         datos_json = request.POST.get('datos_json', '{}')
@@ -1013,9 +1014,9 @@ def crear_ticket_rapido(request):
             return redirect('gestion_soportes')
         
         # Separar nombre y apellido correctamente
-        nombre_completo = datos.get('nombre_completo', '')
+        nombre_completo = datos.get('nombre_completo', '').strip()
         if nombre_completo:
-            partes = nombre_completo.strip().split()
+            partes = nombre_completo.split()
             if len(partes) == 1:
                 nombre = partes[0]
                 apellido = ''
@@ -1023,81 +1024,74 @@ def crear_ticket_rapido(request):
                 nombre = partes[0]
                 apellido = partes[1]
             else:
-                nombre = ' '.join(partes[:-2])
-                apellido = ' '.join(partes[-2:])
+                nombre = ' '.join(partes[:-1])
+                apellido = partes[-1]
         else:
-            nombre = datos.get('nombre', '')
-            apellido = datos.get('apellido', '')
+            nombre = ''
+            apellido = ''
         
-        # VALIDAR Y ASIGNAR 'N/A' PARA CAMPOS OBLIGATORIOS QUE FALTAN
-        # Ticket Padre
+        # Ticket Padre - Asegurar formato correcto
         ticket_padre = datos.get('ticket_padre', '').strip()
-        if not ticket_padre:
-            ticket_padre = 'N/A'
-        
-        # Nombre
-        if not nombre:
-            nombre = 'N/A'
-        
-        # Apellido
-        if not apellido:
-            apellido = 'N/A'
+        if ticket_padre and not ticket_padre.startswith('SO') and ticket_padre.isdigit():
+            ticket_padre = f'SO{ticket_padre}'
         
         # Limpiar cédula - eliminar V-, E-, etc. dejar solo números
-        cedula_raw = datos.get('cedula', '')
-        cedula_limpia = re.sub(r'[^0-9]', '', cedula_raw) if cedula_raw else 'N/A'
-        if not cedula_limpia:
-            cedula_limpia = 'N/A'
+        cedula_raw = datos.get('cedula', '').strip()
+        cedula_limpia = re.sub(r'[^0-9]', '', cedula_raw) if cedula_raw else ''
         
         # Limpiar teléfono - dejar solo números
-        telefono_raw = datos.get('telefono', '')
-        telefono_limpio = re.sub(r'[^0-9]', '', telefono_raw) if telefono_raw else 'N/A'
-        if not telefono_limpio:
-            telefono_limpio = 'N/A'
+        telefono_raw = datos.get('telefono', '').strip()
+        telefono_limpio = re.sub(r'[^0-9]', '', telefono_raw) if telefono_raw else ''
         
         # Customer ID
         customer_id = datos.get('customer_id', '').strip()
-        if not customer_id:
-            customer_id = 'N/A'
         
         # Dirección
         direccion = datos.get('direccion', '').strip()
-        if not direccion:
-            direccion = 'N/A'
         
         # Falla
         falla = datos.get('falla', '').strip()
         if not falla:
-            falla = 'N/A'
+            falla = 'Soporte Técnico'
         
-        # Tipo de soporte (valor por defecto: SOPORTE)
+        # Tipo de soporte
         tipo_soporte = datos.get('tipo', 'SOPORTE')
         if tipo_soporte not in ['MUDANZA', 'RETIRO', 'RECABLEADO', 'SOPORTE']:
             tipo_soporte = 'SOPORTE'
         
+        # Fecha requerida
+        fecha_requerida = None
+        fecha_reporte_str = datos.get('fecha_reporte', '').strip()
+        if fecha_reporte_str:
+            try:
+                fecha_requerida = datetime.strptime(fecha_reporte_str, '%d/%m/%Y')
+            except:
+                pass
+        
         # Buscar el plan
-        plan_nombre = datos.get('plan', '')
+        plan_nombre = datos.get('plan', '').strip()
         plan = None
-        if plan_nombre and plan_nombre != 'N/A':
-            numeros = re.findall(r'\d+', str(plan_nombre))
+        if plan_nombre:
+            numeros = re.findall(r'\d+', plan_nombre)
             if numeros:
                 plan = Plan.objects.filter(nombre__icontains=numeros[0]).first()
         
         if not plan:
             plan = Plan.objects.filter(activo=True).first()
         
-        # Crear ticket con todos los valores validados
+        # Crear ticket - Si el campo está vacío, se guarda como 'N/A'
         ticket = Ticket.objects.create(
-            ticket_padre=ticket_padre,
+            ticket_padre=ticket_padre if ticket_padre else 'N/A',
             tipo_soporte=tipo_soporte,
-            nombre=nombre,
-            apellido=apellido,
-            cedula=cedula_limpia,
-            customer_id=customer_id,
-            telefono=telefono_limpio,
-            direccion=direccion,
+            nombre=nombre if nombre else 'N/A',
+            apellido=apellido if apellido else 'N/A',
+            cedula=cedula_limpia if cedula_limpia else 'N/A',
+            customer_id=customer_id if customer_id else 'N/A',
+            telefono=telefono_limpio if telefono_limpio else 'N/A',
+            direccion=direccion if direccion else 'N/A',
             plan=plan,
-            falla=falla,
+            falla=falla if falla else 'N/A',
+            fecha_requerida=fecha_requerida,
             creado_por=request.user
         )
         
