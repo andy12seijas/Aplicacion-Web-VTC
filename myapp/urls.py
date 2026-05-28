@@ -21,6 +21,7 @@ from myapp.views_soportecliente import *
 from myapp.views_validacion_soporte import *
 from myapp.views_leads import *
 from myapp.views import *
+from myapp.views_modem import *
 
 def es_admin_o_superuser(user):
     return user.is_superuser or user.groups.filter(name='Administrador').exists()
@@ -187,6 +188,10 @@ urlpatterns = [
     path('api/clientes-callcenter/', api_clientes_callcenter, name='api_clientes_callcenter'),
 
     path('extractor-instalacion/', extractor_instalacion, name='extractor_instalacion'),
+
+    path('modelos-modem/', lista_modelos_modem, name='lista_modelos_modem'),
+    path('modelos-modem/nuevo/', crear_editar_modelo_modem, name='crear_modelo_modem'),
+    path('modelos-modem/editar/<int:id>/', crear_editar_modelo_modem, name='editar_modelo_modem'),
 
 ]
 

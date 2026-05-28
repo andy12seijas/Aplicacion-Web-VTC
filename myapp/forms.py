@@ -1335,4 +1335,22 @@ class LeadInteresadoForm(forms.ModelForm):
                 'rows': 4,
                 'placeholder': '¿Qué plan te interesa? ¿Tienes alguna consulta?'
             }),
-        }        
+        }
+
+
+from django import forms
+from .models import ModeloModem
+
+class ModeloModemForm(forms.ModelForm):
+    class Meta:
+        model = ModeloModem
+        fields = ['nombre', 'activo']
+        widgets = {
+            'nombre': forms.TextInput(attrs={
+                'class': 'form-control-modern',
+                'placeholder': 'Ej: HG8145V5',
+            }),
+            'activo': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }                
