@@ -649,11 +649,11 @@
         </div>
         
         <button class="btn-search" onclick="aplicarFiltros()">
-            <i class="fas fa-search"></i> Buscar
+            🔍 Buscar
         </button>
         
         <button class="btn-clear" onclick="limpiarFiltros()">
-            <i class="fas fa-times"></i> Limpiar
+            ✖ Limpiar
         </button>
     </div>
 </div>
@@ -690,7 +690,7 @@
                 <tbody>
                     {% for soporte in soportes_no_leidos %}
                     <tr>
-                        <td>#{{ soporte.id }}</td>
+                        <td>#{{ soporte.id }}</d
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
@@ -699,24 +699,23 @@
                                     <div style="font-size: 10px; color: #999;">{{ soporte.tipo_cliente }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ soporte.cedula_cliente }}</td>
-                        <td class="reclamo-preview">{{ soporte.reclamo|truncatechars:50 }}</td>
-                        <td>{{ soporte.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        </d
+                        <td>{{ soporte.cedula_cliente }}</d
+                        <td class="reclamo-preview">{{ soporte.reclamo|truncatechars:50 }}</d
+                        <td>{{ soporte.fecha_creacion|date:"d/m/Y H:i" }}</d
                         <td class="actions-cell">
                             <button class="action-btn" onclick="verDetalleSoporte({{ soporte.id }})" title="Ver detalles">
-                                <i class="fas fa-eye"></i>
+                                👁️
                             </button>
                             <button class="action-btn read" onclick="marcarComoLeido({{ soporte.id }})" title="Marcar como leído">
-                                <i class="fas fa-check"></i>
+                                ✓
                             </button>
-                        </td>
+                        </d
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="6" class="empty">
-                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
-                            No hay soportes no leídos
+                            📭 No hay soportes no leídos
                         </td>
                     </tr>
                     {% endfor %}
@@ -728,12 +727,8 @@
         {% if soportes_no_leidos.has_other_pages %}
         <div class="pagination">
             {% if soportes_no_leidos.has_previous %}
-            <a href="?page_no_leidos=1&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-left"></i>
-            </a>
-            <a href="?page_no_leidos={{ soportes_no_leidos.previous_page_number }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-left"></i>
-            </a>
+            <a href="?page_no_leidos=1&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">«</a>
+            <a href="?page_no_leidos={{ soportes_no_leidos.previous_page_number }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">‹</a>
             {% endif %}
             
             <span class="page-info">
@@ -741,12 +736,8 @@
             </span>
             
             {% if soportes_no_leidos.has_next %}
-            <a href="?page_no_leidos={{ soportes_no_leidos.next_page_number }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-right"></i>
-            </a>
-            <a href="?page_no_leidos={{ soportes_no_leidos.paginator.num_pages }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-right"></i>
-            </a>
+            <a href="?page_no_leidos={{ soportes_no_leidos.next_page_number }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">›</a>
+            <a href="?page_no_leidos={{ soportes_no_leidos.paginator.num_pages }}&tab=no_leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">»</a>
             {% endif %}
         </div>
         {% endif %}
@@ -769,7 +760,7 @@
                 <tbody>
                     {% for soporte in soportes_leidos %}
                     <tr>
-                        <td>#{{ soporte.id }}</td>
+                        <td>#{{ soporte.id }}</d
                         <td>
                             <div class="user-cell">
                                 <span class="user-avatar">{{ soporte.nombre_cliente|slice:":2"|upper }}</span>
@@ -778,21 +769,20 @@
                                     <div style="font-size: 10px; color: #999;">{{ soporte.tipo_cliente }}</div>
                                 </div>
                             </div>
-                        </td>
-                        <td>{{ soporte.cedula_cliente }}</td>
-                        <td class="reclamo-preview">{{ soporte.reclamo|truncatechars:50 }}</td>
-                        <td>{{ soporte.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        </d
+                        <td>{{ soporte.cedula_cliente }}</d
+                        <td class="reclamo-preview">{{ soporte.reclamo|truncatechars:50 }}</d
+                        <td>{{ soporte.fecha_creacion|date:"d/m/Y H:i" }}</d
                         <td class="actions-cell">
                             <button class="action-btn" onclick="verDetalleSoporte({{ soporte.id }})" title="Ver detalles">
-                                <i class="fas fa-eye"></i>
+                                👁️
                             </button>
-                        </td>
+                        </d
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="6" class="empty">
-                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
-                            No hay soportes leídos
+                            ✅ No hay soportes leídos
                         </td>
                     </tr>
                     {% endfor %}
@@ -804,12 +794,8 @@
         {% if soportes_leidos.has_other_pages %}
         <div class="pagination">
             {% if soportes_leidos.has_previous %}
-            <a href="?page_leidos=1&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-left"></i>
-            </a>
-            <a href="?page_leidos={{ soportes_leidos.previous_page_number }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-left"></i>
-            </a>
+            <a href="?page_leidos=1&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">«</a>
+            <a href="?page_leidos={{ soportes_leidos.previous_page_number }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">‹</a>
             {% endif %}
             
             <span class="page-info">
@@ -817,12 +803,8 @@
             </span>
             
             {% if soportes_leidos.has_next %}
-            <a href="?page_leidos={{ soportes_leidos.next_page_number }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-right"></i>
-            </a>
-            <a href="?page_leidos={{ soportes_leidos.paginator.num_pages }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">
-                <i class="fas fa-angle-double-right"></i>
-            </a>
+            <a href="?page_leidos={{ soportes_leidos.next_page_number }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">›</a>
+            <a href="?page_leidos={{ soportes_leidos.paginator.num_pages }}&tab=leidos{% if busqueda %}&busqueda={{ busqueda }}{% endif %}" class="page-link">»</a>
             {% endif %}
         </div>
         {% endif %}
@@ -841,7 +823,7 @@
                 </div>
             </div>
             <button class="modal-close" onclick="cerrarModalDetalle()">
-                <i class="fas fa-times"></i>
+                ✖
             </button>
         </div>
         
@@ -855,7 +837,7 @@
                 <!-- Información del Cliente -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        <i class="fas fa-user"></i> Información del Cliente
+                        👤 Información del Cliente
                     </h3>
                     <div class="modal-grid">
                         <div class="modal-item">
@@ -888,7 +870,7 @@
                 <!-- Información del Reclamo -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        <i class="fas fa-exclamation-triangle"></i> Detalle del Reclamo
+                        ⚠️ Detalle del Reclamo
                     </h3>
                     <div class="reclamo-content" id="detalleReclamo"></div>
                 </div>
@@ -896,7 +878,7 @@
                 <!-- Observación -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        <i class="fas fa-comment"></i> Observaciones
+                        💬 Observaciones
                     </h3>
                     <div class="reclamo-content" id="detalleObservacion" style="background: var(--orange-light);"></div>
                 </div>
@@ -904,13 +886,13 @@
                 <!-- Foto -->
                 <div class="modal-section" id="fotoContainer" style="display: none;">
                     <h3 class="modal-section-title">
-                        <i class="fas fa-image"></i> Evidencia Fotográfica
+                        📸 Evidencia Fotográfica
                     </h3>
                     <div class="foto-preview">
                         <img id="detalleFoto" class="foto-img" alt="Foto del reclamo">
                         <div style="margin-top: 12px;">
                             <a id="downloadFoto" href="#" download class="btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
-                                <i class="fas fa-download"></i> Descargar foto
+                                ⬇️ Descargar foto
                             </a>
                         </div>
                     </div>
@@ -919,7 +901,7 @@
                 <!-- Metadatos -->
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        <i class="fas fa-info-circle"></i> Información del Reporte
+                        ℹ️ Información del Reporte
                     </h3>
                     <div class="modal-grid">
                         <div class="modal-item">
@@ -945,7 +927,7 @@
         
         <div class="modal-footer">
             <button class="btn-cancel" onclick="cerrarModalDetalle()">
-                <i class="fas fa-times"></i> Cerrar
+                ✖ Cerrar
             </button>
         </div>
     </div>
@@ -1042,14 +1024,21 @@
         const fotoImg = document.getElementById('detalleFoto');
         const downloadLink = document.getElementById('downloadFoto');
         
+        // ========== CORRECCIÓN: Limpiar URL duplicada de la foto ==========
         if (data.foto_url) {
+            let urlLimpia = data.foto_url;
+            // Limpiar URL duplicada /pagos/pagos/ -> /pagos/
+            if (urlLimpia && urlLimpia.includes('/pagos/pagos/')) {
+                urlLimpia = urlLimpia.replace('/pagos/pagos/', '/pagos/');
+            }
             fotoContainer.style.display = 'block';
-            fotoImg.src = data.foto_url;
-            downloadLink.href = data.foto_url;
-            fotoImg.onclick = () => window.open(data.foto_url, '_blank');
+            fotoImg.src = urlLimpia;
+            downloadLink.href = urlLimpia;
+            fotoImg.onclick = () => window.open(urlLimpia, '_blank');
         } else {
             fotoContainer.style.display = 'none';
         }
+        // ========== FIN CORRECCIÓN ==========
         
         let estadoTexto = data.estado_display;
         let estadoClass = data.estado === 'NO_LEIDO' ? 'badge-no-leido' : 'badge-leido';
