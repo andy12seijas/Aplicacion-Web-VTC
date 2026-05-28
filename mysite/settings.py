@@ -88,14 +88,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'mysite.wsgi.application'
 
 # Database
-"""DATABASES = {
+DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
-}"""
+}
 
-DATABASES = {
+"""DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'vtcodcnb_miapp_db',
@@ -113,10 +113,10 @@ DATABASES = {
         # 🔒 Número de intentos de reconexión
         'CONN_HEALTH_CHECKS': True,
     }
-}
+}"""
 
 # Seguridad adicional
-SECURE_BROWSER_XSS_FILTER = True  # 🔒 Protección XSS
+"""SECURE_BROWSER_XSS_FILTER = True  # 🔒 Protección XSS
 SECURE_CONTENT_TYPE_NOSNIFF = True  # 🔒 Evita MIME sniffing
 X_FRAME_OPTIONS = 'DENY'  # 🔒 Anti-clickjacking
 
@@ -125,7 +125,7 @@ CSRF_COOKIE_SECURE = True  # Solo enviar CSRF por HTTPS
 SESSION_COOKIE_SECURE = True  # Solo enviar sesión por HTTPS
 SECURE_SSL_REDIRECT = True  # Redirigir HTTP a HTTPS
 SECURE_HSTS_SECONDS = 31536000  # 1 año
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True"""
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

@@ -1,3 +1,5 @@
+import re
+
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse, HttpResponse
@@ -545,6 +547,12 @@ def reporte_vendedores_json(request):
     """
     API para obtener reporte de vendedores con contratos completados
     por semana (viernes a jueves)
+    
+    NUEVA LÓGICA DE COMISIONES:
+    - Plan 300 Mbps: $8 (normal) / $12 (con cashea)
+    - Plan 400 Mbps: $12 (normal) / $15 (con cashea)  
+    - Plan 500 Mbps o más: $15 (normal) / $17 (con cashea)
+    - BONO: $25 si alcanza 8 o más contratos (SOLO cuentan contratos de 400 Mbps o más)
     """
     
     import pytz
@@ -584,7 +592,7 @@ def reporte_vendedores_json(request):
     fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
     fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
     
-    # Usar fecha_completado directamente con datetime aware
+    # Contratos completados en la semana
     contratos = ContratoCliente.objects.filter(
         estado='COMPLETADO',
         fecha_completado__gte=fecha_inicio_aware,
@@ -597,7 +605,7 @@ def reporte_vendedores_json(request):
     
     # Obtener todos los vendedores
     todos_vendedores = User.objects.filter(
-        groups__name__in=['Vendedor', 'Supervisor']
+        groups__name__in=['Vendedor', 'Supervisor', 'Administrador']
     ).distinct().order_by('first_name', 'username')
     
     if vendedor_id:
@@ -619,77 +627,102 @@ def reporte_vendedores_json(request):
         tasa = 0
         tasa_decimal = Decimal('0')
     
+    # ===== FUNCIÓN PARA CALCULAR COMISIÓN POR PLAN =====
+    def calcular_comision_contrato(plan_nombre, cashea):
+        """
+        Calcula la comisión por contrato según el plan y si tiene cashea
+        
+        Planes:
+        - 300 Mbps: $8 normal / $12 cashea
+        - 400 Mbps: $12 normal / $15 cashea
+        - 500 Mbps o más: $15 normal / $17 cashea
+        """
+        # Extraer número del plan
+        numeros = re.findall(r'\d+', plan_nombre)
+        if not numeros:
+            return 0
+        
+        velocidad = int(numeros[0])
+        
+        if velocidad == 300:
+            return 12 if cashea else 8
+        elif velocidad == 400:
+            return 15 if cashea else 12
+        elif velocidad >= 500:
+            return 17 if cashea else 15
+        else:
+            # Planes menores a 300 Mbps (si existen)
+            return 8 if cashea else 5
+    
     vendedores_data = []
     
     for vendedor in todos_vendedores:
         contratos_vendedor = contratos.filter(creado_por=vendedor)
-        total_contratos = contratos_vendedor.count()
         
-        if total_contratos > 0 or not vendedor_id:
-            if total_contratos >= 1 and total_contratos <= 5:
-                comision_por_contrato = 8
-                bono = 20
-                total_precio = total_contratos * 8
-                rango = "1-5 contratos"
-            elif total_contratos >= 6 and total_contratos <= 10:
-                comision_por_contrato = 10
-                bono = 40
-                total_precio = total_contratos * 10
-                rango = "6-10 contratos"
-            elif total_contratos >= 11:
-                comision_por_contrato = 10
-                bono = 60
-                total_precio = total_contratos * 10
-                rango = "11+ contratos"
+        # Calcular total de contratos y comisiones
+        total_contratos = 0
+        total_comision = 0
+        contratos_para_bono = 0  # Solo contratos de 400 Mbps o más
+        lista_contratos = []
+        
+        for contrato in contratos_vendedor.order_by('-fecha_completado'):
+            plan_nombre = contrato.plan_contratado.nombre
+            cashea = contrato.cashea  # True o False
+            comision = calcular_comision_contrato(plan_nombre, cashea)
+            
+            total_contratos += 1
+            total_comision += comision
+            
+            # Verificar si el contrato cuenta para el bono (400 Mbps o más)
+            numeros = re.findall(r'\d+', plan_nombre)
+            if numeros and int(numeros[0]) >= 400:
+                contratos_para_bono += 1
+            
+            # Convertir fechas a Venezuela
+            fecha_completado_ve = contrato.fecha_completado.astimezone(VE_TZ) if contrato.fecha_completado else None
+            fecha_completado_str = fecha_completado_ve.strftime('%d/%m/%Y %H:%M') if fecha_completado_ve else 'N/A'
+            fecha_creacion_ve = contrato.fecha_creacion.astimezone(VE_TZ) if contrato.fecha_creacion else None
+            fecha_creacion_str = fecha_creacion_ve.strftime('%d/%m/%Y') if fecha_creacion_ve else 'N/A'
+            
+            lista_contratos.append({
+                'id': contrato.id,
+                'cliente': contrato.nombre_completo,
+                'fecha_completado': fecha_completado_str,
+                'fecha_creacion': fecha_creacion_str,
+                'plan': plan_nombre,
+                'customer_id': contrato.customer_id or 'N/A',
+                'cashea': 'Sí' if cashea else 'No',
+                'comision': f"${comision:.2f}"
+            })
+        
+        # Calcular bono (solo si tiene 8 o más contratos de 400 Mbps o más)
+        bono = 25 if contratos_para_bono >= 8 else 0
+        total_con_bono = total_comision + bono
+        
+        # Mostrar información si tiene contratos O si se está filtrando por vendedor específico
+        if total_contratos > 0 or vendedor_id:
+            # Determinar rango de contratos para el bono
+            if contratos_para_bono >= 8:
+                rango_bono = f"✅ {contratos_para_bono} contratos (400+ Mbps) - Bono aplicado"
             else:
-                comision_por_contrato = 0
-                bono = 0
-                total_precio = 0
-                rango = "Sin contratos"
-            
-            total_con_bono = total_precio + bono
-            total_bs = total_con_bono * tasa
-            
-            # ===== DETALLE DE CONTRATOS CON FECHAS CONVERTIDAS =====
-            lista_contratos = []
-            for contrato in contratos_vendedor.order_by('-fecha_completado')[:5]:
-                # Convertir fechas a Venezuela
-                if contrato.fecha_completado:
-                    fecha_completado_ve = contrato.fecha_completado.astimezone(VE_TZ)
-                    fecha_completado_str = fecha_completado_ve.strftime('%d/%m/%Y %H:%M')
-                else:
-                    fecha_completado_str = 'N/A'
-                
-                if contrato.fecha_creacion:
-                    fecha_creacion_ve = contrato.fecha_creacion.astimezone(VE_TZ)
-                    fecha_creacion_str = fecha_creacion_ve.strftime('%d/%m/%Y')
-                else:
-                    fecha_creacion_str = 'N/A'
-                
-                lista_contratos.append({
-                    'id': contrato.id,
-                    'cliente': contrato.nombre_completo,
-                    'fecha_completado': fecha_completado_str,
-                    'fecha_creacion': fecha_creacion_str,
-                    'plan': contrato.plan_contratado.nombre,
-                    'customer_id': contrato.customer_id or 'N/A'
-                })
+                rango_bono = f"❌ {contratos_para_bono}/8 contratos (400+ Mbps) - Faltan {8 - contratos_para_bono} para bono"
             
             vendedores_data.append({
                 'id': vendedor.id,
                 'vendedor': vendedor.get_full_name() or vendedor.username,
                 'username': vendedor.username,
                 'contratos': total_contratos,
-                'comision_por_contrato': f"${comision_por_contrato}",
-                'total_sin_bono': f"${total_precio}",
-                'bono': f"${bono}",
-                'total_con_bono': f"${total_con_bono}",
-                'total_bs': f"Bs {total_bs:,.2f}",
-                'rango': rango,
+                'contratos_para_bono': contratos_para_bono,
+                'comision_total': f"${total_comision:.2f}",
+                'bono': f"${bono:.2f}",
+                'total_con_bono': f"${total_con_bono:.2f}",
+                'total_bs': f"Bs {(total_con_bono * tasa):,.2f}",
+                'rango_bono': rango_bono,
                 'contratos_detalle': lista_contratos
             })
     
-    vendedores_data.sort(key=lambda x: int(x['contratos']), reverse=True)
+    # Ordenar por total de contratos (de mayor a menor)
+    vendedores_data.sort(key=lambda x: x['contratos'], reverse=True)
     
     total_registros = len(vendedores_data)
     paginator = Paginator(vendedores_data, per_page)
@@ -699,22 +732,32 @@ def reporte_vendedores_json(request):
     except (PageNotAnInteger, EmptyPage):
         page_obj = paginator.page(1)
     
+    # Estadísticas generales
     total_contratos_semana = sum(v['contratos'] for v in vendedores_data)
+    total_comisiones_usd = sum(float(v['comision_total'].replace('$', '')) for v in vendedores_data)
+    total_bonos_usd = sum(float(v['bono'].replace('$', '')) for v in vendedores_data)
     total_pagar_usd = sum(float(v['total_con_bono'].replace('$', '')) for v in vendedores_data)
     total_pagar_bs = total_pagar_usd * tasa
     
     fecha_tasa = tasa_obj.fecha.strftime('%d/%m/%Y') if tasa_obj else 'No definida'
     tasa_str = f"{float(tasa_decimal):,.2f}" if tasa_decimal else "0.00"
     
+    # Calcular vendedores con bono
+    vendedores_con_bono = sum(1 for v in vendedores_data if float(v['bono'].replace('$', '')) > 0)
+    
     estadisticas = {
         'total_vendedores': len(vendedores_data),
+        'vendedores_con_bono': vendedores_con_bono,
         'total_contratos_semana': total_contratos_semana,
+        'total_comisiones_usd': f"${total_comisiones_usd:,.2f}",
+        'total_bonos_usd': f"${total_bonos_usd:,.2f}",
         'total_pagar_usd': f"${total_pagar_usd:,.2f}",
         'total_pagar_bs': f"Bs {total_pagar_bs:,.2f}",
         'semana_inicio': viernes_inicio.strftime('%d/%m/%Y'),
         'semana_fin': jueves_fin.strftime('%d/%m/%Y'),
         'tasa_cambio': f"1 USD = {tasa_str} Bs",
-        'fecha_actualizacion_tasa': fecha_tasa
+        'fecha_actualizacion_tasa': fecha_tasa,
+        'meta_bono': "8 contratos (400 Mbps o más) para bono de $25"
     }
     
     return JsonResponse({

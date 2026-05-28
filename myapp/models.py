@@ -195,7 +195,7 @@ class ContratoCliente(models.Model):
     longitud = models.FloatField(verbose_name="Longitud",blank=True, null=True, help_text="Coordenada de la ubicación del cliente")
     cashea = models.BooleanField(
         default=False,
-        verbose_name="Cashea"
+        verbose_name="Cashea o pago de modem completo"
     )
     # Datos de pago
     numero_pago_movil = models.CharField(blank=True, null=True,max_length=20,verbose_name="Número de Pago Móvil",help_text="Número de teléfono donde se realizó el pago")

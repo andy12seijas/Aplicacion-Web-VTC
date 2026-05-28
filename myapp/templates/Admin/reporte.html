@@ -307,6 +307,7 @@
         overflow-x: auto;
         border-radius: 12px;
         border: 1px solid var(--gray-border);
+        background: white;
     }
 
     .table {
@@ -333,6 +334,7 @@
         border-bottom: 1px solid var(--gray-border);
         color: var(--dark-text);
         font-size: 12px;
+        vertical-align: middle;
     }
 
     .table tbody tr:hover {
@@ -341,9 +343,9 @@
 
     .badge {
         display: inline-block;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 30px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 500;
         white-space: nowrap;
     }
@@ -366,6 +368,26 @@
     .badge-bajo-stock {
         background: #fee2e2;
         color: #dc2626;
+    }
+    
+    .badge-success {
+        background: var(--success-light);
+        color: #065f46;
+    }
+    
+    .badge-warning {
+        background: var(--warning-light);
+        color: #9b2c1d;
+    }
+    
+    .badge-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .badge-info {
+        background: var(--info-light);
+        color: #1e40af;
     }
 
     .export-buttons {
@@ -754,6 +776,48 @@
         background: white;
         z-index: 5;
     }
+    
+    .info-box {
+        background: #e3f2fd;
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 20px;
+    }
+    
+    .info-box p {
+        margin: 0;
+        font-size: 13px;
+        color: #1976d2;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    .vendedor-nombre {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+    
+    .vendedor-username {
+        font-size: 10px;
+        color: #999;
+    }
+    
+    .numero-grande {
+        font-weight: bold;
+        font-size: 18px;
+        color: var(--orange);
+    }
+    
+    .text-success {
+        color: var(--success);
+        font-weight: bold;
+    }
+    
+    .text-warning {
+        color: var(--warning);
+    }
 
     @media (max-width: 768px) {
         .selector-grid {
@@ -981,7 +1045,7 @@
         <thead id="thead-resultados">
             <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
         </thead>
-        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>            </tbody>
+        <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>
     </table>
 </div>
 
@@ -1035,14 +1099,12 @@
         const statPendientes = document.getElementById('statPendientes');
         
         if (tipoActual === 'inventario' || tipoActual === 'vendedores' || tipoActual === 'instaladores') {
-            statCompletados.style.display = 'none';
-            statPendientes.style.display = 'none';
+            statCompletados.style.display = 'flex';
+            statPendientes.style.display = 'flex';
             if (tipoActual === 'vendedores') {
                 document.getElementById('totalRegistros').textContent = '0';
-                document.getElementById('totalCompletados').textContent = '0';
-                document.getElementById('totalPendientes').textContent = '0';
-                document.getElementById('statCompletados').querySelector('.stat-label').textContent = 'Completados';
-                document.getElementById('statPendientes').querySelector('.stat-label').textContent = 'En Proceso/Pendiente';
+                document.getElementById('statCompletados').querySelector('.stat-label').textContent = '💰 Total a Pagar (USD)';
+                document.getElementById('statPendientes').querySelector('.stat-label').textContent = '💵 Total a Pagar (Bs)';
             }
             if (tipoActual === 'instaladores') {
                 document.getElementById('totalRegistros').textContent = '0';
@@ -1174,7 +1236,7 @@
         }
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        tbody.innerHTML = '<td><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>';
         
         fetch(url)
             .then(response => response.json())
@@ -1189,7 +1251,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</div></td>';
             });
     }
 
@@ -1205,7 +1267,7 @@
         if (semana) url += `&semana=${semana}`;
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>';
         
         fetch(url)
             .then(response => response.json())
@@ -1220,7 +1282,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</div></td>';
             });
     }
 
@@ -1238,7 +1300,7 @@
         if (semana) url += `&semana=${semana}`;
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>';
         
         fetch(url)
             .then(response => response.json())
@@ -1253,7 +1315,7 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<tr><td colspan="10" class="empty">Error al cargar los datos</td></tr>';
+                tbody.innerHTML = '<td><td colspan="10" class="empty">Error al cargar los datos</div></td>';
             });
     }
 
@@ -1344,15 +1406,7 @@
                             </thead>
                             <tbody>
                                 ${cuadrillaData.soportes_detalle.map(s => `
-                                    <tr>
-                                        <td>${s.ticket_padre || 'N/A'}</td>
-                                        <td>${s.cliente || 'N/A'}</td>
-                                        <td>${s.customer_id || 'N/A'}</td>
-                                        <td><span class="badge ${s.tipo === 'MUDANZA' ? 'badge-completado' : (s.tipo === 'RETIRO' ? 'badge-pendiente' : 'badge-proceso')}">${s.tipo || 'SOPORTE'}</span></td>
-                                        <td>$${s.precio || 10}</td>
-                                        <td>${s.fecha || 'N/A'}</td>
-                                        <td><span class="badge ${s.estado === 'COMPLETADO' ? 'badge-completado' : (s.estado === 'EN_PROCESO' ? 'badge-proceso' : 'badge-pendiente')}">${s.estado || 'PENDIENTE'}</span></td>
-                                    </tr>
+                                    <tr><td>${s.ticket_padre || 'N/A'}</td><td>${s.cliente || 'N/A'}</td><td>${s.customer_id || 'N/A'}</td><td><span class="badge ${s.tipo === 'MUDANZA' ? 'badge-completado' : (s.tipo === 'RETIRO' ? 'badge-pendiente' : 'badge-proceso')}">${s.tipo || 'SOPORTE'}</span></td><td>$${s.precio || 10}</td><td>${s.fecha || 'N/A'}</td><td><span class="badge ${s.estado === 'COMPLETADO' ? 'badge-completado' : (s.estado === 'EN_PROCESO' ? 'badge-proceso' : 'badge-pendiente')}">${s.estado || 'PENDIENTE'}</span></td></tr>
                                 `).join('')}
                             </tbody>
                         </table>
@@ -1430,6 +1484,8 @@
         document.body.classList.add('modal-open');
     }
 
+    // ========== FUNCIONES PARA VENDEDORES CON TABLA ARREGLADA ==========
+    
     function verDetalleVendedor(vendedorId, vendedorNombre, totalContratos) {
         const semana = document.getElementById('filterSemana')?.value || '';
         
@@ -1443,12 +1499,34 @@
                 if (vendedorData && vendedorData.contratos_detalle && vendedorData.contratos_detalle.length > 0) {
                     const statsHtml = `
                         <div class="stats-summary">
-                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.contratos}</div><div class="stat-summary-label">Total Contratos</div></div>
-                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.comision_por_contrato}</div><div class="stat-summary-label">Comisión x Contrato</div></div>
-                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.total_sin_bono}</div><div class="stat-summary-label">Total sin Bono</div></div>
-                            <div class="stat-summary-item"><div class="stat-summary-value" style="color: #f59e0b;">${vendedorData.bono}</div><div class="stat-summary-label">Bono</div></div>
-                            <div class="stat-summary-item"><div class="stat-summary-value" style="color: #ff6b00;">${vendedorData.total_con_bono}</div><div class="stat-summary-label">Total con Bono</div></div>
-                            <div class="stat-summary-item"><div class="stat-summary-value">${vendedorData.total_bs}</div><div class="stat-summary-label">Total en Bs</div></div>
+                            <div class="stat-summary-item">
+                                <div class="stat-summary-value">${vendedorData.contratos}</div>
+                                <div class="stat-summary-label">Total Contratos</div>
+                            </div>
+                            <div class="stat-summary-item">
+                                <div class="stat-summary-value">${vendedorData.contratos_para_bono || 0} / 8</div>
+                                <div class="stat-summary-label">Contratos 400+ Mbps</div>
+                                <div style="font-size: 10px; color: #f59e0b;">Meta para bono</div>
+                            </div>
+                            <div class="stat-summary-item">
+                                <div class="stat-summary-value">${vendedorData.comision_total}</div>
+                                <div class="stat-summary-label">Comisión Total</div>
+                            </div>
+                            <div class="stat-summary-item">
+                                <div class="stat-summary-value" style="color: #10b981;">${vendedorData.bono}</div>
+                                <div class="stat-summary-label">Bono</div>
+                            </div>
+                            <div class="stat-summary-item">
+                                <div class="stat-summary-value" style="color: #ff6b00;">${vendedorData.total_con_bono}</div>
+                                <div class="stat-summary-label">Total a Pagar USD</div>
+                            </div>
+                            <div class="stat-summary-item">
+                                <div class="stat-summary-value">${vendedorData.total_bs}</div>
+                                <div class="stat-summary-label">Total a Pagar Bs</div>
+                            </div>
+                        </div>
+                        <div class="info-box" style="margin-bottom: 20px; background: #fff2e6; padding: 12px; border-radius: 12px;">
+                            <small>📌 ${vendedorData.rango_bono || 'Sin contratos 400+ Mbps para bono'}</small>
                         </div>
                     `;
                     
@@ -1465,10 +1543,30 @@
                                         <div class="section-header"><h4>📝 Lista Completa de Contratos</h4></div>
                                         <div class="scrollable-table-container">
                                             <table class="modal-table">
-                                                <thead><tr><th>#</th><th>Cliente</th><th>Customer ID</th><th>Plan</th><th>Velocidad</th><th>Precio</th><th>Fecha</th><th>Estado</th></tr></thead>
+                                                <thead>
+                                                    <tr>
+                                                        <th>#</th>
+                                                        <th>Cliente</th>
+                                                        <th>Customer ID</th>
+                                                        <th>Plan</th>
+                                                        <th>Cashea</th>
+                                                        <th>Comisión</th>
+                                                        <th>Fecha Completado</th>
+                                                        <th>Estado</th>
+                                                    </tr>
+                                                </thead>
                                                 <tbody>
                                                     ${vendedorData.contratos_detalle.map((c, index) => `
-                                                        <tr><td>${index + 1}</td><td>${c.cliente || 'N/A'}</td><td>${c.customer_id || 'N/A'}</td><td>${c.plan || 'N/A'}</td><td>${c.velocidad || 'N/A'}</td><td>$${c.precio || 'N/A'}</td><td>${c.fecha_completado || c.fecha_creacion || 'N/A'}</td><td><span class="badge badge-completado">Completado</span></td></tr>
+                                                        <tr>
+                                                            <td style="text-align:center">${index + 1}</td>
+                                                            <td>${c.cliente || 'N/A'}</td>
+                                                            <td>${c.customer_id || 'N/A'}</td>
+                                                            <td>${c.plan || 'N/A'}</td>
+                                                            <td><span class="badge ${c.cashea === 'Sí' ? 'badge-warning' : 'badge-secondary'}">${c.cashea || 'No'}</span></td>
+                                                            <td><strong style="color: #ff6b00;">${c.comision}</strong></td>
+                                                            <td>${c.fecha_completado || 'N/A'}</td>
+                                                            <td><span class="badge badge-completado">Completado</span></td>
+                                                        </tr>
                                                     `).join('')}
                                                 </tbody>
                                             </table>
@@ -1481,7 +1579,12 @@
                     document.body.insertAdjacentHTML('beforeend', detalleHtml);
                     document.body.classList.add('modal-open');
                 } else {
-                    alert('No hay contratos para mostrar');
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Sin contratos',
+                        text: 'No hay contratos para mostrar en este período',
+                        confirmButtonColor: '#ff6b00'
+                    });
                 }
             })
             .catch(error => console.error('Error:', error));
@@ -1491,10 +1594,25 @@
         if (!stats) return;
         document.getElementById('totalRegistros').textContent = stats.total_contratos_semana || 0;
         
-        document.getElementById('totalCompletados').textContent = stats.total_pagar_usd || '$0';
-        document.getElementById('totalPendientes').textContent = stats.total_pagar_bs || 'Bs 0';
-        document.getElementById('statCompletados').querySelector('.stat-label').textContent = 'Total a Pagar (USD)';
-        document.getElementById('statPendientes').querySelector('.stat-label').textContent = 'Total a Pagar (Bs)';
+        document.getElementById('totalCompletados').innerHTML = stats.total_pagar_usd || '$0';
+        document.getElementById('totalPendientes').innerHTML = stats.total_pagar_bs || 'Bs 0';
+        document.getElementById('statCompletados').querySelector('.stat-label').innerHTML = '💰 Total a Pagar (USD)';
+        document.getElementById('statPendientes').querySelector('.stat-label').innerHTML = '💵 Total a Pagar (Bs)';
+        
+        let vendedoresBonoSpan = document.getElementById('vendedoresBono');
+        if (!vendedoresBonoSpan) {
+            const statsGrid = document.querySelector('.stats-grid');
+            const newStat = document.createElement('div');
+            newStat.className = 'stat-card';
+            newStat.id = 'vendedoresBonoCard';
+            newStat.innerHTML = `
+                <span class="stat-value" id="vendedoresBono">0</span>
+                <span class="stat-label">Vendedores con bono</span>
+            `;
+            statsGrid.appendChild(newStat);
+            vendedoresBonoSpan = document.getElementById('vendedoresBono');
+        }
+        vendedoresBonoSpan.textContent = stats.vendedores_con_bono || 0;
         
         const statsGrid = document.querySelector('.stats-grid');
         let semanaInfo = document.getElementById('semanaInfo');
@@ -1513,6 +1631,10 @@
                     <div style="font-size: 14px; font-weight: 600;">${stats.semana_inicio || ''} - ${stats.semana_fin || ''}</div>
                     <div style="font-size: 11px; color: #6b7280; margin-top: 4px;">💱 ${stats.tasa_cambio || ''}</div>
                     <div style="font-size: 10px; color: #999;">Actualización: ${stats.fecha_actualizacion_tasa || ''}</div>
+                    <div style="font-size: 11px; color: #f59e0b; margin-top: 6px;">🎯 Meta bono: ${stats.meta_bono || '8 contratos 400+ Mbps = $25'}</div>
+                    <div style="font-size: 10px; color: #999; margin-top: 4px;">
+                        💰 Comisiones: 300M=$8, 400M=$12, 500+M=$15 | Cashea: +$4 (300M), +$3 (400M), +$2 (500+M)
+                    </div>
                 </div>
                 <button onclick="actualizarTasaManual()" 
                     style="background: #ff6b00; color: white; border: none; border-radius: 30px; padding: 8px 16px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px;">
@@ -1525,84 +1647,63 @@
         `;
     }
 
+    // TABLA DE VENDEDORES ARREGLADA - CON CELDAS BIEN FORMATEADAS
     function actualizarTablaVendedores() {
         const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
+            tbody.innerHTML = '<td><td colspan="10" class="empty">No hay datos disponibles</div></tr>';
             return;
         }
         
         document.getElementById('thead-resultados').innerHTML = `
-            <tr>
-                <th>Vendedor</th>
-                <th>Contratos</th>
-                <th>Comisión x Contrato</th>
-                <th>Total sin Bono</th>
-                <th>Bono</th>
-                <th>Total con Bono</th>
-                <th>Total en Bs</th>
-                <th>Rango</th>
-                <th>Detalle</th>
-            </tr>
+            <thead>
+                <tr>
+                    <th>Vendedor</th>
+                    <th class="text-center">Contratos</th>
+                    <th class="text-center">Contratos 400+ Mbps</th>
+                    <th class="text-center">Comisión Total</th>
+                    <th class="text-center">Bono</th>
+                    <th class="text-center">Total USD</th>
+                    <th class="text-center">Total Bs</th>
+                    <th class="text-center">Estado Bono</th>
+                    <th class="text-center">Detalle</th>
+                </tr>
+            </thead>
         `;
         
-        tbody.innerHTML = datosActuales.map(item => `
-            <tr>
-                <td><strong>${item.vendedor}</strong><br><small style="color:#666">@${item.username}</small></td>
-                <td style="text-align:center; font-weight: bold; font-size: 18px;">${item.contratos}</td>
-                <td style="text-align:center">${item.comision_por_contrato}</td>
-                <td style="text-align:center">${item.total_sin_bono}</td>
-                <td style="text-align:center">${item.bono}</td>
-                <td style="text-align:center; font-weight: bold; color: #ff6b00;">${item.total_con_bono}</td>
-                <td style="text-align:center">${item.total_bs}</td>
-                <td style="text-align:center"><span class="badge ${item.contratos > 0 ? 'badge-completado' : 'badge-pendiente'}">${item.rango}</span></td>
-                <td style="text-align:center">
-                    <button onclick="verDetalleVendedor(${item.id}, '${item.vendedor}', ${item.contratos})" class="btn-detalle">Ver ${item.contratos} contratos</button>
-                </td>
-            </tr>
-        `).join('');
-    }
-
-    function actualizarTablaInstaladores() {
-        const tbody = document.getElementById('tbody-resultados');
-        
-        if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
-            return;
-        }
-        
-        document.getElementById('thead-resultados').innerHTML = `
-            <tr>
-                <th>Cuadrilla</th>
-                <th>Instalaciones</th>
-                <th>Monto Instalaciones</th>
-                <th>Soportes</th>
-                <th>Monto Soportes</th>
-                <th>Contratos</th>
-                <th>Monto Contratos</th>
-                <th>Total USD</th>
-                <th>Total Bs</th>
-                <th>Instaladores</th>
-                <th>Detalle</th>
-            </tr>
-        `;
-        
-        tbody.innerHTML = datosActuales.map(item => `
-            <tr>
-                <td><strong>${item.cuadrilla}</strong></td>
-                <td style="text-align:center; font-weight: bold; font-size: 18px;">${item.instalaciones}</td>
-                <td style="text-align:center">${item.monto_instalaciones}</td>
-                <td style="text-align:center; font-weight: bold;">${item.soportes}</td>
-                <td style="text-align:center">${item.monto_soportes}</td>
-                <td style="text-align:center; font-weight: bold;">${item.contratos}</td>
-                <td style="text-align:center">${item.monto_contratos}</td>
-                <td style="text-align:center; font-weight: bold; color: #ff6b00;">${item.total_usd}</td>
-                <td style="text-align:center">${item.total_bs}</td>
-                <td><div class="instaladores-lista">${item.instaladores_list ? item.instaladores_list.map(inst => `<span class="instalador-item">👤 ${inst}</span>`).join('') : '<span class="instalador-item">Sin instaladores</span>'}</div></td>
-                <td style="text-align:center"><button onclick="verDetalleCuadrilla(${item.id}, '${item.cuadrilla}')" class="btn-detalle">Ver detalle completo</button></td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = datosActuales.map(item => {
+            const bonoValue = parseFloat(item.bono.replace('$', '')) || 0;
+            const tieneBono = bonoValue > 0;
+            const contratos400 = item.contratos_para_bono || 0;
+            const faltan = 8 - contratos400;
+            
+            return `
+                <tr>
+                    <td>
+                        <div class="vendedor-nombre">${item.vendedor}</div>
+                        <div class="vendedor-username">@${item.username}</div>
+                    </td>
+                    <td class="text-center"><span class="numero-grande">${item.contratos}</span></td>
+                    <td class="text-center"><span class="${contratos400 >= 8 ? 'text-success' : 'text-warning'}">${contratos400} / 8</span></td>
+                    <td class="text-center">${item.comision_total}</td>
+                    <td class="text-center ${tieneBono ? 'text-success' : ''}">${item.bono}</td>
+                    <td class="text-center"><strong style="color: #ff6b00;">${item.total_con_bono}</strong></td>
+                    <td class="text-center">${item.total_bs}</td>
+                    <td class="text-center">
+                        ${tieneBono 
+                            ? '<span class="badge badge-success">✅ Bono alcanzado</span>'
+                            : `<span class="badge badge-danger">❌ Faltan ${faltan} contratos 400+ Mbps</span>`
+                        }
+                    </td>
+                    <td class="text-center">
+                        <button onclick="verDetalleVendedor(${item.id}, '${item.vendedor}', ${item.contratos})" class="btn-detalle">
+                            Ver ${item.contratos} ${item.contratos === 1 ? 'contrato' : 'contratos'}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
 
     function cerrarModal() {
@@ -1696,7 +1797,7 @@
         const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></td>';
             return;
         }
         
@@ -1705,29 +1806,29 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.cliente || 'N/A'}</td>
-                        <td>${item.customer_id || 'N/A'}</td>
-                        <td>${item.ods || 'N/A'}</td>
-                        <td>${item.fecha || 'N/A'}</td>
-                        <td>${item.vendedor || 'N/A'}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
+                        <td>${item.cliente || 'N/A'}</div>
+                        <td>${item.customer_id || 'N/A'}</div>
+                        <td>${item.ods || 'N/A'}</div>
+                        <td>${item.fecha || 'N/A'}</div>
+                        <td>${item.vendedor || 'N/A'}</div>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></div>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id || 'N/A'}</td>
-                        <td>${item.cliente || 'N/A'}</td>
-                        <td>${item.cedula || 'N/A'}</td>
-                        <td>${item.telefono || 'N/A'}</td>
-                        <td>${item.correo || 'N/A'}</td>
-                        <td>${item.plan || 'N/A'}</td>
-                        <td>${item.fecha || 'N/A'}</td>
-                        <td>${item.vendedor || 'N/A'}</td>
-                        <td>${item.customer_id || 'N/A'}</td>
-                        <td>${item.ods || 'N/A'}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
+                        <td>${item.id || 'N/A'}</div>
+                        <td>${item.cliente || 'N/A'}</div>
+                        <td>${item.cedula || 'N/A'}</div>
+                        <td>${item.telefono || 'N/A'}</div>
+                        <td>${item.correo || 'N/A'}</div>
+                        <td>${item.plan || 'N/A'}</div>
+                        <td>${item.fecha || 'N/A'}</div>
+                        <td>${item.vendedor || 'N/A'}</div>
+                        <td>${item.customer_id || 'N/A'}</div>
+                        <td>${item.ods || 'N/A'}</div>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></div>
                     </tr>
                 `).join('');
             }
@@ -1736,28 +1837,28 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Cuadrilla</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.cliente || 'N/A'}</td>
-                        <td>${item.customer_id || 'N/A'}</td>
-                        <td>${item.ods || 'N/A'}</td>
-                        <td>${item.fecha || 'N/A'}</td>
-                        <td>${item.cuadrilla || 'N/A'}</td>
-                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
+                        <td>${item.cliente || 'N/A'}</div>
+                        <td>${item.customer_id || 'N/A'}</div>
+                        <td>${item.ods || 'N/A'}</div>
+                        <td>${item.fecha || 'N/A'}</div>
+                        <td>${item.cuadrilla || 'N/A'}</div>
+                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></div>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Dirección</th><th>Plan</th><th>Cuadrilla</th><th>Fecha</th><th>Estado</th><th>Modelo</th><th>Serial</th><th>Metros</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id || 'N/A'}</td>
-                        <td>${item.cliente || 'N/A'}</td>
-                        <td>${item.cedula || 'N/A'}</td>
-                        <td>${item.direccion || 'N/A'}</td>
-                        <td>${item.plan || 'N/A'}</td>
-                        <td>${item.cuadrilla || 'N/A'}</td>
-                        <td>${item.fecha || 'N/A'}</td>
-                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></td>
-                        <td>${item.modelo || 'N/A'}</td>
-                        <td>${item.serial || 'N/A'}</td>
+                        <td>${item.id || 'N/A'}</div>
+                        <td>${item.cliente || 'N/A'}</div>
+                        <td>${item.cedula || 'N/A'}</div>
+                        <td>${item.direccion || 'N/A'}</div>
+                        <td>${item.plan || 'N/A'}</div>
+                        <td>${item.cuadrilla || 'N/A'}</div>
+                        <td>${item.fecha || 'N/A'}</div>
+                        <td><span class="badge ${item.estado === 'Completada' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></div>
+                        <td>${item.modelo || 'N/A'}</div>
+                        <td>${item.serial || 'N/A'}</div>
                         <td>${item.metros || 0}m</div>
                     </tr>
                 `).join('');
@@ -1767,27 +1868,27 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>Ticket Padre</th><th>Fecha</th><th>Cuadrilla</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.cliente || 'N/A'}</td>
-                        <td>${item.customer_id || 'N/A'}</td>
-                        <td>${item.ticket_padre || 'N/A'}</td>
-                        <td>${item.fecha || 'N/A'}</td>
-                        <td>${item.cuadrilla || 'N/A'}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado || 'Pendiente'}</span></td>
+                        <td>${item.cliente || 'N/A'}</div>
+                        <td>${item.customer_id || 'N/A'}</div>
+                        <td>${item.ticket_padre || 'N/A'}</div>
+                        <td>${item.fecha || 'N/A'}</div>
+                        <td>${item.cuadrilla || 'N/A'}</div>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado || 'Pendiente'}</span></div>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Ticket Padre</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id || 'N/A'}</td>
-                        <td>${item.ticket_padre || 'N/A'}</td>
-                        <td>${item.cliente || 'N/A'}</td>
-                        <td>${item.cedula || 'N/A'}</td>
-                        <td>${item.tipo || 'N/A'}</td>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado || 'Pendiente'}</span></td>
-                        <td>${item.fecha || 'N/A'}</td>
-                        <td>${item.falla || 'N/A'}</td>
-                        <td>${item.solucion || 'N/A'}</td>
+                        <td>${item.id || 'N/A'}</div>
+                        <td>${item.ticket_padre || 'N/A'}</div>
+                        <td>${item.cliente || 'N/A'}</div>
+                        <td>${item.cedula || 'N/A'}</div>
+                        <td>${item.tipo || 'N/A'}</div>
+                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : (item.estado === 'En Proceso' ? 'badge-proceso' : 'badge-pendiente')}">${item.estado || 'Pendiente'}</span></div>
+                        <td>${item.fecha || 'N/A'}</div>
+                        <td>${item.falla || 'N/A'}</div>
+                        <td>${item.solucion || 'N/A'}</div>
                     </tr>
                 `).join('');
             }
@@ -1796,23 +1897,23 @@
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.material || 'N/A'}</td>
-                        <td>${item.cantidad || 0}</td>
-                        <td>${item.minimo || 0}</td>
-                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado || 'Normal'}</span></td>
+                        <td>${item.material || 'N/A'}</div>
+                        <td>${item.cantidad || 0}</div>
+                        <td>${item.minimo || 0}</div>
+                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado || 'Normal'}</span></div>
                     </tr>
                 `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Material</th><th>Cantidad</th><th>Mínimo</th><th>Estado</th><th>Última Actualización</th><th>Actualizado Por</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
-                        <td>${item.id || 'N/A'}</td>
-                        <td>${item.material || 'N/A'}</td>
-                        <td>${item.cantidad || 0}</td>
-                        <td>${item.minimo || 0}</td>
-                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado || 'Normal'}</span></td>
-                        <td>${item.ultima_actualizacion || 'N/A'}</td>
-                        <td>${item.actualizado_por || 'Sistema'}</td>
+                        <td>${item.id || 'N/A'}</div>
+                        <td>${item.material || 'N/A'}</div>
+                        <td>${item.cantidad || 0}</div>
+                        <td>${item.minimo || 0}</div>
+                        <td><span class="badge ${item.estado === 'Bajo stock' ? 'badge-bajo-stock' : 'badge-completado'}">${item.estado || 'Normal'}</span></div>
+                        <td>${item.ultima_actualizacion || 'N/A'}</div>
+                        <td>${item.actualizado_por || 'Sistema'}</div>
                     </tr>
                 `).join('');
             }
@@ -1827,6 +1928,49 @@
             document.getElementById('totalCompletados').textContent = stats.completados || stats.completadas || 0;
             document.getElementById('totalPendientes').textContent = stats.pendientes || stats.en_proceso || 0;
         }
+    }
+
+    function actualizarTablaInstaladores() {
+        const tbody = document.getElementById('tbody-resultados');
+        
+        if (!datosActuales || datosActuales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></tr>';
+            return;
+        }
+        
+        document.getElementById('thead-resultados').innerHTML = `
+            <thead>
+                <tr>
+                    <th>Cuadrilla</th>
+                    <th class="text-center">Instalaciones</th>
+                    <th class="text-center">Monto Instalaciones</th>
+                    <th class="text-center">Soportes</th>
+                    <th class="text-center">Monto Soportes</th>
+                    <th class="text-center">Contratos</th>
+                    <th class="text-center">Monto Contratos</th>
+                    <th class="text-center">Total USD</th>
+                    <th class="text-center">Total Bs</th>
+                    <th>Instaladores</th>
+                    <th class="text-center">Detalle</th>
+                </tr>
+            </thead>
+        `;
+        
+        tbody.innerHTML = datosActuales.map(item => `
+            <tr>
+                <td><strong>${item.cuadrilla}</strong></td>
+                <td class="text-center"><span class="numero-grande">${item.instalaciones}</span></td>
+                <td class="text-center">${item.monto_instalaciones}</td>
+                <td class="text-center"><span class="numero-grande">${item.soportes}</span></td>
+                <td class="text-center">${item.monto_soportes}</td>
+                <td class="text-center"><span class="numero-grande">${item.contratos}</span></td>
+                <td class="text-center">${item.monto_contratos}</td>
+                <td class="text-center"><strong style="color: #ff6b00;">${item.total_usd}</strong></td>
+                <td class="text-center">${item.total_bs}</td>
+                <td><div class="instaladores-lista">${item.instaladores_list ? item.instaladores_list.map(inst => `<span class="instalador-item">👤 ${inst}</span>`).join('') : '<span class="instalador-item">Sin instaladores</span>'}</div></td>
+                <td class="text-center"><button onclick="verDetalleCuadrilla(${item.id}, '${item.cuadrilla}')" class="btn-detalle">Ver detalle</button></td>
+            </tr>
+        `).join('');
     }
 
     function actualizarPaginacion() {

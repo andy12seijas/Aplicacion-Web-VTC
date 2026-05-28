@@ -428,7 +428,7 @@ class ContratoClienteForm(forms.ModelForm):
             'red': 'Red',
             'numero_pago_movil': 'Número de Pago Móvil (opcional)',
             'foto_pago': 'Foto del Comprobante de Pago (opcional)',
-            'cashea': 'Cashea',
+            'cashea': 'Cashea o pago completo del módem',
             'latitud': 'Latitud',
             'longitud': 'Longitud',
         }
