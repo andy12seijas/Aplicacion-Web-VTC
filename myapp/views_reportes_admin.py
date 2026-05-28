@@ -1701,14 +1701,19 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             ] for item in inventario]
     
     elif tipo == 'vendedores':
+        import re
+        from decimal import Decimal
+        
         ws = wb.active
         ws.title = "Reporte de Vendedores"
         
+        # Obtener la fecha de referencia para la semana
         if semana_obj:
             fecha_referencia = semana_obj
         else:
             fecha_referencia = datetime.now().date()
         
+        # Calcular semana (viernes a jueves)
         dias_desde_viernes = fecha_referencia.weekday() - 4
         if dias_desde_viernes < 0:
             dias_desde_viernes += 7
@@ -1719,6 +1724,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         fecha_inicio_aware = VE_TZ.localize(datetime.combine(viernes_inicio, datetime.min.time()))
         fecha_fin_aware = VE_TZ.localize(datetime.combine(jueves_fin, datetime.max.time()))
         
+        # Contratos completados en la semana
         contratos = ContratoCliente.objects.filter(
             estado='COMPLETADO',
             fecha_completado__gte=fecha_inicio_aware,
@@ -1728,8 +1734,9 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         if vendedor:
             contratos = contratos.filter(creado_por_id=vendedor)
         
+        # Obtener vendedores
         vendedores_list = User.objects.filter(
-            groups__name__in=['Vendedor', 'Supervisor']
+            groups__name__in=['Vendedor', 'Supervisor', 'Administrador']
         ).distinct()
         
         if vendedor:
@@ -1742,60 +1749,116 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                 Q(last_name__icontains=busqueda)
             )
         
+        # Obtener tasa de cambio
         tasa_obj = TasaCambio.objects.filter(activo=True).first()
         tasa = float(tasa_obj.tasa) if tasa_obj else 0
+        
+        # Función para calcular comisión por contrato
+        def calcular_comision_contrato(plan_nombre, cashea):
+            """
+            Calcula la comisión por contrato según el plan y si tiene cashea
+            
+            Planes:
+            - 300 Mbps: $8 normal / $12 cashea
+            - 400 Mbps: $12 normal / $15 cashea
+            - 500 Mbps o más: $15 normal / $17 cashea
+            """
+            # Extraer número del plan
+            numeros = re.findall(r'\d+', plan_nombre)
+            if not numeros:
+                return 0
+            
+            velocidad = int(numeros[0])
+            
+            if velocidad == 300:
+                return 12 if cashea else 8
+            elif velocidad == 400:
+                return 15 if cashea else 12
+            elif velocidad >= 500:
+                return 17 if cashea else 15
+            else:
+                return 8 if cashea else 5
         
         data_vendedores = []
         
         for vendedor_obj in vendedores_list:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
-            total_contratos = contratos_vendedor.count()
             
-            if total_contratos > 0 or not vendedor:
-                if total_contratos >= 1 and total_contratos <= 5:
-                    comision_por_contrato = 8
-                    bono = 20
-                    total_precio = total_contratos * 8
-                    rango = "1-5 contratos"
-                elif total_contratos >= 6 and total_contratos <= 10:
-                    comision_por_contrato = 10
-                    bono = 40
-                    total_precio = total_contratos * 10
-                    rango = "6-10 contratos"
-                elif total_contratos >= 11:
-                    comision_por_contrato = 10
-                    bono = 60
-                    total_precio = total_contratos * 10
-                    rango = "11+ contratos"
-                else:
-                    comision_por_contrato = 0
-                    bono = 0
-                    total_precio = 0
-                    rango = "Sin contratos"
+            total_contratos = 0
+            total_comision = 0
+            contratos_para_bono = 0  # Solo contratos de 400 Mbps o más
+            lista_contratos_detalle = []
+            
+            for contrato in contratos_vendedor.order_by('-fecha_completado'):
+                plan_nombre = contrato.plan_contratado.nombre
+                cashea = contrato.cashea
+                comision = calcular_comision_contrato(plan_nombre, cashea)
                 
-                total_con_bono = total_precio + bono
-                total_bs = total_con_bono * tasa
+                total_contratos += 1
+                total_comision += comision
+                
+                # Verificar si el contrato cuenta para el bono (400 Mbps o más)
+                numeros = re.findall(r'\d+', plan_nombre)
+                if numeros and int(numeros[0]) >= 400:
+                    contratos_para_bono += 1
+                
+                # Fecha para el detalle
+                fecha_ve = contrato.fecha_completado.astimezone(VE_TZ) if contrato.fecha_completado else None
+                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M') if fecha_ve else 'N/A'
+                
+                lista_contratos_detalle.append({
+                    'cliente': contrato.nombre_completo,
+                    'fecha': fecha_str,
+                    'plan': plan_nombre,
+                    'customer_id': contrato.customer_id or 'N/A',
+                    'cashea': 'Sí' if cashea else 'No',
+                    'comision': comision
+                })
+            
+            # Calcular bono (solo si tiene 8 o más contratos de 400 Mbps o más)
+            bono = 25 if contratos_para_bono >= 8 else 0
+            total_con_bono = total_comision + bono
+            total_bs = total_con_bono * tasa
+            
+            # Solo mostrar si tiene contratos o si se está filtrando por vendedor específico
+            if total_contratos > 0 or vendedor:
+                # Determinar rango para el bono
+                if contratos_para_bono >= 8:
+                    rango_bono = f"✅ {contratos_para_bono} contratos 400+ Mbps - Bono aplicado"
+                else:
+                    faltan = 8 - contratos_para_bono
+                    rango_bono = f"❌ {contratos_para_bono}/8 contratos 400+ Mbps - Faltan {faltan} para bono"
                 
                 data_vendedores.append({
                     'vendedor': vendedor_obj.get_full_name() or vendedor_obj.username,
+                    'username': vendedor_obj.username,
                     'contratos': total_contratos,
-                    'comision_por_contrato': comision_por_contrato,
-                    'total_sin_bono': total_precio,
+                    'contratos_para_bono': contratos_para_bono,
+                    'comision_total': total_comision,
                     'bono': bono,
                     'total_con_bono': total_con_bono,
                     'total_bs': total_bs,
-                    'rango': rango
+                    'rango_bono': rango_bono,
+                    'contratos_detalle': lista_contratos_detalle
                 })
         
+        # Ordenar por total de contratos (de mayor a menor)
         data_vendedores.sort(key=lambda x: x['contratos'], reverse=True)
         
+        # Calcular estadísticas generales
         total_contratos_general = sum(v['contratos'] for v in data_vendedores)
+        total_comisiones_general = sum(v['comision_total'] for v in data_vendedores)
+        total_bonos_general = sum(v['bono'] for v in data_vendedores)
         total_pagar_usd_general = sum(v['total_con_bono'] for v in data_vendedores)
         total_pagar_bs_general = total_pagar_usd_general * tasa
+        vendedores_con_bono = sum(1 for v in data_vendedores if v['bono'] > 0)
         
-        ws_resumen = wb.create_sheet("Resumen Semanal")
         tasa_str = f"{tasa:,.2f}" if tasa else "0.00"
         
+        # ===== HOJA DE RESUMEN =====
+        ws_resumen = wb.create_sheet("Resumen Semanal")
+        
+        # Títulos y encabezados
         resumen_data = [
             ['REPORTE DE VENDEDORES', ''],
             ['', ''],
@@ -1803,55 +1866,80 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             ['Fecha de generación:', datetime.now().strftime('%d/%m/%Y %H:%M:%S')],
             ['Tasa de cambio:', f"1 USD = {tasa_str} Bs"],
             ['', ''],
-            ['ESTADÍSTICAS:', ''],
+            ['ESTADÍSTICAS GENERALES:', ''],
             ['Total vendedores con ventas:', len(data_vendedores)],
+            ['Vendedores que alcanzaron bono:', vendedores_con_bono],
             ['Total contratos en período:', total_contratos_general],
+            ['Total comisiones (USD):', f"${total_comisiones_general:,.2f}"],
+            ['Total bonos (USD):', f"${total_bonos_general:,.2f}"],
             ['Total a pagar (USD):', f"${total_pagar_usd_general:,.2f}"],
             ['Total a pagar (Bs):', f"Bs {total_pagar_bs_general:,.2f}"],
+            ['', ''],
+            ['INFORMACIÓN DE COMISIONES:', ''],
+            ['Plan 300 Mbps normal:', '$8 USD'],
+            ['Plan 300 Mbps con Cashea:', '$12 USD'],
+            ['Plan 400 Mbps normal:', '$12 USD'],
+            ['Plan 400 Mbps con Cashea:', '$15 USD'],
+            ['Plan 500 Mbps o más normal:', '$15 USD'],
+            ['Plan 500 Mbps o más con Cashea:', '$17 USD'],
+            ['', ''],
+            ['BONO:', ''],
+            ['Meta:', '8 contratos de 400 Mbps o más'],
+            ['Valor del bono:', '$25 USD'],
         ]
         
+        # Estilos para la hoja de resumen
         for row_idx, row_data in enumerate(resumen_data, 1):
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws_resumen.cell(row=row_idx, column=col_idx, value=value)
                 if row_idx == 1:
                     cell.font = Font(bold=True, size=14, color="FF6B00")
-                elif row_idx == 7:
-                    cell.font = Font(bold=True)
+                elif row_idx == 7 or row_idx == 16 or row_idx == 23:
+                    cell.font = Font(bold=True, size=12)
         
-        ws_resumen.column_dimensions['A'].width = 25
+        ws_resumen.column_dimensions['A'].width = 35
         ws_resumen.column_dimensions['B'].width = 30
         
-        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs', 'Rango']
-        data = [[
-            v['vendedor'],
-            v['contratos'],
-            f"${v['comision_por_contrato']}",
-            f"${v['total_sin_bono']}",
-            f"${v['bono']}",
-            f"${v['total_con_bono']}",
-            f"Bs {v['total_bs']:,.2f}",
-            v['rango']
-        ] for v in data_vendedores]
+        # ===== HOJA DE VENDEDORES (RESUMEN) =====
+        headers_vendedores = [
+            'Vendedor', 'Username', 'Contratos', 'Contratos 400+ Mbps', 
+            'Comisión Total', 'Bono', 'Total USD', 'Total Bs', 'Estado Bono'
+        ]
         
-        ws_detalles = wb.create_sheet("Detalle Contratos")
-        detalles_headers = ['Vendedor', 'Cliente', 'Fecha Completado', 'Plan', 'Customer ID']
-        detalles_data = []
+        for col_idx, header in enumerate(headers_vendedores, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
+            cell.font = Font(color="FFFFFF", bold=True)
+            cell.alignment = Alignment(horizontal='center', vertical='center')
         
-        for vendedor_obj in vendedores_list:
-            contratos_vendedor = contratos.filter(creado_por=vendedor_obj).order_by('-fecha_completado')
-            nombre_vendedor = vendedor_obj.get_full_name() or vendedor_obj.username
+        for row_idx, v in enumerate(data_vendedores, 2):
+            faltan = 8 - v['contratos_para_bono']
+            estado_bono = f"✅ Bono alcanzado" if v['bono'] > 0 else f"❌ Faltan {faltan} contratos 400+ Mbps"
             
-            for contrato in contratos_vendedor:
-                fecha_ve = contrato.fecha_completado.astimezone(VE_TZ) if contrato.fecha_completado else None
-                fecha_str = fecha_ve.strftime('%d/%m/%Y %H:%M') if fecha_ve else 'N/A'
-                
-                detalles_data.append([
-                    nombre_vendedor,
-                    contrato.nombre_completo,
-                    fecha_str,
-                    contrato.plan_contratado.nombre,
-                    contrato.customer_id or 'N/A'
-                ])
+            ws.cell(row=row_idx, column=1, value=v['vendedor'])
+            ws.cell(row=row_idx, column=2, value=v['username'])
+            ws.cell(row=row_idx, column=3, value=v['contratos'])
+            ws.cell(row=row_idx, column=4, value=f"{v['contratos_para_bono']} / 8")
+            ws.cell(row=row_idx, column=5, value=f"${v['comision_total']:,.2f}")
+            ws.cell(row=row_idx, column=6, value=f"${v['bono']:,.2f}")
+            ws.cell(row=row_idx, column=7, value=f"${v['total_con_bono']:,.2f}")
+            ws.cell(row=row_idx, column=8, value=f"Bs {v['total_bs']:,.2f}")
+            ws.cell(row=row_idx, column=9, value=estado_bono)
+            
+            # Alineación centrada para números
+            for col in [3, 4, 5, 6, 7, 8]:
+                ws.cell(row=row_idx, column=col).alignment = Alignment(horizontal='center')
+            ws.cell(row=row_idx, column=9).alignment = Alignment(horizontal='center')
+        
+        # Ajustar anchos de columnas
+        for col_idx, header in enumerate(headers_vendedores, 1):
+            max_length = max(len(header), max([len(str(ws.cell(row=row, column=col_idx).value or '')) for row in range(2, len(data_vendedores) + 2)] or [0]))
+            ws.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 30)
+        
+        # ===== HOJA DE DETALLE DE CONTRATOS =====
+        ws_detalles = wb.create_sheet("Detalle Contratos")
+        
+        detalles_headers = ['Vendedor', 'Cliente', 'Fecha Completado', 'Plan', 'Cashea', 'Comisión', 'Customer ID']
         
         for col_idx, header in enumerate(detalles_headers, 1):
             cell = ws_detalles.cell(row=1, column=col_idx, value=header)
@@ -1859,14 +1947,90 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             cell.font = Font(color="FFFFFF", bold=True)
             cell.alignment = Alignment(horizontal='center', vertical='center')
         
+        detalles_data = []
+        for v in data_vendedores:
+            for contrato in v['contratos_detalle']:
+                detalles_data.append([
+                    v['vendedor'],
+                    contrato['cliente'],
+                    contrato['fecha'],
+                    contrato['plan'],
+                    contrato['cashea'],
+                    f"${contrato['comision']:,.2f}",
+                    contrato['customer_id']
+                ])
+        
         for row_idx, row_data in enumerate(detalles_data, 2):
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws_detalles.cell(row=row_idx, column=col_idx, value=value)
                 cell.alignment = Alignment(horizontal='left', vertical='center')
         
-        for col_idx in range(1, len(detalles_headers) + 1):
-            max_length = max(len(detalles_headers[col_idx-1]), max([len(str(row[col_idx-1])) for row in detalles_data[:100]] or [0]))
-            ws_detalles.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 30)
+        # Ajustar anchos de columnas en detalles
+        for col_idx, header in enumerate(detalles_headers, 1):
+            max_length = max(len(header), max([len(str(row[col_idx-1])) for row in detalles_data[:100]] or [0]))
+            ws_detalles.column_dimensions[get_column_letter(col_idx)].width = min(max_length + 2, 35)
+        
+        # ===== HOJA DE RESUMEN POR VENDEDOR (DETALLE INDIVIDUAL) =====
+        ws_detalle_vendedores = wb.create_sheet("Resumen por Vendedor")
+        
+        row_idx = 1
+        for v in data_vendedores:
+            # Título del vendedor
+            title_cell = ws_detalle_vendedores.cell(row=row_idx, column=1, value=f"📊 {v['vendedor']} (@{v['username']})")
+            title_cell.font = Font(bold=True, size=12, color="FF6B00")
+            ws_detalle_vendedores.merge_cells(start_row=row_idx, start_column=1, end_row=row_idx, end_column=4)
+            row_idx += 1
+            
+            # Resumen del vendedor
+            resumen_vendedor = [
+                ['Total Contratos', f"{v['contratos']}"],
+                ['Contratos 400+ Mbps', f"{v['contratos_para_bono']} / 8"],
+                ['Comisión Total', f"${v['comision_total']:,.2f}"],
+                ['Bono', f"${v['bono']:,.2f}"],
+                ['Total a Pagar USD', f"${v['total_con_bono']:,.2f}"],
+                ['Total a Pagar Bs', f"Bs {v['total_bs']:,.2f}"],
+                ['Estado', v['rango_bono']],
+            ]
+            
+            for r_data in resumen_vendedor:
+                ws_detalle_vendedores.cell(row=row_idx, column=1, value=r_data[0])
+                ws_detalle_vendedores.cell(row=row_idx, column=2, value=r_data[1])
+                row_idx += 1
+            
+            row_idx += 1
+            
+            # Tabla de contratos del vendedor
+            if v['contratos_detalle']:
+                # Encabezados
+                headers_contratos = ['#', 'Cliente', 'Fecha', 'Plan', 'Cashea', 'Comisión', 'Customer ID']
+                for col, header in enumerate(headers_contratos, 1):
+                    cell = ws_detalle_vendedores.cell(row=row_idx, column=col, value=header)
+                    cell.fill = PatternFill(start_color="FF6B00", end_color="FF6B00", fill_type="solid")
+                    cell.font = Font(color="FFFFFF", bold=True)
+                    cell.alignment = Alignment(horizontal='center')
+                
+                row_idx += 1
+                
+                for idx, contrato in enumerate(v['contratos_detalle'], 1):
+                    ws_detalle_vendedores.cell(row=row_idx, column=1, value=idx)
+                    ws_detalle_vendedores.cell(row=row_idx, column=2, value=contrato['cliente'])
+                    ws_detalle_vendedores.cell(row=row_idx, column=3, value=contrato['fecha'])
+                    ws_detalle_vendedores.cell(row=row_idx, column=4, value=contrato['plan'])
+                    ws_detalle_vendedores.cell(row=row_idx, column=5, value=contrato['cashea'])
+                    ws_detalle_vendedores.cell(row=row_idx, column=6, value=f"${contrato['comision']:,.2f}")
+                    ws_detalle_vendedores.cell(row=row_idx, column=7, value=contrato['customer_id'])
+                    row_idx += 1
+            
+            row_idx += 2  # Espacio entre vendedores
+        
+        # Ajustar anchos de columnas en resumen por vendedor
+        ws_detalle_vendedores.column_dimensions['A'].width = 20
+        ws_detalle_vendedores.column_dimensions['B'].width = 30
+        ws_detalle_vendedores.column_dimensions['C'].width = 20
+        ws_detalle_vendedores.column_dimensions['D'].width = 25
+        ws_detalle_vendedores.column_dimensions['E'].width = 12
+        ws_detalle_vendedores.column_dimensions['F'].width = 15
+        ws_detalle_vendedores.column_dimensions['G'].width = 25
     
     else:  # instaladores
         ws = wb.active
@@ -2472,7 +2636,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
             contratos = contratos.filter(creado_por_id=vendedor)
         
         vendedores_list = User.objects.filter(
-            groups__name__in=['Vendedor', 'Supervisor']
+            groups__name__in=['Vendedor', 'Supervisor', 'Administrador']
         ).distinct()
         
         if vendedor:
@@ -2488,66 +2652,106 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         tasa_obj = TasaCambio.objects.filter(activo=True).first()
         tasa = float(tasa_obj.tasa) if tasa_obj else 0
         
+        # Función para calcular comisión por contrato
+        def calcular_comision_contrato_pdf(plan_nombre, cashea):
+            import re
+            numeros = re.findall(r'\d+', plan_nombre)
+            if not numeros:
+                return 0
+            velocidad = int(numeros[0])
+            
+            if velocidad == 300:
+                return 12 if cashea else 8
+            elif velocidad == 400:
+                return 15 if cashea else 12
+            elif velocidad >= 500:
+                return 17 if cashea else 15
+            else:
+                return 8 if cashea else 5
+        
         data_vendedores = []
         
         for vendedor_obj in vendedores_list:
             contratos_vendedor = contratos.filter(creado_por=vendedor_obj)
-            total_contratos = contratos_vendedor.count()
             
-            if total_contratos > 0 or not vendedor:
-                if total_contratos >= 1 and total_contratos <= 5:
-                    comision_por_contrato = 8
-                    bono = 20
-                    total_precio = total_contratos * 8
-                    rango = "1-5 contratos"
-                elif total_contratos >= 6 and total_contratos <= 10:
-                    comision_por_contrato = 10
-                    bono = 40
-                    total_precio = total_contratos * 10
-                    rango = "6-10 contratos"
-                elif total_contratos >= 11:
-                    comision_por_contrato = 10
-                    bono = 60
-                    total_precio = total_contratos * 10
-                    rango = "11+ contratos"
-                else:
-                    comision_por_contrato = 0
-                    bono = 0
-                    total_precio = 0
-                    rango = "Sin contratos"
+            total_contratos = 0
+            total_comision = 0
+            contratos_para_bono = 0  # Solo contratos de 400 Mbps o más
+            contratos_detalle = []
+            
+            for contrato in contratos_vendedor.order_by('-fecha_completado'):
+                plan_nombre = contrato.plan_contratado.nombre
+                cashea = contrato.cashea
+                comision = calcular_comision_contrato_pdf(plan_nombre, cashea)
                 
-                total_con_bono = total_precio + bono
-                total_bs = total_con_bono * tasa
+                total_contratos += 1
+                total_comision += comision
+                
+                # Verificar si el contrato cuenta para el bono (400 Mbps o más)
+                import re
+                numeros = re.findall(r'\d+', plan_nombre)
+                if numeros and int(numeros[0]) >= 400:
+                    contratos_para_bono += 1
+                
+                fecha_ve = contrato.fecha_completado.astimezone(VE_TZ) if contrato.fecha_completado else None
+                fecha_str = fecha_ve.strftime('%d/%m/%Y') if fecha_ve else 'N/A'
+                
+                contratos_detalle.append({
+                    'cliente': contrato.nombre_completo,
+                    'fecha': fecha_str,
+                    'plan': plan_nombre,
+                    'cashea': 'Sí' if cashea else 'No',
+                    'comision': comision
+                })
+            
+            # Calcular bono (solo si tiene 8 o más contratos de 400 Mbps o más)
+            bono = 25 if contratos_para_bono >= 8 else 0
+            total_con_bono = total_comision + bono
+            total_bs = total_con_bono * tasa
+            
+            if total_contratos > 0 or vendedor:
+                if contratos_para_bono >= 8:
+                    rango_bono = f"✅ {contratos_para_bono} contratos 400+ Mbps - Bono aplicado"
+                else:
+                    faltan = 8 - contratos_para_bono
+                    rango_bono = f"❌ {contratos_para_bono}/8 contratos 400+ Mbps - Faltan {faltan} para bono"
                 
                 data_vendedores.append({
                     'vendedor': vendedor_obj.get_full_name() or vendedor_obj.username,
+                    'username': vendedor_obj.username,
                     'contratos': total_contratos,
-                    'comision_por_contrato': comision_por_contrato,
-                    'total_sin_bono': total_precio,
+                    'contratos_para_bono': contratos_para_bono,
+                    'comision_total': total_comision,
                     'bono': bono,
                     'total_con_bono': total_con_bono,
                     'total_bs': total_bs,
-                    'rango': rango
+                    'rango_bono': rango_bono,
+                    'contratos_detalle': contratos_detalle
                 })
         
         data_vendedores.sort(key=lambda x: x['contratos'], reverse=True)
         
         total_contratos_general = sum(v['contratos'] for v in data_vendedores)
+        total_comisiones_general = sum(v['comision_total'] for v in data_vendedores)
+        total_bonos_general = sum(v['bono'] for v in data_vendedores)
         total_pagar_usd_general = sum(v['total_con_bono'] for v in data_vendedores)
         total_pagar_bs_general = total_pagar_usd_general * tasa
+        vendedores_con_bono = sum(1 for v in data_vendedores if v['bono'] > 0)
         
+        # Preparar datos para la tabla
         rows = [[
             v['vendedor'],
+            v['username'],
             str(v['contratos']),
-            f"${v['comision_por_contrato']}",
-            f"${v['total_sin_bono']}",
-            f"${v['bono']}",
-            f"${v['total_con_bono']}",
+            f"{v['contratos_para_bono']} / 8",
+            f"${v['comision_total']:,.2f}",
+            f"${v['bono']:,.2f}",
+            f"${v['total_con_bono']:,.2f}",
             f"Bs {v['total_bs']:,.2f}",
-            v['rango']
+            v['rango_bono']
         ] for v in data_vendedores]
         
-        headers = ['Vendedor', 'Contratos', 'Comisión x Contrato', 'Total sin Bono', 'Bono', 'Total con Bono', 'Total en Bs', 'Rango']
+        headers = ['Vendedor', 'Usuario', 'Contratos', '400+ Mbps', 'Comisión Total', 'Bono', 'Total USD', 'Total Bs', 'Estado Bono']
         
         total_registros = len(rows)
         completados = total_contratos_general
