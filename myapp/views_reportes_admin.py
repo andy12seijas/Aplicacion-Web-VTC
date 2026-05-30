@@ -1221,6 +1221,611 @@ def reporte_instaladores_json(request):
 
 @login_required
 @user_passes_test(es_admin)
+def reporte_simple_vendedores_json(request):
+    """
+    API para reporte simple de vendedores - Cantidad de contratos por vendedor
+    Filtros por fechas y vendedor específico
+    """
+    
+    import pytz
+    from decimal import Decimal
+    from datetime import datetime, timedelta
+    
+    VE_TZ = pytz.timezone('America/Caracas')
+    
+    # Obtener parámetros
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    page = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 15))
+    busqueda = request.GET.get('busqueda', '')
+    
+    # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
+    fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
+    fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
+    
+    if fecha_hasta_aware:
+        fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
+    
+    # Contratos completados en el período
+    contratos = ContratoCliente.objects.filter(estado='COMPLETADO')
+    
+    if fecha_desde_aware and fecha_hasta_aware:
+        contratos = contratos.filter(fecha_completado__gte=fecha_desde_aware, fecha_completado__lte=fecha_hasta_aware)
+    elif fecha_desde_aware:
+        contratos = contratos.filter(fecha_completado__gte=fecha_desde_aware)
+    elif fecha_hasta_aware:
+        contratos = contratos.filter(fecha_completado__lte=fecha_hasta_aware)
+    
+    if vendedor_id:
+        contratos = contratos.filter(creado_por_id=vendedor_id)
+    
+    # Obtener todos los vendedores
+    vendedores_list = User.objects.filter(
+        groups__name__in=['Vendedor', 'Supervisor', 'Administrador']
+    ).distinct().order_by('first_name', 'username')
+    
+    if vendedor_id:
+        vendedores_list = vendedores_list.filter(id=vendedor_id)
+    
+    if busqueda:
+        vendedores_list = vendedores_list.filter(
+            Q(first_name__icontains=busqueda) |
+            Q(username__icontains=busqueda) |
+            Q(last_name__icontains=busqueda)
+        )
+    
+    data_vendedores = []
+    
+    for vendedor in vendedores_list:
+        contratos_vendedor = contratos.filter(creado_por=vendedor)
+        total_contratos = contratos_vendedor.count()
+        
+        if total_contratos > 0 or vendedor_id:
+            # Obtener detalle de contratos
+            contratos_detalle = []
+            for contrato in contratos_vendedor.order_by('-fecha_completado')[:10]:
+                fecha_ve = contrato.fecha_completado.astimezone(VE_TZ) if contrato.fecha_completado else None
+                fecha_str = fecha_ve.strftime('%d/%m/%Y') if fecha_ve else 'N/A'
+                
+                contratos_detalle.append({
+                    'id': contrato.id,
+                    'cliente': contrato.nombre_completo,
+                    'fecha': fecha_str,
+                    'plan': contrato.plan_contratado.nombre,
+                    'customer_id': contrato.customer_id or 'N/A'
+                })
+            
+            data_vendedores.append({
+                'id': vendedor.id,
+                'vendedor': vendedor.get_full_name() or vendedor.username,
+                'username': vendedor.username,
+                'contratos': total_contratos,
+                'contratos_detalle': contratos_detalle
+            })
+    
+    data_vendedores.sort(key=lambda x: x['contratos'], reverse=True)
+    
+    total_registros = len(data_vendedores)
+    paginator = Paginator(data_vendedores, per_page)
+    
+    try:
+        page_obj = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.page(1)
+    
+    total_contratos_general = sum(v['contratos'] for v in data_vendedores)
+    
+    estadisticas = {
+        'total_vendedores': len(data_vendedores),
+        'total_contratos': total_contratos_general,
+        'promedio_contratos': round(total_contratos_general / len(data_vendedores), 2) if data_vendedores else 0,
+        'fecha_desde': fecha_desde_aware.strftime('%d/%m/%Y') if fecha_desde_aware else 'Todo',
+        'fecha_hasta': fecha_hasta_aware.strftime('%d/%m/%Y') if fecha_hasta_aware else 'Actual'
+    }
+    
+    return JsonResponse({
+        'data': list(page_obj),
+        'estadisticas': estadisticas,
+        'total_registros': total_registros,
+        'total_paginas': paginator.num_pages,
+        'pagina_actual': page_obj.number,
+        'por_pagina': per_page,
+    })
+
+
+@login_required
+@user_passes_test(es_admin)
+def reporte_global_json(request):
+    """
+    API para reporte global - Ventas directas, Contratos y Soportes
+    Filtros: fechas, vendedor, instalador, cuadrilla
+    """
+    
+    import pytz
+    from decimal import Decimal
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    
+    VE_TZ = pytz.timezone('America/Caracas')
+    
+    # Obtener parámetros
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    instalador_id = request.GET.get('instalador', '')
+    cuadrilla_id = request.GET.get('cuadrilla', '')
+    page = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 15))
+    busqueda = request.GET.get('busqueda', '')
+    
+    # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
+    fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
+    fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
+    
+    if fecha_hasta_aware:
+        fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
+    
+    # 1. VENTAS DIRECTAS
+    ventas_directas = VentaDirecta.objects.filter(estado='COMPLETADO')
+    if fecha_desde_aware and fecha_hasta_aware:
+        ventas_directas = ventas_directas.filter(fecha_creacion__gte=fecha_desde_aware, fecha_creacion__lte=fecha_hasta_aware)
+    elif fecha_desde_aware:
+        ventas_directas = ventas_directas.filter(fecha_creacion__gte=fecha_desde_aware)
+    elif fecha_hasta_aware:
+        ventas_directas = ventas_directas.filter(fecha_creacion__lte=fecha_hasta_aware)
+    
+    if vendedor_id:
+        ventas_directas = ventas_directas.filter(creado_por_id=vendedor_id)
+    
+    # 2. CONTRATOS (Ventas de vendedores)
+    contratos = ContratoCliente.objects.filter(estado='COMPLETADO')
+    if fecha_desde_aware and fecha_hasta_aware:
+        contratos = contratos.filter(fecha_completado__gte=fecha_desde_aware, fecha_completado__lte=fecha_hasta_aware)
+    elif fecha_desde_aware:
+        contratos = contratos.filter(fecha_completado__gte=fecha_desde_aware)
+    elif fecha_hasta_aware:
+        contratos = contratos.filter(fecha_completado__lte=fecha_hasta_aware)
+    
+    if vendedor_id:
+        contratos = contratos.filter(creado_por_id=vendedor_id)
+    
+    # 3. INSTALACIONES
+    instalaciones = Instalacion.objects.filter(completada=True)
+    if fecha_desde_aware and fecha_hasta_aware:
+        instalaciones = instalaciones.filter(fecha_instalacion__gte=fecha_desde_aware, fecha_instalacion__lte=fecha_hasta_aware)
+    elif fecha_desde_aware:
+        instalaciones = instalaciones.filter(fecha_instalacion__gte=fecha_desde_aware)
+    elif fecha_hasta_aware:
+        instalaciones = instalaciones.filter(fecha_instalacion__lte=fecha_hasta_aware)
+    
+    if cuadrilla_id:
+        instalaciones = instalaciones.filter(asignacion__cuadrilla_id=cuadrilla_id)
+    
+    if instalador_id:
+        instalaciones = instalaciones.filter(instaladores__id=instalador_id)
+    
+    # 4. SOPORTES (tickets completados)
+    soportes = Soporte.objects.filter(estado='COMPLETADO')
+    if fecha_desde_aware and fecha_hasta_aware:
+        soportes = soportes.filter(fecha_creacion__gte=fecha_desde_aware, fecha_creacion__lte=fecha_hasta_aware)
+    elif fecha_desde_aware:
+        soportes = soportes.filter(fecha_creacion__gte=fecha_desde_aware)
+    elif fecha_hasta_aware:
+        soportes = soportes.filter(fecha_creacion__lte=fecha_hasta_aware)
+    
+    if cuadrilla_id:
+        soportes = soportes.filter(cuadrilla_id=cuadrilla_id)
+    
+    if instalador_id:
+        soportes = soportes.filter(instaladores__id=instalador_id)
+    
+    # Buscar por cliente/ticket
+    if busqueda:
+        contratos = contratos.filter(
+            Q(cliente_potencial__nombre__icontains=busqueda) |
+            Q(cliente_potencial__apellido__icontains=busqueda) |
+            Q(cliente_potencial__cedula__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda)
+        )
+        ventas_directas = ventas_directas.filter(
+            Q(nombre__icontains=busqueda) |
+            Q(apellido__icontains=busqueda) |
+            Q(cedula__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda)
+        )
+        instalaciones = instalaciones.filter(
+            Q(nombre_cliente__icontains=busqueda) |
+            Q(cedula_cliente__icontains=busqueda) |
+            Q(customer_id__icontains=busqueda)
+        )
+        soportes = soportes.filter(
+            Q(asignacion__ticket__nombre__icontains=busqueda) |
+            Q(asignacion__ticket__apellido__icontains=busqueda) |
+            Q(asignacion__ticket__cedula__icontains=busqueda) |
+            Q(asignacion__ticket__customer_id__icontains=busqueda)
+        )
+    
+    # ========== ESTADÍSTICAS POR PLAN (CONTRATOS) ==========
+    planes_stats = defaultdict(int)
+    for c in contratos:
+        plan_nombre = c.plan_contratado.nombre
+        numeros = re.findall(r'\d+', plan_nombre)
+        if numeros:
+            velocidad = int(numeros[0])
+            if velocidad <= 300:
+                planes_stats['300 Mbps'] += 1
+            elif velocidad == 400:
+                planes_stats['400 Mbps'] += 1
+            elif velocidad >= 500:
+                planes_stats['500+ Mbps'] += 1
+            else:
+                planes_stats[plan_nombre] += 1
+        else:
+            planes_stats[plan_nombre] += 1
+    
+    # ========== ESTADÍSTICAS POR TIPO DE SOPORTE ==========
+    soportes_stats = defaultdict(int)
+    for s in soportes:
+        try:
+            tipo = s.asignacion.ticket.tipo_soporte if s.asignacion and s.asignacion.ticket else 'SOPORTE'
+            if tipo == 'MUDANZA':
+                soportes_stats['Mudanza'] += 1
+            elif tipo == 'RETIRO':
+                soportes_stats['Retiro'] += 1
+            elif tipo == 'RECABLEADO':
+                soportes_stats['Recableado'] += 1
+            else:
+                soportes_stats['Soporte Técnico'] += 1
+        except:
+            soportes_stats['Soporte Técnico'] += 1
+    
+    # ========== ESTADÍSTICAS DE MATERIALES (INSTALACIONES) ==========
+    materiales_stats = defaultdict(int)
+    for i in instalaciones:
+        if i.conectores:
+            materiales_stats['Conectores'] += i.conectores
+        if i.rosetas:
+            materiales_stats['Rosetas'] += i.rosetas
+        if i.patch_cord:
+            materiales_stats['Patch Cord'] += i.patch_cord
+        if i.tensores:
+            materiales_stats['Tensores'] += i.tensores
+        if i.tirros:
+            materiales_stats['Tirros'] += i.tirros
+        if i.metros_utilizados:
+            materiales_stats['Metros de Fibra'] += i.metros_utilizados
+    
+    # ========== DATOS PARA LA TABLA PRINCIPAL ==========
+    registros = []
+    
+    # Agregar ventas directas
+    for vd in ventas_directas.order_by('-fecha_creacion'):
+        fecha_ve = vd.fecha_creacion.astimezone(VE_TZ) if vd.fecha_creacion else None
+        fecha_str = fecha_ve.strftime('%d/%m/%Y') if fecha_ve else 'N/A'
+        
+        registros.append({
+            'id': vd.id,
+            'tipo': 'venta_directa',
+            'tipo_display': '🛒 Venta Directa',
+            'cliente': vd.nombre_completo,
+            'customer_id': vd.customer_id or 'N/A',
+            'referencia': vd.nro_orden,
+            'fecha': fecha_str,
+            'responsable': vd.creado_por.get_full_name() or vd.creado_por.username if vd.creado_por else 'N/A',
+            'detalle': vd.plan.nombre,
+            'estado': 'Completado'
+        })
+    
+    # Agregar contratos
+    for c in contratos.order_by('-fecha_completado'):
+        fecha_ve = c.fecha_completado.astimezone(VE_TZ) if c.fecha_completado else None
+        fecha_str = fecha_ve.strftime('%d/%m/%Y') if fecha_ve else 'N/A'
+        
+        registros.append({
+            'id': c.id,
+            'tipo': 'contrato',
+            'tipo_display': '📝 Contrato',
+            'cliente': c.nombre_completo,
+            'customer_id': c.customer_id or 'N/A',
+            'referencia': c.ods or 'N/A',
+            'fecha': fecha_str,
+            'responsable': c.creado_por.get_full_name() or c.creado_por.username if c.creado_por else 'N/A',
+            'detalle': c.plan_contratado.nombre,
+            'estado': 'Completado'
+        })
+    
+    # Agregar instalaciones
+    for i in instalaciones.order_by('-fecha_instalacion'):
+        fecha_ve = i.fecha_instalacion.astimezone(VE_TZ) if i.fecha_instalacion else None
+        fecha_str = fecha_ve.strftime('%d/%m/%Y') if fecha_ve else 'N/A'
+        
+        registros.append({
+            'id': i.id,
+            'tipo': 'instalacion',
+            'tipo_display': '🔧 Instalación',
+            'cliente': i.nombre_cliente,
+            'customer_id': i.customer_id,
+            'referencia': i.orden_servicio,
+            'fecha': fecha_str,
+            'responsable': i.asignacion.cuadrilla.nombre if i.asignacion and i.asignacion.cuadrilla else 'N/A',
+            'detalle': i.plan,
+            'estado': 'Completada'
+        })
+    
+    # Agregar soportes
+    for s in soportes.order_by('-fecha_creacion'):
+        fecha_ve = s.fecha_creacion.astimezone(VE_TZ) if s.fecha_creacion else None
+        fecha_str = fecha_ve.strftime('%d/%m/%Y') if fecha_ve else 'N/A'
+        
+        try:
+            ticket_padre = s.asignacion.ticket.ticket_padre if s.asignacion and s.asignacion.ticket else 'N/A'
+            cliente = s.asignacion.ticket.nombre_completo if s.asignacion and s.asignacion.ticket else 'N/A'
+            customer_id = s.asignacion.ticket.customer_id if s.asignacion and s.asignacion.ticket else 'N/A'
+            tipo_soporte = s.asignacion.ticket.get_tipo_soporte_display() if s.asignacion and s.asignacion.ticket else 'N/A'
+        except:
+            ticket_padre = 'N/A'
+            cliente = 'N/A'
+            customer_id = 'N/A'
+            tipo_soporte = 'N/A'
+        
+        registros.append({
+            'id': s.id,
+            'tipo': 'soporte',
+            'tipo_display': f'🔧 Soporte ({tipo_soporte})',
+            'cliente': cliente,
+            'customer_id': customer_id,
+            'referencia': ticket_padre,
+            'fecha': fecha_str,
+            'responsable': s.cuadrilla.nombre if s.cuadrilla else 'N/A',
+            'detalle': s.falla_encontrada[:50] + '...' if s.falla_encontrada and len(s.falla_encontrada) > 50 else (s.falla_encontrada or 'N/A'),
+            'estado': s.get_estado_display() if hasattr(s, 'get_estado_display') else s.estado
+        })
+    
+    # Ordenar por fecha (más recientes primero)
+    registros.sort(key=lambda x: x['fecha'], reverse=True)
+    
+    total_registros = len(registros)
+    paginator = Paginator(registros, per_page)
+    
+    try:
+        page_obj = paginator.page(page)
+    except (PageNotAnInteger, EmptyPage):
+        page_obj = paginator.page(1)
+    
+    # Estadísticas generales
+    estadisticas = {
+        'total_registros': total_registros,
+        'total_ventas_directas': ventas_directas.count(),
+        'total_contratos': contratos.count(),
+        'total_instalaciones': instalaciones.count(),
+        'total_soportes': soportes.count(),
+        'planes_stats': dict(planes_stats),
+        'soportes_stats': dict(soportes_stats),
+        'materiales_stats': dict(materiales_stats),
+        'fecha_desde': fecha_desde_aware.strftime('%d/%m/%Y') if fecha_desde_aware else 'Todo',
+        'fecha_hasta': fecha_hasta_aware.strftime('%d/%m/%Y') if fecha_hasta_aware else 'Actual'
+    }
+    
+    return JsonResponse({
+        'data': list(page_obj),
+        'estadisticas': estadisticas,
+        'total_registros': total_registros,
+        'total_paginas': paginator.num_pages,
+        'pagina_actual': page_obj.number,
+        'por_pagina': per_page,
+    })
+
+
+@login_required
+@user_passes_test(es_admin)
+def reporte_global_detalle_json(request):
+    """
+    API para obtener el resumen estadístico de un tipo específico del reporte global
+    Tipos: ventas_directas, contratos, instalaciones, soportes
+    """
+    
+    import pytz
+    import re
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+    from django.db.models import Q, Sum
+    
+    VE_TZ = pytz.timezone('America/Caracas')
+    
+    # Obtener parámetros
+    tipo = request.GET.get('tipo', '')
+    fecha_desde_raw = request.GET.get('fecha_desde', '')
+    fecha_hasta_raw = request.GET.get('fecha_hasta', '')
+    vendedor_id = request.GET.get('vendedor', '')
+    instalador_id = request.GET.get('instalador', '')
+    cuadrilla_id = request.GET.get('cuadrilla', '')
+    
+    # ========== CONVERTIR FECHAS A DATETIME AWARE ==========
+    fecha_desde_aware = convertir_a_datetime_aware(fecha_desde_raw)
+    fecha_hasta_aware = convertir_a_datetime_aware(fecha_hasta_raw)
+    
+    if fecha_hasta_aware:
+        fecha_hasta_aware = (fecha_hasta_aware + timedelta(days=1)) - timedelta(microseconds=1)
+    
+    estadisticas = {}
+    
+    if tipo == 'ventas_directas':
+        # Ventas Directas
+        queryset = VentaDirecta.objects.filter(estado='COMPLETADO')
+        
+        if fecha_desde_aware and fecha_hasta_aware:
+            queryset = queryset.filter(fecha_creacion__gte=fecha_desde_aware, fecha_creacion__lte=fecha_hasta_aware)
+        elif fecha_desde_aware:
+            queryset = queryset.filter(fecha_creacion__gte=fecha_desde_aware)
+        elif fecha_hasta_aware:
+            queryset = queryset.filter(fecha_creacion__lte=fecha_hasta_aware)
+        
+        if vendedor_id:
+            queryset = queryset.filter(creado_por_id=vendedor_id)
+        
+        # Estadísticas por plan
+        planes_stats = defaultdict(int)
+        for vd in queryset:
+            plan_nombre = vd.plan.nombre
+            numeros = re.findall(r'\d+', plan_nombre)
+            if numeros:
+                velocidad = int(numeros[0])
+                if velocidad <= 300:
+                    plan_key = '300 Mbps'
+                elif velocidad == 400:
+                    plan_key = '400 Mbps'
+                elif velocidad >= 500:
+                    plan_key = '500+ Mbps'
+                else:
+                    plan_key = plan_nombre
+            else:
+                plan_key = plan_nombre
+            planes_stats[plan_key] += 1
+        
+        estadisticas = {
+            'titulo': '🛒 Resumen de Ventas Directas',
+            'total': queryset.count(),
+            'detalles': [{'nombre': k, 'cantidad': v, 'porcentaje': round((v/queryset.count())*100, 1) if queryset.count() > 0 else 0} for k, v in planes_stats.items()]
+        }
+    
+    elif tipo == 'contratos':
+        # Contratos
+        queryset = ContratoCliente.objects.filter(estado='COMPLETADO')
+        
+        if fecha_desde_aware and fecha_hasta_aware:
+            queryset = queryset.filter(fecha_completado__gte=fecha_desde_aware, fecha_completado__lte=fecha_hasta_aware)
+        elif fecha_desde_aware:
+            queryset = queryset.filter(fecha_completado__gte=fecha_desde_aware)
+        elif fecha_hasta_aware:
+            queryset = queryset.filter(fecha_completado__lte=fecha_hasta_aware)
+        
+        if vendedor_id:
+            queryset = queryset.filter(creado_por_id=vendedor_id)
+        
+        # Estadísticas por plan
+        planes_stats = defaultdict(int)
+        for c in queryset:
+            plan_nombre = c.plan_contratado.nombre
+            numeros = re.findall(r'\d+', plan_nombre)
+            if numeros:
+                velocidad = int(numeros[0])
+                if velocidad <= 300:
+                    plan_key = '300 Mbps'
+                elif velocidad == 400:
+                    plan_key = '400 Mbps'
+                elif velocidad >= 500:
+                    plan_key = '500+ Mbps'
+                else:
+                    plan_key = plan_nombre
+            else:
+                plan_key = plan_nombre
+            planes_stats[plan_key] += 1
+        
+        estadisticas = {
+            'titulo': '📝 Resumen de Contratos',
+            'total': queryset.count(),
+            'detalles': [{'nombre': k, 'cantidad': v, 'porcentaje': round((v/queryset.count())*100, 1) if queryset.count() > 0 else 0} for k, v in planes_stats.items()]
+        }
+    
+    elif tipo == 'instalaciones':
+        # Instalaciones
+        queryset = Instalacion.objects.filter(completada=True)
+        
+        if fecha_desde_aware and fecha_hasta_aware:
+            queryset = queryset.filter(fecha_instalacion__gte=fecha_desde_aware, fecha_instalacion__lte=fecha_hasta_aware)
+        elif fecha_desde_aware:
+            queryset = queryset.filter(fecha_instalacion__gte=fecha_desde_aware)
+        elif fecha_hasta_aware:
+            queryset = queryset.filter(fecha_instalacion__lte=fecha_hasta_aware)
+        
+        if cuadrilla_id:
+            queryset = queryset.filter(asignacion__cuadrilla_id=cuadrilla_id)
+        
+        if instalador_id:
+            queryset = queryset.filter(instaladores__id=instalador_id)
+        
+        # Estadísticas de materiales
+        materiales_stats = defaultdict(int)
+        for inst in queryset:
+            if inst.conectores:
+                materiales_stats['Conectores'] += inst.conectores
+            if inst.rosetas:
+                materiales_stats['Rosetas'] += inst.rosetas
+            if inst.patch_cord:
+                materiales_stats['Patch Cord'] += inst.patch_cord
+            if inst.tensores:
+                materiales_stats['Tensores'] += inst.tensores
+            if inst.tirros:
+                materiales_stats['Tirros'] += inst.tirros
+            if inst.metros_utilizados:
+                materiales_stats['Metros de Fibra'] += inst.metros_utilizados
+        
+        # Estadísticas por plan en instalaciones
+        planes_stats = defaultdict(int)
+        for inst in queryset:
+            plan_nombre = inst.plan
+            numeros = re.findall(r'\d+', plan_nombre)
+            if numeros:
+                velocidad = int(numeros[0])
+                if velocidad <= 300:
+                    plan_key = '300 Mbps'
+                elif velocidad == 400:
+                    plan_key = '400 Mbps'
+                elif velocidad >= 500:
+                    plan_key = '500+ Mbps'
+                else:
+                    plan_key = plan_nombre
+            else:
+                plan_key = plan_nombre
+            planes_stats[plan_key] += 1
+        
+        estadisticas = {
+            'titulo': '🔧 Resumen de Instalaciones',
+            'total': queryset.count(),
+            'detalles_planes': [{'nombre': k, 'cantidad': v, 'porcentaje': round((v/queryset.count())*100, 1) if queryset.count() > 0 else 0} for k, v in planes_stats.items()],
+            'detalles_materiales': [{'nombre': k, 'cantidad': v} for k, v in materiales_stats.items()]
+        }
+    
+    elif tipo == 'soportes':
+        # Soportes
+        queryset = Soporte.objects.filter(estado='COMPLETADO')
+        
+        if fecha_desde_aware and fecha_hasta_aware:
+            queryset = queryset.filter(fecha_creacion__gte=fecha_desde_aware, fecha_creacion__lte=fecha_hasta_aware)
+        elif fecha_desde_aware:
+            queryset = queryset.filter(fecha_creacion__gte=fecha_desde_aware)
+        elif fecha_hasta_aware:
+            queryset = queryset.filter(fecha_creacion__lte=fecha_hasta_aware)
+        
+        if cuadrilla_id:
+            queryset = queryset.filter(cuadrilla_id=cuadrilla_id)
+        
+        if instalador_id:
+            queryset = queryset.filter(instaladores__id=instalador_id)
+        
+        # Estadísticas por tipo de soporte
+        soportes_stats = defaultdict(int)
+        for s in queryset:
+            try:
+                tipo_soporte = s.asignacion.ticket.get_tipo_soporte_display() if s.asignacion and s.asignacion.ticket else 'Soporte Técnico'
+            except:
+                tipo_soporte = 'Soporte Técnico'
+            soportes_stats[tipo_soporte] += 1
+        
+        estadisticas = {
+            'titulo': '🛠️ Resumen de Soportes',
+            'total': queryset.count(),
+            'detalles': [{'nombre': k, 'cantidad': v, 'porcentaje': round((v/queryset.count())*100, 1) if queryset.count() > 0 else 0} for k, v in soportes_stats.items()]
+        }
+    
+    return JsonResponse({
+        'estadisticas': estadisticas
+    })    
+
+@login_required
+@user_passes_test(es_admin)
 def semanas_disponibles_instaladores_api(request):
     """API para obtener las semanas disponibles con actividad de instaladores"""
     

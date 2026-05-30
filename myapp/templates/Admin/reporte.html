@@ -899,12 +899,14 @@
         <div class="selector-group">
             <label>📊 Seleccionar Reporte</label>
             <select id="selectReporte" class="selector-select">
-                <option value="ventas">Reporte de Ventas</option>
-                <option value="instalaciones">Reporte de Instalaciones</option>
-                <option value="soportes">Reporte de Soportes</option>
-                <option value="inventario">Reporte de Inventario</option>
-                <option value="vendedores">Reporte de Vendedores</option>
-                <option value="instaladores">Reporte de Instaladores</option>
+                <option value="ventas">📋 Reporte de Ventas</option>
+                <option value="instalaciones">🔧 Reporte de Instalaciones</option>
+                <option value="soportes">🛠️ Reporte de Soportes</option>
+                <option value="inventario">📦 Reporte de Inventario</option>
+                <option value="vendedores">💰 Nómina - Vendedores</option>
+                <option value="instaladores">👷 Nómina - Instaladores</option>
+                <option value="simple_vendedores">📊 Reporte Simple - Vendedores</option>
+                <option value="global">🌍 Reporte Global</option>
             </select>
         </div>
     </div>
@@ -1017,6 +1019,15 @@
                 <option value="">Semana actual</option>
             </select>
         </div>
+
+        <div id="filtrosSimpleVendedores" class="filters-ventas" style="display: none;">
+            <select id="filterVendedorSimple" class="filter-select">
+                <option value="">Todos los vendedores</option>
+                {% for v in vendedores %}
+                <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
         
         <div class="date-filter">
             <input type="date" id="fecha_desde" class="filter-input" placeholder="Desde">
@@ -1043,7 +1054,7 @@
 <div class="table-wrapper">
     <table class="table" id="tabla-resultados">
         <thead id="thead-resultados">
-            <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>
+            <tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th><tr>
         </thead>
         <tbody id="tbody-resultados"><tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>
     </table>
@@ -1056,6 +1067,7 @@
     <button class="btn-pdf" onclick="exportarReporte('pdf')">Exportar a PDF</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let tipoActual = 'ventas';
     let nivelActual = 'simple';
@@ -1069,30 +1081,51 @@
         tipoActual = select.value;
         paginaActual = 1;
         
-        document.getElementById('filtrosVentas').style.display = tipoActual === 'ventas' ? 'flex' : 'none';
-        document.getElementById('filtrosInstalaciones').style.display = tipoActual === 'instalaciones' ? 'flex' : 'none';
-        document.getElementById('filtrosSoportes').style.display = tipoActual === 'soportes' ? 'flex' : 'none';
-        document.getElementById('filtrosInventario').style.display = tipoActual === 'inventario' ? 'flex' : 'none';
-        document.getElementById('filtrosVendedores').style.display = tipoActual === 'vendedores' ? 'flex' : 'none';
-        document.getElementById('filtrosInstaladores').style.display = tipoActual === 'instaladores' ? 'flex' : 'none';
+        // Ocultar todos los filtros primero
+        document.getElementById('filtrosVentas').style.display = 'none';
+        document.getElementById('filtrosInstalaciones').style.display = 'none';
+        document.getElementById('filtrosSoportes').style.display = 'none';
+        document.getElementById('filtrosInventario').style.display = 'none';
+        document.getElementById('filtrosVendedores').style.display = 'none';
+        document.getElementById('filtrosInstaladores').style.display = 'none';
+        document.getElementById('filtrosSimpleVendedores').style.display = 'none';
         
         const dateFilters = document.querySelectorAll('.date-filter');
         const tipoContainer = document.getElementById('tipoContainer');
         
-        if (tipoActual === 'vendedores' || tipoActual === 'instaladores') {
+        if (tipoActual === 'vendedores') {
             dateFilters.forEach(el => el.style.display = 'none');
             tipoContainer.style.display = 'none';
-            if (tipoActual === 'vendedores') {
-                cargarSemanasDisponibles();
-            } else if (tipoActual === 'instaladores') {
-                cargarSemanasDisponiblesInstaladores();
-            }
+            document.getElementById('filtrosVendedores').style.display = 'flex';
+            cargarSemanasDisponibles();
+        } else if (tipoActual === 'instaladores') {
+            dateFilters.forEach(el => el.style.display = 'none');
+            tipoContainer.style.display = 'none';
+            document.getElementById('filtrosInstaladores').style.display = 'flex';
+            cargarSemanasDisponiblesInstaladores();
         } else if (tipoActual === 'inventario') {
             dateFilters.forEach(el => el.style.display = 'none');
             tipoContainer.style.display = 'flex';
+            document.getElementById('filtrosInventario').style.display = 'flex';
+        } else if (tipoActual === 'simple_vendedores') {
+            dateFilters.forEach(el => el.style.display = 'block');
+            tipoContainer.style.display = 'none';
+            document.getElementById('filtrosSimpleVendedores').style.display = 'flex';
+        } else if (tipoActual === 'global') {
+            dateFilters.forEach(el => el.style.display = 'block');
+            tipoContainer.style.display = 'none';
+            document.getElementById('filtrosVentas').style.display = 'flex';
+            document.getElementById('filtrosInstaladores').style.display = 'flex';
         } else {
             dateFilters.forEach(el => el.style.display = 'block');
             tipoContainer.style.display = 'flex';
+            if (tipoActual === 'ventas') {
+                document.getElementById('filtrosVentas').style.display = 'flex';
+            } else if (tipoActual === 'instalaciones') {
+                document.getElementById('filtrosInstalaciones').style.display = 'flex';
+            } else if (tipoActual === 'soportes') {
+                document.getElementById('filtrosSoportes').style.display = 'flex';
+            }
         }
         
         const statCompletados = document.getElementById('statCompletados');
@@ -1113,6 +1146,16 @@
                 document.getElementById('statCompletados').querySelector('.stat-label').textContent = 'Instalaciones';
                 document.getElementById('statPendientes').querySelector('.stat-label').textContent = 'Soportes';
             }
+        } else if (tipoActual === 'simple_vendedores') {
+            statCompletados.style.display = 'flex';
+            statPendientes.style.display = 'flex';
+            document.getElementById('statCompletados').querySelector('.stat-label').textContent = 'Total Vendedores';
+            document.getElementById('statPendientes').querySelector('.stat-label').textContent = 'Total Contratos';
+        } else if (tipoActual === 'global') {
+            statCompletados.style.display = 'flex';
+            statPendientes.style.display = 'flex';
+            document.getElementById('statCompletados').querySelector('.stat-label').innerHTML = '📊 Totales por Tipo';
+            document.getElementById('statPendientes').querySelector('.stat-label').innerHTML = '';
         } else {
             statCompletados.style.display = 'flex';
             statPendientes.style.display = 'flex';
@@ -1188,6 +1231,7 @@
         document.getElementById('filterCuadrillaInstalador').value = '';
         document.getElementById('filterInstalador').value = '';
         document.getElementById('filterSemanaInstaladores').value = '';
+        document.getElementById('filterVendedorSimple').value = '';
         document.getElementById('fecha_desde').value = '';
         document.getElementById('fecha_hasta').value = '';
         paginaActual = 1;
@@ -1202,6 +1246,16 @@
         
         if (tipoActual === 'instaladores') {
             cargarReporteInstaladores();
+            return;
+        }
+        
+        if (tipoActual === 'simple_vendedores') {
+            cargarReporteSimpleVendedores();
+            return;
+        }
+        
+        if (tipoActual === 'global') {
+            cargarReporteGlobal();
             return;
         }
         
@@ -1236,7 +1290,7 @@
         }
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<td><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></tr>';
         
         fetch(url)
             .then(response => response.json())
@@ -1267,7 +1321,7 @@
         if (semana) url += `&semana=${semana}`;
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td></tr>';
+        tbody.innerHTML = '<td><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>';
         
         fetch(url)
             .then(response => response.json())
@@ -1300,7 +1354,7 @@
         if (semana) url += `&semana=${semana}`;
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>';
+        tbody.innerHTML = '<td><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>';
         
         fetch(url)
             .then(response => response.json())
@@ -1315,10 +1369,190 @@
             })
             .catch(error => {
                 console.error('Error:', error);
-                tbody.innerHTML = '<td><td colspan="10" class="empty">Error al cargar los datos</div></td>';
+                tbody.innerHTML = '</tr><td colspan="10" class="empty">Error al cargar los datos</div></td>';
             });
     }
 
+    function cargarReporteSimpleVendedores() {
+        const busqueda = document.getElementById('searchInput')?.value || '';
+        const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+        const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
+        const vendedor = document.getElementById('filterVendedorSimple')?.value || '';
+        
+        let url = `/api/reporte-simple-vendedores/?page=${paginaActual}&per_page=${itemsPorPagina}`;
+        
+        if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
+        if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+        if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+        if (vendedor) url += `&vendedor=${vendedor}`;
+        
+        const tbody = document.getElementById('tbody-resultados');
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                datosActuales = data.data || [];
+                totalPaginas = data.total_paginas || 1;
+                paginaActual = data.pagina_actual || 1;
+                
+                actualizarEstadisticasSimpleVendedores(data.estadisticas);
+                actualizarTablaSimpleVendedores();
+                actualizarPaginacion();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tbody.innerHTML = '<td><td colspan="10" class="empty">Error al cargar los datos</div></tr>';
+            });
+    }
+
+    // ========== REPORTE GLOBAL - TABLA DE TOTALES ==========
+    function cargarReporteGlobal() {
+        const busqueda = document.getElementById('searchInput')?.value || '';
+        const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+        const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
+        const vendedor = document.getElementById('filterVendedor')?.value || '';
+        const instalador = document.getElementById('filterInstalador')?.value || '';
+        const cuadrilla = document.getElementById('filterCuadrillaInstalador')?.value || '';
+        
+        let url = `/api/reporte-global/`;
+        
+        if (busqueda) url += `?busqueda=${encodeURIComponent(busqueda)}`;
+        if (fechaDesde) url += `${busqueda ? '&' : '?'}fecha_desde=${fechaDesde}`;
+        if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+        if (vendedor) url += `&vendedor=${vendedor}`;
+        if (instalador) url += `&instalador=${instalador}`;
+        if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
+        
+        const tbody = document.getElementById('tbody-resultados');
+        tbody.innerHTML = '<tr><td colspan="3" class="loading"><div class="spinner"></div>Cargando...</div></td>';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                actualizarTablaGlobalResumen(data.estadisticas);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tbody.innerHTML = '<tr><td colspan="3" class="empty">Error al cargar</div></tr>';
+            });
+    }
+
+    function actualizarTablaGlobalResumen(stats) {
+        const tbody = document.getElementById('tbody-resultados');
+        
+        document.getElementById('thead-resultados').innerHTML = `
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-center">Acción</th>
+                </tr>
+            </thead>
+        `;
+        
+        const tipos = [
+            { nombre: '🛒 Venta Directa', cantidad: stats.total_ventas_directas || 0, tipo: 'ventas_directas', badge: 'badge-info' },
+            { nombre: '📝 Contratos', cantidad: stats.total_contratos || 0, tipo: 'contratos', badge: 'badge-completado' },
+            { nombre: '🔧 Instalaciones', cantidad: stats.total_instalaciones || 0, tipo: 'instalaciones', badge: 'badge-proceso' },
+            { nombre: '🛠️ Soportes', cantidad: stats.total_soportes || 0, tipo: 'soportes', badge: 'badge-warning' }
+        ];
+        
+        tbody.innerHTML = tipos.map(item => `
+            <tr>
+                <td><span class="badge ${item.badge}">${item.nombre}</span></td>
+                <td class="text-center"><span class="numero-grande">${item.cantidad}</span></td>
+                <td class="text-center">
+                    <button onclick="verDetalleGlobalTipo('${item.tipo}')" class="btn-detalle">
+                        <i class="fas fa-eye"></i> Ver Detalle
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        document.getElementById('totalRegistros').textContent = stats.total_registros || 0;
+        document.getElementById('totalCompletados').innerHTML = `🛒 ${stats.total_ventas_directas || 0} / 📝 ${stats.total_contratos || 0}`;
+        document.getElementById('totalPendientes').innerHTML = `🔧 ${stats.total_instalaciones || 0} / 🛠️ ${stats.total_soportes || 0}`;
+    }
+
+    function verDetalleGlobalTipo(tipo) {
+    const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+    const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
+    const vendedor = document.getElementById('filterVendedor')?.value || '';
+    const instalador = document.getElementById('filterInstalador')?.value || '';
+    const cuadrilla = document.getElementById('filterCuadrillaInstalador')?.value || '';
+    
+    let url = `/api/reporte-global-detalle/?tipo=${tipo}`;
+    if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+    if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+    if (vendedor) url += `&vendedor=${vendedor}`;
+    if (instalador) url += `&instalador=${instalador}`;
+    if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const stats = data.estadisticas;
+            let html = `
+                <div id="modalOverlay" class="modal-overlay" onclick="cerrarModalSiClickFondo(event)">
+                    <div class="modal-content" onclick="event.stopPropagation()" style="max-width:600px;width:95%;">
+                        <div class="modal-header">
+                            <h3>${stats.titulo}</h3>
+                            <button class="modal-close" onclick="cerrarModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="stats-summary" style="margin-bottom:20px;">
+                                <div class="stat-summary-item">
+                                    <div class="stat-summary-value">${stats.total}</div>
+                                    <div class="stat-summary-label">Total Registros</div>
+                                </div>
+                            </div>
+            `;
+            
+            if (tipo === 'instalaciones') {
+                // Materiales
+                if (stats.detalles_materiales && stats.detalles_materiales.length) {
+                    html += `<div class="section-card"><div class="section-header"><h4>📦 Materiales Utilizados</h4></div><div class="section-content" style="padding:16px;"><div class="stats-summary" style="margin-bottom:0;">`;
+                    stats.detalles_materiales.forEach(item => {
+                        html += `<div class="stat-summary-item"><div class="stat-summary-value">${item.cantidad}</div><div class="stat-summary-label">${item.nombre}</div></div>`;
+                    });
+                    html += `</div></div></div>`;
+                }
+                // Planes
+                if (stats.detalles_planes && stats.detalles_planes.length) {
+                    html += `<div class="section-card mt-3"><div class="section-header"><h4>📊 Instalaciones por Plan</h4></div><div class="section-content" style="padding:16px;"><div class="stats-summary" style="margin-bottom:0;">`;
+                    stats.detalles_planes.forEach(item => {
+                        html += `<div class="stat-summary-item"><div class="stat-summary-value">${item.cantidad}</div><div class="stat-summary-label">${item.nombre}</div><div style="font-size:11px;color:#666;">${item.porcentaje}%</div></div>`;
+                    });
+                    html += `</div></div></div>`;
+                }
+            } else {
+                // Para ventas, contratos y soportes
+                if (stats.detalles && stats.detalles.length) {
+                    html += `<div class="section-card"><div class="section-header"><h4>📊 Desglose</h4></div><div class="section-content" style="padding:16px;"><div class="stats-summary" style="margin-bottom:0;">`;
+                    stats.detalles.forEach(item => {
+                        html += `<div class="stat-summary-item"><div class="stat-summary-value">${item.cantidad}</div><div class="stat-summary-label">${item.nombre}</div><div style="font-size:11px;color:#666;">${item.porcentaje}%</div></div>`;
+                    });
+                    html += `</div></div></div>`;
+                }
+            }
+            
+            html += `
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-primary-modern" onclick="cerrarModal()">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', html);
+            document.body.classList.add('modal-open');
+        })
+        .catch(error => Swal.fire('Error', 'No se pudo cargar el detalle', 'error'));
+    }
+
+    // ========== FUNCIONES EXISTENTES (NO MODIFICAR) ==========
     function actualizarEstadisticasInstaladores(stats) {
         if (!stats) return;
         document.getElementById('totalRegistros').textContent = stats.total_cuadrillas || 0;
@@ -1406,7 +1640,7 @@
                             </thead>
                             <tbody>
                                 ${cuadrillaData.soportes_detalle.map(s => `
-                                    <tr><td>${s.ticket_padre || 'N/A'}</td><td>${s.cliente || 'N/A'}</td><td>${s.customer_id || 'N/A'}</td><td><span class="badge ${s.tipo === 'MUDANZA' ? 'badge-completado' : (s.tipo === 'RETIRO' ? 'badge-pendiente' : 'badge-proceso')}">${s.tipo || 'SOPORTE'}</span></td><td>$${s.precio || 10}</td><td>${s.fecha || 'N/A'}</td><td><span class="badge ${s.estado === 'COMPLETADO' ? 'badge-completado' : (s.estado === 'EN_PROCESO' ? 'badge-proceso' : 'badge-pendiente')}">${s.estado || 'PENDIENTE'}</span></td></tr>
+                                    <tr><td>${s.ticket_padre || 'N/A'}</td><td>${s.cliente || 'N/A'}</td><td>${s.customer_id || 'N/A'}</td><td>${s.tipo || 'SOPORTE'}</td><td>$${s.precio || 10}</td><td>${s.fecha || 'N/A'}</td><td><span class="badge badge-completado">Completado</span></td></tr>
                                 `).join('')}
                             </tbody>
                         </table>
@@ -1427,11 +1661,11 @@
                     <div class="scrollable-table-container">
                         <table class="modal-table">
                             <thead>
-                                <tr><th>Cliente</th><th>Customer ID</th><th>Plan</th><th>Velocidad</th><th>Precio</th><th>Fecha</th><th>Vendedor</th></tr>
+                                <td><th>Cliente</th><th>Customer ID</th><th>Plan</th><th>Velocidad</th><th>Precio</th><th>Fecha</th><th>Vendedor</th></tr>
                             </thead>
                             <tbody>
                                 ${cuadrillaData.contratos_detalle.map(c => `
-                                    <tr><td>${c.cliente || 'N/A'}</td><td>${c.customer_id || 'N/A'}</td><td>${c.plan || 'N/A'}</td><td>${c.velocidad || 'N/A'}</td><td>$${c.precio || 'N/A'}</td><td>${c.fecha_completado || c.fecha_creacion || 'N/A'}</td><td>${c.vendedor || 'N/A'}</td></tr>
+                                    <td><td>${c.cliente || 'N/A'}</td><td>${c.customer_id || 'N/A'}</td><td>${c.plan || 'N/A'}</td><td>${c.velocidad || 'N/A'}</td><td>$${c.precio || 'N/A'}</td><td>${c.fecha_completado || c.fecha_creacion || 'N/A'}</td><td>${c.vendedor || 'N/A'}</td></tr>
                                 `).join('')}
                             </tbody>
                         </table>
@@ -1484,8 +1718,6 @@
         document.body.classList.add('modal-open');
     }
 
-    // ========== FUNCIONES PARA VENDEDORES CON TABLA ARREGLADA ==========
-    
     function verDetalleVendedor(vendedorId, vendedorNombre, totalContratos) {
         const semana = document.getElementById('filterSemana')?.value || '';
         
@@ -1647,12 +1879,11 @@
         `;
     }
 
-    // TABLA DE VENDEDORES ARREGLADA - CON CELDAS BIEN FORMATEADAS
     function actualizarTablaVendedores() {
         const tbody = document.getElementById('tbody-resultados');
         
         if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<td><td colspan="10" class="empty">No hay datos disponibles</div></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></td>';
             return;
         }
         
@@ -1683,114 +1914,169 @@
                     <td>
                         <div class="vendedor-nombre">${item.vendedor}</div>
                         <div class="vendedor-username">@${item.username}</div>
-                    </td>
-                    <td class="text-center"><span class="numero-grande">${item.contratos}</span></td>
-                    <td class="text-center"><span class="${contratos400 >= 8 ? 'text-success' : 'text-warning'}">${contratos400} / 8</span></td>
-                    <td class="text-center">${item.comision_total}</td>
-                    <td class="text-center ${tieneBono ? 'text-success' : ''}">${item.bono}</td>
-                    <td class="text-center"><strong style="color: #ff6b00;">${item.total_con_bono}</strong></td>
-                    <td class="text-center">${item.total_bs}</td>
+                    </div>
+                    <td class="text-center"><span class="numero-grande">${item.contratos}</span></div>
+                    <td class="text-center"><span class="${contratos400 >= 8 ? 'text-success' : 'text-warning'}">${contratos400} / 8</span></div>
+                    <td class="text-center">${item.comision_total}</div>
+                    <td class="text-center ${tieneBono ? 'text-success' : ''}">${item.bono}</div>
+                    <td class="text-center"><strong style="color: #ff6b00;">${item.total_con_bono}</strong></div>
+                    <td class="text-center">${item.total_bs}</div>
                     <td class="text-center">
                         ${tieneBono 
                             ? '<span class="badge badge-success">✅ Bono alcanzado</span>'
                             : `<span class="badge badge-danger">❌ Faltan ${faltan} contratos 400+ Mbps</span>`
                         }
-                    </td>
+                    </div>
                     <td class="text-center">
                         <button onclick="verDetalleVendedor(${item.id}, '${item.vendedor}', ${item.contratos})" class="btn-detalle">
                             Ver ${item.contratos} ${item.contratos === 1 ? 'contrato' : 'contratos'}
                         </button>
-                    </td>
+                    </div>
                 </tr>
             `;
         }).join('');
     }
 
-    function cerrarModal() {
-        const modal = document.getElementById('modalOverlay');
-        if (modal) {
-            modal.remove();
-        }
-        document.body.classList.remove('modal-open');
+    function actualizarEstadisticasSimpleVendedores(stats) {
+        if (!stats) return;
+        document.getElementById('totalRegistros').textContent = stats.total_vendedores || 0;
+        document.getElementById('totalCompletados').textContent = stats.total_contratos || 0;
+        document.getElementById('totalPendientes').textContent = stats.promedio_contratos || 0;
+        document.getElementById('statCompletados').querySelector('.stat-label').textContent = '📊 Total Contratos';
+        document.getElementById('statPendientes').querySelector('.stat-label').textContent = '📈 Promedio x Vendedor';
     }
 
-    function cerrarModalSiClickFondo(event) {
-        if (event.target.id === 'modalOverlay') {
-            cerrarModal();
-        }
-    }
-
-    function actualizarTasaManual() {
-        if (!confirm('¿Estás seguro de actualizar la tasa de cambio del dólar desde el BCV?')) {
+    function actualizarTablaSimpleVendedores() {
+        const tbody = document.getElementById('tbody-resultados');
+        
+        if (!datosActuales || datosActuales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></tr>';
             return;
         }
         
-        const button = document.querySelector('#semanaInfo button');
-        const originalText = button?.innerHTML || 'Actualizar Tasa';
-        if (button) {
-            button.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0;"></div> Actualizando...';
-            button.disabled = true;
-        }
+        document.getElementById('thead-resultados').innerHTML = `
+            <thead>
+                <tr>
+                    <th>Vendedor</th>
+                    <th class="text-center">Total Contratos</th>
+                    <th class="text-center">Detalle</th>
+                </tr>
+            </thead>
+        `;
         
-        fetch('/api/actualizar-tasa/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                mostrarNotificacion('✅ Tasa actualizada correctamente', 'success');
-                if (tipoActual === 'vendedores') {
-                    cargarReporteVendedores();
-                } else if (tipoActual === 'instaladores') {
-                    cargarReporteInstaladores();
-                } else {
-                    cargarReporte();
-                }
-            } else {
-                mostrarNotificacion('❌ Error: ' + data.message, 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            mostrarNotificacion('❌ Error al actualizar la tasa', 'error');
-        })
-        .finally(() => {
-            if (button) {
-                button.innerHTML = originalText;
-                button.disabled = false;
-            }
-        });
+        tbody.innerHTML = datosActuales.map(item => `
+            <tr>
+                <td>
+                    <div class="vendedor-nombre">${item.vendedor}</div>
+                    <div class="vendedor-username">@${item.username}</div>
+                </div>
+                <td class="text-center"><span class="numero-grande">${item.contratos}</span></div>
+                <td class="text-center">
+                    <button onclick="verDetalleSimpleVendedor(${item.id}, '${item.vendedor}')" class="btn-detalle">
+                        Ver ${item.contratos} ${item.contratos === 1 ? 'contrato' : 'contratos'}
+                    </button>
+                </div>
+            </tr>
+        `).join('');
     }
 
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
+    function verDetalleSimpleVendedor(vendedorId, vendedorNombre) {
+        const vendedorData = datosActuales.find(v => v.id == vendedorId);
+        
+        if (!vendedorData || !vendedorData.contratos_detalle || vendedorData.contratos_detalle.length === 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Sin contratos',
+                text: 'No hay contratos para mostrar en este período',
+                confirmButtonColor: '#ff6b00'
+            });
+            return;
         }
-        return cookieValue;
+        
+        let detalleHtml = `
+            <div id="modalOverlay" class="modal-overlay" onclick="cerrarModalSiClickFondo(event)">
+                <div class="modal-content" onclick="event.stopPropagation()" style="max-width: 1000px; width: 95%;">
+                    <div class="modal-header">
+                        <h3>📋 Contratos de ${vendedorNombre} (${vendedorData.contratos} contratos)</h3>
+                        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="section-card">
+                            <div class="section-header"><h4>📝 Lista de Contratos</h4></div>
+                            <div class="scrollable-table-container">
+                                <table class="modal-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Cliente</th>
+                                            <th>Customer ID</th>
+                                            <th>Plan</th>
+                                            <th>Fecha</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${vendedorData.contratos_detalle.map((c, index) => `
+                                            <tr>
+                                                <td style="text-align:center">${index + 1}</div>
+                                                <td>${c.cliente || 'N/A'}</div>
+                                                <td>${c.customer_id || 'N/A'}</div>
+                                                <td>${c.plan || 'N/A'}</div>
+                                                <td>${c.fecha || 'N/A'}</div>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', detalleHtml);
+        document.body.classList.add('modal-open');
     }
 
-    function mostrarNotificacion(mensaje, tipo) {
-        const notification = document.createElement('div');
-        notification.className = tipo === 'success' ? 'notification-success' : 'notification-error';
-        notification.textContent = mensaje;
-        document.body.appendChild(notification);
+    function actualizarTablaInstaladores() {
+        const tbody = document.getElementById('tbody-resultados');
         
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 300);
-        }, 3000);
+        if (!datosActuales || datosActuales.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></tr>';
+            return;
+        }
+        
+        document.getElementById('thead-resultados').innerHTML = `
+            <thead>
+                <tr>
+                    <th>Cuadrilla</th>
+                    <th class="text-center">Instalaciones</th>
+                    <th class="text-center">Monto Instalaciones</th>
+                    <th class="text-center">Soportes</th>
+                    <th class="text-center">Monto Soportes</th>
+                    <th class="text-center">Contratos</th>
+                    <th class="text-center">Monto Contratos</th>
+                    <th class="text-center">Total USD</th>
+                    <th class="text-center">Total Bs</th>
+                    <th>Instaladores</th>
+                    <th class="text-center">Detalle</th>
+                </tr>
+            </thead>
+        `;
+        
+        tbody.innerHTML = datosActuales.map(item => `
+            <tr>
+                <td><strong>${item.cuadrilla}</strong></td>
+                <td class="text-center"><span class="numero-grande">${item.instalaciones}</span></td>
+                <td class="text-center">${item.monto_instalaciones}</td>
+                <td class="text-center"><span class="numero-grande">${item.soportes}</span></td>
+                <td class="text-center">${item.monto_soportes}</td>
+                <td class="text-center"><span class="numero-grande">${item.contratos}</span></td>
+                <td class="text-center">${item.monto_contratos}</td>
+                <td class="text-center"><strong style="color: #ff6b00;">${item.total_usd}</strong></td>
+                <td class="text-center">${item.total_bs}</td>
+                <td><div class="instaladores-lista">${item.instaladores_list ? item.instaladores_list.map(inst => `<span class="instalador-item">👤 ${inst}</span>`).join('') : '<span class="instalador-item">Sin instaladores</span>'}</div></td>
+                <td class="text-center"><button onclick="verDetalleCuadrilla(${item.id}, '${item.cuadrilla}')" class="btn-detalle">Ver detalle</button></td>
+            </tr>
+        `).join('');
     }
 
     function actualizarTabla() {
@@ -1803,7 +2089,7 @@
         
         if (tipoActual === 'ventas') {
             if (nivelActual === 'simple') {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>';
+                document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></table>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
                         <td>${item.cliente || 'N/A'}</div>
@@ -1877,7 +2163,7 @@
                     </tr>
                 `).join('');
             } else {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Ticket Padre</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
+                document.getElementById('thead-resultados').innerHTML = '</td><th>ID</th><th>Ticket Padre</th><th>Cliente</th><th>Cédula</th><th>Tipo</th><th>Estado</th><th>Fecha</th><th>Falla</th><th>Solución</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `
                     <tr>
                         <td>${item.id || 'N/A'}</div>
@@ -1928,49 +2214,6 @@
             document.getElementById('totalCompletados').textContent = stats.completados || stats.completadas || 0;
             document.getElementById('totalPendientes').textContent = stats.pendientes || stats.en_proceso || 0;
         }
-    }
-
-    function actualizarTablaInstaladores() {
-        const tbody = document.getElementById('tbody-resultados');
-        
-        if (!datosActuales || datosActuales.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty">No hay datos disponibles</div></tr>';
-            return;
-        }
-        
-        document.getElementById('thead-resultados').innerHTML = `
-            <thead>
-                <tr>
-                    <th>Cuadrilla</th>
-                    <th class="text-center">Instalaciones</th>
-                    <th class="text-center">Monto Instalaciones</th>
-                    <th class="text-center">Soportes</th>
-                    <th class="text-center">Monto Soportes</th>
-                    <th class="text-center">Contratos</th>
-                    <th class="text-center">Monto Contratos</th>
-                    <th class="text-center">Total USD</th>
-                    <th class="text-center">Total Bs</th>
-                    <th>Instaladores</th>
-                    <th class="text-center">Detalle</th>
-                </tr>
-            </thead>
-        `;
-        
-        tbody.innerHTML = datosActuales.map(item => `
-            <tr>
-                <td><strong>${item.cuadrilla}</strong></td>
-                <td class="text-center"><span class="numero-grande">${item.instalaciones}</span></td>
-                <td class="text-center">${item.monto_instalaciones}</td>
-                <td class="text-center"><span class="numero-grande">${item.soportes}</span></td>
-                <td class="text-center">${item.monto_soportes}</td>
-                <td class="text-center"><span class="numero-grande">${item.contratos}</span></td>
-                <td class="text-center">${item.monto_contratos}</td>
-                <td class="text-center"><strong style="color: #ff6b00;">${item.total_usd}</strong></td>
-                <td class="text-center">${item.total_bs}</td>
-                <td><div class="instaladores-lista">${item.instaladores_list ? item.instaladores_list.map(inst => `<span class="instalador-item">👤 ${inst}</span>`).join('') : '<span class="instalador-item">Sin instaladores</span>'}</div></td>
-                <td class="text-center"><button onclick="verDetalleCuadrilla(${item.id}, '${item.cuadrilla}')" class="btn-detalle">Ver detalle</button></td>
-            </tr>
-        `).join('');
     }
 
     function actualizarPaginacion() {
@@ -2025,6 +2268,84 @@
         document.querySelector('.table-wrapper').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function cerrarModal() {
+        const modal = document.getElementById('modalOverlay');
+        if (modal) modal.remove();
+        document.body.classList.remove('modal-open');
+    }
+
+    function cerrarModalSiClickFondo(event) {
+        if (event.target.id === 'modalOverlay') cerrarModal();
+    }
+
+    function actualizarTasaManual() {
+        if (!confirm('¿Estás seguro de actualizar la tasa de cambio del dólar desde el BCV?')) {
+            return;
+        }
+        
+        const button = document.querySelector('#semanaInfo button');
+        const originalText = button?.innerHTML || 'Actualizar Tasa';
+        if (button) {
+            button.innerHTML = '<div class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin: 0;"></div> Actualizando...';
+            button.disabled = true;
+        }
+        
+        fetch('/api/actualizar-tasa/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                mostrarNotificacion('✅ Tasa actualizada correctamente', 'success');
+                if (tipoActual === 'vendedores') {
+                    cargarReporteVendedores();
+                } else if (tipoActual === 'instaladores') {
+                    cargarReporteInstaladores();
+                } else if (tipoActual === 'global') {
+                    cargarReporteGlobal();
+                } else {
+                    cargarReporte();
+                }
+            } else {
+                mostrarNotificacion('❌ Error: ' + data.message, 'error');
+            }
+        })
+        .catch(error => mostrarNotificacion('❌ Error al actualizar la tasa', 'error'))
+        .finally(() => {
+            if (button) {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let value = null;
+        if (document.cookie) {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const trimmed = cookie.trim();
+                if (trimmed.substring(0, name.length + 1) === (name + '=')) {
+                    value = decodeURIComponent(trimmed.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return value;
+    }
+
+    function mostrarNotificacion(mensaje, tipo) {
+        const notification = document.createElement('div');
+        notification.className = tipo === 'success' ? 'notification-success' : 'notification-error';
+        notification.textContent = mensaje;
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+
     function exportarReporte(formato) {
         if (tipoActual === 'vendedores') {
             const busqueda = document.getElementById('searchInput')?.value || '';
@@ -2032,11 +2353,9 @@
             const semana = document.getElementById('filterSemana')?.value || '';
             
             let url = `/exportar-reporte/?formato=${formato}&tipo=vendedores`;
-            
             if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
             if (vendedor) url += `&vendedor=${vendedor}`;
             if (semana) url += `&semana=${semana}`;
-            
             window.location.href = url;
             return;
         }
@@ -2048,12 +2367,44 @@
             const semana = document.getElementById('filterSemanaInstaladores')?.value || '';
             
             let url = `/exportar-reporte/?formato=${formato}&tipo=instaladores`;
-            
             if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
             if (instalador) url += `&instalador=${instalador}`;
             if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
             if (semana) url += `&semana=${semana}`;
+            window.location.href = url;
+            return;
+        }
+        
+        if (tipoActual === 'simple_vendedores') {
+            const busqueda = document.getElementById('searchInput')?.value || '';
+            const vendedor = document.getElementById('filterVendedorSimple')?.value || '';
+            const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+            const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
             
+            let url = `/exportar-reporte/?formato=${formato}&tipo=simple_vendedores`;
+            if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
+            if (vendedor) url += `&vendedor=${vendedor}`;
+            if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+            if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+            window.location.href = url;
+            return;
+        }
+        
+        if (tipoActual === 'global') {
+            const busqueda = document.getElementById('searchInput')?.value || '';
+            const vendedor = document.getElementById('filterVendedor')?.value || '';
+            const instalador = document.getElementById('filterInstalador')?.value || '';
+            const cuadrilla = document.getElementById('filterCuadrillaInstalador')?.value || '';
+            const fechaDesde = document.getElementById('fecha_desde')?.value || '';
+            const fechaHasta = document.getElementById('fecha_hasta')?.value || '';
+            
+            let url = `/exportar-reporte/?formato=${formato}&tipo=global`;
+            if (busqueda) url += `&busqueda=${encodeURIComponent(busqueda)}`;
+            if (vendedor) url += `&vendedor=${vendedor}`;
+            if (instalador) url += `&instalador=${instalador}`;
+            if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
+            if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+            if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
             window.location.href = url;
             return;
         }
@@ -2091,9 +2442,7 @@
 
     // Event listeners
     document.getElementById('selectReporte')?.addEventListener('change', cambiarReporte);
-    document.getElementById('searchInput')?.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') cargarReporte();
-    });
+    document.getElementById('searchInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') cargarReporte(); });
     document.getElementById('filterVendedor')?.addEventListener('change', cargarReporte);
     document.getElementById('filterPlan')?.addEventListener('change', cargarReporte);
     document.getElementById('filterCuadrilla')?.addEventListener('change', cargarReporte);
@@ -2106,10 +2455,10 @@
     document.getElementById('filterCuadrillaInstalador')?.addEventListener('change', cargarReporte);
     document.getElementById('filterInstalador')?.addEventListener('change', cargarReporte);
     document.getElementById('filterSemanaInstaladores')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterVendedorSimple')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_desde')?.addEventListener('change', cargarReporte);
     document.getElementById('fecha_hasta')?.addEventListener('change', cargarReporte);
 
-    // Inicializar
     cargarReporte();
 </script>
 {% endblock %}

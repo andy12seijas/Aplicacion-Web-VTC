@@ -193,6 +193,10 @@ urlpatterns = [
     path('modelos-modem/nuevo/', crear_editar_modelo_modem, name='crear_modelo_modem'),
     path('modelos-modem/editar/<int:id>/', crear_editar_modelo_modem, name='editar_modelo_modem'),
 
+    path('api/reporte-simple-vendedores/',reporte_simple_vendedores_json, name='reporte_simple_vendedores_json'),  # NUEVO
+    path('api/reporte-global/', reporte_global_json, name='reporte_global_json'), 
+    path('api/reporte-global-detalle/', reporte_global_detalle_json, name='reporte_global_detalle_json'), # NUEVO
+
 ]
 
 
