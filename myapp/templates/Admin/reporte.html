@@ -2089,17 +2089,18 @@
         
         if (tipoActual === 'ventas') {
             if (nivelActual === 'simple') {
-                document.getElementById('thead-resultados').innerHTML = '<tr><th>Cliente</th><th>Customer ID</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></table>';
-                tbody.innerHTML = datosActuales.map(item => `
-                    <tr>
-                        <td>${item.cliente || 'N/A'}</div>
-                        <td>${item.customer_id || 'N/A'}</div>
-                        <td>${item.ods || 'N/A'}</div>
-                        <td>${item.fecha || 'N/A'}</div>
-                        <td>${item.vendedor || 'N/A'}</div>
-                        <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></div>
-                    </tr>
-                `).join('');
+               document.getElementById('thead-resultados').innerHTML = '</table><th>Cliente</th><th>Customer ID</th><th>Plan</th><th>ODS</th><th>Fecha</th><th>Vendedor</th><th>Estado</th></tr>';
+        tbody.innerHTML = datosActuales.map(item => `
+            <tr>
+                <td>${item.cliente || 'N/A'}</div>
+                <td>${item.customer_id || 'N/A'}</div>
+                <td>${item.plan || 'N/A'}</div>  <!-- NUEVA COLUMNA PLAN -->
+                <td>${item.ods || 'N/A'}</div>
+                <td>${item.fecha || 'N/A'}</div>
+                <td>${item.vendedor || 'N/A'}</div>
+                <td><span class="badge ${item.estado === 'Completado' ? 'badge-completado' : 'badge-pendiente'}">${item.estado || 'Pendiente'}</span></div>
+            </tr>
+        `).join('');
             } else {
                 document.getElementById('thead-resultados').innerHTML = '<tr><th>ID</th><th>Cliente</th><th>Cédula</th><th>Teléfono</th><th>Correo</th><th>Plan</th><th>Fecha</th><th>Vendedor</th><th>Customer ID</th><th>ODS</th><th>Estado</th></tr>';
                 tbody.innerHTML = datosActuales.map(item => `

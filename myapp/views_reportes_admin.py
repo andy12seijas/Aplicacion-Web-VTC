@@ -155,6 +155,7 @@ def reporte_ventas_json(request):
                 'cliente': v.nombre_completo,
                 'customer_id': v.customer_id or 'N/A',
                 'ods': v.ods or 'N/A',
+                'plan': v.plan_contratado.nombre,
                 'fecha': fecha_str,
                 'vendedor': v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
                 'estado': v.get_estado_display(),
