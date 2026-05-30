@@ -26,8 +26,8 @@ class Command(BaseCommand):
             )
             
             self.stdout.write(
-                self.style.SUCCESS(f'✅ Tasa guardada: 1 USD = {tasa_usd} Bs')
+                self.style.SUCCESS(f' Tasa guardada: 1 USD = {tasa_usd} Bs')
             )
             
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'❌ Error: {str(e)}'))
+            self.stdout.write(self.style.ERROR(f' Error: {str(e)}'))
