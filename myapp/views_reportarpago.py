@@ -1,3 +1,4 @@
+import datetime
 import json
 from pyexpat.errors import messages
 from django.shortcuts import render, redirect
@@ -318,7 +319,15 @@ def validacion_pagos(request):
     }
     
     return render(request, 'pagos/validacion_pagos.html', context)
-
+# ========== FUNCIÓN AUXILIAR PARA CORREGIR URLs DUPLICADAS ==========
+def corregir_url_foto(url):
+    """Corrige URLs duplicadas de fotos /pagos/pagos/ -> /pagos/"""
+    if not url:
+        return None
+    if '/pagos/pagos/' in url:
+        return url.replace('/pagos/pagos/', '/pagos/')
+    return url
+# ========== FIN FUNCIÓN AUXILIAR ==========
 
 def obtener_detalle_pago(request, reporte_id):
     """Obtiene los detalles de un reporte de pago para mostrar en el modal"""
@@ -351,9 +360,7 @@ def obtener_detalle_pago(request, reporte_id):
         detalle = reporte.detalle_pago_movil
         detalle_data = {
             'banco_emisor': detalle.banco_emisor.nombre if detalle.banco_emisor else 'N/A',
-            
             'numero_telefono': detalle.numero_telefono,
-           
         }
     elif reporte.medio_pago == 'TRANSFERENCIA' and reporte.detalle_transferencia:
         detalle = reporte.detalle_transferencia
@@ -388,7 +395,8 @@ def obtener_detalle_pago(request, reporte_id):
         'fecha_pago': reporte.fecha_pago.strftime('%d/%m/%Y'),
         'fecha_reporte': reporte.fecha_reporte.strftime('%d/%m/%Y %H:%M'),
         'referencia': detalle_data.get('referencia', 'N/A'),
-        'comprobante_url': reporte.comprobante.url if reporte.comprobante else None,
+        # 🔧 CORRECCIÓN: Limpiar URL duplicada
+        'comprobante_url': corregir_url_foto(reporte.comprobante.url) if reporte.comprobante else None,
         'observacion_cliente': reporte.observacion_cliente or 'Sin observaciones',
         'estado': reporte.estado,
         'estado_display': reporte.get_estado_display(),
