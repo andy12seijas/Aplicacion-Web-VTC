@@ -396,7 +396,7 @@ def obtener_detalle_pago(request, reporte_id):
         'fecha_reporte': reporte.fecha_reporte.strftime('%d/%m/%Y %H:%M'),
         'referencia': detalle_data.get('referencia', 'N/A'),
         # 🔧 CORRECCIÓN: Limpiar URL duplicada
-        'comprobante_url': corregir_url_foto(reporte.comprobante.url) if reporte.comprobante else None,
+        'comprobante_url': f"/pagos/{reporte.comprobante.name}" if reporte.comprobante else None,
         'observacion_cliente': reporte.observacion_cliente or 'Sin observaciones',
         'estado': reporte.estado,
         'estado_display': reporte.get_estado_display(),
