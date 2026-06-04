@@ -119,7 +119,7 @@ def registrar_cliente_externo(request):
             'error': str(e)
         }, status=500)
 
-
+from django.core.files.storage import default_storage
 @csrf_exempt
 @require_http_methods(["POST"])
 def crear_reporte(request):
@@ -130,8 +130,10 @@ def crear_reporte(request):
         monto = request.POST.get('monto')
         fecha_pago = request.POST.get('fecha_pago')
         observacion_cliente = request.POST.get('observacion_cliente', '')
-        comprobante = request.FILES.get('comprobante')
         tipo_cliente = request.POST.get('tipo_cliente')
+        
+        # Obtener el comprobante del request
+        comprobante = request.FILES.get('comprobante')
         
         # Crear reporte
         reporte = ReportePago(
@@ -139,7 +141,8 @@ def crear_reporte(request):
             monto=monto,
             fecha_pago=fecha_pago,
             observacion_cliente=observacion_cliente,
-            comprobante=comprobante,
+            # ⬇️ NO asignes el comprobante aquí todavía
+            # comprobante=comprobante,  <-- LO VAMOS A MANEJAR MANUALMENTE
             tipo_cliente=tipo_cliente,
             ip_cliente=request.META.get('REMOTE_ADDR'),
             user_agent=request.META.get('HTTP_USER_AGENT', '')
@@ -153,14 +156,37 @@ def crear_reporte(request):
             cliente_externo_id = request.POST.get('cliente_externo_id')
             reporte.cliente_externo_id = cliente_externo_id
         
+        # Guardar el reporte sin comprobante aún
         reporte.save()
+        
+        # ========== MANEJAR EL COMPROBANTE MANUALMENTE ==========
+        if comprobante:
+            # Validar tipo de archivo
+            if not comprobante.content_type.startswith('image/'):
+                return JsonResponse({'error': 'El archivo no es una imagen válida.'}, status=400)
+            
+            # Validar tamaño (5MB)
+            if comprobante.size > 5 * 1024 * 1024:
+                return JsonResponse({'error': 'El archivo excede el tamaño máximo de 5MB.'}, status=400)
+            
+            # Generar nombre único
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+            nombre_limpio = comprobante.name.replace(' ', '_')
+            nombre_archivo = f"comprobante/reporte_{reporte.id}_{timestamp}_{nombre_limpio}"
+            
+            # Guardar el archivo
+            ruta_guardada = default_storage.save(nombre_archivo, comprobante)
+            
+            # Actualizar el campo comprobante del reporte
+            reporte.comprobante.name = ruta_guardada
+            reporte.save(update_fields=['comprobante'])
+        # ========== FIN MANEJO DEL COMPROBANTE ==========
         
         # Crear detalle según método de pago
         if medio_pago == 'PAGO_MOVIL':
             detalle = DetallePagoMovil.objects.create(
                 banco_emisor_id=request.POST.get('banco_emisor'),
                 numero_telefono=request.POST.get('numero_telefono'),
-               
             )
             reporte.detalle_pago_movil = detalle
         

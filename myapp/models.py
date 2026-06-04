@@ -1995,7 +1995,9 @@ class ReportePago(models.Model):
         verbose_name="Fecha del pago"
     )
     comprobante = models.ImageField(
-        upload_to='comprobantes_pagos/%Y/%m/',
+        upload_to='comprobante/',  # ← Solo la carpeta base, sin 'pagos/'
+        null=True,
+        blank=True,
         verbose_name="Comprobante de pago"
     )
     observacion_cliente = models.TextField(
