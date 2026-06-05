@@ -119,7 +119,7 @@ def registrar_cliente_externo(request):
             'error': str(e)
         }, status=500)
 
-from django.core.files.storage import default_storage
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def crear_reporte(request):
@@ -141,8 +141,6 @@ def crear_reporte(request):
             monto=monto,
             fecha_pago=fecha_pago,
             observacion_cliente=observacion_cliente,
-            # ⬇️ NO asignes el comprobante aquí todavía
-            # comprobante=comprobante,  <-- LO VAMOS A MANEJAR MANUALMENTE
             tipo_cliente=tipo_cliente,
             ip_cliente=request.META.get('REMOTE_ADDR'),
             user_agent=request.META.get('HTTP_USER_AGENT', '')
@@ -159,7 +157,7 @@ def crear_reporte(request):
         # Guardar el reporte sin comprobante aún
         reporte.save()
         
-        # ========== MANEJAR EL COMPROBANTE MANUALMENTE ==========
+        # ========== MANEJAR EL COMPROBANTE CON CLOUDINARY ==========
         if comprobante:
             # Validar tipo de archivo
             if not comprobante.content_type.startswith('image/'):
@@ -169,16 +167,8 @@ def crear_reporte(request):
             if comprobante.size > 5 * 1024 * 1024:
                 return JsonResponse({'error': 'El archivo excede el tamaño máximo de 5MB.'}, status=400)
             
-            # Generar nombre único
-            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
-            nombre_limpio = comprobante.name.replace(' ', '_')
-            nombre_archivo = f"comprobante/reporte_{reporte.id}_{timestamp}_{nombre_limpio}"
-            
-            # Guardar el archivo
-            ruta_guardada = default_storage.save(nombre_archivo, comprobante)
-            
-            # Actualizar el campo comprobante del reporte
-            reporte.comprobante.name = ruta_guardada
+            # Cloudinary guarda automáticamente
+            reporte.comprobante = comprobante
             reporte.save(update_fields=['comprobante'])
         # ========== FIN MANEJO DEL COMPROBANTE ==========
         
@@ -422,7 +412,7 @@ def obtener_detalle_pago(request, reporte_id):
         'fecha_reporte': reporte.fecha_reporte.strftime('%d/%m/%Y %H:%M'),
         'referencia': detalle_data.get('referencia', 'N/A'),
         # 🔧 CORRECCIÓN: Limpiar URL duplicada
-       'comprobante_url': f"/pagos/{reporte.comprobante.name}" if reporte.comprobante else None,
+       'comprobante_url': reporte.comprobante.url if reporte.comprobante else None,
         'observacion_cliente': reporte.observacion_cliente or 'Sin observaciones',
         'estado': reporte.estado,
         'estado_display': reporte.get_estado_display(),

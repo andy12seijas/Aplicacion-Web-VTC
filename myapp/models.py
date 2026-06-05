@@ -9,6 +9,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.models import User
+from cloudinary.models import CloudinaryField
 
 class PerfilUsuario(models.Model):
     """Modelo para extender la información del usuario"""
@@ -1994,12 +1995,11 @@ class ReportePago(models.Model):
     fecha_pago = models.DateField(
         verbose_name="Fecha del pago"
     )
-    comprobante = models.ImageField(
-        upload_to='comprobante/',  # ← Solo la carpeta base, sin 'pagos/'
-        null=True,
-        blank=True,
-        verbose_name="Comprobante de pago"
-    )
+    comprobante = CloudinaryField(
+    null=True,
+    blank=True,
+    verbose_name="Comprobante de pago"
+)
     observacion_cliente = models.TextField(
         max_length=500,
         blank=True,
