@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'mnejv+1neoy#utf^le812j(n8bznl!#s*q4*1fi1dtj=4c-)*i'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv('DEBUG', 'False') == 'False'
 
 # ⬅️ AGREGADO vtconexiones.com
 ALLOWED_HOSTS = [
