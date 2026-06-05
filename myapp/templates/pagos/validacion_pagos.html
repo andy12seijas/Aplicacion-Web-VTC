@@ -833,11 +833,11 @@
         
         <div class="filter-group" style="flex-direction: row; gap: 8px;">
             <button class="btn-search" onclick="aplicarFiltros()">
-                🔍 Buscar
+                <i class="fas fa-search"></i> Buscar
             </button>
             
             <button class="btn-clear" onclick="limpiarFiltros()">
-                ✖ Limpiar
+                <i class="fas fa-times"></i> Limpiar
             </button>
         </div>
     </div>
@@ -885,45 +885,46 @@
                                     <div class="user-name">{{ reporte.nombre_cliente }}</div>
                                 </div>
                             </div>
-                        </d
+                        </td>
                         <td>
                             {% if reporte.contrato %}
-                                <span class="badge-interno">🏢 Interno</span>
+                                <span class="badge-interno"><i class="fas fa-building"></i> Interno</span>
                             {% else %}
-                                <span class="badge-externo">👤 Externo</span>
+                                <span class="badge-externo"><i class="fas fa-user"></i> Externo</span>
                             {% endif %}
-                        </d
-                        <td>{{ reporte.cedula_cliente }}</d
-                        <td>{{ reporte.telefono_cliente }}</d
-                        <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</d
+                        </td>
+                        <td>{{ reporte.cedula_cliente }}</td>
+                        <td>{{ reporte.telefono_cliente }}</td>
+                        <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</td>
                         <td>
                             <span class="medio-pago-badge">
                                 {% if reporte.medio_pago == 'PAGO_MOVIL' %}
-                                📱 Pago Móvil
+                                <i class="fas fa-mobile-alt"></i> Pago Móvil
                                 {% else %}
-                                🏦 Transferencia
+                                <i class="fas fa-university"></i> Transferencia
                                 {% endif %}
                             </span>
-                        </d
+                        </td>
                        
-                        <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</d
+                        <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</td>
                         <td class="actions-cell">
                             <button class="action-btn" onclick="verDetallePago({{ reporte.id }})" title="Ver detalles">
-                                👁️
+                                <i class="fas fa-eye"></i>
                             </button>
                             <button class="action-btn approve" onclick="aprobarPago({{ reporte.id }})" title="Aprobar pago">
-                                ✓
+                                <i class="fas fa-check"></i>
                             </button>
                             <button class="action-btn reject" onclick="abrirModalRechazo({{ reporte.id }})" title="Rechazar pago">
-                                ✖
+                                <i class="fas fa-times"></i>
                             </button>
-                        </d
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="9" class="empty">
-                            📭 No hay pagos pendientes de validación
-                        </d
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay pagos pendientes de validación
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -934,8 +935,12 @@
         {% if reportes_pendientes.has_other_pages %}
         <div class="pagination">
             {% if reportes_pendientes.has_previous %}
-            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">«</a>
-            <a href="?page_pendientes={{ reportes_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">‹</a>
+            <a href="?page_pendientes=1&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_pendientes={{ reportes_pendientes.previous_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
             {% endif %}
             
             <span class="page-info">
@@ -943,8 +948,12 @@
             </span>
             
             {% if reportes_pendientes.has_next %}
-            <a href="?page_pendientes={{ reportes_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">›</a>
-            <a href="?page_pendientes={{ reportes_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">»</a>
+            <a href="?page_pendientes={{ reportes_pendientes.next_page_number }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_pendientes={{ reportes_pendientes.paginator.num_pages }}&tab=pendientes{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
             {% endif %}
         </div>
         {% endif %}
@@ -978,48 +987,49 @@
                                     <div class="user-name">{{ reporte.nombre_cliente }}</div>
                                 </div>
                             </div>
-                        </d
+                        </td>
                         <td>
                             {% if reporte.contrato %}
-                                <span class="badge-interno">🏢 Interno</span>
+                                <span class="badge-interno"><i class="fas fa-building"></i> Interno</span>
                             {% else %}
-                                <span class="badge-externo">👤 Externo</span>
+                                <span class="badge-externo"><i class="fas fa-user"></i> Externo</span>
                             {% endif %}
-                        </d
-                        <td>{{ reporte.cedula_cliente }}</d
-                        <td>{{ reporte.telefono_cliente }}</d
-                        <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</d
+                        </td>
+                        <td>{{ reporte.cedula_cliente }}</td>
+                        <td>{{ reporte.telefono_cliente }}</td>
+                        <td class="monto-cell">Bs {{ reporte.monto|floatformat:2 }}</td>
                         <td>
                             <span class="medio-pago-badge">
                                 {% if reporte.medio_pago == 'PAGO_MOVIL' %}
-                                📱 Pago Móvil
+                                <i class="fas fa-mobile-alt"></i> Pago Móvil
                                 {% else %}
-                                🏦 Transferencia
+                                <i class="fas fa-university"></i> Transferencia
                                 {% endif %}
                             </span>
-                        </d
+                        </td>
                         
-                        <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</d
+                        <td>{{ reporte.fecha_pago|date:"d/m/Y" }}</td>
                         <td>
                             {% if reporte.estado == 'VERIFICADO' %}
-                            <span class="badge-estado badge-verificado">✅ Verificado</span>
+                            <span class="badge-estado badge-verificado"><i class="fas fa-check-circle"></i> Verificado</span>
                             {% elif reporte.estado == 'RECHAZADO' %}
-                            <span class="badge-estado badge-rechazado">❌ Rechazado</span>
+                            <span class="badge-estado badge-rechazado"><i class="fas fa-times-circle"></i> Rechazado</span>
                             {% elif reporte.estado == 'APLICADO' %}
-                            <span class="badge-estado badge-aplicado">📄 Aplicado</span>
+                            <span class="badge-estado badge-aplicado"><i class="fas fa-check-double"></i> Aplicado</span>
                             {% endif %}
-                        </d
+                        </td>
                         <td class="actions-cell">
                             <button class="action-btn" onclick="verDetallePago({{ reporte.id }})" title="Ver detalles">
-                                👁️
+                                <i class="fas fa-eye"></i>
                             </button>
-                        </d
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
                         <td colspan="10" class="empty">
-                            📭 No hay pagos procesados
-                        </d
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 12px; display: block;"></i>
+                            No hay pagos procesados
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1030,8 +1040,12 @@
         {% if reportes_completados.has_other_pages %}
         <div class="pagination">
             {% if reportes_completados.has_previous %}
-            <a href="?page_completados=1&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">«</a>
-            <a href="?page_completados={{ reportes_completados.previous_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">‹</a>
+            <a href="?page_completados=1&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page_completados={{ reportes_completados.previous_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
             {% endif %}
             
             <span class="page-info">
@@ -1039,8 +1053,12 @@
             </span>
             
             {% if reportes_completados.has_next %}
-            <a href="?page_completados={{ reportes_completados.next_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">›</a>
-            <a href="?page_completados={{ reportes_completados.paginator.num_pages }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">»</a>
+            <a href="?page_completados={{ reportes_completados.next_page_number }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page_completados={{ reportes_completados.paginator.num_pages }}&tab=completados{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if tipo_cliente %}&tipo_cliente={{ tipo_cliente }}{% endif %}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
             {% endif %}
         </div>
         {% endif %}
@@ -1059,7 +1077,7 @@
                 </div>
             </div>
             <button class="modal-close" onclick="cerrarModalDetalle()">
-                ✖
+                <i class="fas fa-times"></i>
             </button>
         </div>
         
@@ -1072,7 +1090,7 @@
             <div id="contenidoDetalle" style="display: none;">
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        👤 Información del Cliente
+                        <i class="fas fa-user"></i> Información del Cliente
                     </h3>
                     <div class="modal-detalle-grid">
                         <div class="modal-detalle-item">
@@ -1104,7 +1122,7 @@
                 
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        💳 Información del Pago
+                        <i class="fas fa-credit-card"></i> Información del Pago
                     </h3>
                     <div class="modal-detalle-grid">
                         <div class="modal-detalle-item">
@@ -1128,24 +1146,25 @@
                 
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        🧾 Detalles de la Transacción
+                        <i class="fas fa-receipt"></i> Detalles de la Transacción
                     </h3>
                     <div id="detallePagoContent"></div>
                 </div>
                 
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        🖼️ Comprobante de Pago
+                        <i class="fas fa-image"></i> Comprobante de Pago
                     </h3>
                     <div id="comprobanteContainer" class="comprobante-preview">
                         <div id="sinComprobante" style="text-align: center; padding: 20px; background: var(--gray-bg); border-radius: 12px;">
-                            🖼️ No hay comprobante disponible
+                            <i class="fas fa-file-image" style="font-size: 40px; color: #ccc; margin-bottom: 10px; display: block;"></i>
+                            <p>No hay comprobante disponible</p>
                         </div>
                         <div id="conComprobante" style="display: none;">
                             <img id="comprobanteImg" class="comprobante-img" alt="Comprobante de pago">
                             <div style="margin-top: 12px;">
                                 <a id="downloadComprobante" href="#" download class="btn-outline" style="display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--orange);">
-                                    ⬇️ Descargar comprobante
+                                    <i class="fas fa-download"></i> Descargar comprobante
                                 </a>
                             </div>
                         </div>
@@ -1154,14 +1173,14 @@
                 
                 <div class="modal-section historial-validaciones">
                     <h3 class="modal-section-title">
-                        📜 Historial de Validaciones
+                        <i class="fas fa-history"></i> Historial de Validaciones
                     </h3>
                     <div id="historialContainer"></div>
                 </div>
                 
                 <div class="modal-section">
                     <h3 class="modal-section-title">
-                        💬 Observación del Cliente
+                        <i class="fas fa-comment"></i> Observación del Cliente
                     </h3>
                     <div class="modal-detalle-item full-width">
                         <span class="modal-detalle-value" id="detalleObservacion" style="background: var(--gray-bg); padding: 12px; border-radius: 12px;"></span>
@@ -1172,7 +1191,7 @@
         
         <div class="modal-footer">
             <button class="btn-cancel" onclick="cerrarModalDetalle()">
-                ✖ Cerrar
+                <i class="fas fa-times"></i> Cerrar
             </button>
         </div>
     </div>
@@ -1182,9 +1201,9 @@
 <div id="modalRechazo" class="modal" style="display: none;">
     <div class="modal-container modal-md">
         <div class="modal-header">
-            <h3 style="margin: 0;">🚫 Rechazar Pago</h3>
+            <h3 style="margin: 0;"><i class="fas fa-ban"></i> Rechazar Pago</h3>
             <button class="modal-close" onclick="cerrarModalRechazo()">
-                ✖
+                <i class="fas fa-times"></i>
             </button>
         </div>
         
@@ -1199,7 +1218,7 @@
         <div class="modal-footer">
             <button class="btn-cancel" onclick="cerrarModalRechazo()">Cancelar</button>
             <button class="btn-rechazar" id="btnConfirmarRechazo">
-                ✓ Confirmar Rechazo
+                <i class="fas fa-check"></i> Confirmar Rechazo
             </button>
         </div>
     </div>
@@ -1297,7 +1316,7 @@
     function llenarModalDetalle(data) {
         document.getElementById('modalAvatar').textContent = data.cliente_nombre.slice(0, 2).toUpperCase();
         document.getElementById('modalTitulo').textContent = data.cliente_nombre;
-        document.getElementById('modalSubtitulo').innerHTML = `💰 Bs ${data.monto.toFixed(2)} · <span class="badge-estado badge-${data.estado.toLowerCase()}">${data.estado_display}</span>`;
+        document.getElementById('modalSubtitulo').innerHTML = `<i class="fas fa-money-bill-wave"></i> Bs ${data.monto.toFixed(2)} · <span class="badge-estado badge-${data.estado.toLowerCase()}">${data.estado_display}</span>`;
         
         document.getElementById('detalleNombre').textContent = data.cliente_nombre;
         document.getElementById('detalleTipoCliente').innerHTML = data.tipo_cliente === 'interno' ? '<span class="badge-interno">Interno (Con Contrato)</span>' : '<span class="badge-externo">Externo (Sin Contrato)</span>';
@@ -1306,7 +1325,7 @@
         document.getElementById('detalleCorreo').textContent = data.cliente_correo || '—';
         document.getElementById('detallePlan').textContent = data.plan || '—';
         
-        document.getElementById('detalleMedioPago').innerHTML = data.medio_pago === 'Pago Móvil' ? '📱 Pago Móvil' : '🏦 Transferencia';
+        document.getElementById('detalleMedioPago').innerHTML = data.medio_pago === 'Pago Móvil' ? '<i class="fas fa-mobile-alt"></i> Pago Móvil' : '<i class="fas fa-university"></i> Transferencia';
         document.getElementById('detalleMonto').innerHTML = `<strong>Bs ${data.monto.toFixed(2)}</strong>`;
         document.getElementById('detalleFechaPago').textContent = data.fecha_pago;
         document.getElementById('detalleFechaReporte').textContent = data.fecha_reporte;
@@ -1334,23 +1353,16 @@
         const comprobanteImg = document.getElementById('comprobanteImg');
         const downloadLink = document.getElementById('downloadComprobante');
         
-        // ========== CORRECCIÓN: Limpiar URL duplicada del comprobante ==========
         if (data.comprobante_url) {
-            let urlLimpia = data.comprobante_url;
-            // Limpiar URL duplicada /pagos/pagos/ -> /pagos/
-            if (urlLimpia && urlLimpia.includes('/pagos/pagos/')) {
-                urlLimpia = urlLimpia.replace('/pagos/pagos/', '/pagos/');
-            }
             sinComprobante.style.display = 'none';
             conComprobante.style.display = 'block';
-            comprobanteImg.src = urlLimpia;
-            downloadLink.href = urlLimpia;
-            comprobanteImg.onclick = () => window.open(urlLimpia, '_blank');
+            comprobanteImg.src = data.comprobante_url;
+            downloadLink.href = data.comprobante_url;
+            comprobanteImg.onclick = () => window.open(data.comprobante_url, '_blank');
         } else {
             sinComprobante.style.display = 'block';
             conComprobante.style.display = 'none';
         }
-        // ========== FIN CORRECCIÓN ==========
         
         document.getElementById('detalleObservacion').textContent = data.observacion_cliente || 'Sin observaciones';
         
