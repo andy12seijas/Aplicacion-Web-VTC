@@ -328,6 +328,52 @@
             color: white;
         }
 
+        /* Botón de reportar pago - ESTILO DESTACADO */
+        .btn-reportar-pago {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(16, 185, 129, 0.3);
+            text-decoration: none;
+            display: inline-block;
+            margin-left: 15px;
+        }
+
+        .btn-reportar-pago:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+            color: white;
+        }
+
+        .btn-reportar-pago i {
+            margin-right: 8px;
+        }
+
+        /* Botón secundario de reportar pago (versión outline) */
+        .btn-reportar-outline {
+            background: transparent;
+            border: 2px solid #10b981;
+            color: #10b981;
+            padding: 12px 28px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-reportar-outline:hover {
+            background: #10b981;
+            color: white;
+            transform: translateY(-2px);
+        }
+
         .section {
             padding: 60px 0;
         }
@@ -714,6 +760,38 @@
             }
         }
 
+        /* Botón flotante de reportar pago (versión móvil) */
+        .floating-report-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 24px;
+        }
+
+        .floating-report-btn:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+        }
+
+        @media (min-width: 768px) {
+            .floating-report-btn {
+                display: none;
+            }
+        }
+
         @media (min-width: 768px) {
             .hero-title {
                 font-size: 56px;
@@ -838,6 +916,14 @@
             margin-right: 8px;
             vertical-align: middle;
         }
+
+        /* Botonera de acciones en hero */
+        .hero-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 25px;
+        }
     </style>
 </head>
 <body>
@@ -895,6 +981,11 @@
         </div>
     </nav>
 
+    <!-- Botón flotante solo visible en móvil -->
+    <a href="{% url 'reportar_pago' %}" class="floating-report-btn" data-tooltip="Reportar Pago">
+        <i class="fas fa-credit-card"></i>
+    </a>
+
     <section class="hero">
         <div class="container">
             <div class="row align-items-center">
@@ -907,9 +998,14 @@
                         Conectamos tu hogar o negocio con la tecnología más avanzada. 
                         Velocidades simétricas, baja latencia y conexión estable 24/7.
                     </p>
-                    <a href="#planes" class="btn-main">
-                        Ver Planes <i class="fas fa-arrow-right"></i>
-                    </a>
+                    <div class="hero-buttons">
+                        <a href="#planes" class="btn-main">
+                            Ver Planes <i class="fas fa-arrow-right"></i>
+                        </a>
+                        <a href="{% url 'reportar_pago' %}" class="btn-reportar-pago">
+                            <i class="fas fa-credit-card"></i> Reportar Pago
+                        </a>
+                    </div>
                     <div class="hero-stats">
                         <div class="stat-item">
                             <div class="stat-number">500+</div>
@@ -1133,6 +1229,11 @@
                                 <i class="fas fa-envelope"></i> Enviar mensaje
                             </button>
                         </form>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'reportar_pago' %}" class="btn-reportar-outline">
+                                <i class="fas fa-credit-card"></i> ¿Ya hiciste un pago? Repórtalo aquí
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
