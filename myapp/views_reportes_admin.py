@@ -1,5 +1,5 @@
 import re
-
+from openpyxl.styles import Font
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse, HttpResponse
@@ -23,6 +23,7 @@ from django.core.management import call_command
 from django.views.decorators.csrf import csrf_exempt
 import json
 from django.db.models import Q
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill, colors
 
 VE_TZ = pytz.timezone('America/Caracas')
 
@@ -1963,6 +1964,8 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
     import pytz
     from datetime import datetime, timedelta
     from collections import defaultdict
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
     
     VE_TZ = pytz.timezone('America/Caracas')
     wb = Workbook()
