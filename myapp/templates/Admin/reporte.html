@@ -927,30 +927,36 @@
     </div>
 </div>
 
-<div class="filters-container">
-    <div class="filters-grid">
-        <div class="search-box">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
-                <circle cx="11" cy="11" r="8"/>
-                <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Buscar..." id="searchInput">
-        </div>
-        
+    <div class="filters-container">
+        <div class="filters-grid">
+            <div class="search-box">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <input type="text" placeholder="Buscar..." id="searchInput">
+            </div>
+            
         <div id="filtrosVentas" class="filters-ventas">
-            <select id="filterVendedor" class="filter-select">
-                <option value="">Todos los vendedores</option>
-                {% for v in vendedores %}
-                <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
-                {% endfor %}
-            </select>
-            <select id="filterPlan" class="filter-select">
-                <option value="">Todos los planes</option>
-                {% for p in planes %}
-                <option value="{{ p.id }}">{{ p.nombre }}</option>
-                {% endfor %}
-            </select>
-        </div>
+        <select id="filterVendedor" class="filter-select">
+            <option value="">Todos los vendedores</option>
+            {% for v in vendedores %}
+            <option value="{{ v.id }}">{{ v.get_full_name|default:v.username }}</option>
+            {% endfor %}
+        </select>
+        <select id="filterPlan" class="filter-select">
+            <option value="">Todos los planes</option>
+            {% for p in planes %}
+            <option value="{{ p.id }}">{{ p.nombre }}</option>
+            {% endfor %}
+        </select>
+        <!-- NUEVO FILTRO DE ESTADO -->
+        <select id="filterEstadoVenta" class="filter-select">
+            <option value="">Todos los estados</option>
+            <option value="COMPLETADO">Completados</option>
+            <option value="EN_PROCESO">En Proceso</option>
+        </select>
+    </div>
         
         <div id="filtrosInstalaciones" class="filters-instalaciones" style="display: none;">
             <select id="filterCuadrilla" class="filter-select">
@@ -1068,6 +1074,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     let tipoActual = 'ventas';
     let nivelActual = 'simple';
@@ -1221,6 +1228,7 @@
         document.getElementById('searchInput').value = '';
         document.getElementById('filterVendedor').value = '';
         document.getElementById('filterPlan').value = '';
+        document.getElementById('filterEstadoVenta').value = ''; // NUEVO
         document.getElementById('filterCuadrilla').value = '';
         document.getElementById('filterEstadoInstalacion').value = '';
         document.getElementById('filterTipoSoporte').value = '';
@@ -1272,8 +1280,10 @@
         if (tipoActual === 'ventas') {
             const vendedor = document.getElementById('filterVendedor')?.value || '';
             const plan = document.getElementById('filterPlan')?.value || '';
+            const estado = document.getElementById('filterEstadoVenta')?.value || ''; // NUEVO
             if (vendedor) url += `&vendedor=${vendedor}`;
             if (plan) url += `&plan=${plan}`;
+            if (estado) url += `&estado=${estado}`; // NUEVO
         } else if (tipoActual === 'instalaciones') {
             const cuadrilla = document.getElementById('filterCuadrilla')?.value || '';
             const estado = document.getElementById('filterEstadoInstalacion')?.value || '';
@@ -1290,7 +1300,7 @@
         }
         
         const tbody = document.getElementById('tbody-resultados');
-        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading"><div class="spinner"></div>Cargando datos...</div></td>';
         
         fetch(url)
             .then(response => response.json())
@@ -2423,8 +2433,10 @@
         if (tipoActual === 'ventas') {
             const vendedor = document.getElementById('filterVendedor')?.value || '';
             const plan = document.getElementById('filterPlan')?.value || '';
+            const estado = document.getElementById('filterEstadoVenta')?.value || ''; // NUEVO
             if (vendedor) url += `&vendedor=${vendedor}`;
             if (plan) url += `&plan=${plan}`;
+            if (estado) url += `&estado=${estado}`; // NUEVO
         } else if (tipoActual === 'instalaciones') {
             const cuadrilla = document.getElementById('filterCuadrilla')?.value || '';
             if (cuadrilla) url += `&cuadrilla=${cuadrilla}`;
@@ -2446,6 +2458,7 @@
     document.getElementById('searchInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') cargarReporte(); });
     document.getElementById('filterVendedor')?.addEventListener('change', cargarReporte);
     document.getElementById('filterPlan')?.addEventListener('change', cargarReporte);
+    document.getElementById('filterEstadoVenta')?.addEventListener('change', cargarReporte); // NUEVO
     document.getElementById('filterCuadrilla')?.addEventListener('change', cargarReporte);
     document.getElementById('filterEstadoInstalacion')?.addEventListener('change', cargarReporte);
     document.getElementById('filterTipoSoporte')?.addEventListener('change', cargarReporte);

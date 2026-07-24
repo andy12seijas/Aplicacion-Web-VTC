@@ -85,6 +85,7 @@ def reporte_ventas_json(request):
     fecha_hasta_raw = request.GET.get('fecha_hasta', '')
     vendedor_id = request.GET.get('vendedor', '')
     plan_id = request.GET.get('plan', '')
+    estado_filtro = request.GET.get('estado', '')  # NUEVO
     busqueda = request.GET.get('busqueda', '')
     page = request.GET.get('page', 1)
     per_page = int(request.GET.get('per_page', 15))
@@ -102,6 +103,10 @@ def reporte_ventas_json(request):
     
     # Incluir COMPLETADO y EN_PROCESO
     ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
+    
+    # ===== FILTRAR POR ESTADO (NUEVO) =====
+    if estado_filtro:
+        ventas = ventas.filter(estado=estado_filtro)
     
     # ===== FILTRAR POR FECHA USANDO DATETIME AWARE =====
     if fecha_desde_aware and fecha_hasta_aware:
@@ -188,10 +193,18 @@ def reporte_ventas_json(request):
                 'estado': v.get_estado_display(),
             })
     
+    # Calcular estadísticas considerando el filtro de estado
+    if estado_filtro:
+        completados = ventas.filter(estado='COMPLETADO').count() if estado_filtro == 'COMPLETADO' else 0
+        en_proceso = ventas.filter(estado='EN_PROCESO').count() if estado_filtro == 'EN_PROCESO' else 0
+    else:
+        completados = ventas.filter(estado='COMPLETADO').count()
+        en_proceso = ventas.filter(estado='EN_PROCESO').count()
+    
     estadisticas = {
         'total_ventas': total_registros,
-        'completados': ventas.filter(estado='COMPLETADO').count(),
-        'pendientes': ventas.filter(estado='EN_PROCESO').count(),
+        'completados': completados,
+        'pendientes': en_proceso,
     }
     
     return JsonResponse({
@@ -1929,7 +1942,7 @@ def exportar_reporte(request):
     vendedor = request.GET.get('vendedor', '')
     plan = request.GET.get('plan', '')
     cuadrilla = request.GET.get('cuadrilla', '')
-    estado = request.GET.get('estado', '')
+    estado = request.GET.get('estado', '')  # NUEVO - Filtro de estado para ventas
     tipo_soporte = request.GET.get('tipo_soporte', '')
     estado_soporte = request.GET.get('estado_soporte', '')
     material = request.GET.get('material', '')
@@ -1976,6 +1989,10 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
         
         # Incluir COMPLETADO y EN_PROCESO
         ventas = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
+        
+        # ===== FILTRAR POR ESTADO (NUEVO) =====
+        if estado:
+            ventas = ventas.filter(estado=estado)
         
         # Convertir a datetime aware
         fecha_inicio_aware = None
@@ -2028,7 +2045,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             return 'N/A'
         
         if reporte_tipo == 'simple':
-            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Vendedor', 'Estado']
+            headers = ['Cliente', 'Customer ID', 'Plan', 'ODS', 'Fecha', 'Vendedor', 'Estado']
             data = []
             for v in ventas:
                 if v.estado == 'COMPLETADO' and v.fecha_completado:
@@ -2039,6 +2056,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                 data.append([
                     v.nombre_completo,
                     v.customer_id or 'N/A',
+                    v.plan_contratado.nombre if v.plan_contratado else 'N/A',
                     v.ods or 'N/A',
                     fecha_str,
                     v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
@@ -2060,7 +2078,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     v.telefono_principal,
                     v.correo_electronico,
                     v.direccion_detallada[:100] if v.direccion_detallada else 'N/A',
-                    v.plan_contratado.nombre,
+                    v.plan_contratado.nombre if v.plan_contratado else 'N/A',
                     fecha_str,
                     formatear_fecha(v.fecha_creacion),
                     v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
@@ -2086,6 +2104,18 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
             ['En Proceso:', en_proceso_count],
         ]
         
+        # Si hay filtro de estado, mostrarlo
+        # Si hay filtro de estado, mostrarlo
+        if estado:
+            # Obtener el label del estado usando el método get_estado_display()
+            # O directamente desde el TextChoices
+            try:
+                estado_display = ContratoCliente.EstadoContrato(estado).label if hasattr(ContratoCliente, 'EstadoContrato') else estado
+            except:
+                # Si falla, mostrar el valor directamente
+                estado_display = estado
+            resumen_data.insert(4, ['Filtro de estado:', estado_display])
+                
         for row_idx, row_data in enumerate(resumen_data, 1):
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws_resumen.cell(row=row_idx, column=col_idx, value=value)
@@ -2095,6 +2125,7 @@ def exportar_excel(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj
                     cell.font = Font(bold=True)
         
         ws_resumen.column_dimensions['A'].width = 30
+        ws_resumen.column_dimensions['B'].width = 30
     
     elif tipo == 'instalaciones':
         ws = wb.active
@@ -2937,6 +2968,10 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         
         datos = ContratoCliente.objects.filter(estado__in=['COMPLETADO', 'EN_PROCESO'])
         
+        # ===== FILTRAR POR ESTADO (NUEVO) =====
+        if estado:
+            datos = datos.filter(estado=estado)
+        
         fecha_inicio_aware = None
         fecha_fin_aware = None
         
@@ -2981,7 +3016,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
         en_proceso = datos.filter(estado='EN_PROCESO').count()
         
         if reporte_tipo == 'simple':
-            headers = ['Cliente', 'Customer ID', 'ODS', 'Fecha', 'Vendedor', 'Estado']
+            headers = ['Cliente', 'Customer ID', 'Plan', 'ODS', 'Fecha', 'Vendedor', 'Estado']
             rows = []
             for v in datos:
                 if v.estado == 'COMPLETADO' and v.fecha_completado:
@@ -2992,6 +3027,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                 rows.append([
                     v.nombre_completo,
                     v.customer_id or 'N/A',
+                    v.plan_contratado.nombre if v.plan_contratado else 'N/A',
                     v.ods or 'N/A',
                     fecha_str,
                     v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
@@ -3011,7 +3047,7 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
                     v.nombre_completo,
                     v.cedula,
                     v.telefono_principal,
-                    v.plan_contratado.nombre,
+                    v.plan_contratado.nombre if v.plan_contratado else 'N/A',
                     fecha_str,
                     formatear_fecha_pdf(v.fecha_creacion),
                     v.creado_por.get_full_name() or v.creado_por.username if v.creado_por else 'N/A',
@@ -3601,6 +3637,16 @@ def exportar_pdf(request, tipo, reporte_tipo, fecha_desde_obj, fecha_hasta_obj,
             ['Completados:', str(completados)],
             ['En Proceso:', str(en_proceso)],
         ])
+        # Si hay filtro de estado, mostrarlo
+        # Si hay filtro de estado, mostrarlo
+        if estado:
+            # Obtener el label del estado usando el TextChoices
+            try:
+                estado_display = ContratoCliente.EstadoContrato(estado).label if hasattr(ContratoCliente, 'EstadoContrato') else estado
+            except:
+                # Si falla, mostrar el valor directamente
+                estado_display = estado
+            stats_data.insert(1, ['Filtro de estado:', estado_display])
     elif tipo == 'instalaciones':
         stats_data.extend([
             ['Total instalaciones:', str(len(rows))],
